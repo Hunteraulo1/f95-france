@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Base de données MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: f95-france-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: f95_france
+      MYSQL_USER: f95_user
+      MYSQL_PASSWORD: f95_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - f95-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Application SvelteKit
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: f95-france-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://f95_user:f95_password@mysql:3306/f95_france
+      - NODE_ENV=production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - f95-network
+    volumes:
+      - ./src:/app/src
+      - ./static:/app/static
+      - ./package.json:/app/package.json
+      - ./svelte.config.js:/app/svelte.config.js
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./drizzle.config.ts:/app/drizzle.config.ts
+
+  # Drizzle Studio (optionnel - pour gérer la base de données)
+  drizzle-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: f95-france-drizzle
+    restart: unless-stopped
+    ports:
+      - "4983:4983"
+    environment:
+      - DATABASE_URL=mysql://f95_user:f95_password@mysql:3306/f95_france
+    command: npm run db:studio
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - f95-network
+    profiles:
+      - tools
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  f95-network:
+    driver: bridge
