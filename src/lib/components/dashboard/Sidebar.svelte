@@ -1,9 +1,13 @@
 <script lang="ts">
 	import type { User } from '$lib/types/data';
-	import { checkRole } from '$lib/utils';
 	import { Box, BrickWallShield, Inbox, Languages, LogOut, MonitorCog, Settings, UserPen, type Icon as IconType } from '@lucide/svelte';
 
-  let { isSidebarOpen = $bindable(), user }: { isSidebarOpen: boolean, user: User } = $props();
+  interface Props {
+    isSidebarOpen: boolean;
+    user: User;
+  }
+  
+  let { isSidebarOpen = $bindable(), user }: Props = $props();
 
   interface NavItem {
     label: string;
@@ -16,63 +20,63 @@
   const nav: NavItem[] = [
     {
       label: 'Tableau de bord',
-      href: '/',
+      href: '/dashboard/',
       icon: MonitorCog,
       split: false,
       roles: ['admin', 'translator', 'user']
     },
     {
       label: 'Profil',
-      href: '/profile',
+      href: '/dashboard/profile',
       icon: UserPen,
       split: false,
       roles: ['admin', 'translator', 'user']
     },
     {
       label: 'Traducteurs',
-      href: '/translators',
+      href: '/dashboard/translators',
       icon: Languages,
       split: false,
       roles: ['admin']
     },
     {
       label: 'Mes soumissions',
-      href: '/my-submissions',
+      href: '/dashboard/my-submissions',
       icon: Inbox,
       split: false,
       roles: ['translator']
     },
     {
       label: 'Soumissions',
-      href: '/submissions',
+      href: '/dashboard/submissions',
       icon: Box,
       split: false,
       roles: ['admin']
     },
     {
       label: 'Paramètres',
-      href: '/settings',
+      href: '/dashboard/settings',
       icon: UserPen,
       split: false,
       roles: ['admin', 'translator', 'user']
     },
     {
       label: 'Configuration',
-      href: '/config',
+      href: '/dashboard/config',
       icon: Settings,
       split: true,
       roles: ['admin']
     },
     {
       label: 'Panel développeur',
-      href: '/developer',
+      href: '/dashboard/developer',
       icon: BrickWallShield,
       split: false,
       roles: ['superadmin']
     },
     {
       label: 'Déconnexion',
-      href: '/logout',
+      href: '/dashboard/logout',
       icon: LogOut,
       split: true,
       roles: ['admin', 'translator', 'user']
@@ -80,23 +84,33 @@
   ]
 </script>
 
-<aside class="bg-white dark:bg-gray-900 shadow-sm w-72 h-screen transition-all duration-300 overflow-hidden border-r-2 z-10 border-gray-200 dark:border-gray-700" class:w-0!={!isSidebarOpen}>
-  <nav class="flex flex-col gap-2 p-4 text-nowrap">
-    {#each nav as item}
-      {#if checkRole(user.role, item.roles)}
+<input id="my-drawer-4" type="checkbox" class="drawer-toggle" checked={true} />
+
+<aside class="drawer-side is-drawer-close:overflow-visible">
+  <label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
+  <div class="is-drawer-close:w-14 is-drawer-open:w-64 bg-base-100 flex flex-col items-start min-h-full">
+    <!-- Sidebar content here -->
+    <ul class="menu w-full grow">
+      
+      {#each nav as item}
         {@const IconComponent = item.icon}
         {#if item.split}
-          <div class="h-px w-full bg-gray-200 dark:bg-gray-700 my-2"></div>
+          <div class="divider"></div>
         {/if}
-        <a
-          href={item.href}
-          class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-2 w-64"
-          class:text-red-400!={item.href === '/logout'}
-        >
-          <IconComponent size={16} />
-            {item.label}
-        </a>
-      {/if}
-    {/each}
-  </nav>
+        <li>
+          <a
+            class="is-drawer-close:tooltip is-drawer-close:tooltip-right font-semibold"
+            class:text-red-400={item.href === '/dashboard/logout'}
+            data-tip="Homepage"
+            href={item.href}
+          >
+            <IconComponent size={16} />
+            <span
+              class="is-drawer-close:hidden text-nowrap"
+            >{item.label}</span>
+          </a>
+        </li>
+      {/each}
+    </ul>
+  </div>
 </aside>

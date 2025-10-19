@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Header from '$lib/components/Header.svelte';
-	import Sidebar from '$lib/components/Sidebar.svelte';
+	import Header from '$lib/components/dashboard/Header.svelte';
+	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import type { User } from '$lib/types/data';
 
 	let { children } = $props();
@@ -12,7 +12,9 @@
 
 <Header bind:isSidebarOpen />
 
-<main class="flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden dark:bg-slate-800">  
+<main class="drawer drawer-open overflow-hidden max-h-[calc(100vh-4rem)]">  
+  <div class="drawer-content bg-base-200 p-16 overflow-y-auto">
+    {@render children?.()}
+  </div>
   <Sidebar bind:isSidebarOpen {user} />
-  <div class="overflow-y-auto w-full p-4">{@render children?.()}</div>
 </main>
