@@ -1,9 +1,9 @@
-import type { RequestEvent } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
-import { sha256 } from '@oslojs/crypto/sha2';
-import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sha256 } from '@oslojs/crypto/sha2';
+import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
+import type { RequestEvent } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -59,6 +59,15 @@ export async function validateSessionToken(token: string) {
 	}
 
 	return { session, user };
+}
+
+export async function getUserById(userId: string) {
+	const [user] = await db
+		.select()
+		.from(table.user)
+		.where(eq(table.user.id, userId));
+	
+	return user || null;
 }
 
 export type SessionValidationResult = Awaited<ReturnType<typeof validateSessionToken>>;

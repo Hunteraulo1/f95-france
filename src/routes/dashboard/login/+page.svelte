@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageServerData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+  interface Props {
+    form: ActionData;
+    data: PageServerData;
+  }
+
+	let { form, data }: Props = $props();
 </script>
 
 <h1>Login/Register</h1>
@@ -31,4 +36,4 @@
 		>Register</button
 	>
 </form>
-<p style="color: red">{form?.message ?? ''}</p>
+<!-- <p style="color: red">{form?.message ?? ''}</p> -->

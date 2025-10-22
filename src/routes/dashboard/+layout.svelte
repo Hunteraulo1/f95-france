@@ -1,13 +1,25 @@
 <script lang="ts">
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
-	import type { User } from '$lib/types/data';
+	import { loadUserData } from '$lib/stores';
+	import { onMount, type Snippet } from 'svelte';
+	import type { PageServerData } from './$types';
 
-	let { children } = $props();
+  interface Props {
+    children: Snippet
+    data: PageServerData
+  }
+
+	let { children, data }: Props = $props();
 
   let isSidebarOpen: boolean = $state(true);
 
-  const user = $state<User>({ id: '1', username: 'John Doe', role: 'superadmin' }); // TODO: Get user from database
+	// Charger les données utilisateur au montage du composant
+	onMount(async () => {
+		if (data.user?.id) {
+			await loadUserData(data.user.id);
+		}
+	});
 </script>
 
 <Header bind:isSidebarOpen />
@@ -16,5 +28,5 @@
   <div class="drawer-content bg-base-200 p-16 overflow-y-auto">
     {@render children?.()}
   </div>
-  <Sidebar bind:isSidebarOpen {user} />
+  <Sidebar bind:isSidebarOpen />
 </main>

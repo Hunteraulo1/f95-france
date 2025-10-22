@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { user } from '$lib/stores';
 	import { Menu } from '@lucide/svelte';
 
   let { isSidebarOpen = $bindable() }: { isSidebarOpen: boolean } = $props();
@@ -14,12 +15,13 @@
     <a class="btn btn-ghost text-xl" href="/">F95 France</a>
   </div>
   <div class="flex gap-2">
+    <!-- <button class="btn btn-soft btn-primary">Retour au compte { $user.username }</button> TODO: Implement user switcher -->
     <div class="dropdown dropdown-end">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
         <div class="w-10 rounded-full">
-          <img
-            alt="Tailwind CSS Navbar component"
-            src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+          {#if $user?.avatar && $user.avatar !== ''}
+            <img alt="avatar" src={$user.avatar} />
+          {/if}
         </div>
       </div>
     </div>

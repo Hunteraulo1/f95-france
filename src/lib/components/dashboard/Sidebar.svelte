@@ -1,13 +1,14 @@
 <script lang="ts">
-	import type { User } from '$lib/types/data';
+	import type { User } from '$lib/server/db/schema';
+	import { user } from '$lib/stores';
+	import { checkRole } from '$lib/utils';
 	import { Box, BrickWallShield, Inbox, Languages, LogOut, MonitorCog, Settings, UserPen, type Icon as IconType } from '@lucide/svelte';
 
   interface Props {
     isSidebarOpen: boolean;
-    user: User;
   }
   
-  let { isSidebarOpen = $bindable(), user }: Props = $props();
+  let { isSidebarOpen = $bindable() }: Props = $props();
 
   interface NavItem {
     label: string;
@@ -15,6 +16,7 @@
     icon: typeof IconType;
     split: boolean;
     roles: User['role'][]; // TODO: Add roles to the database
+    badge?: number
   }
 
   const nav: NavItem[] = [
@@ -51,7 +53,8 @@
       href: '/dashboard/submissions',
       icon: Box,
       split: false,
-      roles: ['admin']
+      roles: ['admin'],
+      badge: 100
     },
     {
       label: 'Paramètres',
@@ -93,23 +96,30 @@
     <ul class="menu w-full grow">
       
       {#each nav as item}
-        {@const IconComponent = item.icon}
-        {#if item.split}
-          <div class="divider"></div>
+        {#if $user && checkRole($user.role, item.roles)}
+          {@const IconComponent = item.icon}
+          {#if item.split}
+            <div class="divider"></div>
+          {/if}
+          <li>
+            <a
+              class="is-drawer-close:tooltip is-drawer-close:tooltip-right font-semibold"
+              class:text-red-400={item.href === '/dashboard/logout'}
+              data-tip="Homepage"
+              href={item.href}
+            >
+              <IconComponent size={16} />
+              <span
+                class="is-drawer-close:hidden text-nowrap"
+              >
+                {item.label}
+                {#if item.badge && item.badge > 0}
+                  <div class="badge badge-xs badge-primary ml-1">{item.badge > 99 ? '99+' : item.badge}</div>
+                {/if}
+              </span>
+            </a>
+          </li>
         {/if}
-        <li>
-          <a
-            class="is-drawer-close:tooltip is-drawer-close:tooltip-right font-semibold"
-            class:text-red-400={item.href === '/dashboard/logout'}
-            data-tip="Homepage"
-            href={item.href}
-          >
-            <IconComponent size={16} />
-            <span
-              class="is-drawer-close:hidden text-nowrap"
-            >{item.label}</span>
-          </a>
-        </li>
       {/each}
     </ul>
   </div>

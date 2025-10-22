@@ -1,15 +1,17 @@
-import * as auth from '$lib/server/auth';
-import { fail, redirect } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
+import * as auth from '$lib/server/auth';
+import type { RequestEvent } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const user = requireLogin();
-	return { user };
+	
+  return { user };
 };
 
 export const actions: Actions = {
-	logout: async (event) => {
+	logout: async (event: RequestEvent) => {
 		if (!event.locals.session) {
 			return fail(401);
 		}
