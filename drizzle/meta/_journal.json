@@ -15,6 +15,20 @@
       "when": 1760992904422,
       "tag": "0001_damp_zzzax",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1761140327947,
+      "tag": "0002_loud_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1761140438119,
+      "tag": "0003_yielding_rhodey",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,17 @@
 <script lang="ts">
+	import { initializeUserFromLocals } from '$lib/stores';
 	import { Search } from '@lucide/svelte';
+	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
 
+	let { data }: { data: PageData } = $props();
+
+	// Initialiser les données utilisateur au montage du composant
+	onMount(() => {
+		if (data.user) {
+			initializeUserFromLocals(data.user as any);
+		}
+	});
 </script>
 
 <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200 mb-4">Ajouter/Modifier un jeu sur la liste</h2>

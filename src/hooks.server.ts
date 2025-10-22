@@ -1,5 +1,5 @@
-import type { Handle } from '@sveltejs/kit';
 import * as auth from '$lib/server/auth';
+import type { Handle } from '@sveltejs/kit';
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
@@ -14,11 +14,16 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 
 	if (session) {
 		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+		
+		// Récupérer toutes les informations de l'utilisateur
+		if (user) {
+			const fullUserData = await auth.getUserById(user.id);
+			event.locals.user = fullUserData;
+		}
 	} else {
 		auth.deleteSessionTokenCookie(event);
 	}
 
-	event.locals.user = user;
 	event.locals.session = session;
 	return resolve(event);
 };

@@ -5,8 +5,8 @@
 
   let users: User[] = []
 
-  if (checkRole($user.role, ['superadmin'])) {
-    users = [$user] // TODO: Get users from database
+  if (checkRole(['superadmin'])) {
+    users = [$user as User] // TODO: Get users from database
   }
 </script>
 
@@ -42,7 +42,7 @@
         <label class="input w-full flex box-content">
           Thème
           <select class="select grow ring-0 bg-base-100 py-1 text-slate-900 h-[calc(100%-2px)] dark:text-slate-200 outline-none select-ghost">
-              <option value="emerald">Clair</option>
+              <option value="light">Clair</option>
             <option value="dark">Sombre</option>
           </select>
         </label>
@@ -50,7 +50,7 @@
     </div>
   </div>
   
-  {#if checkRole($user.role, ['superadmin'])}
+  {#if checkRole(['superadmin'])}
     <div class="flex flex-col gap-4">
       <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">Changer d'utilisateur (Dev)</h2>
     

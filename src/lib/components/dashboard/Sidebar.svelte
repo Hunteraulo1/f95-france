@@ -25,14 +25,14 @@
       href: '/dashboard/',
       icon: MonitorCog,
       split: false,
-      roles: ['admin', 'translator', 'user']
+      roles: ['all']
     },
     {
       label: 'Profil',
       href: '/dashboard/profile',
       icon: UserPen,
       split: false,
-      roles: ['admin', 'translator', 'user']
+      roles: ['all']
     },
     {
       label: 'Traducteurs',
@@ -61,7 +61,7 @@
       href: '/dashboard/settings',
       icon: UserPen,
       split: false,
-      roles: ['admin', 'translator', 'user']
+      roles: ['all']
     },
     {
       label: 'Configuration',
@@ -82,7 +82,7 @@
       href: '/dashboard/logout',
       icon: LogOut,
       split: true,
-      roles: ['admin', 'translator', 'user']
+      roles: ['all']
     }
   ]
 </script>
@@ -96,7 +96,7 @@
     <ul class="menu w-full grow">
       
       {#each nav as item}
-        {#if $user && checkRole($user.role, item.roles)}
+        {#if $user && checkRole(item.roles)}
           {@const IconComponent = item.icon}
           {#if item.split}
             <div class="divider"></div>
