@@ -1,0 +1,2 @@
+ALTER TABLE `game_translations` MODIFY COLUMN `website` enum('f95z','lc','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `game_translations` MODIFY COLUMN `ttype` enum('automatique','vo_francaise','manuelle','semi_automatique','a_tester','hs') NOT NULL;

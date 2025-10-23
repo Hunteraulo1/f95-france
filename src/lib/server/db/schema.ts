@@ -26,18 +26,13 @@ export const session = mysqlTable('session', {
 
 export const games = mysqlTable('games', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
-	website: mysqlEnum('website', ['F95z', 'LewdCorner', 'Autre']).notNull(),
-	link: varchar('link', { length: 500 }).notNull(),
-	threadId: int('thread_id'),
 	name: varchar('name', { length: 255 }).notNull(),
-	status: mysqlEnum('status', ['EN COURS', 'TERMINÉ', 'ABANDONNÉ']).notNull(),
+	description: text('description'),
 	tags: text('tags').notNull(),
 	type: text('type').notNull(),
 	image: varchar('image', { length: 500 }).notNull(),
 	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
-	mobile: boolean('mobile').default(false),
-	description: text('description')
+	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 
 export const gameTranslations = mysqlTable('game_translations', {
@@ -45,12 +40,17 @@ export const gameTranslations = mysqlTable('game_translations', {
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => games.id),
+	website: mysqlEnum('website', ['F95z', 'LewdCorner', 'Autre']).notNull(),
+	threadId: int('thread_id'),
+	link: varchar('link', { length: 500 }).notNull(),
+	status: mysqlEnum('status', ['in_progress', 'completed', 'abandoned']).notNull(),
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
-	traductor: text('traductor').notNull(),
-	proofreader: text('proofreader').notNull(),
-	ttype: mysqlEnum('ttype', ['Traduction Automatique', 'VO Française', 'Traduction Humaine', 'Traduction Semi-Automatique', 'À tester', 'Lien Trad HS']).notNull(),
+	mobile: boolean('mobile').default(false),
+	traductorId: varchar('traductor_id', { length: 255 }),
+	proofreaderId: varchar('proofreader_id', { length: 255 }),
+	ttype: mysqlEnum('ttype', ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']).notNull(),
 	ac: boolean('ac').notNull().default(false),
 	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
