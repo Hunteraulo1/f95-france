@@ -1,1 +1,0 @@
-ALTER TABLE `game_translations` MODIFY COLUMN `ttype` enum('auto','vo_francaise','manuelle','semi_automatique','a_tester','hs') NOT NULL;

@@ -1,2 +1,0 @@
-ALTER TABLE `traductors` ADD `user_id` varchar(255);--> statement-breakpoint
-ALTER TABLE `traductors` ADD CONSTRAINT `traductors_user_id_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE no action ON UPDATE no action;

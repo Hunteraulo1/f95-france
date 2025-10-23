@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1760798429829,
-      "tag": "0000_blushing_professor_monster",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1760992904422,
-      "tag": "0001_damp_zzzax",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1761140327947,
-      "tag": "0002_loud_azazel",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1761140438119,
-      "tag": "0003_yielding_rhodey",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1761171135768,
-      "tag": "0004_fearless_reavers",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1761190324516,
-      "tag": "0005_acoustic_hydra",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1761190326361,
-      "tag": "0006_brown_aaron_stack",
+      "when": 1761194133593,
+      "tag": "0000_aromatic_silver_surfer",
       "breakpoints": true
     }
   ]

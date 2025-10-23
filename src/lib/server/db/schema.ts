@@ -27,12 +27,15 @@ export const session = mysqlTable('session', {
 export const games = mysqlTable('games', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
 	name: varchar('name', { length: 255 }).notNull(),
-	description: text('description'),
 	tags: text('tags').notNull(),
 	type: text('type').notNull(),
 	image: varchar('image', { length: 500 }).notNull(),
 	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+	description: text('description'),
+	website: mysqlEnum('website', ['f95z', 'lc', 'other']).notNull().default('f95z'),
+	threadId: int('thread_id'),
+	link: varchar('link', { length: 500 }).notNull().default('')
 });
 
 export const gameTranslations = mysqlTable('game_translations', {
@@ -40,14 +43,10 @@ export const gameTranslations = mysqlTable('game_translations', {
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => games.id),
-	website: mysqlEnum('website', ['F95z', 'LewdCorner', 'Autre']).notNull(),
-	threadId: int('thread_id'),
-	link: varchar('link', { length: 500 }).notNull(),
 	status: mysqlEnum('status', ['in_progress', 'completed', 'abandoned']).notNull(),
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
-	mobile: boolean('mobile').default(false),
 	traductorId: varchar('traductor_id', { length: 255 }),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
 	ttype: mysqlEnum('ttype', ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']).notNull(),
