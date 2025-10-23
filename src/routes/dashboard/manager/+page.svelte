@@ -6,9 +6,10 @@
 	let searchResults = $state<Games[]>([]);
 	let isLoading = $state(false);
 	let showResults = $state(false);
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const searchGames = async (query: string) => {
-		if (!query || query.trim().length === 0) {
+		if (!query || query.trim().length < 3) {
 			searchResults = [];
 			showResults = false;
 			return;
@@ -34,16 +35,32 @@
 		}
 	};
 
+	const debouncedSearch = (query: string) => {
+		// Annuler la recherche précédente si elle existe
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		
+		// Programmer une nouvelle recherche après 300ms
+		searchTimeout = setTimeout(() => {
+			searchGames(query);
+		}, 500);
+	};
+
 	const clearSearch = () => {
 		searchQuery = '';
 		searchResults = [];
 		showResults = false;
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+			searchTimeout = null;
+		}
 	};
 
 	const handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
 		searchQuery = target.value;
-		searchGames(searchQuery);
+		debouncedSearch(searchQuery);
 	};
 </script>
 
@@ -59,7 +76,6 @@
             type="search" 
             class="grow ring-0" 
             placeholder="Rechercher un jeu par nom ou threadId..." 
-            bind:value={searchQuery}
             oninput={handleInput}
           />
           {#if searchQuery}
