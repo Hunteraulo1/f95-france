@@ -1,25 +1,20 @@
 <script lang="ts">
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
-	import { loadUserData } from '$lib/stores';
-	import { onMount, type Snippet } from 'svelte';
-	import type { PageServerData } from './$types';
+	import { initializeUserFromLocals } from '$lib/stores';
+	import { type Snippet } from 'svelte';
+	import type { LayoutServerData } from './$types';
 
   interface Props {
     children: Snippet
-    data: PageServerData
+    data: LayoutServerData
   }
 
 	let { children, data }: Props = $props();
 
   let isSidebarOpen: boolean = $state(true);
-
-	// Charger les données utilisateur au montage du composant
-	onMount(async () => {
-		if (data.user?.id) {
-			await loadUserData(data.user.id);
-		}
-	});
+  
+	initializeUserFromLocals(data?.user);
 </script>
 
 <Header bind:isSidebarOpen />

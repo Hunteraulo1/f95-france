@@ -1,0 +1,1 @@
+ALTER TABLE `traductors` MODIFY COLUMN `discord_id` varchar(255);

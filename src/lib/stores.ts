@@ -30,12 +30,15 @@ export const updateUserData = (userData: User | null) => {
 
 // Fonction pour initialiser les données utilisateur depuis les locals
 export const initializeUserFromLocals = (userData: User | null) => {
+	console.log('🔍 Store - Initialisation avec:', userData?.username);
 	if (userData) {
 		// Supprimer le passwordHash des données côté client
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { passwordHash, ...userWithoutPassword } = userData;
+		console.log('🔍 Store - Mise à jour du store avec:', userWithoutPassword.username);
 		user.set(userWithoutPassword as User);
 	} else {
+		console.log('🔍 Store - Mise à jour du store avec null');
 		user.set(null);
 	}
 };

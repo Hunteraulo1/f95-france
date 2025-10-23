@@ -54,8 +54,7 @@ export async function validateSessionToken(token: string) {
 	
 	const [result] = await db
 		.select({
-			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, username: table.user.username },
+			user: table.user,
 			session: table.session
 		})
 		.from(table.session)
@@ -112,13 +111,19 @@ export async function invalidateSession(sessionId: string) {
 export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date) {
 	event.cookies.set(sessionCookieName, token, {
 		expires: expiresAt,
-		path: '/'
+		path: '/',
+		httpOnly: true,
+		secure: event.url.protocol === 'https:',
+		sameSite: 'lax'
 	});
 }
 
 export function deleteSessionTokenCookie(event: RequestEvent) {
 	event.cookies.delete(sessionCookieName, {
-		path: '/'
+		path: '/',
+		httpOnly: true,
+		secure: event.url.protocol === 'https:',
+		sameSite: 'lax'
 	});
 }
 

@@ -71,7 +71,7 @@ export const traductors = mysqlTable('traductors', {
 	userId: varchar('user_id', { length: 255 })
 		.references(() => user.id),
 	pages: text('pages').notNull(),
-	discordId: int('discord_id').unique(),
+	discordId: varchar('discord_id', { length: 255 }).unique(),
 	tradCount: int('trad_count').notNull().default(0),
 	readCount: int('read_count').notNull().default(0),
 	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),

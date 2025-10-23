@@ -10,32 +10,35 @@
 	let { form, data }: Props = $props();
 </script>
 
-<h1>Login/Register</h1>
-<form method="post" action="?/login" use:enhance>
-	<label>
-		Nom d'utilisateur
-		<input
-			name="username"
-			class="mt-1 rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-		/>
-	</label>
-	<label>
-		Mot de passe
-		<input
-			type="password"
-			name="password"
-			class="mt-1 rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-		/>
-	</label>
-	<button class="rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
-    Se connecter
-  </button>
-	<a
-		href="/dashboard/register"
-		class="rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-	>
-    Créer un compte
-  </a>
+<form method="post" action="?/login" use:enhance class="flex flex-col gap-2 justify-center items-center">
+	<div class="flex gap-2 flex-col w-80">
+    <label class="w-full">
+      Nom d'utilisateur
+      <input
+        name="username"
+        class="input input-bordered"
+      />
+    </label>
+    <label class="w-full">
+      Mot de passe
+      <input
+        type="password"
+        name="password"
+        class="input input-bordered"
+      />
+    </label>
+  </div>
+	<div class="flex justify-center gap-2 w-full mt-4">
+    <button class="btn btn-primary">
+        Se connecter
+      </button>
+    <a
+      href="/dashboard/register"
+      class="btn btn-primary"
+    >
+        Créer un compte
+      </a>
+  </div>
 </form>
 
 {#if form?.message}

@@ -2,7 +2,9 @@ import { get } from 'svelte/store';
 import type { User } from './server/db/schema';
 import { user } from './stores';
 
-const checkRole = (roles: User['role'][]) => {
+export type checkRoleType = User['role'] | 'all';
+
+const checkRole = (roles: checkRoleType[]) => {
   const loggedUser = get(user);
 
   if (!loggedUser) throw new Error('User is required');

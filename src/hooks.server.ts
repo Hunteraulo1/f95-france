@@ -10,21 +10,24 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const { session, user } = await auth.validateSessionToken(sessionToken);
+	try {
+		const { session, user } = await auth.validateSessionToken(sessionToken);
 
-	if (session) {
-		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
-		
-		// Récupérer toutes les informations de l'utilisateur
-		if (user) {
-			const fullUserData = await auth.getUserById(user.id);
-			event.locals.user = fullUserData;
+		if (session && user) {
+			event.locals.user = user;
+			event.locals.session = session;
+		} else {
+			auth.deleteSessionTokenCookie(event);
+			event.locals.user = null;
+			event.locals.session = null;
 		}
-	} else {
+	} catch (error) {
+		console.error('Erreur lors de la validation de session:', error);
 		auth.deleteSessionTokenCookie(event);
+		event.locals.user = null;
+		event.locals.session = null;
 	}
 
-	event.locals.session = session;
 	return resolve(event);
 };
 
