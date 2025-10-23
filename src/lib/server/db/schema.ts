@@ -43,6 +43,7 @@ export const gameTranslations = mysqlTable('game_translations', {
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => games.id),
+  translationName: varchar('translation_name', { length: 255 }),
 	status: mysqlEnum('status', ['in_progress', 'completed', 'abandoned']).notNull(),
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),

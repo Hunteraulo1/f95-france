@@ -17,7 +17,7 @@
 
 		isLoading = true;
 		try {
-			const response = await fetch(`/api/games/search?q=${encodeURIComponent(query)}`);
+			const response = await fetch(`/dashboard/manager?q=${encodeURIComponent(query)}`);
 			const data = await response.json();
 			
 			if (response.ok) {
@@ -36,12 +36,10 @@
 	};
 
 	const debouncedSearch = (query: string) => {
-		// Annuler la recherche précédente si elle existe
 		if (searchTimeout) {
 			clearTimeout(searchTimeout);
 		}
 		
-		// Programmer une nouvelle recherche après 300ms
 		searchTimeout = setTimeout(() => {
 			searchGames(query);
 		}, 500);
@@ -70,11 +68,11 @@
   <div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
     <div class="flex items-center justify-between gap-4 w-full">
       <div class="relative w-full">
-        <label class="input w-full flex">
+        <label class="input w-full">
           <Search size={20} class="min-w-5" />
           <input 
             type="search" 
-            class="grow ring-0" 
+            class="input-ghost" 
             placeholder="Rechercher un jeu par nom ou threadId..." 
             oninput={handleInput}
           />

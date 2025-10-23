@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const translations = await db
 			.select({
 				id: table.gameTranslations.id,
+        translationName: table.gameTranslations.translationName,
 				status: table.gameTranslations.status,
 				version: table.gameTranslations.version,
 				tversion: table.gameTranslations.tversion,

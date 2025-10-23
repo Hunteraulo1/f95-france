@@ -20,7 +20,7 @@
 <Header bind:isSidebarOpen />
 
 <main class="drawer drawer-open overflow-hidden max-h-[calc(100vh-4rem)]">  
-  <div class="drawer-content bg-base-200 p-16 overflow-y-auto">
+  <div class="drawer-content bg-base-200 p-16 overflow-y-auto max-h-[calc(100vh-4rem)]">
     {@render children?.()}
   </div>
   <Sidebar bind:isSidebarOpen />

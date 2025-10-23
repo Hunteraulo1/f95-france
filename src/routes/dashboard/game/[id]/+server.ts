@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const translations = await db
 			.select({
 				id: table.gameTranslations.id,
+				translationName: table.gameTranslations.translationName,
 				status: table.gameTranslations.status,
 				version: table.gameTranslations.version,
 				tversion: table.gameTranslations.tversion,
@@ -64,6 +65,52 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('Erreur lors de la récupération du jeu:', error);
+		return json({ error: 'Erreur serveur' }, { status: 500 });
+	}
+};
+
+export const PUT: RequestHandler = async ({ params, request, locals }) => {
+	// Vérifier que l'utilisateur est authentifié
+	if (!locals.user) {
+		return json({ error: 'Non authentifié' }, { status: 401 });
+	}
+
+	const gameId = params.id;
+	
+	if (!gameId) {
+		return json({ error: 'ID du jeu requis' }, { status: 400 });
+	}
+
+	try {
+		const body = await request.json();
+		const { name, description, type, website, threadId, tags, link, image } = body;
+
+		// Valider les données requises
+		if (!name || !type || !website || !image) {
+			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
+		}
+
+		// Mettre à jour le jeu
+		await db
+			.update(table.games)
+			.set({
+				name,
+				description: description || null,
+				type,
+				website,
+				threadId: threadId ? parseInt(threadId) : null,
+				tags: tags || null,
+				link: link || null,
+				image,
+				updatedAt: new Date()
+			})
+			.where(eq(table.games.id, gameId));
+
+		return json({ 
+			message: 'Jeu modifié avec succès'
+		});
+	} catch (error) {
+		console.error('Erreur lors de la modification du jeu:', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };

@@ -4,9 +4,9 @@ import type { User } from './server/db/schema';
 const user = writable<User | null>(null);
 
 // Fonction pour charger les données utilisateur depuis le serveur
-export const loadUserData = async (userId: string) => {
+export const loadUserData = async () => {
 	try {
-		const response = await fetch(`/api/user/${userId}`);
+		const response = await fetch(`/dashboard/user`);
 		if (response.ok) {
 			const userData = await response.json();
 			user.set(userData);
