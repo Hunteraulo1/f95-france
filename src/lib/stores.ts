@@ -3,6 +3,20 @@ import type { User } from './server/db/schema';
 
 const user = writable<User | null>(null);
 
+// Store pour les toasts
+const toasts = writable<Array<{ id: string; alertType: 'info' | 'warning' | 'success' | 'error'; message: string }>>([]);
+
+// Fonction pour ajouter un toast
+const newToast = (toast: { alertType: 'info' | 'warning' | 'success' | 'error'; message: string }) => {
+  const id = Math.random().toString(36).substr(2, 9);
+  toasts.update(current => [...current, { id, ...toast }]);
+  
+  // Auto-remove après 5 secondes
+  setTimeout(() => {
+    toasts.update(current => current.filter(t => t.id !== id));
+  }, 5000);
+};
+
 // Fonction pour charger les données utilisateur depuis le serveur
 export const loadUserData = async () => {
 	try {
@@ -48,5 +62,5 @@ export const clearUserData = () => {
 	user.set(null);
 };
 
-// Export du store
-export { user };
+// Export des stores
+export { newToast, toasts, user };

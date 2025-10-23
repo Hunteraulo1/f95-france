@@ -28,12 +28,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Vérifier que la traduction existe et appartient au jeu
 		const existingTranslation = await db
-			.select({ id: table.gameTranslations.id })
-			.from(table.gameTranslations)
+			.select({ id: table.gameTranslation.id })
+			.from(table.gameTranslation)
 			.where(
 				and(
-					eq(table.gameTranslations.id, translationId),
-					eq(table.gameTranslations.gameId, gameId)
+					eq(table.gameTranslation.id, translationId),
+					eq(table.gameTranslation.gameId, gameId)
 				)
 			)
 			.limit(1);
@@ -44,7 +44,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Mettre à jour la traduction
 		await db
-			.update(table.gameTranslations)
+			.update(table.gameTranslation)
 			.set({
 				translationName,
 				version,
@@ -54,7 +54,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tlink,
 				updatedAt: new Date()
 			})
-			.where(eq(table.gameTranslations.id, translationId));
+			.where(eq(table.gameTranslation.id, translationId));
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
@@ -79,12 +79,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
 		// Vérifier que la traduction existe et appartient au jeu
 		const existingTranslation = await db
-			.select({ id: table.gameTranslations.id })
-			.from(table.gameTranslations)
+			.select({ id: table.gameTranslation.id })
+			.from(table.gameTranslation)
 			.where(
 				and(
-					eq(table.gameTranslations.id, translationId),
-					eq(table.gameTranslations.gameId, gameId)
+					eq(table.gameTranslation.id, translationId),
+					eq(table.gameTranslation.gameId, gameId)
 				)
 			)
 			.limit(1);
@@ -95,8 +95,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		// Supprimer la traduction
 		await db
-			.delete(table.gameTranslations)
-			.where(eq(table.gameTranslations.id, translationId));
+			.delete(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId));
 
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {

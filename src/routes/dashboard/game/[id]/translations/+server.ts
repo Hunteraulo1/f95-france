@@ -28,9 +28,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Vérifier que le jeu existe
 		const game = await db
-			.select({ id: table.games.id })
-			.from(table.games)
-			.where(eq(table.games.id, gameId))
+			.select({ id: table.game.id })
+			.from(table.game)
+			.where(eq(table.game.id, gameId))
 			.limit(1);
 
 		if (game.length === 0) {
@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Créer la nouvelle traduction
 		await db
-			.insert(table.gameTranslations)
+			.insert(table.gameTranslation)
 			.values({
 				gameId,
 				translationName,
@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				status,
 				ttype,
 				tlink,
-				traductorId: locals.user.id
+				translatorId: locals.user.id
 			});
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });

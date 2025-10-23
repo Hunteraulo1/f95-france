@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
+	import Toaster from '$lib/components/Toaster.svelte';
 	import { initializeUserFromLocals } from '$lib/stores';
 	import { type Snippet } from 'svelte';
 	import type { LayoutServerData } from './$types';
@@ -25,3 +26,8 @@
   </div>
   <Sidebar bind:isSidebarOpen />
 </main>
+
+<!-- Toasts -->
+<div class="toast toast-top toast-end">
+  <Toaster />
+</div>

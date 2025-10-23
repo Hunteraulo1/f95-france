@@ -24,7 +24,7 @@ export const session = mysqlTable('session', {
 	expiresAt: datetime('expires_at').notNull()
 });
 
-export const games = mysqlTable('games', {
+export const game = mysqlTable('game', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
 	name: varchar('name', { length: 255 }).notNull(),
 	tags: text('tags').notNull(),
@@ -38,17 +38,18 @@ export const games = mysqlTable('games', {
 	link: varchar('link', { length: 500 }).notNull().default('')
 });
 
-export const gameTranslations = mysqlTable('game_translations', {
+export const gameTranslation = mysqlTable('game_translation', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
-		.references(() => games.id),
+		.references(() => game.id),
   translationName: varchar('translation_name', { length: 255 }),
 	status: mysqlEnum('status', ['in_progress', 'completed', 'abandoned']).notNull(),
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
-	traductorId: varchar('traductor_id', { length: 255 }),
+	tname: mysqlEnum('tname', ['Pas de traduction', 'Intégrée', 'Traduction']).notNull().default('Pas de traduction'),
+	translatorId: varchar('traductor_id', { length: 255 }),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
 	ttype: mysqlEnum('ttype', ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']).notNull(),
 	ac: boolean('ac').notNull().default(false),
@@ -56,16 +57,16 @@ export const gameTranslations = mysqlTable('game_translations', {
 	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 
-export const updates = mysqlTable('updates', {
+export const update = mysqlTable('update', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
-		.references(() => games.id),
+		.references(() => game.id),
 	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 
-export const traductors = mysqlTable('traductors', {
+export const translator = mysqlTable('translator', {
 	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
 	name: varchar('name', { length: 255 }).notNull().unique(),
 	userId: varchar('user_id', { length: 255 })
@@ -81,7 +82,7 @@ export const traductors = mysqlTable('traductors', {
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
-export type Games = typeof games.$inferSelect;
-export type GameTranslations = typeof gameTranslations.$inferSelect;
-export type Updates = typeof updates.$inferSelect;
-export type Traductors = typeof traductors.$inferSelect;
+export type Game = typeof game.$inferSelect;
+export type GameTranslation = typeof gameTranslation.$inferSelect;
+export type Update = typeof update.$inferSelect;
+export type Translator = typeof translator.$inferSelect;

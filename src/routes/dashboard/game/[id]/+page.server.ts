@@ -20,20 +20,20 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Récupérer le jeu avec ses traductions
 		const game = await db
 			.select({
-				id: table.games.id,
-				name: table.games.name,
-				description: table.games.description,
-				website: table.games.website,
-				threadId: table.games.threadId,
-				link: table.games.link,
-				tags: table.games.tags,
-				type: table.games.type,
-				image: table.games.image,
-				createdAt: table.games.createdAt,
-				updatedAt: table.games.updatedAt
+				id: table.game.id,
+				name: table.game.name,
+				description: table.game.description,
+				website: table.game.website,
+				threadId: table.game.threadId,
+				link: table.game.link,
+				tags: table.game.tags,
+				type: table.game.type,
+				image: table.game.image,
+				createdAt: table.game.createdAt,
+				updatedAt: table.game.updatedAt
 			})
-			.from(table.games)
-			.where(eq(table.games.id, gameId))
+			.from(table.game)
+			.where(eq(table.game.id, gameId))
 			.limit(1);
 
 		if (game.length === 0) {
@@ -43,21 +43,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Récupérer les traductions du jeu
 		const translations = await db
 			.select({
-				id: table.gameTranslations.id,
-        translationName: table.gameTranslations.translationName,
-				status: table.gameTranslations.status,
-				version: table.gameTranslations.version,
-				tversion: table.gameTranslations.tversion,
-				tlink: table.gameTranslations.tlink,
-				traductorId: table.gameTranslations.traductorId,
-				proofreaderId: table.gameTranslations.proofreaderId,
-				ttype: table.gameTranslations.ttype,
-				ac: table.gameTranslations.ac,
-				createdAt: table.gameTranslations.createdAt,
-				updatedAt: table.gameTranslations.updatedAt
+				id: table.gameTranslation.id,
+        translationName: table.gameTranslation.translationName,
+				status: table.gameTranslation.status,
+				version: table.gameTranslation.version,
+				tversion: table.gameTranslation.tversion,
+				tlink: table.gameTranslation.tlink,
+				translatorId: table.gameTranslation.translatorId,
+				proofreaderId: table.gameTranslation.proofreaderId,
+				ttype: table.gameTranslation.ttype,
+				ac: table.gameTranslation.ac,
+				createdAt: table.gameTranslation.createdAt,
+				updatedAt: table.gameTranslation.updatedAt
 			})
-			.from(table.gameTranslations)
-			.where(eq(table.gameTranslations.gameId, gameId));
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gameId));
 
 		return {
 			game: game[0],

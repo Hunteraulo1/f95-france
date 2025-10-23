@@ -1,12 +1,13 @@
 <script lang="ts">
-	import type { Games } from '$lib/server/db/schema';
-	import { Search, X } from '@lucide/svelte';
+	import type { Game } from '$lib/server/db/schema';
+	import { Plus, Search, X } from '@lucide/svelte';
 
 	let searchQuery = $state('');
-	let searchResults = $state<Games[]>([]);
+	let searchResults = $state<Game[]>([]);
 	let isLoading = $state(false);
 	let showResults = $state(false);
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
 
 	const searchGames = async (query: string) => {
 		if (!query || query.trim().length < 3) {
@@ -123,7 +124,10 @@
           </div>
         {/if}
       </div>
-      <button class="btn btn-primary">AJOUTER UN JEU</button>
+      <a href="/dashboard/manager/add" class="btn btn-primary">
+        <Plus size={16} />
+        AJOUTER UN JEU
+      </a>
     </div>
   </div>
 </section>
