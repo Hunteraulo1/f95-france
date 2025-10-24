@@ -1,0 +1,757 @@
+<script lang="ts">
+	import { ArrowLeft, Calendar, ExternalLink, Gamepad2, Globe, Plus, RefreshCcw, SquarePen, Tag, Trash2 } from '@lucide/svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+	
+	const { game, translations } = data;
+
+	// État pour le modal d'ajout de traduction
+	let showAddTranslationModal = $state(false);
+	let newTranslation = $state({
+		translationName: '',
+		version: '',
+		tversion: '',
+		status: 'in_progress',
+		ttype: 'manual',
+		tlink: ''
+	});
+
+	// État pour le modal de modification de traduction
+	let showEditTranslationModal = $state(false);
+	let editingTranslation = $state({
+		translationName: '',
+		id: '',
+		version: '',
+		tversion: '',
+		status: 'in_progress',
+		ttype: 'manual',
+		tlink: ''
+	});
+
+	// État pour la suppression
+	let translationToDelete = $state<any>(null);
+
+	// État pour le modal de modification du jeu
+	let showEditGameModal = $state(false);
+	let editingGame = $state({
+		name: '',
+		description: '',
+		type: '',
+		website: '',
+		threadId: '',
+		tags: '',
+		link: '',
+		image: ''
+	});
+
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case 'completed': return 'badge-success';
+			case 'in_progress': return 'badge-warning';
+			case 'abandoned': return 'badge-error';
+			default: return 'badge-neutral';
+		}
+	};
+
+	const getStatusText = (status: string) => {
+		switch (status) {
+			case 'completed': return 'Terminé';
+			case 'in_progress': return 'En cours';
+			case 'abandoned': return 'Abandonné';
+			default: return status;
+		}
+	};
+
+	const getTtypeText = (ttype: string) => {
+		switch (ttype) {
+			case 'auto': return 'Automatique';
+			case 'vf': return 'VO Française';
+			case 'manual': return 'Manuelle';
+			case 'semi-auto': return 'Semi-Automatique';
+			case 'to_tested': return 'À tester';
+			case 'hs': return 'Lien HS';
+			default: return ttype;
+		}
+	};
+
+	const openAddTranslationModal = () => {
+		showAddTranslationModal = true;
+	};
+
+	const closeAddTranslationModal = () => {
+		showAddTranslationModal = false;
+		newTranslation = {
+			translationName: '',
+			version: '',
+			tversion: '',
+			status: 'in_progress',
+			ttype: 'manual',
+			tlink: ''
+		};
+	};
+
+	const addTranslation = async () => {
+		try {
+			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(newTranslation)
+			});
+
+			if (response.ok) {
+				// Recharger la page pour voir la nouvelle traduction
+				window.location.reload();
+			} else {
+				console.error('Erreur lors de l\'ajout de la traduction');
+			}
+		} catch (error) {
+			console.error('Erreur lors de l\'ajout de la traduction:', error);
+		}
+	};
+
+	const openEditTranslationModal = (translation: any) => {
+		editingTranslation = {  
+			translationName: translation.translationName,
+			id: translation.id,
+			version: translation.version,
+			tversion: translation.tversion,
+			status: translation.status,
+			ttype: translation.ttype,
+			tlink: translation.tlink
+		};
+		showEditTranslationModal = true;
+	};
+
+	const closeEditTranslationModal = () => {
+		showEditTranslationModal = false;
+		editingTranslation = {
+			translationName: '',
+			id: '',
+			version: '',
+			tversion: '',
+			status: 'in_progress',
+			ttype: 'manual',
+			tlink: ''
+		};
+	};
+
+	const editTranslation = async () => {
+		try {
+			const response = await fetch(`/dashboard/game/${game.id}/translations/${editingTranslation.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(editingTranslation)
+			});
+
+			if (response.ok) {
+				// Recharger la page pour voir les modifications
+				window.location.reload();
+			} else {
+				console.error('Erreur lors de la modification de la traduction');
+			}
+		} catch (error) {
+			console.error('Erreur lors de la modification de la traduction:', error);
+		}
+	};
+
+	const confirmDeleteTranslation = (translation: any) => {
+		translationToDelete = translation;
+	};
+
+	const cancelDeleteTranslation = () => {
+		translationToDelete = null;
+	};
+
+	const deleteTranslation = async () => {
+		if (!translationToDelete) return;
+
+		try {
+			const response = await fetch(`/dashboard/game/${game.id}/translations/${translationToDelete.id}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				// Recharger la page pour voir les modifications
+				window.location.reload();
+			} else {
+				console.error('Erreur lors de la suppression de la traduction');
+			}
+		} catch (error) {
+			console.error('Erreur lors de la suppression de la traduction:', error);
+		}
+	};
+
+	const openEditGameModal = () => {
+		console.log('openEditGameModal called');
+		editingGame = {
+			name: game.name,
+			description: game.description || '',
+			type: game.type,
+			website: game.website,
+			threadId: game.threadId ? String(game.threadId) : '',
+			tags: game.tags || '',
+			link: game.link || '',
+			image: game.image
+		};
+		showEditGameModal = true;
+		console.log('showEditGameModal set to:', showEditGameModal);
+	};
+
+	const closeEditGameModal = () => {
+		showEditGameModal = false;
+		editingGame = {
+			name: '',
+			description: '',
+			type: '',
+			website: '',
+			threadId: '',
+			tags: '',
+			link: '',
+			image: ''
+		};
+	};
+
+	const editGame = async () => {
+		try {
+			const response = await fetch(`/dashboard/game/${game.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(editingGame)
+			});
+
+			if (response.ok) {
+				// Fermer le modal
+				closeEditGameModal();
+				// Recharger la page pour voir les modifications
+				window.location.reload();
+			} else {
+				const errorData = await response.json();
+				alert(`Erreur lors de la modification du jeu: ${errorData.error || 'Erreur inconnue'}`);
+			}
+		} catch (error) {
+			console.error('Erreur lors de la modification du jeu:', error);
+			alert('Erreur de connexion lors de la modification du jeu');
+		}
+	};
+</script>
+
+<svelte:head>
+	<title>{game.name} - F95 France</title>
+	<meta name="description" content={game.description || `Détails du jeu ${game.name}`} />
+</svelte:head>
+
+<div class="min-h-screen bg-base-200">
+	<div class="container mx-auto">
+		<!-- Bouton retour -->
+		<div class="-mt-13 absolute">
+			<a href="/dashboard/manager" class="btn btn-ghost">
+				<ArrowLeft size={20} />
+				Retour à la recherche
+			</a>
+		</div>
+
+		<!-- En-tête du jeu -->
+		<div class="card bg-base-100 shadow-xl mb-8">
+			<div class="card-body">
+				<div class="flex flex-col lg:flex-row gap-6">
+					<!-- Image du jeu -->
+					<div class="flex flex-shrink-0 flex-col gap-4">
+						<img 
+							src={game.image} 
+							alt={game.name}
+							class="w-48 h-64 object-cover rounded-lg shadow-md"
+							loading="lazy"
+						/>
+            <button 
+              class="btn btn-primary btn-sm"
+              onclick={openEditGameModal}
+            >
+              <SquarePen size={16} />
+              Modifier le jeu
+            </button>
+            <button 
+              class="btn btn-secondary btn-sm"
+              onclick={openEditGameModal}
+            >
+              <RefreshCcw size={16} />
+              Actualiser le jeu
+            </button>
+            <button 
+              class="btn btn-error btn-sm"
+              onclick={openEditGameModal}
+            >
+              <Trash2 size={16} />
+              Supprimer le jeu
+            </button>
+					</div>
+					
+					<!-- Informations du jeu -->
+					<div class="flex-1">
+						<h1 class="text-3xl font-bold text-base-content mb-4">{game.name}</h1>
+						
+						{#if game.description}
+							<p class="text-base-content/80 mb-4 leading-relaxed">{game.description}</p>
+						{/if}
+
+						<div class="flex flex-wrap gap-2 mb-4">
+							<span class="badge badge-primary badge-lg">{game.type}</span>
+							<span class="badge badge-secondary badge-lg">{game.website}</span>
+							{#if game.threadId}
+								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
+							{/if}
+						</div>
+
+						{#if game.tags}
+							<div class="mb-4">
+								<div class="flex items-center gap-2 mb-2">
+									<Tag size={16} />
+									<span class="font-semibold">Tags</span>
+								</div>
+								<p class="text-sm text-base-content/70">{game.tags}</p>
+							</div>
+						{/if}
+
+						<div class="mb-4 flex gap-2">
+							{#if game.link}
+								<a 
+									href={game.link} 
+									target="_blank" 
+									rel="noopener noreferrer"
+									class="btn btn-outline btn-sm"
+								>
+									<ExternalLink size={16} />
+									Lien du thread
+								</a>
+							{/if}
+						</div>
+
+						<div class="text-sm text-base-content/60">
+							<div class="flex items-center gap-2 mb-1">
+								<Calendar size={14} />
+								<span>Créé le {new Date(game.createdAt).toLocaleDateString('fr-FR')}</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<Calendar size={14} />
+								<span>Modifié le {new Date(game.updatedAt).toLocaleDateString('fr-FR')}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{#if translations.length > 0}
+			<div class="card bg-base-100 shadow-xl text-nowrap">
+				<div class="card-body">
+					<div class="flex items-center justify-between mb-6">
+						<h2 class="text-2xl font-bold text-base-content flex items-center gap-2">
+							<Globe size={24} />
+							Traductions ({translations.length})
+						</h2>
+						<button class="btn btn-primary btn-sm" onclick={openAddTranslationModal}>
+							<Plus size={16} />
+							Ajouter une traduction
+						</button>
+					</div>
+					
+					<div class="overflow-x-auto">
+						<table class="table table-zebra w-full">
+							<thead>
+								<tr>
+                  {#if translations.length > 0}
+                    <th>Nom de la traduction</th>
+                  {/if}
+									<th>Version</th>
+									<th>Version Trad</th>
+									<th>Statut</th>
+									<th>Type</th>
+									<th>Lien de traduction</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each translations as translation}
+									<tr>
+                    {#if translations.length > 0}
+                      <td class="font-bold">
+                        {translation.translationName}
+                      </td>
+                    {/if}
+										<td class="font-bold">{translation.version}</td>
+										<td class="font-bold">{translation.tversion}</td>
+										<td>
+											<span class="badge {getStatusColor(translation.status)}">
+												{getStatusText(translation.status)}
+											</span>
+										</td>
+										<td>
+											<span class="badge badge-info">
+												{getTtypeText(translation.ttype)}
+											</span>
+										</td>
+										<td>
+											{#if translation.tlink}
+												<a 
+													href={translation.tlink} 
+													target="_blank" 
+													rel="noopener noreferrer"
+													class="btn btn-ghost btn-sm"
+												>
+													<ExternalLink size={14} />
+													Lien
+												</a>
+											{/if}
+										</td>
+                    <td>
+                      <button class="btn btn-primary btn-sm" onclick={() => openEditTranslationModal(translation)}>Modifier</button>
+                      <button class="btn btn-error btn-sm" onclick={() => confirmDeleteTranslation(translation)}>Supprimer</button>
+                    </td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		{:else}
+			<div class="card bg-base-100 shadow-xl">
+				<div class="card-body text-center">
+					<Gamepad2 size={48} class="mx-auto text-base-content/40 mb-4" />
+					<h3 class="text-xl font-semibold text-base-content mb-2">Aucune traduction</h3>
+					<p class="text-base-content/60">Ce jeu n'a pas encore de traduction disponible.</p>
+				</div>
+			</div>
+		{/if}
+	</div>
+</div>
+
+<!-- Modal d'ajout de traduction -->
+{#if showAddTranslationModal}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg mb-4">Ajouter une traduction</h3>
+			
+			<div class="form-control w-full mb-4">
+				<label class="input" for="translationName">
+					Nom de la traduction
+          <input 
+            id="translationName"
+            type="text" 
+            placeholder="Ex: Traduction française" 
+            class="input-ghost w-full"
+            bind:value={newTranslation.translationName}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input" for="version">
+					Version du jeu
+          <input 
+            id="version"
+            type="text" 
+            placeholder="Ex: 1.0.0" 
+            class="input-ghost w-full"
+            bind:value={newTranslation.version}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input" for="tversion">
+					Version de traduction
+          <input 
+            id="tversion"
+            type="text" 
+            placeholder="Ex: 1.0" 
+            class="input-ghost w-full"
+            bind:value={newTranslation.tversion}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input pr-0" for="status">
+					Statut
+          <select id="status" class="select-ghost w-full" bind:value={newTranslation.status} required>
+            <option value="in_progress">En cours</option>
+            <option value="completed">Terminé</option>
+            <option value="abandoned">Abandonné</option>
+          </select>
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input pr-0" for="ttype"> 
+					Type de traduction
+          <select id="ttype" class="select-ghost w-full" bind:value={newTranslation.ttype} required>
+            <option value="manual">Manuelle</option>
+            <option value="auto">Automatique</option>
+            <option value="semi-auto">Semi-Automatique</option>
+            <option value="vf">VO Française</option>
+            <option value="to_tested">À tester</option>
+            <option value="hs">Lien HS</option>
+          </select>
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-6">
+				<label class="input" for="tlink">
+					Lien de traduction
+          <input 
+            id="tlink"
+            type="url" 
+            placeholder="https://..." 
+            class="input-ghost w-full"
+            bind:value={newTranslation.tlink}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="modal-action">
+				<button class="btn btn-ghost" onclick={closeAddTranslationModal}>Annuler</button>
+				<button class="btn btn-primary" onclick={addTranslation}>Ajouter</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal de modification de traduction -->
+{#if showEditTranslationModal}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg mb-4">Modifier la traduction</h3>
+			
+			<div class="form-control w-full mb-4">
+				<label class="input" for="edit-translationName">
+					Nom de la traduction
+          <input 
+            id="edit-translationName"
+            type="text" 
+            placeholder="Ex: Traduction française" 
+            class="input-ghost w-full"
+            bind:value={editingTranslation.translationName}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input" for="edit-version">
+					Version du jeu
+          <input 
+            id="edit-version"
+            type="text" 
+            placeholder="Ex: 1.0.0" 
+            class="input-ghost w-full"
+            bind:value={editingTranslation.version}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input" for="edit-tversion">
+					Version de traduction
+          <input 
+            id="edit-tversion"
+            type="text" 
+            placeholder="Ex: 1.0" 
+            class="input-ghost w-full"
+            bind:value={editingTranslation.tversion}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input pr-0" for="edit-status">
+					Statut
+          <select id="edit-status" class="select-ghost w-full" bind:value={editingTranslation.status} required>
+            <option value="in_progress">En cours</option>
+            <option value="completed">Terminé</option>
+            <option value="abandoned">Abandonné</option>
+          </select>
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-4">
+				<label class="input pr-0" for="edit-ttype"> 
+					Type de traduction
+          <select id="edit-ttype" class="select-ghost w-full" bind:value={editingTranslation.ttype} required>
+            <option value="manual">Manuelle</option>
+            <option value="auto">Automatique</option>
+            <option value="semi-auto">Semi-Automatique</option>
+            <option value="vf">VO Française</option>
+            <option value="to_tested">À tester</option>
+            <option value="hs">Lien HS</option>
+          </select>
+				</label>
+			</div>
+
+			<div class="form-control w-full mb-6">
+				<label class="input" for="edit-tlink">
+					Lien de traduction
+          <input 
+            id="edit-tlink"
+            type="url" 
+            placeholder="https://..." 
+            class="input-ghost w-full"
+            bind:value={editingTranslation.tlink}
+            required
+          />
+				</label>
+			</div>
+
+			<div class="modal-action">
+				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>
+				<button class="btn btn-primary" onclick={editTranslation}>Modifier</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal de modification du jeu -->
+{#if showEditGameModal}
+	<div class="modal modal-open">
+		<div class="modal-box max-w-2xl">
+			<h3 class="font-bold text-lg mb-4">Modifier le jeu</h3>
+			
+			<div class="grid grid-cols-2 gap-4">
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-name">
+            Nom du jeu
+            <input
+              id="edit-game-name"
+              type="text"
+              placeholder="Nom du jeu"
+              class="input-ghost w-full"
+              bind:value={editingGame.name}
+              required
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-type">
+            Type
+            <input
+              id="edit-game-type"
+              type="text"
+              placeholder="Ex: Visual Novel"
+              class="input-ghost w-full"
+              bind:value={editingGame.type}
+              required
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-website">
+            Site web
+            <input
+              id="edit-game-website"
+              type="text"
+              placeholder="Ex: F95Zone"
+              class="input-ghost w-full"
+              bind:value={editingGame.website}
+              required
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-threadId">
+            ID du thread
+            <input
+              id="edit-game-threadId"
+              type="text"
+              placeholder="Ex: 12345"
+              class="input-ghost w-full"
+              bind:value={editingGame.threadId}
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-link">
+            Lien du thread
+            <input
+              id="edit-game-link"
+              type="url"
+              placeholder="https://..."
+              class="input-ghost w-full"
+              bind:value={editingGame.link}
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label class="input" for="edit-game-image">
+            URL de l'image
+            <input
+              id="edit-game-image"
+              type="url"
+              placeholder="https://..."
+              class="input-ghost w-full"
+              bind:value={editingGame.image}
+              required
+            />
+          </label>
+        </div>
+        <div class="form-control w-full">
+          <label for="edit-game-tags">
+            Tags
+          </label>
+          <textarea
+            id="edit-game-tags"
+            placeholder="Ex: 3D, Adventure, Romance"
+            class="textarea w-full h-full"
+            bind:value={editingGame.tags}
+          ></textarea>
+        </div>
+        <div class="form-control w-full">
+          <label for="edit-game-description">
+            Description
+          </label>
+          <textarea
+            id="edit-game-description"
+            placeholder="Description du jeu"
+            class="textarea w-full h-full"
+            bind:value={editingGame.description}
+          ></textarea>
+        </div>
+      </div>
+
+			<div class="modal-action">
+				<button class="btn btn-ghost" onclick={closeEditGameModal}>Annuler</button>
+				<button class="btn btn-primary" onclick={editGame}>Modifier</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Modal de confirmation de suppression -->
+{#if translationToDelete}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg mb-4">Confirmer la suppression</h3>
+			<p class="mb-6">Êtes-vous sûr de vouloir supprimer cette traduction ?</p>
+			<div class="bg-base-200 p-4 rounded-lg mb-6">
+				<p><strong>Version:</strong> {translationToDelete.version}</p>
+				<p><strong>Version Trad:</strong> {translationToDelete.tversion}</p>
+				<p><strong>Statut:</strong> {getStatusText(translationToDelete.status)}</p>
+			</div>
+			<div class="modal-action">
+				<button class="btn btn-ghost" onclick={cancelDeleteTranslation}>Annuler</button>
+				<button class="btn btn-error" onclick={deleteTranslation}>Supprimer</button>
+			</div>
+		</div>
+	</div>
+{/if}
