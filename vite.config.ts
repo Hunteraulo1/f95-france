@@ -20,5 +20,8 @@ export default defineConfig({
 	},
 	ssr: {
 		noExternal: ['@lucide/svelte']
+	},
+	define: {
+		global: 'globalThis'
 	}
 });
