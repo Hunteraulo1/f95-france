@@ -14,5 +14,11 @@ export default defineConfig({
 		rollupOptions: {
 			external: []
 		}
+	},
+	optimizeDeps: {
+		include: ['@lucide/svelte']
+	},
+	ssr: {
+		noExternal: ['@lucide/svelte']
 	}
 });
