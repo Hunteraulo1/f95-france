@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { goto } from '$app/navigation';
   import type { PageData } from './$types';
 
   interface Props {
@@ -10,8 +11,8 @@
   
   let searchQuery = $state('');
   
-  let filteredTraductors = $derived.by(() => 
-    data.traductors.filter(traductor => 
+  let filteredTranslators = $derived.by(() => 
+    data.translator.filter(traductor => 
       traductor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (traductor.discordId && traductor.discordId.toString().includes(searchQuery))
     )
@@ -19,7 +20,7 @@
   
   let showAddModal = $state(false);
   let showEditModal = $state(false);
-  let selectedTraductor: any = $state(null);
+  let selectedTranslator: any = $state(null);
   
   let pages = $state([{ name: '', link: '' }]);
   
@@ -43,7 +44,7 @@
 
   const handleEditSuccess = () => {
     showEditModal = false;
-    selectedTraductor = null;
+    selectedTranslator = null;
   };
 </script>
 
@@ -75,22 +76,38 @@
       </tr>
     </thead>
     <tbody>
-      {#each filteredTraductors as traductor, index (traductor.id)}
+      {#each filteredTranslators as translator, index (translator.id)}
         <tr>
           <td class="font-bold">{index + 1}</td>
-          <th class="font-bold">{traductor.name}</th>
-          <td>{traductor.discordId || 'N/A'}</td>
+          <th
+            class="font-bold"
+            class:cursor-pointer={translator.userId}
+            class:hover:text-primary={translator.userId}
+            onclick={() => {
+            if (translator.userId) {
+              goto(`/dashboard/profile/${translator.userId}`);
+            }
+          }}>{translator.name}</th>
+          {#if translator.discordId}
+            <td>
+              {translator.discordId}
+            </td>
+          {:else}
+            <td class="text-gray-500">
+              N/A
+            </td>
+          {/if}
           <td>
-            {#each traductor.pages as {name, link}}
-              <a href={link} target="_blank" class="badge badge-outline mr-2">{name}</a>
+            {#each translator.pages as {name, link}}
+              <a href={link} target="_blank" class="badge badge-outline mr-2 hover:text-primary">{name}</a>
             {/each}
           </td>
           <td>
             <button 
               class="btn btn-primary btn-sm"
               onclick={() => {
-                selectedTraductor = traductor;
-                initializePagesForEdit(traductor);
+                selectedTranslator = translator;
+                initializePagesForEdit(translator);
                 showEditModal = true;
               }}
             >
@@ -170,7 +187,7 @@
               + Ajouter une page
             </button>
           </div>
-          <input type="hidden" name="pages" value={JSON.stringify(pages)} />
+          <input type="hidden" name="pages" value={JSON.stringify(pages.filter(page => page.name !== '' || page.link !== ''))} />
         </div>
         <div class="modal-action">
           <button type="button" class="btn" onclick={() => showAddModal = false}>
@@ -186,7 +203,7 @@
 {/if}
 
 <!-- Modal d'édition de traducteur -->
-{#if showEditModal && selectedTraductor}
+{#if showEditModal && selectedTranslator}
   <div class="modal modal-open">
     <div class="modal-box">
       <h3 class="font-bold text-lg">Modifier le traducteur</h3>
@@ -198,7 +215,7 @@
           }
         };
       }}>
-        <input type="hidden" name="id" value={selectedTraductor.id} />
+        <input type="hidden" name="id" value={selectedTranslator.id} />
         <div class="form-control w-full">
           <label for="edit-name" class="label">
             <span class="label-text">Nom du traducteur</span>
@@ -208,7 +225,7 @@
             type="text" 
             name="name" 
             class="input input-bordered w-full" 
-            value={selectedTraductor.name}
+            value={selectedTranslator.name}
             required 
           />
         </div>
@@ -221,7 +238,7 @@
             type="number" 
             name="discordId" 
             class="input input-bordered w-full" 
-            value={selectedTraductor.discordId || ''}
+            value={selectedTranslator.discordId || ''}
           />
         </div>
         <div class="form-control w-full">
@@ -262,7 +279,7 @@
               + Ajouter une page
             </button>
           </div>
-          <input type="hidden" name="pages" value={JSON.stringify(pages)} />
+          <input type="hidden" name="pages" value={JSON.stringify(pages.filter(page => page.name !== '' || page.link !== ''))} />
         </div>
         <div class="modal-action">
           <button type="button" class="btn" onclick={() => showEditModal = false}>

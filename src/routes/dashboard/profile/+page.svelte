@@ -20,7 +20,6 @@
 				<h3>{$user.username}</h3>
 				<p>{$user.email}</p>
 				<p>Rôle: {$user.role}</p>
-				<p>Thème: {$user.theme}</p>
 				<p>
 					Jeux ajoutés: {$user.gameAdd} | 
 					Jeux modifiés: {$user.gameEdit}

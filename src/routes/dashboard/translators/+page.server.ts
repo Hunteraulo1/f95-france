@@ -5,27 +5,26 @@ import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	// Récupérer tous les traducteurs avec leurs pages
-	const traductors = await db
+	const translator = await db
 		.select({
-			id: table.traductors.id,
-			name: table.traductors.name,
-			discordId: table.traductors.discordId,
-			pages: table.traductors.pages,
-			tradCount: table.traductors.tradCount,
-			readCount: table.traductors.readCount
+			id: table.translator.id,
+			name: table.translator.name,
+			discordId: table.translator.discordId,
+			pages: table.translator.pages,
+			tradCount: table.translator.tradCount,
+			readCount: table.translator.readCount,
+			userId: table.translator.userId
 		})
-		.from(table.traductors)
-		.orderBy(table.traductors.name);
+		.from(table.translator)
+		.orderBy(table.translator.name);
 
-	// Parser les pages JSON pour chaque traducteur
-	const traductorsWithPages = traductors.map(traductor => ({
+	const traductorsWithPages = translator.map(traductor => ({
 		...traductor,
 		pages: JSON.parse(traductor.pages || '[]')
 	}));
 
 	return {
-		traductors: traductorsWithPages
+		translator: traductorsWithPages
 	};
 };
 
@@ -42,10 +41,9 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Valider le JSON des pages
 			const pagesArray = pages ? JSON.parse(pages) : [];
 			
-			await db.insert(table.traductors).values({
+			await db.insert(table.translator).values({
 				name,
 				discordId: discordId || null,
 				pages: JSON.stringify(pagesArray)
@@ -71,17 +69,16 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Valider le JSON des pages
 			const pagesArray = pages ? JSON.parse(pages) : [];
 			
 			await db
-				.update(table.traductors)
+				.update(table.translator)
 				.set({
 					name,
 					discordId: discordId || null,
 					pages: JSON.stringify(pagesArray)
 				})
-				.where(eq(table.traductors.id, id));
+				.where(eq(table.translator.id, id));
 
 			return { success: true, message: 'Traducteur modifié avec succès' };
 		} catch (error) {

@@ -51,7 +51,7 @@ const addTraductor = async () => {
           type="text"
           placeholder="Nom du traducteur"
           class="input input-bordered w-full"
-          bind:value={newTranslator.name}
+          bind:value={newTranslatorName}
         />
       </div>
       <div class="modal-action">
