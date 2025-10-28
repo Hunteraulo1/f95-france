@@ -1,16 +1,16 @@
 import { relations } from "drizzle-orm/relations";
-import { gameTranslations, games, session, traductors, updates, user } from "./schema";
+import { game, gameTranslation, session, translator, update, user } from "./schema";
 
-export const gameTranslationsRelations = relations(gameTranslations, ({one}) => ({
-	game: one(games, {
-		fields: [gameTranslations.gameId],
-		references: [games.id]
+export const gameTranslationRelations = relations(gameTranslation, ({one}) => ({
+	game: one(game, {
+		fields: [gameTranslation.gameId],
+		references: [game.id]
 	}),
 }));
 
-export const gamesRelations = relations(games, ({many}) => ({
-	gameTranslations: many(gameTranslations),
-	updates: many(updates),
+export const gamesRelations = relations(game, ({many}) => ({
+	gameTranslations: many(gameTranslation),
+	updates: many(update),
 }));
 
 export const sessionRelations = relations(session, ({one}) => ({
@@ -22,19 +22,19 @@ export const sessionRelations = relations(session, ({one}) => ({
 
 export const userRelations = relations(user, ({many}) => ({
 	sessions: many(session),
-	traductors: many(traductors),
+	traductors: many(translator),
 }));
 
-export const traductorsRelations = relations(traductors, ({one}) => ({
+export const translatorRelations = relations(translator, ({one}) => ({
 	user: one(user, {
-		fields: [traductors.userId],
+		fields: [translator.userId],
 		references: [user.id]
 	}),
 }));
 
-export const updatesRelations = relations(updates, ({one}) => ({
-	game: one(games, {
-		fields: [updates.gameId],
-		references: [games.id]
+export const updatesRelations = relations(update, ({one}) => ({
+	game: one(game, {
+		fields: [update.gameId],
+		references: [game.id]
 	}),
 }));

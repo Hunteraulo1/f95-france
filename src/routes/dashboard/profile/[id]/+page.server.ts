@@ -11,7 +11,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		.select({
 			id: table.user.id,
 			username: table.user.username,
-			email: table.user.email,
 			avatar: table.user.avatar,
 			role: table.user.role,
 			gameAdd: table.user.gameAdd,
