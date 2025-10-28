@@ -9,8 +9,8 @@
 	{#if $user}
 		<div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
 			<div class="flex items-center justify-between gap-4 w-full">
-        {#if $user.avatar && $user.avatar !== ''}
-          <img src={$user.avatar} alt="Avatar de {$user.username}" class="w-16 h-16 rounded-full" />
+				{#if $user.avatar && $user.avatar !== ''}
+					<img src={$user.avatar} alt="Avatar de {$user.username}" class="w-16 h-16 rounded-full" />
         {:else}
           <User size={64} />
         {/if}

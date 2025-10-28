@@ -32,7 +32,7 @@ let game = $state<FormGameType>({
   id: '',
   name: '',
   tags: '',
-  type: '',
+  type: 'other',
   image: '',
   website: 'f95z',
   threadId: null,
@@ -47,7 +47,7 @@ let game = $state<FormGameType>({
   status: 'in_progress',
   version: '',
   tversion: '',
-  tname: 'Traduction',
+  tname: 'translation',
   tlink: '',
   translatorId: null,
   proofreaderId: null,
@@ -57,16 +57,33 @@ let game = $state<FormGameType>({
 
 let silentMode = $state(false);
 let scraping = $state(false);
+let savedId = $state<number | null>(null);
 
 const isAdmin = checkRole(['admin', 'superadmin']);
 
-const changeStep = (amount: number): void => {
-  if (step + amount >= 0 && step + amount <= 5) {
-    step += amount;
+const changeStep = async (amount: number): Promise<void> => {
+  if (!game) throw new Error('no game data');
+
+  if (step + amount >= 0 && step + amount <= 5) step += amount;
+  if (step === 1 && game.website === 'other') step += amount;
+  if (step === 2 && game.website === 'f95z') step += amount;
+
+  if ((step === 4 && game.website === 'other' && isAdmin) || (step === 4 && !isAdmin)) step += amount;
+
+  const gameId = game.threadId;
+
+  if (step === 3 && game.website === 'f95z' && gameId && savedId !== gameId) {
+    const { threadId, website } = game;
+
+    savedId = gameId;
+
+    await scrapeData({ threadId, website });
   }
 };
 
-const scrapeData = async ({ threadId, website }: { threadId: number; website: FormGameType['website'] }): Promise<void> => {
+const scrapeData = async ({ threadId, website }: { threadId: number | null; website: FormGameType['website'] }): Promise<void> => {
+  if (!threadId || threadId === 0) return;
+  
   // try {
   //   scraping = true;
   //   const result = await GAS_API.getScrape({ id: threadId, domain: website });
@@ -183,6 +200,65 @@ const elements: Element[] = [
     title: 'Description du jeu',
     name: 'description',
   },
+  {
+    Component: InputImage,
+    active: [2, 5],
+    title: "Lien de l'image du jeu",
+    name: 'image',
+  },
+  {
+    Component: Input,
+    active: [2, 5],
+    title: 'Version du jeu',
+    name: 'version',
+    type: 'text',
+  },
+  {
+    Component: Input,
+    active: [3, 5],
+    title: 'Version de la traduction',
+    name: 'tversion',
+    type: 'text',
+  },
+  {
+    Component: Select,
+    active: [3, 5],
+    title: 'Status de la traduction',
+    name: 'tname',
+    values: ['Pas de traduction', 'Intégrée', 'Traduction'],
+  },
+  {
+    Component: Input,
+    active: [3, 5],
+    title: 'Lien de la traduction',
+    name: 'tlink',
+    type: 'text',
+  },
+  {
+    Component: Datalist,
+    active: [3, 5],
+    title: 'Traducteur',
+    name: 'translatorId',
+  },
+  {
+    Component: Datalist,
+    active: [3, 5],
+    title: 'Relecteur',
+    name: 'proofreaderId',
+  },
+  {
+    Component: Select,
+    active: [3, 5],
+    title: 'Type de Traduction',
+    name: 'ttype',
+    values: ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs'],
+  },
+  {
+    Component: Checkbox,
+    active: [4, 5],
+    title: 'Auto-Check',
+    name: 'ac',
+  }
 ];
 </script>
 
@@ -216,7 +292,7 @@ const elements: Element[] = [
         class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       >
         {#each elements as { Component, name, title, active, className, values, type }}
-          <Component {step} {name} {title} {active} {className} {values} {type} {game} {translators} />
+          <Component {step} {name} {title} {active} {className} {values} {type} bind:game {translators} />
         {/each}
       </div>
       <div class="flex w-full flex-col justify-center gap-4 px-8 sm:flex-row">
@@ -240,11 +316,11 @@ const elements: Element[] = [
           </button>
         {/if}
         {#if checkRole(['superadmin'])}
-          <Dev {step} {game} />
+          <Dev {step} bind:game />
           <!-- <Dev {step} {scrapeData} {game} /> -->
         {/if}
         {#if game.website === "lc" || game.website === "f95z"}
-          <Insert {game} />
+          <Insert bind:game />
         {/if}
       </div>
     </form>

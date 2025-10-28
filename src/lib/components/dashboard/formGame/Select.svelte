@@ -26,7 +26,7 @@ const handleChange: ChangeEventHandler<HTMLSelectElement> = (event) => {
     game.tversion = 'Intégrée';
     game.tlink = '';
 
-    console.info('handleChange ~ game:', game);
+    console.info('handleChange ~ game:', $state.snapshot(game)); // TODO: Remove this
 
     return;
   }

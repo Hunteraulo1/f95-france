@@ -66,7 +66,7 @@ const handleInput: ChangeEventHandler<HTMLInputElement> = (event) => {
       id={name}
       onchange={handleChange}
       oninput={handleInput}
-      disabled={(name === 'tlink' && game.tname === 'Intégrée') || (name === 'ac' && game.website !== 'f95z') || (name === 'id' && game.website === 'other') || (name === 'tversion' && game.tname === 'Intégrée') || (name === 'tlink' && game.tname === 'Pas de traduction') || (name === 'tversion' && game.tname === 'Pas de traduction')}
+      disabled={(name === 'tlink' && game.tname === 'integrated') || (name === 'ac' && game.website !== 'f95z') || (name === 'id' && game.website === 'other') || (name === 'tversion' && game.tname === 'integrated') || (name === 'tlink' && game.tname === 'no_translation') || (name === 'tversion' && game.tname === 'no_translation')}
       bind:value={game[name]}
       {type}
       class={type === "checkbox" ? "checkbox checkbox-lg" : "input input-bordered w-full"}
@@ -78,7 +78,7 @@ const handleInput: ChangeEventHandler<HTMLInputElement> = (event) => {
         class="btn w-min"
         class:btn-disable={!game.version}
         class:btn-primary={game.version}
-        disabled={game.tname === 'Intégrée' && name === 'tversion'}
+        disabled={game.tname === 'integrated' && name === 'tversion'}
         onclick={(e) => {
           e.preventDefault();
           if (game.version) game.tversion = game.version;

@@ -262,7 +262,7 @@
 			<div class="card-body">
 				<div class="flex flex-col lg:flex-row gap-6">
 					<!-- Image du jeu -->
-					<div class="flex flex-shrink-0 flex-col gap-4">
+					<div class="flex shrink-0 flex-col gap-4">
 						<img 
 							src={game.image} 
 							alt={game.name}

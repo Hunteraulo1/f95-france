@@ -15,7 +15,7 @@
     <a class="btn btn-ghost text-xl" href="/">F95 France</a>
   </div>
   <div class="flex gap-2">
-    <!-- <button class="btn btn-soft btn-primary">Retour au compte { $user.username }</button> TODO: Implement user switcher -->
+    <!-- <button class="btn btn-soft btn-primary">Retour au compte { user.username }</button> TODO: Implement user switcher -->
     <div class="dropdown dropdown-end">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
         <div class="w-10 rounded-full flex items-center justify-center">

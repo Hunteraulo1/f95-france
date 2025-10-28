@@ -15,7 +15,9 @@
 
   let isSidebarOpen: boolean = $state(true);
   
-	initializeUserFromLocals(data?.user);
+	$effect(() => {
+		initializeUserFromLocals(data?.user);
+	});
 </script>
 
 <Header bind:isSidebarOpen />
