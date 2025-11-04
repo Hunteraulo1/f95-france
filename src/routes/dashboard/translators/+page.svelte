@@ -100,6 +100,8 @@
           <td>
             {#each translator.pages as {name, link}}
               <a href={link} target="_blank" class="badge badge-outline mr-2 hover:text-primary">{name}</a>
+            {:else}
+              <p class="text-gray-500">N/A</p>
             {/each}
           </td>
           <td>
@@ -178,6 +180,8 @@
                   </button>
                 {/if}
               </div>
+            {:else}
+              <p class="text-gray-500">N/A</p>
             {/each}
             <button 
               type="button" 

@@ -5,11 +5,11 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
 	try {
-		const traductors = await db.select().from(translator);
-		return json(traductors);
+		const translators = await db.select().from(translator);
+		return json(translators);
 	} catch (error) {
-		console.error('Error fetching traductors:', error);
-		return json({ error: 'Failed to fetch traductors' }, { status: 500 });
+		console.error('Error fetching translators:', error);
+		return json({ error: 'Failed to fetch translators' }, { status: 500 });
 	}
 };
 

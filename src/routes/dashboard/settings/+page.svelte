@@ -2,11 +2,23 @@
 	import type { User } from '$lib/server/db/schema';
 	import { user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
+	import type { ChangeEventHandler } from 'svelte/elements';
 
   let users: User[] = []
 
   if (checkRole(['superadmin'])) {
     users = [$user as User] // TODO: Get users from database
+  }
+
+  const handleThemeChange: ChangeEventHandler<HTMLSelectElement> = (event) => {
+    if (!$user) return;
+
+    $user.theme = event.currentTarget.value as User['theme'];
+  }
+
+  const themes: Record<User['theme'], string> = {
+    light: 'Clair',
+    dark: 'Sombre',
   }
 </script>
 
@@ -41,9 +53,14 @@
       <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <label class="input w-full flex box-content">
           Thème
-          <select class="select grow ring-0 bg-base-100 py-1 text-slate-900 h-[calc(100%-2px)] dark:text-slate-200 outline-none select-ghost">
-              <option value="light">Clair</option>
-            <option value="dark">Sombre</option>
+          <select
+            class="select grow ring-0 bg-base-100 py-1 text-slate-900 h-[calc(100%-2px)] dark:text-slate-200 outline-none select-ghost"
+            value={$user?.theme}
+            onchange={handleThemeChange}
+          >
+            {#each Object.keys(themes) as theme}
+              <option value={theme}>{themes[theme as User['theme']]}</option>
+            {/each}
           </select>
         </label>
       </div>
