@@ -9,7 +9,12 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		// console.log('🔍 Auth - Aucun token de session, user = null');
 		event.locals.user = null;
 		event.locals.session = null;
-		return resolve(event);
+		return resolve(event, {
+			transformPageChunk: ({ html }) => {
+				// Injecter le thème par défaut si pas d'utilisateur
+				return html.replace('<html lang="en">', '<html lang="en" data-theme="light">');
+			}
+		});
 	}
 
 	try {
@@ -37,7 +42,13 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = null;
 	}
 
-	return resolve(event);
+	// Injecter le thème de l'utilisateur dans le HTML
+	const theme = event.locals.user?.theme || 'light';
+	return resolve(event, {
+		transformPageChunk: ({ html }) => {
+			return html.replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`);
+		}
+	});
 };
 
 export const handle: Handle = handleAuth;

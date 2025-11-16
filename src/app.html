@@ -3,6 +3,20 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Appliquer le thème immédiatement pour éviter le clignotement blanc
+			(function() {
+				// Utiliser le thème depuis l'attribut data-theme (injecté par le serveur) ou localStorage
+				const htmlTheme = document.documentElement.getAttribute('data-theme');
+				const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null;
+				const theme = htmlTheme || storedTheme || 'light';
+				document.documentElement.setAttribute('data-theme', theme);
+				// Sauvegarder dans localStorage pour les prochains chargements
+				if (typeof localStorage !== 'undefined') {
+					localStorage.setItem('theme', theme);
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
