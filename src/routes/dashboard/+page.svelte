@@ -1,17 +1,17 @@
 <script lang="ts">
 	import {
-		CheckCircle2,
+		CircleCheck,
+		CirclePlus,
+		CircleX,
 		Clock,
-		Edit,
 		FileText,
 		Gamepad2,
 		Inbox,
 		Languages,
-		PlusCircle,
+		Pencil,
 		TrendingUp,
 		UserCheck,
-		Users,
-		XCircle
+		Users
 	} from '@lucide/svelte';
 	import type { PageData } from './$types';
 
@@ -42,7 +42,7 @@
 								<span class="text-base-content/70">{data.userStats.pendingSubmissions} en attente</span>
 							</div>
 							<div class="flex items-center gap-2">
-								<CheckCircle2 class="w-4 h-4 text-success" />
+								<CircleCheck class="w-4 h-4 text-success" />
 								<span class="text-base-content/70">{data.userStats.acceptedSubmissions} acceptées</span>
 							</div>
 						</div>
@@ -57,7 +57,7 @@
 								<h3 class="card-title text-base-content">Jeux ajoutés</h3>
 								<p class="text-3xl font-bold text-primary">{data.userStats.gameAdd}</p>
 							</div>
-							<PlusCircle class="w-12 h-12 text-primary" />
+							<CirclePlus class="w-12 h-12 text-primary" />
 						</div>
 					</div>
 				</div>
@@ -70,7 +70,7 @@
 								<h3 class="card-title text-base-content">Jeux modifiés</h3>
 								<p class="text-3xl font-bold text-primary">{data.userStats.gameEdit}</p>
 							</div>
-							<Edit class="w-12 h-12 text-primary" />
+							<Pencil class="w-12 h-12 text-primary" />
 						</div>
 					</div>
 				</div>
@@ -159,7 +159,7 @@
 								<h3 class="card-title text-base-content text-sm">Traductions complétées</h3>
 								<p class="text-2xl font-bold text-success">{data.stats.translations.completed}</p>
 							</div>
-							<CheckCircle2 class="w-8 h-8 text-success" />
+							<CircleCheck class="w-8 h-8 text-success" />
 						</div>
 					</div>
 				</div>
@@ -171,7 +171,7 @@
 								<h3 class="card-title text-base-content text-sm">Traductions abandonnées</h3>
 								<p class="text-2xl font-bold text-error">{data.stats.translations.abandoned}</p>
 							</div>
-							<XCircle class="w-8 h-8 text-error" />
+							<CircleX class="w-8 h-8 text-error" />
 						</div>
 					</div>
 				</div>
@@ -198,7 +198,7 @@
 								<h3 class="card-title text-base-content text-sm">Soumissions acceptées</h3>
 								<p class="text-2xl font-bold text-success">{data.stats.submissions.accepted}</p>
 							</div>
-							<CheckCircle2 class="w-8 h-8 text-success" />
+							<CircleCheck class="w-8 h-8 text-success" />
 						</div>
 					</div>
 				</div>
@@ -210,7 +210,7 @@
 								<h3 class="card-title text-base-content text-sm">Soumissions rejetées</h3>
 								<p class="text-2xl font-bold text-error">{data.stats.submissions.rejected}</p>
 							</div>
-							<XCircle class="w-8 h-8 text-error" />
+							<CircleX class="w-8 h-8 text-error" />
 						</div>
 					</div>
 				</div>
