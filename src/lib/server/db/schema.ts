@@ -79,6 +79,36 @@ export const translator = mysqlTable('translator', {
 	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 
+export const config = mysqlTable('config', {
+	id: varchar('id', { length: 255 }).primaryKey().default('main'),
+	appName: varchar('app_name', { length: 255 }).notNull().default('F95 France'),
+	discordWebhookUpdates: text('discord_webhook_updates'),
+	discordWebhookLogs: text('discord_webhook_logs'),
+	discordWebhookTranslators: text('discord_webhook_translators'),
+	discordWebhookProofreaders: text('discord_webhook_proofreaders'),
+	googleSpreadsheetId: varchar('google_spreadsheet_id', { length: 255 }),
+	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+});
+
+export const submission = mysqlTable('submission', {
+	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id),
+	status: mysqlEnum('status', ['pending', 'accepted', 'rejected']).notNull().default('pending'),
+	gameId: varchar('game_id', { length: 255 })
+		.references(() => game.id),
+	translationId: varchar('translation_id', { length: 255 })
+		.references(() => gameTranslation.id),
+	type: mysqlEnum('type', ['game', 'translation', 'update']).notNull(),
+	title: varchar('title', { length: 255 }).notNull(),
+	description: text('description'),
+	data: text('data').notNull(), // JSON data for the submission
+	adminNotes: text('admin_notes'),
+	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+});
+
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
@@ -86,3 +116,5 @@ export type Game = typeof game.$inferSelect;
 export type GameTranslation = typeof gameTranslation.$inferSelect;
 export type Update = typeof update.$inferSelect;
 export type Translator = typeof translator.$inferSelect;
+export type Config = typeof config.$inferSelect;
+export type Submission = typeof submission.$inferSelect;

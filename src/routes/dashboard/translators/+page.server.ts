@@ -18,13 +18,13 @@ export const load: PageServerLoad = async () => {
 		.from(table.translator)
 		.orderBy(table.translator.name);
 
-	const traductorsWithPages = translator.map(traductor => ({
-		...traductor,
-		pages: JSON.parse(traductor.pages || '[]')
+	const translatorsWithPages = translator.map(translator => ({
+		...translator,
+		pages: JSON.parse(translator.pages || '[]')
 	}));
 
 	return {
-		translator: traductorsWithPages
+		translator: translatorsWithPages
 	};
 };
 
@@ -50,8 +50,24 @@ export const actions: Actions = {
 			});
 
 			return { success: true, message: 'Traducteur ajouté avec succès' };
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('Erreur lors de l\'ajout du traducteur:', error);
+			
+			// Vérifier si c'est une erreur de duplication
+			const mysqlError = error && typeof error === 'object' && 'cause' in error 
+				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
+				: null;
+			
+			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
+				if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
+					return fail(409, { message: `Un traducteur avec le nom "${name}" existe déjà` });
+				}
+				if (mysqlError.sqlMessage?.includes('discord_id')) {
+					return fail(409, { message: `Un traducteur avec cet ID Discord existe déjà` });
+				}
+				return fail(409, { message: 'Ce traducteur existe déjà' });
+			}
+			
 			return fail(500, { message: 'Erreur lors de l\'ajout du traducteur' });
 		}
 	},
@@ -81,8 +97,24 @@ export const actions: Actions = {
 				.where(eq(table.translator.id, id));
 
 			return { success: true, message: 'Traducteur modifié avec succès' };
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('Erreur lors de la modification du traducteur:', error);
+			
+			// Vérifier si c'est une erreur de duplication
+			const mysqlError = error && typeof error === 'object' && 'cause' in error 
+				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
+				: null;
+			
+			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
+				if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
+					return fail(409, { message: `Un traducteur avec le nom "${name}" existe déjà` });
+				}
+				if (mysqlError.sqlMessage?.includes('discord_id')) {
+					return fail(409, { message: `Un traducteur avec cet ID Discord existe déjà` });
+				}
+				return fail(409, { message: 'Ce traducteur existe déjà' });
+			}
+			
 			return fail(500, { message: 'Erreur lors de la modification du traducteur' });
 		}
 	}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import type { PageData } from './$types';
 
   interface Props {
@@ -23,6 +24,9 @@
   let selectedTranslator: any = $state(null);
   
   let pages = $state([{ name: '', link: '' }]);
+  
+  let addError = $derived(page.form?.addTranslator?.message || null);
+  let editError = $derived(page.form?.editTranslator?.message || null);
   
   const addPage = () => {
     pages = [...pages, { name: '', link: '' }];
@@ -69,7 +73,7 @@
     <thead>
       <tr>
         <th></th>
-        <th>Traductors/Relecteurs</th>
+        <th>Traducteurs/Relecteurs</th>
         <th>ID Discord</th>
         <th>Pages</th>
         <th>Action</th>
@@ -127,7 +131,20 @@
   <div class="modal modal-open">
     <div class="modal-box">
       <h3 class="font-bold text-lg">Ajouter un traducteur</h3>
-      <form method="POST" action="?/addTranslator" use:enhance>
+      {#if addError}
+        <div class="alert alert-error mb-4">
+          <span>{addError}</span>
+        </div>
+      {/if}
+      <form method="POST" action="?/addTranslator" use:enhance={() => {
+        return async ({ result, update }) => {
+          if (result.type === 'success') {
+            await update();
+            showAddModal = false;
+            pages = [{ name: '', link: '' }];
+          }
+        };
+      }}>
         <div class="form-control w-full">
           <label for="add-name" class="label">
             <span class="label-text">Nom du traducteur</span>
@@ -136,7 +153,8 @@
             id="add-name"
             type="text" 
             name="name" 
-            class="input input-bordered w-full" 
+            class="input input-bordered w-full"
+            class:input-error={addError}
             required 
           />
         </div>
@@ -211,6 +229,11 @@
   <div class="modal modal-open">
     <div class="modal-box">
       <h3 class="font-bold text-lg">Modifier le traducteur</h3>
+      {#if editError}
+        <div class="alert alert-error mb-4">
+          <span>{editError}</span>
+        </div>
+      {/if}
       <form method="POST" action="?/editTranslator" use:enhance={() => {
         return async ({ result, update }) => {
           if (result.type === 'success') {
@@ -228,7 +251,8 @@
             id="edit-name"
             type="text" 
             name="name" 
-            class="input input-bordered w-full" 
+            class="input input-bordered w-full"
+            class:input-error={editError}
             value={selectedTranslator.name}
             required 
           />

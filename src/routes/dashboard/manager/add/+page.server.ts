@@ -3,10 +3,10 @@ import { translator } from '$lib/server/db/schema';
 
 export const load = async () => {
   try {
-    const traductors = await db.select().from(translator);
-    return { traductors };
+    const translators = await db.select().from(translator);
+    return { translators };
   } catch (error) {
-    console.error('Error loading traductors:', error);
-    return { traductors: [] };
+    console.error('Error loading translators:', error);
+    return { translators: [] };
   }
 };

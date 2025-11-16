@@ -10,11 +10,13 @@ interface Props {
 let { showModal = $bindable(), name, translators = $bindable() }: Props = $props();
 
 let newTranslatorName = $state<Translator['name']>();
+let errorMessage = $state<string | null>(null);
 
 const addTraductor = async () => {
   if (newTranslatorName) {
+    errorMessage = null;
     try {
-      const response = await fetch('/api/traductors', {
+      const response = await fetch('/api/translators', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -25,15 +27,18 @@ const addTraductor = async () => {
       if (response.ok) {
         const result = await response.json();
         // Recharger la liste complète depuis l'API
-        const getResponse = await fetch('/api/traductors');
+        const getResponse = await fetch('/api/translators');
         translators = await getResponse.json();
         newTranslatorName = '';
         showModal = false;
+        errorMessage = null;
       } else {
-        console.error('Error creating translator');
+        const errorData = await response.json();
+        errorMessage = errorData.error || 'Erreur lors de la création du traducteur';
       }
     } catch (error) {
       console.error('Error creating translator:', error);
+      errorMessage = 'Erreur lors de la création du traducteur';
     }
   }
 };
@@ -51,8 +56,14 @@ const addTraductor = async () => {
           type="text"
           placeholder="Nom du traducteur"
           class="input input-bordered w-full"
+          class:input-error={errorMessage}
           bind:value={newTranslatorName}
         />
+        {#if errorMessage}
+          <label class="label mt-2" for="newTranslatorName">
+            <span class="label-text-alt text-error">{errorMessage}</span>
+          </label>
+        {/if}
       </div>
       <div class="modal-action">
         <button class="btn btn-primary" onclick={addTraductor}>Ajouter</button>

@@ -39,7 +39,7 @@
       </p>
     </div>
     
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4 w-full">
       <div class="stats shadow bg-base-100">
         <div class="stat">
           <div class="stat-figure text-primary">

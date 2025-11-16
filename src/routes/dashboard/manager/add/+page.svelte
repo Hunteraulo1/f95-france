@@ -24,7 +24,7 @@ const isLoading = writable<boolean>(false);
 
 let { step = $bindable(0), data }: Props = $props();
 
-const translators = $state(data.traductors);
+const translators = $state(data.translators);
 
 // State locale pour le jeu
 let game = $state<FormGameType>({

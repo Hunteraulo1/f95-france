@@ -22,7 +22,7 @@ export const sessionRelations = relations(session, ({one}) => ({
 
 export const userRelations = relations(user, ({many}) => ({
 	sessions: many(session),
-	traductors: many(translator),
+	translators: many(translator),
 }));
 
 export const translatorRelations = relations(translator, ({one}) => ({
