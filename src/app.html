@@ -6,14 +6,13 @@
 		<script>
 			// Appliquer le thème immédiatement pour éviter le clignotement blanc
 			(function() {
-				// Utiliser le thème depuis l'attribut data-theme (injecté par le serveur) ou localStorage
-				const htmlTheme = document.documentElement.getAttribute('data-theme');
-				const storedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') : null;
-				const theme = htmlTheme || storedTheme || 'light';
+				var theme = 'light';
+				try {
+					theme = localStorage.getItem('theme') || 'light';
+				} catch(e) {}
 				document.documentElement.setAttribute('data-theme', theme);
-				// Sauvegarder dans localStorage pour les prochains chargements
-				if (typeof localStorage !== 'undefined') {
-					localStorage.setItem('theme', theme);
+				if (theme === 'dark') {
+					document.documentElement.style.backgroundColor = '#1f2937';
 				}
 			})();
 		</script>
