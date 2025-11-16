@@ -45,7 +45,6 @@ services:
       - ./svelte.config.js:/app/svelte.config.js
       - ./vite.config.ts:/app/vite.config.ts
       - ./tsconfig.json:/app/tsconfig.json
-      - ./tailwind.config.js:/app/tailwind.config.js
       - ./drizzle.config.ts:/app/drizzle.config.ts
 
   # Drizzle Studio (optionnel - pour gérer la base de données)

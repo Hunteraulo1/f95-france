@@ -43,6 +43,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			discordWebhookTranslators: null,
 			discordWebhookProofreaders: null,
 			googleSpreadsheetId: null,
+			googleApiKey: null,
+			googleOAuthClientId: null,
+			googleOAuthClientSecret: null,
+			googleOAuthAccessToken: null,
+			googleOAuthRefreshToken: null,
+			googleOAuthTokenExpiry: null,
 			updatedAt: new Date()
 		} as Config];
 	}
@@ -93,6 +99,9 @@ export const actions: Actions = {
 		const discordWebhookTranslators = formData.get('discordWebhookTranslators') as string;
 		const discordWebhookProofreaders = formData.get('discordWebhookProofreaders') as string;
 		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
+		const googleApiKey = formData.get('googleApiKey') as string;
+		const googleOAuthClientId = formData.get('googleOAuthClientId') as string;
+		const googleOAuthClientSecret = formData.get('googleOAuthClientSecret') as string;
 
 		if (!appName) {
 			return fail(400, { message: 'Le nom de l\'application est requis' });
@@ -116,7 +125,10 @@ export const actions: Actions = {
 						discordWebhookLogs: discordWebhookLogs || null,
 						discordWebhookTranslators: discordWebhookTranslators || null,
 						discordWebhookProofreaders: discordWebhookProofreaders || null,
-						googleSpreadsheetId: googleSpreadsheetId || null
+						googleSpreadsheetId: googleSpreadsheetId || null,
+						googleApiKey: googleApiKey || null,
+						googleOAuthClientId: googleOAuthClientId || null,
+						googleOAuthClientSecret: googleOAuthClientSecret || null
 					})
 					.where(eq(table.config.id, 'main'));
 			} else {
@@ -128,7 +140,10 @@ export const actions: Actions = {
 					discordWebhookLogs: discordWebhookLogs || null,
 					discordWebhookTranslators: discordWebhookTranslators || null,
 					discordWebhookProofreaders: discordWebhookProofreaders || null,
-					googleSpreadsheetId: googleSpreadsheetId || null
+					googleSpreadsheetId: googleSpreadsheetId || null,
+					googleApiKey: googleApiKey || null,
+					googleOAuthClientId: googleOAuthClientId || null,
+					googleOAuthClientSecret: googleOAuthClientSecret || null
 				});
 			}
 

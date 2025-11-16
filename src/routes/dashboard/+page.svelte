@@ -4,7 +4,6 @@
 		CirclePlus,
 		CircleX,
 		Clock,
-		FileText,
 		Gamepad2,
 		Inbox,
 		Languages,
@@ -260,11 +259,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
-	{:else if !data.isAdmin}
-		<div class="alert alert-info">
-			<FileText class="w-6 h-6" />
-			<span>Vous n'avez pas accès aux statistiques administrateur.</span>
 		</div>
 	{/if}
 </div>

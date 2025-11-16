@@ -87,6 +87,12 @@ export const config = mysqlTable('config', {
 	discordWebhookTranslators: text('discord_webhook_translators'),
 	discordWebhookProofreaders: text('discord_webhook_proofreaders'),
 	googleSpreadsheetId: varchar('google_spreadsheet_id', { length: 255 }),
+	googleApiKey: text('google_api_key'),
+	googleOAuthClientId: text('google_oauth_client_id'),
+	googleOAuthClientSecret: text('google_oauth_client_secret'),
+	googleOAuthAccessToken: text('google_oauth_access_token'),
+	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
+	googleOAuthTokenExpiry: datetime('google_oauth_token_expiry'),
 	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 

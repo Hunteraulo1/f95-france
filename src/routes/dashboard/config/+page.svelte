@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { User } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -13,6 +14,20 @@
 	let selectedUser: (typeof data.users)[0] | null = $state(null);
 	let configError = $state<string | null>(null);
 	let userError = $state<string | null>(null);
+	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
+
+	onMount(() => {
+		// Vérifier les paramètres d'URL pour les messages OAuth2
+		const urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.get('oauth_success') === 'true') {
+			oauthMessage = { type: 'success', text: 'Autorisation OAuth2 réussie !' };
+			// Nettoyer l'URL
+			window.history.replaceState({}, '', '/dashboard/config');
+		} else if (urlParams.get('oauth_error')) {
+			oauthMessage = { type: 'error', text: `Erreur OAuth2: ${urlParams.get('oauth_error')}` };
+			window.history.replaceState({}, '', '/dashboard/config');
+		}
+	});
 
 	const openEditUserModal = (user: (typeof data.users)[0]) => {
 		selectedUser = user;
@@ -149,6 +164,94 @@
 							placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
 						/>
 					</div>
+
+					<div class="form-control w-full">
+						<label for="googleApiKey" class="label">
+							<span class="label-text">Clé API Google (optionnel si OAuth2 est configuré)</span>
+						</label>
+						<input
+							id="googleApiKey"
+							name="googleApiKey"
+							type="password"
+							class="input input-bordered w-full"
+							value={data.config?.googleApiKey || ''}
+							placeholder="AIzaSy..."
+						/>
+						<label class="label" for="googleApiKey">
+							<span class="label-text-alt text-base-content/50">
+								Requis pour accéder aux spreadsheets via l'API. 
+								<a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="link link-primary">
+									Créer une clé API
+								</a>
+							</span>
+						</label>
+					</div>
+
+					<div class="divider">OAuth2.0 (Recommandé)</div>
+
+					<div class="form-control w-full">
+						<label for="googleOAuthClientId" class="label">
+							<span class="label-text">Client ID OAuth2</span>
+						</label>
+						<input
+							id="googleOAuthClientId"
+							name="googleOAuthClientId"
+							type="text"
+							class="input input-bordered w-full"
+							value={data.config?.googleOAuthClientId || ''}
+							placeholder="xxxxx.apps.googleusercontent.com"
+						/>
+					</div>
+
+					<div class="form-control w-full">
+						<label for="googleOAuthClientSecret" class="label">
+							<span class="label-text">Client Secret OAuth2</span>
+						</label>
+						<input
+							id="googleOAuthClientSecret"
+							name="googleOAuthClientSecret"
+							type="password"
+							class="input input-bordered w-full"
+							value={data.config?.googleOAuthClientSecret || ''}
+							placeholder="GOCSPX-..."
+						/>
+					</div>
+
+					{#if data.config?.googleOAuthClientId && data.config?.googleOAuthClientSecret}
+						<div class="bg-base-200 rounded-lg p-4 mb-4">
+							<p class="text-sm font-semibold mb-2">URI de redirection à configurer dans Google Cloud Console :</p>
+							<code class="bg-base-300 px-2 py-1 rounded text-xs break-all">
+								{typeof window !== 'undefined' ? `${window.location.origin}/api/google-oauth/callback` : 'Chargement...'}
+							</code>
+							<p class="text-xs text-base-content/70 mt-2">
+								⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants OAuth 2.0 → URI de redirection autorisées
+							</p>
+						</div>
+
+						<div class="form-control w-full">
+							<a
+								href="/api/google-oauth/authorize"
+								class="btn btn-outline btn-primary"
+							>
+								Autoriser avec Google
+							</a>
+							<div class="label">
+								<span class="label-text-alt text-base-content/50">
+									{#if data.config?.googleOAuthAccessToken}
+										<span class="text-success">✓ Authentifié</span>
+									{:else}
+										Cliquez pour autoriser l'accès à Google Sheets
+									{/if}
+								</span>
+							</div>
+						</div>
+					{/if}
+
+					{#if oauthMessage}
+						<div class={`alert ${oauthMessage.type === 'success' ? 'alert-success' : 'alert-error'}`}>
+							<span>{oauthMessage.text}</span>
+						</div>
+					{/if}
 
 					<div class="form-control mt-4">
 						<button type="submit" class="btn btn-primary">
