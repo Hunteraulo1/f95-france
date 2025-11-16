@@ -59,7 +59,7 @@
 
 <section class="flex flex-col gap-4">
 	<div class="flex items-center justify-between">
-		<h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">
+		<h2 class="text-lg font-semibold text-base-content">
 			Soumissions
 			<span class="text-sm font-normal opacity-70">
 				({data.submissions.length} soumission{data.submissions.length > 1 ? 's' : ''})

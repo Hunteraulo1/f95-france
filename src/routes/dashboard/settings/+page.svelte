@@ -14,7 +14,8 @@
 		}
 	});
 
-	const themes: Record<User['theme'], string> = {
+	const themes: Record<'system' | 'light' | 'dark', string> = {
+    system: 'Système',
 		light: 'Clair',
 		dark: 'Sombre',
 	};
@@ -22,7 +23,7 @@
 
 <section class="flex flex-col gap-8">
   <div class="flex flex-col gap-4">
-    <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">Informations de profil</h2>
+    <h2 class="text-lg font-semibold text-base-content">Informations de profil</h2>
   
     <div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
       {#if profileError}
@@ -82,7 +83,7 @@
   </div>
   
   <div class="flex flex-col gap-4">
-    <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">Préférences utilisateur</h2>
+    <h2 class="text-lg font-semibold text-base-content">Préférences utilisateur</h2>
   
     <div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
       {#if themeError}
@@ -97,11 +98,6 @@
           if (result.type === 'success') {
             await update();
             await loadUserData(); // Recharger les données utilisateur
-            // Appliquer le thème immédiatement et sauvegarder dans localStorage
-            if (typeof document !== 'undefined' && typeof localStorage !== 'undefined' && $user?.theme) {
-              document.documentElement.setAttribute('data-theme', $user.theme);
-              localStorage.setItem('theme', $user.theme);
-            }
             themeError = null;
           } else if (result.type === 'failure' && result.data) {
             const message = typeof result.data === 'object' && 'message' in result.data 
@@ -118,11 +114,20 @@
           <label class="input w-full flex box-content">
             Thème
             <select
+              data-choose-theme
               name="theme"
-              class="select grow ring-0 bg-base-100 py-1 text-slate-900 h-[calc(100%-2px)] dark:text-slate-200 outline-none select-ghost"
-              value={$user?.theme || 'light'}
+              class="select grow ring-0 bg-base-100 py-1 text-base-content h-[calc(100%-2px)] outline-none select-ghost"
+              value={$user?.theme || 'system'}
               required
               onchange={(e) => {
+                const selectedTheme = e.currentTarget.value;
+                // Si 'system', theme-change utilise une chaîne vide pour détecter les préférences système
+                if (selectedTheme === 'system') {
+                  // Retirer le thème pour que theme-change utilise les préférences système
+                  document.documentElement.removeAttribute('data-theme');
+                  localStorage.removeItem('theme');
+                }
+                // Envoyer la mise à jour au serveur
                 const form = e.currentTarget.closest('form');
                 if (form) {
                   form.requestSubmit();
@@ -130,7 +135,7 @@
               }}
             >
               {#each Object.keys(themes) as theme}
-                <option value={theme}>{themes[theme as User['theme']]}</option>
+                <option value={theme}>{themes[theme as keyof typeof themes]}</option>
               {/each}
             </select>
           </label>
@@ -141,7 +146,7 @@
   
   {#if $user && checkRole(['superadmin'])}
     <div class="flex flex-col gap-4">
-      <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">Changer d'utilisateur (Dev)</h2>
+      <h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
     
       <div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
         <div class="flex items-center justify-between gap-4 w-full">
@@ -150,7 +155,7 @@
         <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
           <label class="input w-full flex box-content">
             Utilisateur
-            <select class="select grow ring-0 bg-base-100 py-1 text-slate-900 h-[calc(100%-2px)] dark:text-slate-200 outline-none select-ghost">
+            <select class="select grow ring-0 bg-base-100 py-1 text-base-content h-[calc(100%-2px)] outline-none select-ghost">
               {#each users as user }
                 <option value="user.id">{user.username}</option>
               {/each}

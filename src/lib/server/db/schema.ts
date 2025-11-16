@@ -8,7 +8,7 @@ export const user = mysqlTable('user', {
   avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   role: varchar('role', { length: 255 }).notNull().default('user'),
-  theme: mysqlEnum('theme', ['light', 'dark']).notNull().default('light'),
+  theme: mysqlEnum('theme', ['system', 'light', 'dark']).default('system'),
   devUserId: varchar('dev_user_id', { length: 255 }),
   gameAdd: int('game_add').notNull().default(0),
   gameEdit: int('game_edit').notNull().default(0),

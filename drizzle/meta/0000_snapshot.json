@@ -588,11 +588,11 @@
         },
         "theme": {
           "name": "theme",
-          "type": "enum('light','dark')",
+          "type": "enum('','light','dark')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'light'"
+          "default": ""
         },
         "dev_user_id": {
           "name": "dev_user_id",

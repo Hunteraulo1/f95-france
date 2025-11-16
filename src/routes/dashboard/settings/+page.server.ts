@@ -67,7 +67,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const theme = formData.get('theme') as string;
 
-		if (!theme || !['light', 'dark'].includes(theme)) {
+		if (!theme || !['system', 'light', 'dark'].includes(theme)) {
 			return fail(400, { message: 'Thème invalide' });
 		}
 
@@ -75,7 +75,7 @@ export const actions: Actions = {
 			await db
 				.update(table.user)
 				.set({
-					theme: theme as 'light' | 'dark'
+					theme: theme as 'system' | 'light' | 'dark'
 				})
 				.where(eq(table.user.id, locals.user.id));
 

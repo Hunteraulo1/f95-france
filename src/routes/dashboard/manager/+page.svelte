@@ -64,7 +64,7 @@
 </script>
 
 <section>
-  <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200 mb-4">Ajouter/Modifier un jeu sur la liste</h2>
+  <h2 class="text-lg font-semibold text-base-content mb-4">Ajouter/Modifier un jeu sur la liste</h2>
   
   <div class="card bg-base-100 shadow-sm p-8 items-center justify-between gap-4 w-full">
     <div class="flex items-center justify-between gap-4 w-full">

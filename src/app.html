@@ -4,15 +4,17 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
-			// Appliquer le thème immédiatement pour éviter le clignotement blanc
 			(function() {
-				var theme = 'light';
+				var theme = 'system';
 				try {
-					theme = localStorage.getItem('theme') || 'light';
+					theme = localStorage.getItem('theme') || 'system';
 				} catch(e) {}
-				document.documentElement.setAttribute('data-theme', theme);
-				if (theme === 'dark') {
-					document.documentElement.style.backgroundColor = '#1f2937';
+				
+				if (theme && theme !== 'system') {
+					document.documentElement.setAttribute('data-theme', theme);
+				} else {
+					var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+					document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
 				}
 			})();
 		</script>

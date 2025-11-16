@@ -8,13 +8,6 @@ export default defineConfig({
 	server: {
 		fs: {
 			allow: ['..']
-		},
-		hmr: {
-			protocol: 'ws',
-			host: 'localhost'
 		}
-	},
-	optimizeDeps: {
-		force: true
 	}
 });

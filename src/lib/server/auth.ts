@@ -158,7 +158,7 @@ export async function createUser(username: string, email: string, password: stri
 		avatar: '', // Default avatar
 		passwordHash: hashedPassword,
 		role: 'user',
-		theme: 'light',
+		theme: 'system',
 		devUserId: null,
 		gameAdd: 0,
 		gameEdit: 0,

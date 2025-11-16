@@ -37,7 +37,7 @@
 <section class="flex flex-col gap-8">
 	<!-- Configuration de l'application -->
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">Configuration de l'application</h2>
+		<h2 class="text-lg font-semibold text-base-content">Configuration de l'application</h2>
 
 		<div class="card bg-base-100 shadow-sm p-8">
 			{#if configError}
@@ -162,7 +162,7 @@
 
 	<!-- Gestion des utilisateurs -->
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-slate-900 dark:text-slate-200">
+		<h2 class="text-lg font-semibold text-base-content">
 			Gestion des utilisateurs
 			<span class="text-sm font-normal opacity-70">({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''})</span>
 		</h2>
