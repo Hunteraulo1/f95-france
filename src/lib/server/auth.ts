@@ -11,11 +11,11 @@ export const sessionCookieName = 'auth-session';
 
 // Generate secure random string with 120 bits of entropy
 function generateSecureRandomString(): string {
-	const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
+	const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
 	const bytes = new Uint8Array(24);
 	crypto.getRandomValues(bytes);
 
-	let result = "";
+	let result = '';
 	for (let i = 0; i < bytes.length; i++) {
 		result += alphabet[bytes[i] >> 3];
 	}
@@ -33,7 +33,7 @@ export async function createSession(token: string, userId: string) {
 	if (!sessionId || !secret) {
 		throw new Error('Invalid session token format');
 	}
-	
+
 	const session: table.Session = {
 		id: sessionId,
 		userId,
@@ -43,15 +43,14 @@ export async function createSession(token: string, userId: string) {
 	return session;
 }
 
-
 export async function validateSessionToken(token: string) {
 	const tokenParts = token.split('.');
 	if (tokenParts.length !== 2) {
 		return { session: null, user: null };
 	}
-	
+
 	const [sessionId] = tokenParts;
-	
+
 	const [result] = await db
 		.select({
 			user: table.user,
@@ -94,11 +93,8 @@ export async function validateSessionToken(token: string) {
 }
 
 export async function getUserById(userId: string) {
-	const [user] = await db
-		.select()
-		.from(table.user)
-		.where(eq(table.user.id, userId));
-	
+	const [user] = await db.select().from(table.user).where(eq(table.user.id, userId));
+
 	return user || null;
 }
 
@@ -138,19 +134,19 @@ export function hashPassword(password: string): string {
 export function verifyPassword(password: string, hashedPassword: string): boolean {
 	const [saltString, hashString] = hashedPassword.split(':');
 	if (!saltString || !hashString) return false;
-	
+
 	const hash = sha256(new TextEncoder().encode(password + saltString));
 	const hashStringFromPassword = encodeHexLowerCase(hash);
-	
+
 	return hashStringFromPassword === hashString;
 }
 
 // User creation function
 export async function createUser(username: string, email: string, password: string) {
 	const hashedPassword = hashPassword(password);
-	
+
 	const userId = crypto.randomUUID();
-	
+
 	const user: table.User = {
 		id: userId,
 		email,
@@ -159,32 +155,27 @@ export async function createUser(username: string, email: string, password: stri
 		passwordHash: hashedPassword,
 		role: 'user',
 		theme: 'system',
+		directMode: true,
 		devUserId: null,
 		gameAdd: 0,
 		gameEdit: 0,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};
-	
+
 	await db.insert(table.user).values(user);
 	return user;
 }
 
 // Check if user exists
 export async function getUserByEmail(email: string) {
-	const [user] = await db
-		.select()
-		.from(table.user)
-		.where(eq(table.user.email, email));
-	
+	const [user] = await db.select().from(table.user).where(eq(table.user.email, email));
+
 	return user || null;
 }
 
 export async function getUserByUsername(username: string) {
-	const [user] = await db
-		.select()
-		.from(table.user)
-		.where(eq(table.user.username, username));
-	
+	const [user] = await db.select().from(table.user).where(eq(table.user.username, username));
+
 	return user || null;
 }

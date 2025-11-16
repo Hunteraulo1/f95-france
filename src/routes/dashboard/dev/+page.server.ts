@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.from(table.config)
 			.where(eq(table.config.id, 'main'))
 			.limit(1);
-		
+
 		config = configResult[0] || null;
 	} catch (error: unknown) {
 		console.warn('Erreur lors du chargement de la configuration:', error);
@@ -47,7 +47,7 @@ export const actions: Actions = {
 		if (!spreadsheetId) {
 			return {
 				success: false,
-				message: 'L\'ID du spreadsheet est requis',
+				message: "L'ID du spreadsheet est requis",
 				details: null
 			};
 		}
@@ -59,19 +59,19 @@ export const actions: Actions = {
 				.from(table.config)
 				.where(eq(table.config.id, 'main'))
 				.limit(1);
-			
+
 			const config = configResult[0];
 			const apiKey = config?.googleApiKey;
-			
+
 			// Essayer d'obtenir un token OAuth2 valide
 			const oauthToken = await getValidAccessToken();
 
 			// Tester la connexion avec l'API Google Sheets
 			// On utilise l'API REST directement pour tester l'accès
 			let apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=properties.title,sheets.properties.title`;
-			
+
 			const headers: HeadersInit = {
-				'Accept': 'application/json'
+				Accept: 'application/json'
 			};
 
 			// Utiliser OAuth2 si disponible, sinon utiliser la clé API
@@ -80,7 +80,7 @@ export const actions: Actions = {
 			} else if (apiKey) {
 				apiUrl += `&key=${encodeURIComponent(apiKey)}`;
 			}
-			
+
 			const response = await fetch(apiUrl, {
 				method: 'GET',
 				headers
@@ -99,24 +99,25 @@ export const actions: Actions = {
 					return {
 						success: false,
 						message: 'Spreadsheet introuvable',
-						details: 'L\'ID du spreadsheet est incorrect ou le spreadsheet n\'existe pas.'
+						details: "L'ID du spreadsheet est incorrect ou le spreadsheet n'existe pas."
 					};
 				}
-				
+
 				if (response.status === 403) {
 					if (!oauthToken && !apiKey) {
 						return {
 							success: false,
 							message: 'Authentification requise',
-							details: 'Une clé API Google ou une authentification OAuth2 est nécessaire pour accéder aux spreadsheets via l\'API. Veuillez configurer l\'une des deux méthodes dans les paramètres.'
+							details:
+								"Une clé API Google ou une authentification OAuth2 est nécessaire pour accéder aux spreadsheets via l'API. Veuillez configurer l'une des deux méthodes dans les paramètres."
 						};
 					}
 					return {
 						success: false,
 						message: 'Accès refusé',
-						details: oauthToken 
-							? 'Le spreadsheet n\'est pas accessible avec ce compte OAuth2. Vérifiez que le compte a les permissions nécessaires.'
-							: 'Le spreadsheet n\'est pas accessible avec cette clé API. Vérifiez que la clé API est correcte et que le spreadsheet est partagé correctement.'
+						details: oauthToken
+							? "Le spreadsheet n'est pas accessible avec ce compte OAuth2. Vérifiez que le compte a les permissions nécessaires."
+							: "Le spreadsheet n'est pas accessible avec cette clé API. Vérifiez que la clé API est correcte et que le spreadsheet est partagé correctement."
 					};
 				}
 
@@ -124,33 +125,37 @@ export const actions: Actions = {
 					return {
 						success: false,
 						message: 'Clé API invalide',
-						details: 'La clé API configurée est invalide ou a expiré. Veuillez vérifier votre clé API dans les paramètres.'
+						details:
+							'La clé API configurée est invalide ou a expiré. Veuillez vérifier votre clé API dans les paramètres.'
 					};
 				}
 
 				return {
 					success: false,
 					message: `Erreur API: ${response.status}`,
-					details: errorData.error?.message || 'Erreur lors de la connexion à l\'API Google Sheets'
+					details: errorData.error?.message || "Erreur lors de la connexion à l'API Google Sheets"
 				};
 			}
 
 			const data = await response.json();
-			
+
 			return {
 				success: true,
 				message: 'Connexion réussie !',
 				details: {
 					title: data.properties?.title || 'Sans titre',
-					sheets: data.sheets?.map((sheet: { properties: { title: string } }) => sheet.properties.title) || [],
+					sheets:
+						data.sheets?.map(
+							(sheet: { properties: { title: string } }) => sheet.properties.title
+						) || [],
 					spreadsheetId
 				}
 			};
 		} catch (error: unknown) {
 			console.error('Erreur lors du test de connexion Google Sheets:', error);
-			
+
 			const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-			
+
 			return {
 				success: false,
 				message: 'Erreur lors de la connexion',

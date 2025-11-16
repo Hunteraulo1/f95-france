@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			username: table.user.username,
 			avatar: table.user.avatar,
 			role: table.user.role,
+			directMode: table.user.directMode,
 			gameAdd: table.user.gameAdd,
 			gameEdit: table.user.gameEdit,
 			createdAt: table.user.createdAt,

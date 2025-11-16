@@ -54,27 +54,32 @@
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Configuration de l'application</h2>
 
-		<div class="card bg-base-100 shadow-sm p-8">
+		<div class="card bg-base-100 p-8 shadow-sm">
 			{#if configError}
-				<div class="alert alert-error mb-4">
+				<div class="mb-4 alert alert-error">
 					<span>{configError}</span>
 				</div>
 			{/if}
 
-			<form method="POST" action="?/updateConfig" use:enhance={() => {
-				configError = null;
-				return async ({ result, update }) => {
-					if (result.type === 'success') {
-						await update();
-						configError = null;
-					} else if (result.type === 'failure' && result.data) {
-						const message = typeof result.data === 'object' && 'message' in result.data 
-							? String(result.data.message) 
-							: 'Erreur lors de la mise à jour';
-						configError = message;
-					}
-				};
-			}}>
+			<form
+				method="POST"
+				action="?/updateConfig"
+				use:enhance={() => {
+					configError = null;
+					return async ({ result, update }) => {
+						if (result.type === 'success') {
+							await update();
+							configError = null;
+						} else if (result.type === 'failure' && result.data) {
+							const message =
+								typeof result.data === 'object' && 'message' in result.data
+									? String(result.data.message)
+									: 'Erreur lors de la mise à jour';
+							configError = message;
+						}
+					};
+				}}
+			>
 				<div class="flex flex-col gap-4">
 					<div class="form-control w-full">
 						<label for="appName" class="label">
@@ -84,7 +89,7 @@
 							id="appName"
 							name="appName"
 							type="text"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							class:input-error={configError}
 							value={data.config?.appName || 'F95 France'}
 							required
@@ -101,7 +106,7 @@
 							id="discordWebhookUpdates"
 							name="discordWebhookUpdates"
 							type="url"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.discordWebhookUpdates || ''}
 							placeholder="https://discord.com/api/webhooks/..."
 						/>
@@ -115,7 +120,7 @@
 							id="discordWebhookLogs"
 							name="discordWebhookLogs"
 							type="url"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.discordWebhookLogs || ''}
 							placeholder="https://discord.com/api/webhooks/..."
 						/>
@@ -129,7 +134,7 @@
 							id="discordWebhookTranslators"
 							name="discordWebhookTranslators"
 							type="url"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.discordWebhookTranslators || ''}
 							placeholder="https://discord.com/api/webhooks/..."
 						/>
@@ -143,7 +148,7 @@
 							id="discordWebhookProofreaders"
 							name="discordWebhookProofreaders"
 							type="url"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.discordWebhookProofreaders || ''}
 							placeholder="https://discord.com/api/webhooks/..."
 						/>
@@ -159,7 +164,7 @@
 							id="googleSpreadsheetId"
 							name="googleSpreadsheetId"
 							type="text"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.googleSpreadsheetId || ''}
 							placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
 						/>
@@ -173,14 +178,19 @@
 							id="googleApiKey"
 							name="googleApiKey"
 							type="password"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.googleApiKey || ''}
 							placeholder="AIzaSy..."
 						/>
 						<label class="label" for="googleApiKey">
 							<span class="label-text-alt text-base-content/50">
-								Requis pour accéder aux spreadsheets via l'API. 
-								<a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="link link-primary">
+								Requis pour accéder aux spreadsheets via l'API.
+								<a
+									href="https://console.cloud.google.com/apis/credentials"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="link link-primary"
+								>
 									Créer une clé API
 								</a>
 							</span>
@@ -195,7 +205,7 @@
 							id="googleOAuthClientId"
 							name="googleOAuthClientId"
 							type="text"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.googleOAuthClientId || ''}
 							placeholder="xxxxx.apps.googleusercontent.com"
 						/>
@@ -209,28 +219,30 @@
 							id="googleOAuthClientSecret"
 							name="googleOAuthClientSecret"
 							type="password"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							value={data.config?.googleOAuthClientSecret || ''}
 							placeholder="GOCSPX-..."
 						/>
 					</div>
 
 					{#if data.config?.googleOAuthClientId && data.config?.googleOAuthClientSecret}
-						<div class="bg-base-200 rounded-lg p-4 mb-4">
-							<p class="text-sm font-semibold mb-2">URI de redirection à configurer dans Google Cloud Console :</p>
-							<code class="bg-base-300 px-2 py-1 rounded text-xs break-all">
-								{typeof window !== 'undefined' ? `${window.location.origin}/api/google-oauth/callback` : 'Chargement...'}
+						<div class="mb-4 rounded-lg bg-base-200 p-4">
+							<p class="mb-2 text-sm font-semibold">
+								URI de redirection à configurer dans Google Cloud Console :
+							</p>
+							<code class="rounded bg-base-300 px-2 py-1 text-xs break-all">
+								{typeof window !== 'undefined'
+									? `${window.location.origin}/api/google-oauth/callback`
+									: 'Chargement...'}
 							</code>
-							<p class="text-xs text-base-content/70 mt-2">
-								⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants OAuth 2.0 → URI de redirection autorisées
+							<p class="mt-2 text-xs text-base-content/70">
+								⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants
+								OAuth 2.0 → URI de redirection autorisées
 							</p>
 						</div>
 
 						<div class="form-control w-full">
-							<a
-								href="/api/google-oauth/authorize"
-								class="btn btn-outline btn-primary"
-							>
+							<a href="/api/google-oauth/authorize" class="btn btn-outline btn-primary">
 								Autoriser avec Google
 							</a>
 							<div class="label">
@@ -246,15 +258,15 @@
 					{/if}
 
 					{#if oauthMessage}
-						<div class={`alert ${oauthMessage.type === 'success' ? 'alert-success' : 'alert-error'}`}>
+						<div
+							class={`alert ${oauthMessage.type === 'success' ? 'alert-success' : 'alert-error'}`}
+						>
 							<span>{oauthMessage.text}</span>
 						</div>
 					{/if}
 
 					<div class="form-control mt-4">
-						<button type="submit" class="btn btn-primary">
-							Enregistrer la configuration
-						</button>
+						<button type="submit" class="btn btn-primary"> Enregistrer la configuration </button>
 					</div>
 				</div>
 			</form>
@@ -265,10 +277,12 @@
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">
 			Gestion des utilisateurs
-			<span class="text-sm font-normal opacity-70">({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''})</span>
+			<span class="text-sm font-normal opacity-70"
+				>({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''})</span
+			>
 		</h2>
 
-		<div class="card bg-base-100 shadow-sm p-8">
+		<div class="card bg-base-100 p-8 shadow-sm">
 			<div class="overflow-x-auto">
 				<table class="table">
 					<thead>
@@ -288,13 +302,13 @@
 								<td>
 									<div class="flex items-center gap-3">
 										<div class="avatar">
-											<div class="mask mask-squircle w-10 h-10 flex items-center justify-center">
+											<div class="mask flex h-10 w-10 items-center justify-center mask-squircle">
 												{#if user?.avatar && user.avatar !== ''}
-                          {console.log(user.avatar)}
-                          <img alt="avatar" src={user.avatar} />
-                        {:else}
-                          <User size={24} />
-                        {/if}
+													{console.log(user.avatar)}
+													<img alt="avatar" src={user.avatar} />
+												{:else}
+													<User size={24} />
+												{/if}
 											</div>
 										</div>
 										<span class="font-bold">{user.username}</span>
@@ -303,7 +317,7 @@
 								<td>{user.email}</td>
 								<td>
 									<div class="badge badge-outline">
-										{roles.find(r => r.value === user.role)?.label || user.role}
+										{roles.find((r) => r.value === user.role)?.label || user.role}
 									</div>
 								</td>
 								<td>
@@ -314,10 +328,7 @@
 									})}
 								</td>
 								<td>
-									<button
-										class="btn btn-primary btn-sm"
-										onclick={() => openEditUserModal(user)}
-									>
+									<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
 										Modifier
 									</button>
 								</td>
@@ -329,11 +340,11 @@
 
 			<!-- Pagination (à implémenter si nécessaire) -->
 			{#if data.totalUsers > data.pageSize}
-				<div class="flex justify-center mt-4">
+				<div class="mt-4 flex justify-center">
 					<div class="join">
-						<button class="join-item btn btn-sm" disabled>«</button>
-						<button class="join-item btn btn-sm btn-active">1</button>
-						<button class="join-item btn btn-sm">»</button>
+						<button class="btn join-item btn-sm" disabled>«</button>
+						<button class="btn btn-active join-item btn-sm">1</button>
+						<button class="btn join-item btn-sm">»</button>
 					</div>
 				</div>
 			{/if}
@@ -343,33 +354,38 @@
 
 <!-- Modal d'édition d'utilisateur -->
 {#if showEditUserModal && selectedUser}
-	<div class="modal modal-open">
+	<div class="modal-open modal">
 		<div class="modal-box">
-			<h3 class="font-bold text-lg">Modifier l'utilisateur</h3>
+			<h3 class="text-lg font-bold">Modifier l'utilisateur</h3>
 
 			{#if userError}
-				<div class="alert alert-error mt-4">
+				<div class="mt-4 alert alert-error">
 					<span>{userError}</span>
 				</div>
 			{/if}
 
-			<form method="POST" action="?/updateUser" use:enhance={() => {
-				userError = null;
-				return async ({ result, update }) => {
-					if (result.type === 'success') {
-						await update();
-						closeEditUserModal();
-					} else if (result.type === 'failure' && result.data) {
-						const message = typeof result.data === 'object' && 'message' in result.data 
-							? String(result.data.message) 
-							: 'Erreur lors de la mise à jour';
-						userError = message;
-					}
-				};
-			}}>
+			<form
+				method="POST"
+				action="?/updateUser"
+				use:enhance={() => {
+					userError = null;
+					return async ({ result, update }) => {
+						if (result.type === 'success') {
+							await update();
+							closeEditUserModal();
+						} else if (result.type === 'failure' && result.data) {
+							const message =
+								typeof result.data === 'object' && 'message' in result.data
+									? String(result.data.message)
+									: 'Erreur lors de la mise à jour';
+							userError = message;
+						}
+					};
+				}}
+			>
 				<input type="hidden" name="userId" value={selectedUser.id} />
 
-				<div class="form-control w-full mt-4">
+				<div class="form-control mt-4 w-full">
 					<label for="edit-username" class="label">
 						<span class="label-text">Nom d'utilisateur</span>
 					</label>
@@ -377,14 +393,14 @@
 						id="edit-username"
 						name="username"
 						type="text"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						class:input-error={userError}
 						value={selectedUser.username}
 						required
 					/>
 				</div>
 
-				<div class="form-control w-full mt-4">
+				<div class="form-control mt-4 w-full">
 					<label for="edit-email" class="label">
 						<span class="label-text">Email</span>
 					</label>
@@ -392,14 +408,14 @@
 						id="edit-email"
 						name="email"
 						type="email"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						class:input-error={userError}
 						value={selectedUser.email}
 						required
 					/>
 				</div>
 
-				<div class="form-control w-full mt-4">
+				<div class="form-control mt-4 w-full">
 					<label for="edit-avatar" class="label">
 						<span class="label-text">Image de profil (URL)</span>
 					</label>
@@ -407,38 +423,34 @@
 						id="edit-avatar"
 						name="avatar"
 						type="url"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						class:input-error={userError}
 						value={selectedUser.avatar}
 						placeholder="https://example.com/avatar.jpg"
 					/>
 				</div>
 
-				<div class="form-control w-full mt-4">
+				<div class="form-control mt-4 w-full">
 					<label for="edit-role" class="label">
 						<span class="label-text">Rôle</span>
 					</label>
 					<select
 						id="edit-role"
 						name="role"
-						class="select select-bordered w-full"
+						class="select-bordered select w-full"
 						class:select-error={userError}
 						value={selectedUser.role}
 						required
 					>
-						{#each roles as role}
+						{#each roles as role (role.value)}
 							<option value={role.value}>{role.label}</option>
 						{/each}
 					</select>
 				</div>
 
 				<div class="modal-action">
-					<button type="button" class="btn" onclick={closeEditUserModal}>
-						Annuler
-					</button>
-					<button type="submit" class="btn btn-primary">
-						Enregistrer
-					</button>
+					<button type="button" class="btn" onclick={closeEditUserModal}> Annuler </button>
+					<button type="submit" class="btn btn-primary"> Enregistrer </button>
 				</div>
 			</form>
 		</div>

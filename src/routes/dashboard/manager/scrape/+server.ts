@@ -16,13 +16,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (website !== 'F95Zone') {
-			return json({ error: 'Le scraping n\'est disponible que pour F95Zone' }, { status: 400 });
+			return json({ error: "Le scraping n'est disponible que pour F95Zone" }, { status: 400 });
 		}
 
 		// Simuler le scraping pour F95Zone
 		// Dans une vraie implémentation, vous utiliseriez une bibliothèque comme Puppeteer ou Playwright
 		// pour scraper les données depuis F95Zone
-		
+
 		// Pour l'instant, on simule des données
 		const scrapedData = {
 			game: {

@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 
 	const gameId = params.id;
-	
+
 	if (!gameId) {
 		throw error(400, 'ID du jeu requis');
 	}
@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const translations = await db
 			.select({
 				id: table.gameTranslation.id,
-        translationName: table.gameTranslation.translationName,
+				translationName: table.gameTranslation.translationName,
 				status: table.gameTranslation.status,
 				version: table.gameTranslation.version,
 				tversion: table.gameTranslation.tversion,

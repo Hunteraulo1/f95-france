@@ -6,15 +6,15 @@
 	import { type Snippet } from 'svelte';
 	import type { LayoutServerData } from './$types';
 
-  interface Props {
-    children: Snippet
-    data: LayoutServerData
-  }
+	interface Props {
+		children: Snippet;
+		data: LayoutServerData;
+	}
 
 	let { children, data }: Props = $props();
 
-  let isSidebarOpen: boolean = $state(true);
-  
+	let isSidebarOpen: boolean = $state(true);
+
 	$effect(() => {
 		initializeUserFromLocals(data?.user);
 	});
@@ -22,14 +22,14 @@
 
 <Header bind:isSidebarOpen />
 
-<main class="drawer drawer-open overflow-hidden max-h-[calc(100vh-4rem)]">  
-  <div class="drawer-content bg-base-200 p-16 overflow-y-auto max-h-[calc(100vh-4rem)]">
-    {@render children?.()}
-  </div>
-  <Sidebar bind:isSidebarOpen />
+<main class="drawer-open drawer max-h-[calc(100vh-4rem)] overflow-hidden">
+	<div class="drawer-content max-h-[calc(100vh-4rem)] overflow-y-auto bg-base-200 p-16">
+		{@render children?.()}
+	</div>
+	<Sidebar bind:isSidebarOpen pendingSubmissionsCount={data.pendingSubmissionsCount} />
 </main>
 
 <!-- Toasts -->
-<div class="toast toast-top toast-end">
-  <Toaster />
+<div class="toast toast-end toast-top">
+	<Toaster />
 </div>

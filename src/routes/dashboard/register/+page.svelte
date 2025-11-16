@@ -1,28 +1,25 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { ActionData, PageServerData } from './$types';
+	import type { ActionData } from './$types';
 
 	interface Props {
 		form: ActionData & { errors?: Record<string, string> };
-		data: PageServerData;
 	}
 
-	let { form, data }: Props = $props();
+	let { form }: Props = $props();
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-base-200">
+<div class="flex min-h-screen items-center justify-center bg-base-200">
 	<div class="card w-full max-w-md bg-base-100 shadow-xl">
 		<div class="card-body">
-			<h2 class="card-title text-2xl font-bold text-center mb-4">
-				Créer un compte
-			</h2>
-			<p class="text-center text-sm text-base-content/70 mb-6">
+			<h2 class="mb-4 card-title text-center text-2xl font-bold">Créer un compte</h2>
+			<p class="mb-6 text-center text-sm text-base-content/70">
 				Ou
 				<a href="/dashboard/login" class="link link-primary">
 					se connecter à votre compte existant
 				</a>
 			</p>
-			
+
 			<form method="post" action="?/register" use:enhance class="space-y-4">
 				<div class="form-control">
 					<label class="label" for="username">
@@ -33,7 +30,7 @@
 						name="username"
 						type="text"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="Nom d'utilisateur"
 					/>
 					{#if form?.errors?.username}
@@ -52,7 +49,7 @@
 						name="email"
 						type="email"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="Adresse email"
 					/>
 					{#if form?.errors?.email}
@@ -71,7 +68,7 @@
 						name="password"
 						type="password"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="Mot de passe"
 					/>
 					{#if form?.errors?.password}
@@ -90,7 +87,7 @@
 						name="confirmPassword"
 						type="password"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="Confirmer le mot de passe"
 					/>
 					{#if form?.errors?.confirmPassword}
@@ -107,9 +104,7 @@
 				{/if}
 
 				<div class="form-control mt-6">
-					<button type="submit" class="btn btn-primary">
-						Créer le compte
-					</button>
+					<button type="submit" class="btn btn-primary"> Créer le compte </button>
 				</div>
 			</form>
 		</div>

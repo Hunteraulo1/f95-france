@@ -1,5 +1,7 @@
+import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { createTranslationSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -12,14 +14,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const gameId = params.id;
-	
+
 	if (!gameId) {
 		return json({ error: 'ID du jeu requis' }, { status: 400 });
 	}
 
 	try {
 		const body = await request.json();
-		const { translationName, version, tversion, status, ttype, tlink } = body;
+		const { translationName, version, tversion, status, ttype, tlink, directMode } = body;
 
 		// Validation des données requises
 		if (!version || !tversion || !status || !ttype || !tlink) {
@@ -37,19 +39,51 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
-		// Créer la nouvelle traduction
-		await db
-			.insert(table.gameTranslation)
-			.values({
-				gameId,
-				translationName,
+		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
+		const currentUser = await getUserById(locals.user.id);
+		if (!currentUser) {
+			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
+		}
+
+		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const userRole = currentUser.role;
+		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
+		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
+		const shouldCreateSubmission =
+			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+
+		if (shouldCreateSubmission) {
+			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
+			await createTranslationSubmission(currentUser.id, gameId, {
+				translationName: translationName || null,
 				version,
 				tversion,
 				status,
 				ttype,
-				tlink,
-				translatorId: locals.user.id
+				tlink
 			});
+
+			return json(
+				{
+					message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
+					submission: true
+				},
+				{ status: 201 }
+			);
+		}
+
+		// Mode direct pour les admins ou superadmins en mode direct
+		// Créer la nouvelle traduction
+		await db.insert(table.gameTranslation).values({
+			gameId,
+			translationName,
+			version,
+			tversion,
+			status,
+			ttype,
+			tlink,
+			translatorId: currentUser.id
+		});
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {

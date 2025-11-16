@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) {
 		throw redirect(302, '/dashboard');
 	}
-	
+
 	return {};
 };
 
@@ -24,7 +24,7 @@ export const actions: Actions = {
 		const errors: Record<string, string> = {};
 
 		if (!username || username.length < 3) {
-			errors.username = 'Le nom d\'utilisateur doit contenir au moins 3 caractères';
+			errors.username = "Le nom d'utilisateur doit contenir au moins 3 caractères";
 		}
 
 		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -43,7 +43,7 @@ export const actions: Actions = {
 		if (username) {
 			const existingUserByUsername = await auth.getUserByUsername(username);
 			if (existingUserByUsername) {
-				errors.username = 'Ce nom d\'utilisateur est déjà utilisé';
+				errors.username = "Ce nom d'utilisateur est déjà utilisé";
 			}
 		}
 
@@ -80,7 +80,7 @@ export const actions: Actions = {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;
 			}
-			
+
 			console.error('Erreur lors de la création du compte:', error);
 			return fail(500, {
 				message: 'Une erreur est survenue lors de la création du compte. Veuillez réessayer.'

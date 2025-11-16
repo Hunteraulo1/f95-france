@@ -27,7 +27,7 @@ export const actions: Actions = {
 		const avatar = formData.get('avatar') as string;
 
 		if (!username) {
-			return fail(400, { message: 'Le nom d\'utilisateur est requis' });
+			return fail(400, { message: "Le nom d'utilisateur est requis" });
 		}
 
 		try {
@@ -42,18 +42,19 @@ export const actions: Actions = {
 			return { success: true, message: 'Profil mis à jour avec succès' };
 		} catch (error: unknown) {
 			console.error('Erreur lors de la mise à jour du profil:', error);
-			
-			const mysqlError = error && typeof error === 'object' && 'cause' in error 
-				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
-				: null;
-			
+
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
 			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
 				if (mysqlError.sqlMessage?.includes('username')) {
 					return fail(409, { message: `Un utilisateur avec le nom "${username}" existe déjà` });
 				}
-				return fail(409, { message: 'Ce nom d\'utilisateur existe déjà' });
+				return fail(409, { message: "Ce nom d'utilisateur existe déjà" });
 			}
-			
+
 			return fail(500, { message: 'Erreur lors de la mise à jour du profil' });
 		}
 	},
@@ -83,6 +84,31 @@ export const actions: Actions = {
 		} catch (error: unknown) {
 			console.error('Erreur lors de la mise à jour du thème:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du thème' });
+		}
+	},
+
+	updateDirectMode: async ({ request, locals }) => {
+		// Vérifier que l'utilisateur est authentifié et est superadmin
+		if (!locals.user || locals.user.role !== 'superadmin') {
+			return fail(403, { message: 'Accès non autorisé' });
+		}
+
+		const formData = await request.formData();
+		// Les checkboxes n'envoient rien si elles ne sont pas cochées
+		const directMode = formData.has('directMode') && formData.get('directMode') !== 'false';
+
+		try {
+			await db
+				.update(table.user)
+				.set({
+					directMode
+				})
+				.where(eq(table.user.id, locals.user.id));
+
+			return { success: true, message: 'Mode direct mis à jour avec succès' };
+		} catch (error: unknown) {
+			console.error('Erreur lors de la mise à jour du mode direct:', error);
+			return fail(500, { message: 'Erreur lors de la mise à jour du mode direct' });
 		}
 	}
 };

@@ -18,7 +18,7 @@ export const load: PageServerLoad = async () => {
 		.from(table.translator)
 		.orderBy(table.translator.name);
 
-	const translatorsWithPages = translator.map(translator => ({
+	const translatorsWithPages = translator.map((translator) => ({
 		...translator,
 		pages: JSON.parse(translator.pages || '[]')
 	}));
@@ -30,7 +30,6 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	addTranslator: async ({ request }) => {
-
 		const formData = await request.formData();
 		const name = formData.get('name') as string;
 		const discordId = formData.get('discordId') as string;
@@ -42,7 +41,7 @@ export const actions: Actions = {
 
 		try {
 			const pagesArray = pages ? JSON.parse(pages) : [];
-			
+
 			await db.insert(table.translator).values({
 				name,
 				discordId: discordId || null,
@@ -51,13 +50,14 @@ export const actions: Actions = {
 
 			return { success: true, message: 'Traducteur ajouté avec succès' };
 		} catch (error: unknown) {
-			console.error('Erreur lors de l\'ajout du traducteur:', error);
-			
+			console.error("Erreur lors de l'ajout du traducteur:", error);
+
 			// Vérifier si c'est une erreur de duplication
-			const mysqlError = error && typeof error === 'object' && 'cause' in error 
-				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
-				: null;
-			
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
 			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
 				if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
 					return fail(409, { message: `Un traducteur avec le nom "${name}" existe déjà` });
@@ -67,13 +67,12 @@ export const actions: Actions = {
 				}
 				return fail(409, { message: 'Ce traducteur existe déjà' });
 			}
-			
-			return fail(500, { message: 'Erreur lors de l\'ajout du traducteur' });
+
+			return fail(500, { message: "Erreur lors de l'ajout du traducteur" });
 		}
 	},
 
 	editTranslator: async ({ request }) => {
-
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 		const name = formData.get('name') as string;
@@ -86,7 +85,7 @@ export const actions: Actions = {
 
 		try {
 			const pagesArray = pages ? JSON.parse(pages) : [];
-			
+
 			await db
 				.update(table.translator)
 				.set({
@@ -99,12 +98,13 @@ export const actions: Actions = {
 			return { success: true, message: 'Traducteur modifié avec succès' };
 		} catch (error: unknown) {
 			console.error('Erreur lors de la modification du traducteur:', error);
-			
+
 			// Vérifier si c'est une erreur de duplication
-			const mysqlError = error && typeof error === 'object' && 'cause' in error 
-				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
-				: null;
-			
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
 			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
 				if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
 					return fail(409, { message: `Un traducteur avec le nom "${name}" existe déjà` });
@@ -114,7 +114,7 @@ export const actions: Actions = {
 				}
 				return fail(409, { message: 'Ce traducteur existe déjà' });
 			}
-			
+
 			return fail(500, { message: 'Erreur lors de la modification du traducteur' });
 		}
 	}

@@ -4,12 +4,12 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
-			(function() {
+			(function () {
 				var theme = 'system';
 				try {
 					theme = localStorage.getItem('theme') || 'system';
-				} catch(e) {}
-				
+				} catch (e) {}
+
 				if (theme && theme !== 'system') {
 					document.documentElement.setAttribute('data-theme', theme);
 				} else {

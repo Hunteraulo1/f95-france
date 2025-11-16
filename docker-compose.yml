@@ -10,14 +10,14 @@ services:
       MYSQL_USER: f95_user
       MYSQL_PASSWORD: f95_password
     ports:
-      - "3306:3306"
+      - '3306:3306'
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
     networks:
       - f95-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       timeout: 20s
       retries: 10
 
@@ -29,7 +29,7 @@ services:
     container_name: f95-france-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - DATABASE_URL=mysql://f95_user:f95_password@mysql:3306/f95_france
       - NODE_ENV=production
@@ -55,7 +55,7 @@ services:
     container_name: f95-france-drizzle
     restart: unless-stopped
     ports:
-      - "4983:4983"
+      - '4983:4983'
     environment:
       - DATABASE_URL=mysql://f95_user:f95_password@mysql:3306/f95_france
     command: npm run db:studio

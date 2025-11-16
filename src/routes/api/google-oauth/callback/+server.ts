@@ -56,7 +56,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rediriger vers la page de configuration avec un message de succès
 		throw redirect(302, '/dashboard/config?oauth_success=true');
 	} catch (error: unknown) {
-		console.error('Erreur lors de l\'autorisation OAuth2:', error);
+		console.error("Erreur lors de l'autorisation OAuth2:", error);
 		const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
 		throw redirect(302, `/dashboard/config?oauth_error=${encodeURIComponent(errorMessage)}`);
 	}

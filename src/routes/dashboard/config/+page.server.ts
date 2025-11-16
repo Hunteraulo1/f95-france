@@ -14,11 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Charger la configuration
 	let config;
 	try {
-		config = await db
-			.select()
-			.from(table.config)
-			.where(eq(table.config.id, 'main'))
-			.limit(1);
+		config = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
 
 		// Si la configuration n'existe pas, la créer avec les valeurs par défaut
 		if (config.length === 0) {
@@ -26,31 +22,32 @@ export const load: PageServerLoad = async ({ locals }) => {
 				id: 'main',
 				appName: 'F95 France'
 			});
-			config = await db
-				.select()
-				.from(table.config)
-				.where(eq(table.config.id, 'main'))
-				.limit(1);
+			config = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
 		}
 	} catch (error: unknown) {
 		// Si la table n'existe pas encore, retourner une configuration par défaut
-		console.warn('Table config n\'existe pas encore, utilisation de la configuration par défaut:', error);
-		config = [{
-			id: 'main',
-			appName: 'F95 France',
-			discordWebhookUpdates: null,
-			discordWebhookLogs: null,
-			discordWebhookTranslators: null,
-			discordWebhookProofreaders: null,
-			googleSpreadsheetId: null,
-			googleApiKey: null,
-			googleOAuthClientId: null,
-			googleOAuthClientSecret: null,
-			googleOAuthAccessToken: null,
-			googleOAuthRefreshToken: null,
-			googleOAuthTokenExpiry: null,
-			updatedAt: new Date()
-		} as Config];
+		console.warn(
+			"Table config n'existe pas encore, utilisation de la configuration par défaut:",
+			error
+		);
+		config = [
+			{
+				id: 'main',
+				appName: 'F95 France',
+				discordWebhookUpdates: null,
+				discordWebhookLogs: null,
+				discordWebhookTranslators: null,
+				discordWebhookProofreaders: null,
+				googleSpreadsheetId: null,
+				googleApiKey: null,
+				googleOAuthClientId: null,
+				googleOAuthClientSecret: null,
+				googleOAuthAccessToken: null,
+				googleOAuthRefreshToken: null,
+				googleOAuthTokenExpiry: null,
+				updatedAt: new Date()
+			} as Config
+		];
 	}
 
 	// Charger les utilisateurs avec pagination
@@ -73,7 +70,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const totalUsersResult = await db
 		.select({ count: sql<number>`count(*)`.as('count') })
 		.from(table.user);
-	
+
 	const totalUsers = totalUsersResult[0]?.count || 0;
 
 	return {
@@ -104,7 +101,7 @@ export const actions: Actions = {
 		const googleOAuthClientSecret = formData.get('googleOAuthClientSecret') as string;
 
 		if (!appName) {
-			return fail(400, { message: 'Le nom de l\'application est requis' });
+			return fail(400, { message: "Le nom de l'application est requis" });
 		}
 
 		try {
@@ -150,16 +147,23 @@ export const actions: Actions = {
 			return { success: true, message: 'Configuration mise à jour avec succès' };
 		} catch (error: unknown) {
 			console.error('Erreur lors de la mise à jour de la configuration:', error);
-			
-			const mysqlError = error && typeof error === 'object' && 'cause' in error 
-				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
-				: null;
-			
+
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
 			// Si la table n'existe pas encore
-			if (mysqlError && (mysqlError.code === 'ER_NO_SUCH_TABLE' || mysqlError.sqlMessage?.includes('doesn\'t exist'))) {
-				return fail(500, { message: 'La table de configuration n\'existe pas encore. Veuillez exécuter "npm run db:push" pour créer la table.' });
+			if (
+				mysqlError &&
+				(mysqlError.code === 'ER_NO_SUCH_TABLE' || mysqlError.sqlMessage?.includes("doesn't exist"))
+			) {
+				return fail(500, {
+					message:
+						'La table de configuration n\'existe pas encore. Veuillez exécuter "npm run db:push" pour créer la table.'
+				});
 			}
-			
+
 			return fail(500, { message: 'Erreur lors de la mise à jour de la configuration' });
 		}
 	},
@@ -187,10 +191,9 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Récupérer l'utilisateur actuel pour vérifier les permissions et préserver l'avatar
+			// Récupérer l'utilisateur actuel pour vérifier les permissions
 			const currentUser = await db
-				.select({ 
-					avatar: table.user.avatar,
+				.select({
 					role: table.user.role
 				})
 				.from(table.user)
@@ -205,12 +208,14 @@ export const actions: Actions = {
 
 			// Vérifier que l'utilisateur a les permissions pour changer un rôle en superadmin
 			if (role === 'superadmin' && locals.user.role !== 'superadmin') {
-				return fail(403, { message: 'Vous n\'avez pas les permissions pour définir un superadmin' });
+				return fail(403, { message: "Vous n'avez pas les permissions pour définir un superadmin" });
 			}
 
 			// Vérifier que l'utilisateur a les permissions pour changer le rôle d'un superadmin
 			if (currentUserRole === 'superadmin' && locals.user.role !== 'superadmin') {
-				return fail(403, { message: 'Vous n\'avez pas les permissions pour modifier un superadmin' });
+				return fail(403, {
+					message: "Vous n'avez pas les permissions pour modifier un superadmin"
+				});
 			}
 
 			await db
@@ -219,18 +224,19 @@ export const actions: Actions = {
 					username,
 					email,
 					role,
-					avatar: avatar || currentUser[0]?.avatar || ''
+					avatar: avatar || ''
 				})
 				.where(eq(table.user.id, userId));
 
 			return { success: true, message: 'Utilisateur mis à jour avec succès' };
 		} catch (error: unknown) {
-			console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
-			
-			const mysqlError = error && typeof error === 'object' && 'cause' in error 
-				? error.cause as { code?: string; errno?: number; sqlMessage?: string }
-				: null;
-			
+			console.error("Erreur lors de la mise à jour de l'utilisateur:", error);
+
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
 			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
 				if (mysqlError.sqlMessage?.includes('username')) {
 					return fail(409, { message: `Un utilisateur avec le nom "${username}" existe déjà` });
@@ -240,8 +246,8 @@ export const actions: Actions = {
 				}
 				return fail(409, { message: 'Cet utilisateur existe déjà' });
 			}
-			
-			return fail(500, { message: 'Erreur lors de la mise à jour de l\'utilisateur' });
+
+			return fail(500, { message: "Erreur lors de la mise à jour de l'utilisateur" });
 		}
 	}
 };

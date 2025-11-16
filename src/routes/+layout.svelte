@@ -3,13 +3,12 @@
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
 	import '../app.css';
-	import type { LayoutServerData } from './$types';
 
-  let { children, data }: { children: any; data: LayoutServerData } = $props();
+	let { children }: { children: unknown } = $props();
 
-  onMount(() => {
-    themeChange(false)
-  })
+	onMount(() => {
+		themeChange(false);
+	});
 </script>
 
 <svelte:head>

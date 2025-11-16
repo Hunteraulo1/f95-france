@@ -26,18 +26,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const userPendingSubmissionsResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
-			.where(and(
-				eq(table.submission.userId, locals.user.id),
-				eq(table.submission.status, 'pending')
-			));
+			.where(
+				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'pending'))
+			);
 
 		const userAcceptedSubmissionsResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
-			.where(and(
-				eq(table.submission.userId, locals.user.id),
-				eq(table.submission.status, 'accepted')
-			));
+			.where(
+				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'accepted'))
+			);
 
 		userStats = {
 			totalSubmissions: userSubmissionsResult[0]?.count || 0,
@@ -132,17 +130,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 					inProgress: translationsInProgressResult[0]?.count || 0,
 					completed: translationsCompletedResult[0]?.count || 0,
 					abandoned: translationsAbandonedResult[0]?.count || 0,
-					total: (translationsInProgressResult[0]?.count || 0) + 
-						   (translationsCompletedResult[0]?.count || 0) + 
-						   (translationsAbandonedResult[0]?.count || 0)
+					total:
+						(translationsInProgressResult[0]?.count || 0) +
+						(translationsCompletedResult[0]?.count || 0) +
+						(translationsAbandonedResult[0]?.count || 0)
 				},
 				submissions: {
 					pending: submissionsPendingResult[0]?.count || 0,
 					accepted: submissionsAcceptedResult[0]?.count || 0,
 					rejected: submissionsRejectedResult[0]?.count || 0,
-					total: (submissionsPendingResult[0]?.count || 0) + 
-						   (submissionsAcceptedResult[0]?.count || 0) + 
-						   (submissionsRejectedResult[0]?.count || 0)
+					total:
+						(submissionsPendingResult[0]?.count || 0) +
+						(submissionsAcceptedResult[0]?.count || 0) +
+						(submissionsRejectedResult[0]?.count || 0)
 				},
 				totalUsers: totalUsersResult[0]?.count || 0,
 				totalTranslators: totalTranslatorsResult[0]?.count || 0,

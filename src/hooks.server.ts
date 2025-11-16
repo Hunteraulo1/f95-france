@@ -14,10 +14,10 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 
 	try {
 		const { session, user } = await auth.validateSessionToken(sessionToken);
-		// console.log('🔍 Auth - Validation session:', { 
-		// 	sessionValid: !!session, 
-		// 	userValid: !!user, 
-		// 	username: user?.username 
+		// console.log('🔍 Auth - Validation session:', {
+		// 	sessionValid: !!session,
+		// 	userValid: !!user,
+		// 	username: user?.username
 		// });
 
 		if (session && user) {

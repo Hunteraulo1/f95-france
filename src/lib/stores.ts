@@ -5,17 +5,22 @@ import type { User } from './server/db/schema';
 export const user = writable<User | null>(null);
 
 // Store pour les toasts
-export const toasts = writable<Array<{ id: string; alertType: 'info' | 'warning' | 'success' | 'error'; message: string }>>([]);
+export const toasts = writable<
+	Array<{ id: string; alertType: 'info' | 'warning' | 'success' | 'error'; message: string }>
+>([]);
 
 // Fonction pour ajouter un toast
-export const newToast = (toast: { alertType: 'info' | 'warning' | 'success' | 'error'; message: string }) => {
-  const id = Math.random().toString(36).slice(2, 11);
-  toasts.update(current => [...current, { id, ...toast }]);
-  
-  // Auto-remove après 5 secondes
-  setTimeout(() => {
-    toasts.update(current => current.filter(t => t.id !== id));
-  }, 5000);
+export const newToast = (toast: {
+	alertType: 'info' | 'warning' | 'success' | 'error';
+	message: string;
+}) => {
+	const id = Math.random().toString(36).slice(2, 11);
+	toasts.update((current) => [...current, { id, ...toast }]);
+
+	// Auto-remove après 5 secondes
+	setTimeout(() => {
+		toasts.update((current) => current.filter((t) => t.id !== id));
+	}, 5000);
 };
 
 // Fonction pour charger les données utilisateur depuis le serveur
