@@ -187,8 +187,6 @@
 						</label>
 					</div>
 
-					<div class="divider">OAuth2.0 (Recommandé)</div>
-
 					<div class="form-control w-full">
 						<label for="googleOAuthClientId" class="label">
 							<span class="label-text">Client ID OAuth2</span>

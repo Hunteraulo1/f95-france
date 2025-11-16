@@ -187,12 +187,31 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Récupérer l'utilisateur actuel pour préserver l'avatar si non fourni
+			// Récupérer l'utilisateur actuel pour vérifier les permissions et préserver l'avatar
 			const currentUser = await db
-				.select({ avatar: table.user.avatar })
+				.select({ 
+					avatar: table.user.avatar,
+					role: table.user.role
+				})
 				.from(table.user)
 				.where(eq(table.user.id, userId))
 				.limit(1);
+
+			if (!currentUser[0]) {
+				return fail(404, { message: 'Utilisateur non trouvé' });
+			}
+
+			const currentUserRole = currentUser[0].role;
+
+			// Vérifier que l'utilisateur a les permissions pour changer un rôle en superadmin
+			if (role === 'superadmin' && locals.user.role !== 'superadmin') {
+				return fail(403, { message: 'Vous n\'avez pas les permissions pour définir un superadmin' });
+			}
+
+			// Vérifier que l'utilisateur a les permissions pour changer le rôle d'un superadmin
+			if (currentUserRole === 'superadmin' && locals.user.role !== 'superadmin') {
+				return fail(403, { message: 'Vous n\'avez pas les permissions pour modifier un superadmin' });
+			}
 
 			await db
 				.update(table.user)

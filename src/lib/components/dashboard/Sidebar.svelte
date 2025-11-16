@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
-	import { Box, BrickWallShield, Inbox, Languages, LogOut, MonitorCog, Settings, UserPen, type Icon as IconType } from '@lucide/svelte';
+	import { Box, BrickWallShield, Inbox, Languages, Library, LogOut, MonitorCog, Settings, Settings2, UserPen, type Icon as IconType } from '@lucide/svelte';
 
   interface Props {
     isSidebarOpen: boolean;
@@ -32,7 +32,7 @@
     {
       label: 'Gestion des jeux',
       href: '/dashboard/manager',
-      icon: Box,
+      icon: Library,
       roles: ['admin']
     },
     {
@@ -83,7 +83,7 @@
     {
       label: 'Paramètres',
       href: '/dashboard/settings',
-      icon: UserPen,
+      icon: Settings2,
       roles: ['all']
     },
     {
