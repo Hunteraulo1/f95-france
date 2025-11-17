@@ -9,7 +9,7 @@
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	const searchGames = async (query: string) => {
-		if (!query || query.trim().length < 3) {
+		if (!query || query.trim().length < 1) {
 			searchResults = [];
 			showResults = false;
 			return;

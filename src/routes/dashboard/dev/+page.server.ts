@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
+import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -159,6 +160,53 @@ export const actions: Actions = {
 			return {
 				success: false,
 				message: 'Erreur lors de la connexion',
+				details: errorMessage
+			};
+		}
+	},
+	testScrape: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return {
+				success: false,
+				message: 'Accès non autorisé',
+				details: null
+			};
+		}
+
+		const formData = await request.formData();
+		const threadIdRaw = formData.get('threadId');
+		const website = (formData.get('website') as 'f95z' | 'lc' | 'other' | null) ?? null;
+
+		const threadId = typeof threadIdRaw === 'string' ? Number.parseInt(threadIdRaw, 10) : null;
+
+		if (!threadId || Number.isNaN(threadId)) {
+			return {
+				success: false,
+				message: "L'ID du thread est requis",
+				details: null
+			};
+		}
+
+		if (!website || website !== 'f95z') {
+			return {
+				success: false,
+				message: 'Le scraping de test ne supporte actuellement que les threads F95',
+				details: null
+			};
+		}
+
+		try {
+			const data = await scrapeF95Thread(threadId);
+			return {
+				success: true,
+				message: 'Scrape réussi',
+				details: data
+			};
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+			return {
+				success: false,
+				message: 'Erreur lors du scraping',
 				details: errorMessage
 			};
 		}

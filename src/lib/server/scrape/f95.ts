@@ -136,8 +136,19 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 	const titleMatch = title.match(/([\w\\']+)(?=\s-)/gi) ?? undefined;
 	const { status, type } = titleMatch ? scrapeGetTitle(titleMatch) : { status: null, type: null };
 
-	const titleText = document.querySelector('.p-title-value')?.textContent ?? '';
-	const name = unescapeHtml(titleText.split('[')[0]?.trim() ?? null);
+	const titleNode = document.querySelector('.p-title-value')?.cloneNode(true) as HTMLElement | null;
+
+	if (titleNode) {
+		titleNode.querySelectorAll('span, a').forEach((el) => el.remove());
+	}
+
+	const rawTitle = titleNode?.textContent ?? '';
+	const name = unescapeHtml(
+		rawTitle
+			.replace(/\s+/g, ' ')
+			.trim()
+			.replace(/\s*\[.*$/, '') || null
+	);
 
 	const imgSrc =
 		document.querySelector<HTMLImageElement>('img.bbImage')?.getAttribute('src') ?? null;
