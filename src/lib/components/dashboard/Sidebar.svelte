@@ -48,7 +48,7 @@
 			label: 'Gestion des jeux',
 			href: '/dashboard/manager',
 			icon: Library,
-			roles: ['admin']
+			roles: ['translator', 'admin']
 		},
 		{
 			label: 'Mes soumissions',

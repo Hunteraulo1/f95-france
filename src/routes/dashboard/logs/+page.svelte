@@ -84,7 +84,7 @@
 			</select>
 		</label>
 
-		<label class="form-control md:col-span-2">
+		<label class="form-control">
 			<span class="label-text">Recherche (route ou payload)</span>
 			<input
 				type="text"
@@ -154,7 +154,7 @@
 											<button
 												type="button"
 												class="btn text-primary btn-ghost btn-xs"
-												onclick={() => openPayloadModal(log.payload)}
+												onclick={() => openPayloadModal(log.payload ?? '')}
 											>
 												Voir
 											</button>
