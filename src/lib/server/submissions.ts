@@ -24,6 +24,9 @@ export async function createGameSubmission(
 		status: string;
 		ttype: string;
 		tlink: string | null;
+		translatorId?: string | null;
+		proofreaderId?: string | null;
+		ac?: boolean | null;
 	}
 ) {
 	const submissionData = {
@@ -87,6 +90,9 @@ export async function createTranslationSubmission(
 		status: string;
 		ttype: string;
 		tlink: string;
+		translatorId?: string | null;
+		proofreaderId?: string | null;
+		ac?: boolean | null;
 	}
 ) {
 	const submissionData = {
@@ -119,6 +125,9 @@ export async function createTranslationUpdateSubmission(
 		status: string;
 		ttype: string;
 		tlink: string;
+		translatorId?: string | null;
+		proofreaderId?: string | null;
+		ac?: boolean | null;
 	}
 ) {
 	const submissionData = {
@@ -219,6 +228,9 @@ export async function applySubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string | null;
+			translatorId?: string | null;
+			proofreaderId?: string | null;
+			ac?: boolean | null;
 		};
 		gameId?: string;
 		translationId?: string;
@@ -294,7 +306,9 @@ export async function applySubmission(submissionId: string) {
 				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tlink: translationData.tlink || '',
-				translatorId: sub.userId,
+				translatorId: translationData.translatorId ?? null,
+				proofreaderId: translationData.proofreaderId ?? null,
+				ac: translationData.ac ?? false,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -416,7 +430,10 @@ export async function applySubmission(submissionId: string) {
 					tversion: originalTranslation.tversion,
 					status: originalTranslation.status,
 					ttype: originalTranslation.ttype,
-					tlink: originalTranslation.tlink
+					tlink: originalTranslation.tlink,
+					translatorId: originalTranslation.translatorId,
+					proofreaderId: originalTranslation.proofreaderId,
+					ac: originalTranslation.ac
 				}
 			};
 
@@ -444,6 +461,9 @@ export async function applySubmission(submissionId: string) {
 						| 'to_tested'
 						| 'hs',
 					tlink: translationData.tlink || '',
+					translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
+					proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					ac: translationData.ac ?? originalTranslation.ac ?? false,
 					updatedAt: new Date()
 				})
 				.where(eq(table.gameTranslation.id, sub.translationId));
@@ -457,7 +477,9 @@ export async function applySubmission(submissionId: string) {
 				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tlink: translationData.tlink || '',
-				translatorId: sub.userId,
+				translatorId: translationData.translatorId ?? null,
+				proofreaderId: translationData.proofreaderId ?? null,
+				ac: translationData.ac ?? false,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -639,6 +661,9 @@ export async function revertSubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string | null;
+			translatorId?: string | null;
+			proofreaderId?: string | null;
+			ac?: boolean | null;
 		};
 		originalGame?: {
 			name: string;
@@ -761,6 +786,9 @@ export async function revertSubmission(submissionId: string) {
 						| 'to_tested'
 						| 'hs',
 					tlink: originalTranslation.tlink || '',
+					translatorId: originalTranslation.translatorId || null,
+					proofreaderId: originalTranslation.proofreaderId || null,
+					ac: originalTranslation.ac ?? false,
 					updatedAt: new Date()
 				})
 				.where(eq(table.gameTranslation.id, sub.translationId));

@@ -15,6 +15,13 @@
       "when": 1763373901200,
       "tag": "0001_dizzy_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763387616337,
+      "tag": "0002_careless_shooting_star",
+      "breakpoints": true
     }
   ]
 }

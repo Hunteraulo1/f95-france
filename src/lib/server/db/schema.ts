@@ -159,6 +159,24 @@ export const submission = mysqlTable('submission', {
 		.default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
 });
 
+export const apiLog = mysqlTable('api_log', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`(UUID())`),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	method: varchar('method', { length: 16 }).notNull(),
+	route: varchar('route', { length: 255 }).notNull(),
+	status: int('status').notNull(),
+	ipAddress: varchar('ip_address', { length: 64 }),
+	payload: text('payload'),
+	createdAt: datetime('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 export type Game = typeof game.$inferSelect;
@@ -167,3 +185,4 @@ export type Update = typeof update.$inferSelect;
 export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
+export type ApiLog = typeof apiLog.$inferSelect;

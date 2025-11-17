@@ -24,7 +24,18 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { translationName, version, tversion, status, ttype, tlink, directMode, ac } = body;
+		const {
+			translationName,
+			version,
+			tversion,
+			status,
+			ttype,
+			tlink,
+			directMode,
+			ac,
+			translatorId,
+			proofreaderId
+		} = body;
 
 		// Validation des données requises
 		if (!version || !tversion || !status || !ttype || !tlink) {
@@ -65,7 +76,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tversion,
 				status,
 				ttype,
-				tlink
+				tlink,
+				translatorId: translatorId || null,
+				proofreaderId: proofreaderId || null,
+				ac: ac ?? null
 			});
 
 			return json({
@@ -79,12 +93,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		await db
 			.update(table.gameTranslation)
 			.set({
-				translationName,
+				translationName: translationName || null,
 				version,
 				tversion,
 				status,
 				ttype,
 				tlink,
+				translatorId: translatorId || null,
+				proofreaderId: proofreaderId || null,
 				ac: ac ?? false,
 				updatedAt: new Date()
 			})

@@ -21,7 +21,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { translationName, version, tversion, status, ttype, tlink, directMode } = body;
+		const {
+			translationName,
+			version,
+			tversion,
+			status,
+			ttype,
+			tlink,
+			directMode,
+			ac,
+			translatorId,
+			proofreaderId
+		} = body;
 
 		// Validation des données requises
 		if (!version || !tversion || !status || !ttype || !tlink) {
@@ -60,7 +71,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				tversion,
 				status,
 				ttype,
-				tlink
+				tlink,
+				translatorId: translatorId || null,
+				proofreaderId: proofreaderId || null,
+				ac: ac ?? null
 			});
 
 			return json(
@@ -82,7 +96,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			status,
 			ttype,
 			tlink,
-			translatorId: currentUser.id
+			translatorId: translatorId || null,
+			proofreaderId: proofreaderId || null,
+			ac: ac ?? false
 		});
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });

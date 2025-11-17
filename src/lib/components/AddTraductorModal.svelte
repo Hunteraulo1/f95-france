@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { Translator } from '$lib/server/db/schema';
+	import { createEventDispatcher } from 'svelte';
 
 	interface Props {
 		showModal: boolean;
 		translators: Translator[];
 	}
+
+	const dispatch = createEventDispatcher<{ added: { name: string } }>();
 
 	let { showModal = $bindable(), translators = $bindable() }: Props = $props();
 
@@ -12,32 +15,38 @@
 	let errorMessage = $state<string | null>(null);
 
 	const addTraductor = async () => {
-		if (newTranslatorName) {
-			errorMessage = null;
-			try {
-				const response = await fetch('/api/translators', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({ name: newTranslatorName })
-				});
+		if (!newTranslatorName) return;
 
-				if (response.ok) {
-					// Recharger la liste complète depuis l'API
-					const getResponse = await fetch('/api/translators');
-					translators = await getResponse.json();
-					newTranslatorName = '';
-					showModal = false;
-					errorMessage = null;
-				} else {
-					const errorData = await response.json();
-					errorMessage = errorData.error || 'Erreur lors de la création du traducteur';
-				}
-			} catch (error) {
-				console.error('Error creating translator:', error);
-				errorMessage = 'Erreur lors de la création du traducteur';
+		const trimmed = newTranslatorName.trim();
+		if (!trimmed) {
+			errorMessage = 'Le nom est requis';
+			return;
+		}
+
+		errorMessage = null;
+		try {
+			const response = await fetch('/api/translators', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ name: trimmed })
+			});
+
+			if (response.ok) {
+				const getResponse = await fetch('/api/translators');
+				translators = await getResponse.json();
+				newTranslatorName = '';
+				showModal = false;
+				errorMessage = null;
+				dispatch('added', { name: trimmed });
+			} else {
+				const errorData = await response.json();
+				errorMessage = errorData.error || 'Erreur lors de la création du traducteur';
 			}
+		} catch (error) {
+			console.error('Error creating translator:', error);
+			errorMessage = 'Erreur lors de la création du traducteur';
 		}
 	};
 </script>

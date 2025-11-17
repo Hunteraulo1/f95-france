@@ -20,7 +20,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const { game, translations, user: currentUser } = data;
+	const { game, translations, translators, user: currentUser } = data;
 	const canRefreshGame = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
 
 	// État pour le modal d'ajout de traduction
@@ -32,7 +32,9 @@
 		status: 'in_progress',
 		ttype: 'manual',
 		tlink: '',
-		ac: false
+		ac: false,
+		translatorId: '',
+		proofreaderId: ''
 	});
 
 	// État pour le modal de modification de traduction
@@ -45,7 +47,9 @@
 		status: 'in_progress',
 		ttype: 'manual',
 		tlink: '',
-		ac: false
+		ac: false,
+		translatorId: '',
+		proofreaderId: ''
 	});
 
 	// État pour la suppression
@@ -123,7 +127,9 @@
 			status: 'in_progress',
 			ttype: 'manual',
 			tlink: '',
-			ac: false
+			ac: false,
+			translatorId: '',
+			proofreaderId: ''
 		};
 	};
 
@@ -257,6 +263,8 @@
 			status: translation.status,
 			ttype: translation.ttype,
 			tlink: translation.tlink,
+			translatorId: translation.translatorId || '',
+			proofreaderId: translation.proofreaderId || '',
 			ac: translation.ac ?? false
 		};
 		showEditTranslationModal = true;
@@ -272,7 +280,9 @@
 			status: 'in_progress',
 			ttype: 'manual',
 			tlink: '',
-			ac: false
+			ac: false,
+			translatorId: '',
+			proofreaderId: ''
 		};
 	};
 
@@ -544,7 +554,23 @@
 								{#each translations as translation (translation.id)}
 									<tr>
 										<td class="font-bold">
-											{translation.translationName}
+											{translation.translationName || '—'}
+											{#if translation.translatorId || translation.proofreaderId}
+												<div class="mt-2 space-y-1 text-xs font-normal text-base-content/60">
+													{#if translation.translatorId}
+														<p>
+															<strong>Traducteur :</strong>
+															{translation.translatorId}
+														</p>
+													{/if}
+													{#if translation.proofreaderId}
+														<p>
+															<strong>Relecteur :</strong>
+															{translation.proofreaderId}
+														</p>
+													{/if}
+												</div>
+											{/if}
 										</td>
 										<td class="font-bold">{translation.version}</td>
 										<td class="font-bold">{translation.tversion}</td>
@@ -703,6 +729,45 @@
 				</label>
 			</div>
 
+			<div class="grid gap-4 md:grid-cols-2">
+				<div class="form-control">
+					<label class="label" for="translation-translator">
+						<span class="label-text">Traducteur</span>
+					</label>
+					<input
+						id="translation-translator"
+						class="input-bordered input"
+						type="text"
+						list="translation-translators"
+						bind:value={newTranslation.translatorId}
+						placeholder="Nom du traducteur"
+					/>
+					<datalist id="translation-translators">
+						{#each translators as translator (translator.id)}
+							<option value={translator.name}>{translator.name}</option>
+						{/each}
+					</datalist>
+				</div>
+				<div class="form-control">
+					<label class="label" for="translation-proofreader">
+						<span class="label-text">Relecteur</span>
+					</label>
+					<input
+						id="translation-proofreader"
+						class="input-bordered input"
+						type="text"
+						list="translation-proofreaders"
+						bind:value={newTranslation.proofreaderId}
+						placeholder="Nom du relecteur"
+					/>
+					<datalist id="translation-proofreaders">
+						{#each translators as translator (translator.id)}
+							<option value={translator.name}>{translator.name}</option>
+						{/each}
+					</datalist>
+				</div>
+			</div>
+
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={closeAddTranslationModal}>Annuler</button>
 				<button class="btn btn-primary" onclick={addTranslation}>Ajouter</button>
@@ -825,6 +890,45 @@
 					</p>
 				</div>
 			{/if}
+
+			<div class="grid gap-4 md:grid-cols-2">
+				<div class="form-control">
+					<label class="label" for="edit-translator">
+						<span class="label-text">Traducteur</span>
+					</label>
+					<input
+						id="edit-translator"
+						class="input-bordered input"
+						type="text"
+						list="edit-translator-list"
+						bind:value={editingTranslation.translatorId}
+						placeholder="Nom du traducteur"
+					/>
+					<datalist id="edit-translator-list">
+						{#each translators as translator (translator.id)}
+							<option value={translator.name}>{translator.name}</option>
+						{/each}
+					</datalist>
+				</div>
+				<div class="form-control">
+					<label class="label" for="edit-proofreader">
+						<span class="label-text">Relecteur</span>
+					</label>
+					<input
+						id="edit-proofreader"
+						class="input-bordered input"
+						type="text"
+						list="edit-proofreader-list"
+						bind:value={editingTranslation.proofreaderId}
+						placeholder="Nom du relecteur"
+					/>
+					<datalist id="edit-proofreader-list">
+						{#each translators as translator (translator.id)}
+							<option value={translator.name}>{translator.name}</option>
+						{/each}
+					</datalist>
+				</div>
+			</div>
 
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>

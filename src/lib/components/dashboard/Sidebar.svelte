@@ -9,6 +9,7 @@
 		Library,
 		LogOut,
 		MonitorCog,
+		ScrollText,
 		Settings,
 		Settings2,
 		UserPen,
@@ -78,6 +79,12 @@
 			href: '/dashboard/config',
 			icon: Settings,
 			roles: ['admin']
+		},
+		{
+			label: 'Logs API',
+			href: '/dashboard/logs',
+			icon: ScrollText,
+			roles: ['superadmin']
 		},
 		{
 			label: 'Panel développeur',

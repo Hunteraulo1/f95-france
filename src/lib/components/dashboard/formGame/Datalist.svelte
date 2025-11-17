@@ -5,6 +5,7 @@
 	import { checkRole } from '$lib/utils';
 
 	import { UserPlus } from '@lucide/svelte';
+	import { createEventDispatcher } from 'svelte';
 	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLInputAttributes {
@@ -17,7 +18,9 @@
 		translators?: Translator[];
 	}
 
-	const {
+	const dispatch = createEventDispatcher<{ added: { name: string } }>();
+
+	let {
 		title,
 		className,
 		active,
@@ -48,13 +51,17 @@
 
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event): void => {
 		const value = event.currentTarget.value;
-
 		(game[name] as string) = value;
 	};
 
 	const handleInput: ChangeEventHandler<HTMLInputElement> = (event): void => {
 		warning = handleWarning(event.currentTarget.value);
 		error = handleError();
+	};
+
+	const handleTranslatorAdded = (value: string) => {
+		(game[name] as string) = value;
+		dispatch('added', { name: value });
 	};
 
 	let modal = $state(false);
@@ -96,4 +103,8 @@
 	</div>
 </div>
 
-<AddTraductorModal bind:showModal={modal} {translators} />
+<AddTraductorModal
+	bind:showModal={modal}
+	bind:translators
+	on:added={(event) => handleTranslatorAdded(event.detail.name)}
+/>

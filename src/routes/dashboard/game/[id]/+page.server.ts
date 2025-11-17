@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -59,9 +59,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.from(table.gameTranslation)
 			.where(eq(table.gameTranslation.gameId, gameId));
 
+		const translators = await db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name
+			})
+			.from(table.translator)
+			.orderBy(asc(table.translator.name));
+
 		return {
 			game: game[0],
 			translations,
+			translators,
 			user: locals.user
 		};
 	} catch (err) {

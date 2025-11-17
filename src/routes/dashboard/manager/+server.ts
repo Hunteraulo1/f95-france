@@ -109,7 +109,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							tversion: translation.tversion,
 							status: translation.status,
 							ttype: translation.ttype,
-							tlink: translation.tlink || null
+							tlink: translation.tlink || null,
+							translatorId: translation.translatorId || null,
+							proofreaderId: translation.proofreaderId || null,
+							ac: translation.ac ?? null
 						}
 					: undefined
 			);
@@ -153,7 +156,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				tversion: translation.tversion,
 				status: translation.status,
 				ttype: translation.ttype,
-				tlink: translation.tlink || null,
+				tlink: translation.tlink || '',
+				translatorId: translation.translatorId || null,
+				proofreaderId: translation.proofreaderId || null,
+				ac: translation.ac ?? false,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
