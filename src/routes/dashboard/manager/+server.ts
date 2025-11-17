@@ -102,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					link: link || null,
 					image
 				},
-				translation && translation.translationName
+				translation
 					? {
 							translationName: translation.translationName,
 							version: translation.version,
@@ -145,7 +145,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const gameId = createdGame[0]?.id;
 
 		// Créer la traduction si elle est fournie
-		if (translation && translation.translationName) {
+		if (translation) {
 			await db.insert(table.gameTranslation).values({
 				gameId: gameId,
 				translationName: translation.translationName,

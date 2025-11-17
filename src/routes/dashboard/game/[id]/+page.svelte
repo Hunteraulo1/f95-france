@@ -1,12 +1,17 @@
 <script lang="ts">
+	import { newToast } from '$lib/stores';
+	import type { FormGameType } from '$lib/types';
 	import {
 		ArrowLeft,
-		Calendar,
+		CalendarCheck2,
+		CalendarClock,
 		ExternalLink,
 		Gamepad2,
 		Globe,
 		Plus,
 		RefreshCcw,
+		Square,
+		SquareCheckBig,
 		SquarePen,
 		Tag,
 		Trash2
@@ -15,7 +20,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const { game, translations } = data;
+	const { game, translations, user: currentUser } = data;
+	const canRefreshGame = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -25,7 +31,8 @@
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
-		tlink: ''
+		tlink: '',
+		ac: false
 	});
 
 	// État pour le modal de modification de traduction
@@ -37,11 +44,12 @@
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
-		tlink: ''
+		tlink: '',
+		ac: false
 	});
 
 	// État pour la suppression
-	let translationToDelete = $state<{ id: string } | null>(null);
+	let translationToDelete = $state<(typeof translations)[number] | null>(null);
 	let gameToDelete = $state<boolean>(false);
 
 	// État pour le modal de modification du jeu
@@ -114,8 +122,109 @@
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
-			tlink: ''
+			tlink: '',
+			ac: false
 		};
+	};
+
+	const refreshGame = async () => {
+		if (!game.threadId || game.website === 'other') {
+			newToast({
+				alertType: 'warning',
+				message: "Ce jeu n'est pas lié à un thread compatible."
+			});
+			return;
+		}
+
+		const autoTranslation = translations.find((translation) => translation.ac);
+
+		if (!autoTranslation) {
+			newToast({
+				alertType: 'warning',
+				message: 'Ajoutez une traduction Auto-Check pour utiliser le rafraîchissement.'
+			});
+			return;
+		}
+
+		try {
+			const response = await fetch('/dashboard/manager/scrape', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ threadId: game.threadId, website: game.website })
+			});
+
+			const payload = await response.json();
+
+			if (!response.ok || !payload.success) {
+				throw new Error(payload.error ?? 'Erreur lors du rafraîchissement');
+			}
+
+			const data = payload.data as {
+				name: string | null;
+				version: string | null;
+				status: string | null;
+				tags: string | null;
+				type: FormGameType['type'] | null;
+				image: string | null;
+			};
+
+			if (!data.version) {
+				newToast({
+					alertType: 'warning',
+					message: 'Version introuvable sur le thread, rafraîchissement annulé.'
+				});
+				return;
+			}
+
+			showEditGameModal = true;
+			editingGame = {
+				...editingGame,
+				name: data.name ?? game.name,
+				tags: data.tags ?? game.tags,
+				type: data.type ?? game.type,
+				image: data.image ?? game.image
+			};
+
+			const translationResponse = await fetch(
+				`/dashboard/game/${game.id}/translations/${autoTranslation.id}`,
+				{
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						translationName: autoTranslation.translationName,
+						version: data.version,
+						tversion: autoTranslation.tversion,
+						status: autoTranslation.status,
+						ttype: autoTranslation.ttype,
+						tlink: autoTranslation.tlink ?? '',
+						ac: autoTranslation.ac ?? false,
+						directMode: true
+					})
+				}
+			);
+
+			if (!translationResponse.ok) {
+				const details = await translationResponse.json().catch(() => ({}));
+				throw new Error(details.error || 'Erreur lors de la mise à jour de la traduction');
+			}
+
+			newToast({
+				alertType: 'success',
+				message: 'Jeu et traduction Auto-Check rafraîchis'
+			});
+
+			window.location.reload();
+		} catch (error) {
+			console.error('Erreur lors du rafraîchissement du jeu:', error);
+			newToast({
+				alertType: 'error',
+				message: "Impossible d'actualiser ce jeu"
+			});
+		}
 	};
 
 	const addTranslation = async () => {
@@ -141,13 +250,14 @@
 
 	const openEditTranslationModal = (translation: (typeof translations)[number]) => {
 		editingTranslation = {
-			translationName: translation.translationName,
+			translationName: translation.translationName || '',
 			id: translation.id,
 			version: translation.version,
 			tversion: translation.tversion,
 			status: translation.status,
 			ttype: translation.ttype,
-			tlink: translation.tlink
+			tlink: translation.tlink,
+			ac: translation.ac ?? false
 		};
 		showEditTranslationModal = true;
 	};
@@ -161,7 +271,8 @@
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
-			tlink: ''
+			tlink: '',
+			ac: false
 		};
 	};
 
@@ -334,11 +445,12 @@
 							<SquarePen size={16} />
 							Modifier le jeu
 						</button>
-						<!-- TODO: Ajouter la fonctionnalité de rafraîchissement du jeu -->
-						<button class="btn btn-sm btn-secondary" onclick={() => null}>
-							<RefreshCcw size={16} />
-							Actualiser le jeu
-						</button>
+						{#if canRefreshGame}
+							<button class="btn btn-sm btn-secondary" onclick={refreshGame}>
+								<RefreshCcw size={16} />
+								Actualiser le jeu
+							</button>
+						{/if}
 						<button class="btn btn-sm btn-error" onclick={confirmDeleteGame}>
 							<Trash2 size={16} />
 							Supprimer le jeu
@@ -387,11 +499,11 @@
 
 						<div class="text-sm text-base-content/60">
 							<div class="mb-1 flex items-center gap-2">
-								<Calendar size={14} />
+								<CalendarCheck2 size={14} />
 								<span>Créé le {new Date(game.createdAt).toLocaleDateString('fr-FR')}</span>
 							</div>
 							<div class="flex items-center gap-2">
-								<Calendar size={14} />
+								<CalendarClock size={14} />
 								<span>Modifié le {new Date(game.updatedAt).toLocaleDateString('fr-FR')}</span>
 							</div>
 						</div>
@@ -418,13 +530,12 @@
 						<table class="table w-full table-zebra">
 							<thead>
 								<tr>
-									{#if translations.length > 0}
-										<th>Nom de la traduction</th>
-									{/if}
+									<th>Nom de la traduction</th>
 									<th>Version</th>
 									<th>Version Trad</th>
 									<th>Statut</th>
 									<th>Type</th>
+									<th>Auto-Check</th>
 									<th>Lien de traduction</th>
 									<th>Actions</th>
 								</tr>
@@ -432,11 +543,9 @@
 							<tbody>
 								{#each translations as translation (translation.id)}
 									<tr>
-										{#if translations.length > 0}
-											<td class="font-bold">
-												{translation.translationName}
-											</td>
-										{/if}
+										<td class="font-bold">
+											{translation.translationName}
+										</td>
 										<td class="font-bold">{translation.version}</td>
 										<td class="font-bold">{translation.tversion}</td>
 										<td>
@@ -448,6 +557,13 @@
 											<span class="badge badge-info">
 												{getTtypeText(translation.ttype)}
 											</span>
+										</td>
+										<td>
+											{#if translation.ac}
+												<SquareCheckBig size={14} />
+											{:else}
+												<Square size={14} />
+											{/if}
 										</td>
 										<td>
 											{#if translation.tlink}
@@ -484,7 +600,11 @@
 				<div class="card-body text-center">
 					<Gamepad2 size={48} class="mx-auto mb-4 text-base-content/40" />
 					<h3 class="mb-2 text-xl font-semibold text-base-content">Aucune traduction</h3>
-					<p class="text-base-content/60">Ce jeu n'a pas encore de traduction disponible.</p>
+					<p class="mb-4 text-base-content/60">Ce jeu n'a pas encore de traduction disponible.</p>
+					<button class="btn btn-primary" onclick={openAddTranslationModal}>
+						<Plus size={16} />
+						Ajouter une traduction
+					</button>
 				</div>
 			</div>
 		{/if}
@@ -687,6 +807,24 @@
 					/>
 				</label>
 			</div>
+
+			{#if canRefreshGame}
+				<div class="form-control mb-6 w-full">
+					<label class="label cursor-pointer" for="edit-ac">
+						<span class="label-text">Auto-Check</span>
+						<input
+							id="edit-ac"
+							type="checkbox"
+							class="toggle"
+							bind:checked={editingTranslation.ac}
+						/>
+					</label>
+					<p class="mt-1 text-xs text-base-content/60">
+						Activez cette option pour que la traduction soit automatiquement rafraîchie lors d'un
+						scrape.
+					</p>
+				</div>
+			{/if}
 
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>

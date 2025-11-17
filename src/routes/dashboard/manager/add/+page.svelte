@@ -24,7 +24,7 @@
 	let { data }: Props = $props();
 	let step = $state(0);
 
-	const translators = $state(data.translators);
+	let translators = $state(data.translators);
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({
@@ -83,60 +83,171 @@
 	};
 
 	const scrapeData = async ({
-		threadId
+		threadId,
+		website
 	}: {
 		threadId: number | null;
 		website: FormGameType['website'];
 	}): Promise<void> => {
-		if (!threadId || threadId === 0) return;
+		if (!threadId || threadId === 0 || website !== 'f95z') return;
 
-		// try {
-		//   scraping = true;
-		//   const result = await GAS_API.getScrape({ id: threadId, domain: website });
+		try {
+			scraping = true;
+			const response = await fetch('/dashboard/manager/scrape', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ threadId, website })
+			});
 
-		//   game = {
-		//     ...game,
-		//     name: result.name ?? game.name,
-		//     tags: result.tags ?? game.tags,
-		//     type: result.type ?? game.type,
-		//     image: result.image ?? game.image,
-		//   };
-		// } catch (error) {
-		//   console.error('Error scrapped game', error);
-		//   newToast({
-		//     alertType: 'error',
-		//     message: 'Impossible de récupérer les informations du jeu',
-		//   });
-		// } finally {
-		//   scraping = false;
-		// }
+			const payload = await response.json();
+
+			if (!response.ok || !payload.success) {
+				throw new Error(payload.error ?? 'Erreur lors de la récupération des données du thread');
+			}
+
+			const data = payload.data as {
+				name: string | null;
+				version: string | null;
+				status: string | null;
+				tags: string | null;
+				type: FormGameType['type'] | null;
+				image: string | null;
+			};
+
+			game = {
+				...game,
+				name: data.name ?? game.name,
+				tags: data.tags ?? game.tags,
+				type: data.type ?? game.type,
+				image: data.image ?? game.image,
+				version: data.version ?? game.version
+			};
+		} catch (error) {
+			console.error('Erreur lors du scraping', error);
+			newToast({
+				alertType: 'error',
+				message: 'Impossible de récupérer les informations du jeu'
+			});
+		} finally {
+			scraping = false;
+		}
 	};
 
-	const handleSubmit = async (): Promise<void> => {
+	const handleSubmit = async (event: SubmitEvent): Promise<void> => {
+		event.preventDefault();
+
+		if (!game) {
+			newToast({
+				alertType: 'error',
+				message: 'Les informations du jeu sont manquantes'
+			});
+			return;
+		}
+
+		const requiredFields: Array<keyof FormGameType> = ['name', 'type', 'website', 'image'];
+		const missingField = requiredFields.find((field) => {
+			const value = game[field];
+			return value === null || value === undefined || value === '';
+		});
+
+		if (missingField) {
+			newToast({
+				alertType: 'error',
+				message: `Le champ ${missingField} est requis`
+			});
+			return;
+		}
+
 		$isLoading = true;
 
 		try {
-			// const result = await GAS_API.postGame({ game, silentMode });
+			type GamePayload = {
+				name: string;
+				description: string | null;
+				type: FormGameType['type'];
+				website: FormGameType['website'];
+				threadId: number | null;
+				tags: string | null;
+				link: string | null;
+				image: string;
+			};
 
-			// if (result === 'duplicate') {
-			//   newToast({
-			//     alertType: 'warning',
-			//     message: 'Le jeu existe déjà dans la liste',
-			//   });
-			//   return;
-			// }
+			type TranslationPayload = {
+				translationName: string;
+				version: string;
+				tversion: string;
+				status: FormGameType['status'];
+				ttype: FormGameType['ttype'];
+				tlink: string | null;
+			};
 
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			await goto('/', { invalidateAll: true });
+			const payload: { game: GamePayload; translation?: TranslationPayload } = {
+				game: {
+					name: game.name.trim(),
+					description: game.description ?? null,
+					type: game.type,
+					website: game.website,
+					threadId: game.threadId ?? null,
+					tags: game.tags?.trim() || null,
+					link: game.link?.trim() || null,
+					image: game.image.trim()
+				}
+			};
+
+			const hasTranslationData =
+				(game.translationName && game.translationName.trim().length > 0) ||
+				(game.tversion && game.tversion.trim().length > 0) ||
+				(game.tlink && game.tlink.trim().length > 0) ||
+				(game.translatorId && game.translatorId.trim().length > 0) ||
+				(game.proofreaderId && game.proofreaderId.trim().length > 0) ||
+				game.tname !== 'no_translation';
+
+			if (hasTranslationData) {
+				const translationName =
+					game.translationName?.trim().length && game.translationName?.trim().length > 0
+						? game.translationName.trim()
+						: game.translatorId?.trim().length && game.translatorId?.trim().length > 0
+							? game.translatorId.trim()
+							: `${payload.game.name} - traduction`;
+
+				payload.translation = {
+					translationName,
+					version: game.version?.trim() || '',
+					tversion: game.tversion?.trim() || '',
+					status: game.status,
+					ttype: game.ttype,
+					tlink: game.tlink?.trim() || null
+				};
+			}
+
+			const response = await fetch('/dashboard/manager', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Erreur lors de la création du jeu');
+			}
+
 			newToast({
 				alertType: 'success',
-				message: 'Le jeu a bien été ajouté'
+				message: result.message || 'Le jeu a bien été ajouté'
 			});
+
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			await goto('/dashboard/manager', { invalidateAll: true });
 		} catch (error) {
 			console.error('Error adding game', error);
 			newToast({
 				alertType: 'error',
-				message: "Impossible d'ajouter le jeu"
+				message: error instanceof Error ? error.message : "Impossible d'ajouter le jeu"
 			});
 		} finally {
 			$isLoading = false;
@@ -157,6 +268,7 @@
 		className?: string;
 		active?: number[];
 		name: keyof FormGameType & string;
+		needsTranslators?: boolean;
 	};
 
 	const elements: Element[] = [
@@ -214,16 +326,17 @@
 			name: 'description'
 		},
 		{
-			Component: InputImage,
-			active: [2, 5],
-			title: "Lien de l'image du jeu",
-			name: 'image'
-		},
-		{
 			Component: Input,
 			active: [2, 5],
 			title: 'Version du jeu',
 			name: 'version',
+			type: 'text'
+		},
+		{
+			Component: Input,
+			active: [3, 5],
+			title: 'Nom de la traduction',
+			name: 'translationName',
 			type: 'text'
 		},
 		{
@@ -251,13 +364,15 @@
 			Component: Datalist,
 			active: [3, 5],
 			title: 'Traducteur',
-			name: 'translatorId'
+			name: 'translatorId',
+			needsTranslators: true
 		},
 		{
 			Component: Datalist,
 			active: [3, 5],
 			title: 'Relecteur',
-			name: 'proofreaderId'
+			name: 'proofreaderId',
+			needsTranslators: true
 		},
 		{
 			Component: Select,
@@ -304,18 +419,12 @@
 				</div>
 			{/if}
 			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each elements as { Component, name, title, active, className, values, type } (name)}
-					<Component
-						{step}
-						{name}
-						{title}
-						{active}
-						{className}
-						{values}
-						{type}
-						bind:game
-						{translators}
-					/>
+				{#each elements as { Component, name, title, active, className, values, type, needsTranslators } (name)}
+					{#if needsTranslators && Component === Datalist}
+						<Datalist {step} {name} {title} {active} {className} bind:game bind:translators />
+					{:else}
+						<Component {step} {name} {title} {active} {className} {values} {type} bind:game />
+					{/if}
 				{/each}
 			</div>
 			<div class="flex w-full flex-col justify-center gap-4 px-8 sm:flex-row">
@@ -339,8 +448,7 @@
 					<button class="btn w-full btn-primary sm:w-48" type="submit"> Ajouter le jeu </button>
 				{/if}
 				{#if checkRole(['superadmin'])}
-					<Dev {step} bind:game />
-					<!-- <Dev {step} {scrapeData} {game} /> -->
+					<Dev bind:game />
 				{/if}
 				{#if game.website === 'lc' || game.website === 'f95z'}
 					<Insert bind:game />

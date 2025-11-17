@@ -1,18 +1,26 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import type { Config } from '$lib/server/db/schema';
 	import { CircleCheck, CircleX, ExternalLink, Loader } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	// Type assertion pour config
-	const config = (data as { config?: unknown }).config;
+	const config = data.config as Config | null | undefined;
 
 	let isLoading = $state(false);
 	let testResult = $state<{
 		success: boolean;
 		message: string;
-		details: unknown;
+		details:
+			| {
+					title?: string;
+					spreadsheetId?: string;
+					sheets?: string[];
+			  }
+			| string
+			| null;
 	} | null>(null);
 </script>
 
@@ -45,14 +53,28 @@
 
 						// Traiter le résultat de l'action
 						if (result.type === 'success' && result.data) {
-							testResult = result.data as {
+							const successData = result.data as {
 								success: boolean;
 								message: string;
-								details: unknown;
+								details?:
+									| string
+									| { title?: string; spreadsheetId?: string; sheets?: string[] }
+									| null;
+							};
+							testResult = {
+								success: successData.success,
+								message: successData.message,
+								details: successData.details || null
 							};
 						} else if (result.type === 'failure' && result.data) {
 							// En cas d'erreur, result.data contient les données d'erreur
-							const errorData = result.data as { message?: string; details?: unknown };
+							const errorData = result.data as {
+								message?: string;
+								details?:
+									| string
+									| { title?: string; spreadsheetId?: string; sheets?: string[] }
+									| null;
+							};
 							testResult = {
 								success: false,
 								message: errorData.message || 'Erreur inconnue',
@@ -121,20 +143,29 @@
 							<CircleCheck class="h-6 w-6" />
 							<div class="flex-1">
 								<h3 class="font-bold">{testResult.message}</h3>
-								{#if typeof testResult.details === 'object' && testResult.details !== null}
+								{#if typeof testResult.details === 'object' && testResult.details !== null && !(typeof testResult.details === 'string')}
+									{@const details = testResult.details as {
+										title?: string;
+										spreadsheetId?: string;
+										sheets?: string[];
+									}}
 									<div class="mt-2 space-y-1">
-										<p><strong>Titre :</strong> {testResult.details.title}</p>
-										<p>
-											<strong>ID :</strong>
-											<code class="rounded bg-base-200 px-2 py-1 text-sm"
-												>{testResult.details.spreadsheetId}</code
-											>
-										</p>
-										{#if testResult.details.sheets && testResult.details.sheets.length > 0}
+										{#if details.title}
+											<p><strong>Titre :</strong> {details.title}</p>
+										{/if}
+										{#if details.spreadsheetId}
+											<p>
+												<strong>ID :</strong>
+												<code class="rounded bg-base-200 px-2 py-1 text-sm"
+													>{details.spreadsheetId}</code
+												>
+											</p>
+										{/if}
+										{#if details.sheets && details.sheets.length > 0}
 											<div>
 												<strong>Feuilles :</strong>
 												<ul class="ml-2 list-inside list-disc">
-													{#each (testResult.details as { sheets?: string[] }).sheets || [] as sheet (sheet)}
+													{#each details.sheets as sheet (sheet)}
 														<li>{sheet}</li>
 													{/each}
 												</ul>

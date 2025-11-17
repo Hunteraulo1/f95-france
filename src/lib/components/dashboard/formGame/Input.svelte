@@ -32,36 +32,49 @@
 
 	let error = $state(false);
 
+	const updateGameLink = () => {
+		const gameId = game.threadId;
+
+		if (!gameId || gameId === 0) {
+			game.link = '';
+			return;
+		}
+
+		switch (game.website) {
+			case 'f95z':
+				game.link = `https://f95zone.to/threads/${gameId}`;
+				break;
+			case 'lc':
+				game.link = `https://lewcorner.com/threads/${gameId}`;
+				break;
+			default:
+				game.link = '';
+				break;
+		}
+	};
+
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
 		if (name === 'ac' && event.currentTarget instanceof HTMLInputElement) {
 			game.ac = event.currentTarget.checked;
 			return;
 		}
 
-		const gameId = game.threadId;
-
-		if (name === 'id' && gameId && gameId !== 0) {
-			switch (game.website) {
-				case 'f95z':
-					game.link = `https://f95zone.to/threads/${gameId}`;
-					break;
-				case 'lc':
-					game.link = `https://lewdcorner.com/threads/${gameId}`;
-					break;
-			}
-		}
-
 		const value = event.currentTarget.value;
 
 		if (type === 'number') {
-			(game[name] as number) = Number.parseInt(value);
+			const parsed = Number.parseInt(value, 10);
+			(game[name] as number | null) = Number.isNaN(parsed) ? null : parsed;
 		} else {
 			(game[name] as string) = value;
+		}
+
+		if (name === 'threadId') {
+			updateGameLink();
 		}
 	};
 
 	const handleInput: ChangeEventHandler<HTMLInputElement> = () => {
-		if (name === 'ac' || name === 'id') return;
+		if (name === 'ac' || name === 'threadId') return;
 
 		// Validation simplifiée pour l'instant
 		error = false;

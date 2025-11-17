@@ -24,7 +24,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { translationName, version, tversion, status, ttype, tlink, directMode } = body;
+		const { translationName, version, tversion, status, ttype, tlink, directMode, ac } = body;
 
 		// Validation des données requises
 		if (!version || !tversion || !status || !ttype || !tlink) {
@@ -85,6 +85,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				status,
 				ttype,
 				tlink,
+				ac: ac ?? false,
 				updatedAt: new Date()
 			})
 			.where(eq(table.gameTranslation.id, translationId));

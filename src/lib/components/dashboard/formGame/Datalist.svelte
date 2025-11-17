@@ -14,7 +14,7 @@
 		step?: number;
 		name: keyof FormGameType;
 		game: FormGameType;
-		translators: Translator[];
+		translators?: Translator[];
 	}
 
 	const {
@@ -24,7 +24,7 @@
 		step,
 		name,
 		game = $bindable(),
-		translators = $bindable()
+		translators = $bindable<Translator[]>([])
 	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
@@ -83,6 +83,7 @@
 		</datalist>
 		{#if checkRole(['admin', 'superadmin'])}
 			<button
+				type="button"
 				class="btn w-min btn-primary"
 				onclick={(e) => {
 					e.preventDefault();
@@ -95,4 +96,4 @@
 	</div>
 </div>
 
-<AddTraductorModal bind:showModal={modal} name={game.translatorId ?? ''} {translators} />
+<AddTraductorModal bind:showModal={modal} {translators} />

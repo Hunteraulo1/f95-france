@@ -64,8 +64,9 @@
 				{/if}
 			</div>
 			<div class="modal-action">
-				<button class="btn btn-primary" onclick={addTraductor}>Ajouter</button>
+				<button type="button" class="btn btn-primary" onclick={addTraductor}>Ajouter</button>
 				<button
+					type="button"
 					class="btn"
 					onclick={() => {
 						showModal = false;

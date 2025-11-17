@@ -38,15 +38,20 @@
 
 			const gameId = game.threadId;
 
-			if (!gameId || gameId === 0) return;
-
-			switch (game.website) {
-				case 'f95z':
-					game.link = `https://f95zone.to/threads/${gameId}`;
-					break;
-				case 'lc':
-					game.link = `https://lewdcorner.com/threads/${gameId}`;
-					break;
+			if (!gameId || gameId === 0) {
+				game.link = '';
+			} else {
+				switch (game.website) {
+					case 'f95z':
+						game.link = `https://f95zone.to/threads/${gameId}`;
+						break;
+					case 'lc':
+						game.link = `https://lewcorner.com/threads/${gameId}`;
+						break;
+					default:
+						game.link = '';
+						break;
+				}
 			}
 		}
 	};

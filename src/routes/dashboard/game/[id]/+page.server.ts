@@ -61,7 +61,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		return {
 			game: game[0],
-			translations
+			translations,
+			user: locals.user
 		};
 	} catch (err) {
 		if (err instanceof Error && err.message.includes('404')) {

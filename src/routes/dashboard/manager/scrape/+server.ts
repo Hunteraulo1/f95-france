@@ -1,51 +1,38 @@
+import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
 	}
 
 	try {
 		const body = await request.json();
-		const { website, threadId } = body;
+		const { website, threadId } = body as {
+			website?: 'f95z' | 'lc' | 'other';
+			threadId?: number | string;
+		};
 
-		if (!website || !threadId) {
+		if (!website || typeof threadId === 'undefined' || threadId === null) {
 			return json({ error: 'Site web et ID de thread requis' }, { status: 400 });
 		}
 
-		if (website !== 'F95Zone') {
+		if (website !== 'f95z') {
 			return json({ error: "Le scraping n'est disponible que pour F95Zone" }, { status: 400 });
 		}
 
-		// Simuler le scraping pour F95Zone
-		// Dans une vraie implémentation, vous utiliseriez une bibliothèque comme Puppeteer ou Playwright
-		// pour scraper les données depuis F95Zone
+		const numericThreadId = Number(threadId);
 
-		// Pour l'instant, on simule des données
-		const scrapedData = {
-			game: {
-				name: `Jeu scrapé depuis F95Zone #${threadId}`,
-				description: 'Description scrapée depuis F95Zone...',
-				type: 'Visual Novel',
-				tags: '3D, Adventure, Romance',
-				image: 'https://via.placeholder.com/300x400',
-				link: `https://f95zone.to/threads/thread-${threadId}`
-			},
-			translation: {
-				translationName: 'Traduction française',
-				version: '1.0.0',
-				tversion: '1.0',
-				status: 'in_progress',
-				ttype: 'manual',
-				tlink: ''
-			}
-		};
+		if (!Number.isFinite(numericThreadId) || numericThreadId <= 0) {
+			return json({ error: 'ID de thread invalide' }, { status: 400 });
+		}
 
-		return json(scrapedData);
+		const scrapedData = await scrapeF95Thread(numericThreadId);
+
+		return json({ success: true, data: scrapedData });
 	} catch (error) {
 		console.error('Erreur lors du scraping:', error);
-		return json({ error: 'Erreur serveur' }, { status: 500 });
+		return json({ error: 'Erreur serveur lors du scraping' }, { status: 500 });
 	}
 };

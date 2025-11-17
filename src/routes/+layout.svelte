@@ -2,9 +2,10 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
+	import type { Snippet } from 'svelte';
 	import '../app.css';
 
-	let { children }: { children: unknown } = $props();
+	let { children }: { children: Snippet } = $props();
 
 	onMount(() => {
 		themeChange(false);
@@ -15,4 +16,4 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{@render children?.()}
+{@render children()}
