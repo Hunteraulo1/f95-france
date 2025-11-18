@@ -44,23 +44,57 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			conditions.push(and(gte(apiLog.status, 300), lt(apiLog.status, 400)));
 		}
 
-		let query = db
-			.select({
-				id: apiLog.id,
-				method: apiLog.method,
-				route: apiLog.route,
-				status: apiLog.status,
-				payload: apiLog.payload,
-				errorMessage: apiLog.errorMessage,
-				createdAt: apiLog.createdAt,
-				user: {
-					id: user.id,
-					username: user.username
-				}
-			})
-			.from(apiLog)
-			.leftJoin(user, eq(apiLog.userId, user.id))
-			.$dynamic();
+		// Vérifier si la colonne errorMessage existe en essayant une requête simple
+		let hasErrorMessageColumn = false;
+		try {
+			await db
+				.select({ errorMessage: apiLog.errorMessage })
+				.from(apiLog)
+				.limit(1);
+			hasErrorMessageColumn = true;
+		} catch {
+			// La colonne n'existe pas encore, on continuera sans elle
+			hasErrorMessageColumn = false;
+		}
+
+		// Construire la requête avec ou sans errorMessage selon la disponibilité
+		let query;
+		if (hasErrorMessageColumn) {
+			query = db
+				.select({
+					id: apiLog.id,
+					method: apiLog.method,
+					route: apiLog.route,
+					status: apiLog.status,
+					payload: apiLog.payload,
+					errorMessage: apiLog.errorMessage,
+					createdAt: apiLog.createdAt,
+					user: {
+						id: user.id,
+						username: user.username
+					}
+				})
+				.from(apiLog)
+				.leftJoin(user, eq(apiLog.userId, user.id))
+				.$dynamic();
+		} else {
+			query = db
+				.select({
+					id: apiLog.id,
+					method: apiLog.method,
+					route: apiLog.route,
+					status: apiLog.status,
+					payload: apiLog.payload,
+					createdAt: apiLog.createdAt,
+					user: {
+						id: user.id,
+						username: user.username
+					}
+				})
+				.from(apiLog)
+				.leftJoin(user, eq(apiLog.userId, user.id))
+				.$dynamic();
+		}
 
 		if (conditions.length === 1) {
 			query = query.where(conditions[0]);

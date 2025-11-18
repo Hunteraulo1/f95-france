@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { user } from '$lib/stores';
+	import { newToast, user } from '$lib/stores';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 	import { Eye, User } from '@lucide/svelte';
 
@@ -71,7 +71,7 @@
 							</div>
 							<button
 								type="button"
-								class="link link-primary text-sm opacity-70 hover:opacity-100"
+								class="text-primary text-sm opacity-70 hover:opacity-100"
 								onclick={() => {
 									if (submission.user?.id) {
 										goto(`/dashboard/profile/${submission.user.id}`);
@@ -95,9 +95,18 @@
 							</div>
 						{/if}
 						{#if $user?.role === 'superadmin'}
-							<div class="badge badge-outline badge-sm">
+							<button
+                class="badge badge-outline badge-sm overflow-hidden hover:bg-base-200"
+                onclick={() => {
+                  navigator.clipboard.writeText(submission.id);
+                  newToast({
+                    alertType: 'success',
+                    message: 'ID de la soumission copié dans le presse-papiers'
+                  });
+                }}
+              >
 								ID: {submission.id}
-							</div>
+							</button>
 						{/if}
 					</div>
 				</div>
