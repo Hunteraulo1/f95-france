@@ -177,6 +177,32 @@ export const apiLog = mysqlTable('api_log', {
 		.default(sql`CURRENT_TIMESTAMP`)
 });
 
+export const notification = mysqlTable('notification', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`(UUID())`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, {
+			onDelete: 'cascade',
+			onUpdate: 'cascade'
+		}),
+	type: mysqlEnum('type', [
+		'submission_status_changed',
+		'new_user_registered',
+		'submission_accepted',
+		'submission_rejected'
+	]).notNull(),
+	title: varchar('title', { length: 255 }).notNull(),
+	message: text('message').notNull(),
+	read: boolean('read').notNull().default(false),
+	link: varchar('link', { length: 500 }),
+	metadata: text('metadata'), // JSON pour stocker des données supplémentaires
+	createdAt: datetime('created_at')
+		.notNull()
+		.default(sql`CURRENT_TIMESTAMP`)
+});
+
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 export type Game = typeof game.$inferSelect;
@@ -186,3 +212,4 @@ export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;
+export type Notification = typeof notification.$inferSelect;

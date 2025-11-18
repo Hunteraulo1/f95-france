@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { user } from '$lib/stores';
 	import { Menu, User } from '@lucide/svelte';
+	import Notifications from './Notifications.svelte';
 
 	let { isSidebarOpen = $bindable() }: { isSidebarOpen: boolean } = $props();
 </script>
@@ -16,6 +17,9 @@
 	</div>
 	<div class="flex gap-2">
 		<!-- <button class="btn btn-soft btn-primary">Retour au compte { user.username }</button> TODO: Implement user switcher -->
+		{#if $user}
+			<Notifications />
+		{/if}
 		<div class="dropdown dropdown-end">
 			<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
 				<div class="flex w-10 items-center justify-center rounded-full">

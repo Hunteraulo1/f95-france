@@ -32,6 +32,7 @@
 		status: 'in_progress',
 		ttype: 'manual',
 		tlink: '',
+		tname: 'translation',
 		ac: false,
 		translatorId: '',
 		proofreaderId: ''
@@ -127,11 +128,19 @@
 			status: 'in_progress',
 			ttype: 'manual',
 			tlink: '',
+			tname: 'translation',
 			ac: false,
 			translatorId: '',
 			proofreaderId: ''
 		};
 	};
+
+	// Réinitialiser le lien lorsque le statut change vers intégrée ou pas de traduction
+	$effect(() => {
+		if (newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation') {
+			newTranslation.tlink = '';
+		}
+	});
 
 	const refreshGame = async () => {
 		if (!game.threadId || game.website === 'other') {
@@ -234,23 +243,104 @@
 	};
 
 	const addTranslation = async () => {
+		// Validation des champs requis
+		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
+		const linkNotRequired = newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
+		if (!newTranslation.version || !newTranslation.tversion || (!linkNotRequired && !newTranslation.tlink)) {
+			newToast({
+				alertType: 'error',
+				message: linkNotRequired
+					? 'Veuillez remplir tous les champs requis (Version, Version de traduction)'
+					: 'Veuillez remplir tous les champs requis (Version, Version de traduction, Lien)'
+			});
+			return;
+		}
+
 		try {
+			// Convertir les noms de traducteurs/relecteurs en IDs
+			let translatorIdValue: string | null = null;
+			let proofreaderIdValue: string | null = null;
+
+			if (newTranslation.translatorId) {
+				const translator = translators.find((t) => t.name === newTranslation.translatorId);
+				if (translator) {
+					translatorIdValue = translator.id;
+				} else {
+					newToast({
+						alertType: 'error',
+						message: `Traducteur "${newTranslation.translatorId}" non trouvé`
+					});
+					return;
+				}
+			}
+
+			if (newTranslation.proofreaderId) {
+				const proofreader = translators.find((t) => t.name === newTranslation.proofreaderId);
+				if (proofreader) {
+					proofreaderIdValue = proofreader.id;
+				} else {
+					newToast({
+						alertType: 'error',
+						message: `Relecteur "${newTranslation.proofreaderId}" non trouvé`
+					});
+					return;
+				}
+			}
+
+			// Pour les traductions intégrées ou "pas de traduction", le lien doit être null
+			const tlinkValue = linkNotRequired ? null : newTranslation.tlink;
+
+			const payload = {
+				translationName: newTranslation.translationName || null,
+				version: newTranslation.version,
+				tversion: newTranslation.tversion,
+				status: newTranslation.status,
+				ttype: newTranslation.ttype,
+				tlink: tlinkValue,
+				tname: newTranslation.tname,
+				ac: newTranslation.ac ?? false,
+				translatorId: translatorIdValue,
+				proofreaderId: proofreaderIdValue
+			};
+
 			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(newTranslation)
+				body: JSON.stringify(payload)
 			});
 
+			const data = await response.json();
+
 			if (response.ok) {
+				if (data.submission) {
+					newToast({
+						alertType: 'success',
+						message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.'
+					});
+				} else {
+					newToast({
+						alertType: 'success',
+						message: 'Traduction ajoutée avec succès'
+					});
+				}
+				closeAddTranslationModal();
 				// Recharger la page pour voir la nouvelle traduction
 				window.location.reload();
 			} else {
-				console.error("Erreur lors de l'ajout de la traduction");
+				const errorMessage = data.error || "Erreur lors de l'ajout de la traduction";
+				newToast({
+					alertType: 'error',
+					message: errorMessage
+				});
 			}
 		} catch (error) {
 			console.error("Erreur lors de l'ajout de la traduction:", error);
+			newToast({
+				alertType: 'error',
+				message: "Une erreur est survenue lors de l'ajout de la traduction"
+			});
 		}
 	};
 
@@ -702,6 +792,18 @@
 			</div>
 
 			<div class="form-control mb-4 w-full">
+				<label class="input pr-0" for="tname">
+					Statut de traduction
+					<select id="tname" class="w-full select-ghost" bind:value={newTranslation.tname} required>
+						<option value="no_translation">Pas de traduction</option>
+						<option value="integrated">Intégrée</option>
+						<option value="translation">Traduction</option>
+						<option value="translation_with_mods">Traduction avec mods</option>
+					</select>
+				</label>
+			</div>
+
+			<div class="form-control mb-4 w-full">
 				<label class="input pr-0" for="ttype">
 					Type de traduction
 					<select id="ttype" class="w-full select-ghost" bind:value={newTranslation.ttype} required>
@@ -724,9 +826,25 @@
 						placeholder="https://..."
 						class="w-full input-ghost"
 						bind:value={newTranslation.tlink}
-						required
+						disabled={newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation'}
+						required={newTranslation.tname !== 'integrated' && newTranslation.tname !== 'no_translation'}
 					/>
 				</label>
+			</div>
+
+			<div class="form-control mb-6 w-full">
+				<label class="label cursor-pointer" for="ac">
+					<span class="label-text">Auto-Check</span>
+					<input
+						id="ac"
+						type="checkbox"
+						class="toggle"
+						bind:checked={newTranslation.ac}
+					/>
+				</label>
+				<p class="mt-1 text-xs text-base-content/60">
+					Activez cette option pour que les données de la traduction soient automatiquement rafraîchies lors d'une nouvelle version du jeu.
+				</p>
 			</div>
 
 			<div class="grid gap-4 md:grid-cols-2">

@@ -29,7 +29,7 @@
 		icon: typeof IconType;
 		roles: checkRoleType[];
 		badge?: number;
-		badgeKey?: 'translator' | 'admin';
+		badgeKey?: boolean;
 	}
 
 	interface NavItemSplit {
@@ -54,15 +54,14 @@
 			label: 'Mes soumissions',
 			href: '/dashboard/submit',
 			icon: Inbox,
-			roles: ['translator'],
-			badgeKey: 'translator'
+			roles: ['translator']
 		},
 		{
 			label: 'Soumissions',
 			href: '/dashboard/submits',
 			icon: Box,
 			roles: ['admin'],
-			badgeKey: 'admin'
+			badgeKey: true
 		},
 		{
 			label: 'Traducteurs/Relecteurs',
@@ -143,13 +142,9 @@
 								<IconComponent size={16} />
 								<span class="text-nowrap is-drawer-close:hidden">
 									{item.label}
-									{#if (item.badgeKey === 'translator' || item.badgeKey === 'admin' ? pendingSubmissionsCount : item.badge || 0) > 0}
-										{@const badgeCount =
-											item.badgeKey === 'translator' || item.badgeKey === 'admin'
-												? pendingSubmissionsCount
-												: item.badge || 0}
-										<div class="ml-1 badge badge-xs badge-primary">
-											{badgeCount > 99 ? '99+' : badgeCount}
+									{#if item.badgeKey && pendingSubmissionsCount > 0}
+										<div class="ml-1 badge badge-xs badge-warning">
+											{pendingSubmissionsCount > 99 ? '99+' : pendingSubmissionsCount}
 										</div>
 									{/if}
 								</span>

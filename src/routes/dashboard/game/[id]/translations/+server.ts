@@ -28,6 +28,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			status,
 			ttype,
 			tlink,
+			tname,
 			directMode,
 			ac,
 			translatorId,
@@ -35,8 +36,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		} = body;
 
 		// Validation des données requises
-		if (!version || !tversion || !status || !ttype || !tlink) {
-			return json({ error: 'Tous les champs sont requis' }, { status: 400 });
+		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
+		const linkNotRequired = tname === 'integrated' || tname === 'no_translation';
+		if (!version || !tversion || !status || !ttype || (!linkNotRequired && !tlink)) {
+			return json(
+				{
+					error: linkNotRequired
+						? 'Les champs Version, Version de traduction, Statut et Type sont requis'
+						: 'Tous les champs sont requis'
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Vérifier que le jeu existe
@@ -88,6 +98,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Mode direct pour les admins ou superadmins en mode direct
 		// Créer la nouvelle traduction
+		// Pour les traductions intégrées ou "pas de traduction", le lien doit être une chaîne vide
+		// (le champ est NOT NULL dans le schéma, donc on utilise '' au lieu de null)
 		await db.insert(table.gameTranslation).values({
 			gameId,
 			translationName,
@@ -95,7 +107,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tversion,
 			status,
 			ttype,
-			tlink,
+			tlink: linkNotRequired || tlink === null ? '' : (tlink || ''),
+			tname: (tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') || 'translation',
 			translatorId: translatorId || null,
 			proofreaderId: proofreaderId || null,
 			ac: ac ?? false

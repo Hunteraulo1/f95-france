@@ -66,6 +66,15 @@ export const actions: Actions = {
 			// Créer l'utilisateur
 			const user = await auth.createUser(username, email, password);
 
+			// Notifier les superadmins de la nouvelle inscription
+			try {
+				const { notifyNewUserRegistration } = await import('$lib/server/notifications');
+				await notifyNewUserRegistration(user.id, username);
+			} catch (notificationError) {
+				// Ne pas bloquer l'inscription si la notification échoue
+				console.error('Erreur lors de la création de la notification:', notificationError);
+			}
+
 			// Créer une session
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, user.id);

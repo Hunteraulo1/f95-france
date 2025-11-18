@@ -407,66 +407,103 @@ export async function applySubmission(submissionId: string) {
 		}
 
 		if (sub.translationId) {
-			// Mettre à jour une traduction existante
-			// Récupérer la traduction actuelle pour sauvegarder les anciennes valeurs
+			// Vérifier si la traduction existe toujours (elle peut avoir été supprimée lors d'un revert)
 			const existingTranslation = await db
 				.select()
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.id, sub.translationId))
 				.limit(1);
 
-			if (existingTranslation.length === 0) {
-				throw new Error('Traduction non trouvée');
-			}
+			if (existingTranslation.length > 0) {
+				// Mettre à jour une traduction existante
+				const originalTranslation = existingTranslation[0];
 
-			const originalTranslation = existingTranslation[0];
+				// Sauvegarder les anciennes valeurs dans les données de la soumission
+				const updatedData = {
+					...parsedData,
+					originalTranslation: {
+						translationName: originalTranslation.translationName,
+						version: originalTranslation.version,
+						tversion: originalTranslation.tversion,
+						status: originalTranslation.status,
+						ttype: originalTranslation.ttype,
+						tlink: originalTranslation.tlink,
+						translatorId: originalTranslation.translatorId,
+						proofreaderId: originalTranslation.proofreaderId,
+						ac: originalTranslation.ac
+					}
+				};
 
-			// Sauvegarder les anciennes valeurs dans les données de la soumission
-			const updatedData = {
-				...parsedData,
-				originalTranslation: {
-					translationName: originalTranslation.translationName,
-					version: originalTranslation.version,
-					tversion: originalTranslation.tversion,
-					status: originalTranslation.status,
-					ttype: originalTranslation.ttype,
-					tlink: originalTranslation.tlink,
-					translatorId: originalTranslation.translatorId,
-					proofreaderId: originalTranslation.proofreaderId,
-					ac: originalTranslation.ac
-				}
-			};
+				// Mettre à jour les données de la soumission avec les anciennes valeurs
+				await db
+					.update(table.submission)
+					.set({
+						data: JSON.stringify(updatedData)
+					})
+					.where(eq(table.submission.id, submissionId));
 
-			// Mettre à jour les données de la soumission avec les anciennes valeurs
-			await db
-				.update(table.submission)
-				.set({
-					data: JSON.stringify(updatedData)
-				})
-				.where(eq(table.submission.id, submissionId));
-
-			// Mettre à jour la traduction
-			await db
-				.update(table.gameTranslation)
-				.set({
+				// Mettre à jour la traduction
+				await db
+					.update(table.gameTranslation)
+					.set({
+						translationName: translationData.translationName || null,
+						version: translationData.version,
+						tversion: translationData.tversion,
+						status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
+						ttype: translationData.ttype as
+							| 'auto'
+							| 'vf'
+							| 'manual'
+							| 'semi-auto'
+							| 'to_tested'
+							| 'hs',
+						tlink: translationData.tlink || '',
+						translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
+						proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+						ac: translationData.ac ?? originalTranslation.ac ?? false,
+						updatedAt: new Date()
+					})
+					.where(eq(table.gameTranslation.id, sub.translationId));
+			} else {
+				// La traduction a été supprimée (probablement lors d'un revert), créer une nouvelle traduction
+				await db.insert(table.gameTranslation).values({
+					gameId: sub.gameId,
 					translationName: translationData.translationName || null,
 					version: translationData.version,
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
-					ttype: translationData.ttype as
-						| 'auto'
-						| 'vf'
-						| 'manual'
-						| 'semi-auto'
-						| 'to_tested'
-						| 'hs',
+					ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 					tlink: translationData.tlink || '',
-					translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
-					proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
-					ac: translationData.ac ?? originalTranslation.ac ?? false,
+					translatorId: translationData.translatorId ?? null,
+					proofreaderId: translationData.proofreaderId ?? null,
+					ac: translationData.ac ?? false,
+					createdAt: new Date(),
 					updatedAt: new Date()
-				})
-				.where(eq(table.gameTranslation.id, sub.translationId));
+				});
+
+				// Récupérer l'ID de la traduction créée
+				const createdTranslation = await db
+					.select({ id: table.gameTranslation.id })
+					.from(table.gameTranslation)
+					.where(
+						and(
+							eq(table.gameTranslation.gameId, sub.gameId),
+							eq(table.gameTranslation.version, translationData.version),
+							eq(table.gameTranslation.tversion, translationData.tversion)
+						)
+					)
+					.limit(1);
+
+				const translationId = createdTranslation[0]?.id;
+
+				// Mettre à jour la soumission avec le nouveau translationId
+				if (translationId) {
+					await db
+						.update(table.submission)
+						.set({ translationId })
+						.where(eq(table.submission.id, submissionId));
+				}
+			}
 		} else {
 			// Créer une nouvelle traduction
 			await db.insert(table.gameTranslation).values({
@@ -760,14 +797,8 @@ export async function revertSubmission(submissionId: string) {
 			})
 			.where(eq(table.game.id, sub.gameId));
 	} else if (sub.type === 'translation') {
-		if (sub.translationId) {
-			// Restaurer les anciennes valeurs de la traduction
-			if (!parsedData.originalTranslation) {
-				throw new Error(
-					"Données originales de la traduction non trouvées. Impossible d'annuler les changements."
-				);
-			}
-
+		if (sub.translationId && parsedData.originalTranslation) {
+			// Restaurer les anciennes valeurs de la traduction (mise à jour)
 			const originalTranslation = parsedData.originalTranslation;
 
 			// Restaurer la traduction avec les anciennes valeurs
@@ -793,34 +824,39 @@ export async function revertSubmission(submissionId: string) {
 				})
 				.where(eq(table.gameTranslation.id, sub.translationId));
 		} else {
-			// Supprimer la traduction créée
+			// Supprimer la traduction créée (nouvelle traduction ou traduction sans données originales)
 			if (!sub.gameId) {
 				throw new Error("ID de jeu manquant pour l'annulation");
 			}
 
-			// Récupérer la traduction créée pour cette soumission
-			const translationData = parsedData.translation;
-			if (!translationData) {
-				throw new Error('Données de traduction manquantes');
-			}
+			// Si translationId existe, utiliser directement cet ID pour supprimer
+			if (sub.translationId) {
+				await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, sub.translationId));
+			} else {
+				// Sinon, chercher la traduction par les données de la soumission
+				const translationData = parsedData.translation;
+				if (!translationData) {
+					throw new Error('Données de traduction manquantes');
+				}
 
-			// Trouver et supprimer la traduction créée
-			const createdTranslation = await db
-				.select({ id: table.gameTranslation.id })
-				.from(table.gameTranslation)
-				.where(
-					and(
-						eq(table.gameTranslation.gameId, sub.gameId),
-						eq(table.gameTranslation.version, translationData.version),
-						eq(table.gameTranslation.tversion, translationData.tversion)
+				// Trouver et supprimer la traduction créée
+				const createdTranslation = await db
+					.select({ id: table.gameTranslation.id })
+					.from(table.gameTranslation)
+					.where(
+						and(
+							eq(table.gameTranslation.gameId, sub.gameId),
+							eq(table.gameTranslation.version, translationData.version),
+							eq(table.gameTranslation.tversion, translationData.tversion)
+						)
 					)
-				)
-				.limit(1);
+					.limit(1);
 
-			if (createdTranslation.length > 0) {
-				await db
-					.delete(table.gameTranslation)
-					.where(eq(table.gameTranslation.id, createdTranslation[0].id));
+				if (createdTranslation.length > 0) {
+					await db
+						.delete(table.gameTranslation)
+						.where(eq(table.gameTranslation.id, createdTranslation[0].id));
+				}
 			}
 		}
 	} else if (sub.type === 'delete') {

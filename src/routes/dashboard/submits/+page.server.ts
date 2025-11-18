@@ -192,7 +192,11 @@ export const actions: Actions = {
 		try {
 			// Récupérer la soumission actuelle pour vérifier son statut
 			const currentSubmission = await db
-				.select({ status: table.submission.status })
+				.select({
+					status: table.submission.status,
+					userId: table.submission.userId,
+					type: table.submission.type
+				})
 				.from(table.submission)
 				.where(eq(table.submission.id, submissionId))
 				.limit(1);
@@ -202,6 +206,8 @@ export const actions: Actions = {
 			}
 
 			const currentStatus = currentSubmission[0].status;
+			const submissionUserId = currentSubmission[0].userId;
+			const submissionType = currentSubmission[0].type;
 
 			// Mettre à jour le statut
 			await db
@@ -211,6 +217,23 @@ export const actions: Actions = {
 					adminNotes: adminNotes || null
 				})
 				.where(eq(table.submission.id, submissionId));
+
+			// Créer une notification si le statut a changé
+			if (currentStatus !== status) {
+				try {
+					const { notifySubmissionStatusChange } = await import('$lib/server/notifications');
+					await notifySubmissionStatusChange(
+						submissionUserId,
+						submissionId,
+						currentStatus,
+						status,
+						submissionType
+					);
+				} catch (notificationError: unknown) {
+					// Ne pas bloquer la mise à jour du statut si la notification échoue
+					console.error('Erreur lors de la création de la notification:', notificationError);
+				}
+			}
 
 			// Si la soumission est acceptée et qu'elle ne l'était pas déjà, appliquer les changements
 			if (status === 'accepted' && currentStatus !== 'accepted') {
