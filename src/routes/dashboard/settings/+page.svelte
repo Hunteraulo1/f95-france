@@ -3,15 +3,20 @@
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
+	import { themeChange } from 'theme-change';
 
 	let users = $state<User[]>([]);
 	let profileError = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
+	let selectedTheme = $state($user?.theme || 'system');
 
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
 			users = [$user as User]; // TODO: Get users from database
+		}
+		if ($user?.theme) {
+			selectedTheme = $user.theme;
 		}
 	});
 
@@ -19,6 +24,19 @@
 		system: 'Système',
 		light: 'Clair',
 		dark: 'Sombre'
+	};
+
+	const applyTheme = (theme: 'system' | 'light' | 'dark') => {
+		if (theme === 'system') {
+			document.documentElement.removeAttribute('data-theme');
+			localStorage.removeItem('theme');
+			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+		} else {
+			document.documentElement.setAttribute('data-theme', theme);
+			localStorage.setItem('theme', theme);
+			themeChange(false);
+		}
 	};
 </script>
 
@@ -107,6 +125,7 @@
 						if (result.type === 'success') {
 							await update();
 							await loadUserData(); // Recharger les données utilisateur
+							applyTheme(selectedTheme);
 							themeError = null;
 						} else if (result.type === 'failure' && result.data) {
 							const message =
@@ -118,28 +137,20 @@
 					};
 				}}
 			>
-				<div class="mb-4 flex w-full items-center justify-between gap-4">
-					<span class="opacity-70"
-						>Les informations dans cette section sont affichées sur votre page de profil.</span
-					>
-				</div>
-				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
+				<div class="flex w-full min-w-80 flex-col items-center justify-between gap-4 md:flex-row">
 					<label class="input box-content flex w-full">
 						Thème
 						<select
 							data-choose-theme
 							name="theme"
 							class="select h-[calc(100%-2px)] grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
-							value={$user?.theme || 'system'}
+							bind:value={selectedTheme}
 							required
 							onchange={(e) => {
-								const selectedTheme = e.currentTarget.value;
-								// Si 'system', theme-change utilise une chaîne vide pour détecter les préférences système
-								if (selectedTheme === 'system') {
-									// Retirer le thème pour que theme-change utilise les préférences système
-									document.documentElement.removeAttribute('data-theme');
-									localStorage.removeItem('theme');
-								}
+								const newTheme = e.currentTarget.value as 'system' | 'light' | 'dark';
+								selectedTheme = newTheme;
+								applyTheme(newTheme);
+
 								// Envoyer la mise à jour au serveur
 								const form = e.currentTarget.closest('form');
 								if (form) {

@@ -130,12 +130,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
 		const rejectedCount = rejectedCountResult[0]?.count || 0;
 
+		// Charger tous les traducteurs pour pouvoir afficher leurs noms
+		const translators = await db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name
+			})
+			.from(table.translator);
+
 		return {
 			submissions: submissionsWithData,
 			statusFilter,
 			pendingCount,
 			acceptedCount,
-			rejectedCount
+			rejectedCount,
+			translators
 		};
 	} catch (error: unknown) {
 		// Si la table n'existe pas encore, retourner une liste vide
@@ -145,7 +154,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			statusFilter,
 			pendingCount: 0,
 			acceptedCount: 0,
-			rejectedCount: 0
+			rejectedCount: 0,
+			translators: []
 		};
 	}
 };

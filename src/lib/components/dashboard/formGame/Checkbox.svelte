@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
-	import { checkRole } from '$lib/utils';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface Props {
@@ -25,7 +24,7 @@
 {#if typeof game[name] === 'boolean'}
 	<div
 		class="flex h-full w-full flex-col justify-center"
-		class:hidden={!step || !active?.includes(step) || !checkRole(['admin', 'superadmin'])}
+		class:hidden={!step || !active?.includes(step)}
 	>
 		<label for={name}>{title}:</label>
 		<input

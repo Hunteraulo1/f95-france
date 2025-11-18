@@ -1,12 +1,12 @@
 import { sql } from 'drizzle-orm';
 import {
-	boolean,
-	datetime,
-	int,
-	mysqlEnum,
-	mysqlTable,
-	text,
-	varchar
+  boolean,
+  datetime,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  varchar
 } from 'drizzle-orm/mysql-core';
 
 export const user = mysqlTable('user', {
@@ -71,7 +71,7 @@ export const gameTranslation = mysqlTable('game_translation', {
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
-	tname: mysqlEnum('tname', ['no_translation', 'integrated', 'translation'])
+	tname: mysqlEnum('tname', ['no_translation', 'integrated', 'translation', 'translation_with_mods'])
 		.notNull()
 		.default('no_translation'),
 	translatorId: varchar('traductor_id', { length: 255 }),

@@ -351,7 +351,7 @@
 			active: [3, 5],
 			title: 'Status de la traduction',
 			name: 'tname',
-			values: ['Pas de traduction', 'Intégrée', 'Traduction']
+			values: ['Pas de traduction', 'Intégrée', 'Traduction', 'Traduction (avec mods)']
 		},
 		{
 			Component: Input,

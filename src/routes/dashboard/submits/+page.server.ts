@@ -124,14 +124,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.from(table.submission)
 			.where(eq(table.submission.status, 'accepted'));
 
+		const rejectedCountResult = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(eq(table.submission.status, 'rejected'));
+
 		const pendingCount = pendingCountResult[0]?.count || 0;
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
+		const rejectedCount = rejectedCountResult[0]?.count || 0;
+
+		// Charger tous les traducteurs pour pouvoir afficher leurs noms
+		const translators = await db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name
+			})
+			.from(table.translator);
 
 		return {
 			submissions: submissionsWithData,
 			statusFilter,
 			pendingCount,
-			acceptedCount
+			acceptedCount,
+			rejectedCount,
+			translators
 		};
 	} catch (error: unknown) {
 		// Si la table n'existe pas encore, retourner des valeurs par défaut
@@ -140,7 +156,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			submissions: [],
 			statusFilter,
 			pendingCount: 0,
-			acceptedCount: 0
+			acceptedCount: 0,
+			rejectedCount: 0,
+			translators: []
 		};
 	}
 };

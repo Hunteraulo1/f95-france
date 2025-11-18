@@ -788,7 +788,7 @@
 					<input
 						id="edit-translationName"
 						type="text"
-						placeholder="Ex: Traduction française"
+						placeholder="Ex: Saison 1"
 						class="w-full input-ghost"
 						bind:value={editingTranslation.translationName}
 						required
@@ -873,7 +873,6 @@
 				</label>
 			</div>
 
-			{#if canRefreshGame}
 				<div class="form-control mb-6 w-full">
 					<label class="label cursor-pointer" for="edit-ac">
 						<span class="label-text">Auto-Check</span>
@@ -885,11 +884,9 @@
 						/>
 					</label>
 					<p class="mt-1 text-xs text-base-content/60">
-						Activez cette option pour que la traduction soit automatiquement rafraîchie lors d'un
-						scrape.
+						Activez cette option pour que les données de la traduction soient automatiquement rafraîchies lors d'une nouvelle version du jeu.
 					</p>
 				</div>
-			{/if}
 
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control">
