@@ -34,13 +34,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	let capturedBody: string | null = null;
 	const method = event.request.method.toUpperCase();
-	const isApiRequest = event.url.pathname.startsWith('/api/');
+	const pathname = event.url.pathname;
+	
+	// Exclure les fichiers statiques du logging pour éviter la surcharge
+	const isStaticAsset = pathname.startsWith('/_app/') || 
+		pathname.startsWith('/favicon') || 
+		pathname.startsWith('/robots.txt') ||
+		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
+	
+	const isApiRequest = pathname.startsWith('/api/');
 	const isDashboardAction =
-		event.url.pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute = 
-		event.url.pathname.startsWith('/dashboard/submit') || 
-		event.url.pathname.startsWith('/dashboard/submits');
-	const shouldLog = isApiRequest || isDashboardAction || isSubmissionRoute;
+		pathname.startsWith('/dashboard/submit') || 
+		pathname.startsWith('/dashboard/submits');
+	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
 	const shouldCaptureBody = shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
 	if (shouldCaptureBody) {
@@ -93,13 +101,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 export const handleError = async ({ error, event, status, message }: { error: unknown; event: RequestEvent; status: number; message: string }) => {
 	const method = event.request.method.toUpperCase();
-	const isApiRequest = event.url.pathname.startsWith('/api/');
+	const pathname = event.url.pathname;
+	
+	// Exclure les fichiers statiques du logging pour éviter la surcharge
+	const isStaticAsset = pathname.startsWith('/_app/') || 
+		pathname.startsWith('/favicon') || 
+		pathname.startsWith('/robots.txt') ||
+		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
+	
+	const isApiRequest = pathname.startsWith('/api/');
 	const isDashboardAction =
-		event.url.pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute = 
-		event.url.pathname.startsWith('/dashboard/submit') || 
-		event.url.pathname.startsWith('/dashboard/submits');
-	const shouldLog = isApiRequest || isDashboardAction || isSubmissionRoute;
+		pathname.startsWith('/dashboard/submit') || 
+		pathname.startsWith('/dashboard/submits');
+	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
 
 	if (shouldLog && status >= 500) {
 		const route = `${event.url.pathname}${event.url.search}`;
