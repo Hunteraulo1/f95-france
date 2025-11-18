@@ -5,9 +5,15 @@
 	interface Props {
 		user: PublicUser | UserType | null;
 		email?: UserType['email'] | null;
+		stats?: {
+			gameAdd: number;
+			gameEdit: number;
+			submissionAdd: number;
+			submissionEdit: number;
+		} | null;
 	}
 
-	let { user, email }: Props = $props();
+	let { user, email, stats }: Props = $props();
 
 	const roles: Record<PublicUser['role'], string> = {
 		user: 'Utilisateur',
@@ -44,23 +50,44 @@
 		</div>
 
 		<div class="flex w-full flex-col gap-4">
-			<div class="stats bg-base-100 shadow">
-				<div class="stat">
-					<div class="stat-figure text-primary">
-						<CirclePlus />
+			{#if stats && (stats.gameAdd > 0 || stats.gameEdit > 0)}
+				<div class="stats bg-base-100 shadow">
+					<div class="stat">
+						<div class="stat-figure text-primary">
+							<CirclePlus />
+						</div>
+						<div class="stat-title">Jeu ajoutés (administrateur)</div>
+						<div class="stat-value text-primary">{stats.gameAdd}</div>
 					</div>
-					<div class="stat-title">Total de jeu ajoutés</div>
-					<div class="stat-value text-primary">{user.gameAdd}</div>
-				</div>
 
-				<div class="stat">
-					<div class="stat-figure text-secondary">
-						<SquarePen />
+					<div class="stat">
+						<div class="stat-figure text-secondary">
+							<SquarePen />
+						</div>
+						<div class="stat-title">Jeu modifiés (administrateur)</div>
+						<div class="stat-value text-secondary">{stats.gameEdit}</div>
 					</div>
-					<div class="stat-title">Total de jeu modifiés</div>
-					<div class="stat-value text-secondary">{user.gameEdit}</div>
 				</div>
-			</div>
+			{/if}
+			{#if stats && (stats.submissionAdd > 0 || stats.submissionEdit > 0)}
+				<div class="stats bg-base-100 shadow">
+					<div class="stat">
+						<div class="stat-figure text-primary">
+							<CirclePlus />
+						</div>
+						<div class="stat-title">Jeux/traductions ajoutés (soumissions)</div>
+						<div class="stat-value text-primary">{stats.submissionAdd}</div>
+					</div>
+
+					<div class="stat">
+						<div class="stat-figure text-secondary">
+							<SquarePen />
+						</div>
+						<div class="stat-title">Jeux/traductions modifiés (soumissions)</div>
+						<div class="stat-value text-secondary">{stats.submissionEdit}</div>
+					</div>
+				</div>
+			{/if}
 			<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm"></div>
 		</div>
 	{:else}

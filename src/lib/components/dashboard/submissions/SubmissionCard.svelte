@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { user } from '$lib/stores';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 	import { Eye, User } from '@lucide/svelte';
@@ -68,7 +69,17 @@
 									{/if}
 								</div>
 							</div>
-							<span class="text-sm opacity-70">{submission.user.username}</span>
+							<button
+								type="button"
+								class="link link-primary text-sm opacity-70 hover:opacity-100"
+								onclick={() => {
+									if (submission.user?.id) {
+										goto(`/dashboard/profile/${submission.user.id}`);
+									}
+								}}
+							>
+								{submission.user.username}
+							</button>
 						</div>
 					{/if}
 					<div class="mb-2 flex items-center gap-3">

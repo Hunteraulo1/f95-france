@@ -4,10 +4,16 @@
 	let { data }: { data: PageData } = $props();
 	let methodFilter = $state(data.filters.method ?? '');
 	let search = $state(data.filters.search ?? '');
+	let userSearch = $state(data.filters.user ?? '');
+	let errorsOnly = $state(data.filters.errorsOnly ?? false);
+	let warningsOnly = $state(data.filters.warningsOnly ?? false);
+	let redirectsOnly = $state(data.filters.redirectsOnly ?? false);
 	let limit = $state(String(data.filters.limit));
 	let showPayloadModal = $state(false);
 	let formattedPayload = $state<string | null>(null);
 	let payloadFormat = $state<'json' | 'texte'>('texte');
+	let showErrorModal = $state(false);
+	let errorMessage = $state<string | null>(null);
 
 	const methodOptions = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -59,6 +65,16 @@
 		showPayloadModal = false;
 		formattedPayload = null;
 	};
+
+	const openErrorModal = (errorMsg: string) => {
+		errorMessage = errorMsg;
+		showErrorModal = true;
+	};
+
+	const closeErrorModal = () => {
+		showErrorModal = false;
+		errorMessage = null;
+	};
 </script>
 
 <svelte:head>
@@ -73,7 +89,7 @@
 		</div>
 	</div>
 
-	<form method="GET" class="grid gap-4 rounded-lg border border-base-300 p-4 md:grid-cols-4">
+	<form method="GET" class="grid gap-4 rounded-lg border border-base-300 p-4 md:grid-cols-6">
 		<label class="form-control">
 			<span class="label-text">Méthode</span>
 			<select class="select-bordered select" name="method" bind:value={methodFilter}>
@@ -96,6 +112,77 @@
 		</label>
 
 		<label class="form-control">
+			<span class="label-text">Utilisateur</span>
+			<input
+				type="text"
+				name="user"
+				class="input-bordered input"
+				placeholder="Nom d'utilisateur..."
+				bind:value={userSearch}
+			/>
+		</label>
+
+		<label class="form-control">
+			<span class="label-text">Filtres de statut</span>
+			<div class="space-y-2">
+				<label class="label cursor-pointer">
+					<input
+						type="checkbox"
+						class="checkbox checkbox-info"
+						checked={redirectsOnly}
+						onchange={(e) => {
+							redirectsOnly = e.currentTarget.checked;
+							if (redirectsOnly) {
+								errorsOnly = false;
+								warningsOnly = false;
+							}
+						}}
+					/>
+					<span class="label-text">Redirections (3xx)</span>
+				</label>
+				<label class="label cursor-pointer">
+					<input
+						type="checkbox"
+						class="checkbox checkbox-warning"
+						checked={warningsOnly}
+						onchange={(e) => {
+							warningsOnly = e.currentTarget.checked;
+							if (warningsOnly) {
+								errorsOnly = false;
+								redirectsOnly = false;
+							}
+						}}
+					/>
+					<span class="label-text">Warnings (4xx)</span>
+				</label>
+				<label class="label cursor-pointer">
+					<input
+						type="checkbox"
+						class="checkbox checkbox-error"
+						checked={errorsOnly}
+						onchange={(e) => {
+							errorsOnly = e.currentTarget.checked;
+							if (errorsOnly) {
+								warningsOnly = false;
+								redirectsOnly = false;
+							}
+						}}
+					/>
+					<span class="label-text">Erreurs (5xx)</span>
+				</label>
+			</div>
+			{#if redirectsOnly}
+				<input type="hidden" name="redirects" value="true" />
+			{/if}
+			{#if warningsOnly}
+				<input type="hidden" name="warnings" value="true" />
+			{/if}
+			{#if errorsOnly}
+				<input type="hidden" name="errors" value="true" />
+			{/if}
+		</label>
+
+		<label class="form-control">
 			<span class="label-text">Limite</span>
 			<select class="select-bordered select" name="limit" bind:value={limit}>
 				{#each [25, 50, 100, 200, 500] as option (option)}
@@ -104,7 +191,7 @@
 			</select>
 		</label>
 
-		<div class="flex justify-end gap-2 md:col-span-4">
+		<div class="flex justify-end gap-2 md:col-span-6">
 			<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
 			<button type="submit" class="btn btn-primary">Actualiser</button>
 		</div>
@@ -122,12 +209,13 @@
 							<th>Statut</th>
 							<th>Utilisateur</th>
 							<th>Payload</th>
+							<th>Erreur</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#if data.logs.length === 0}
 							<tr>
-								<td colspan="7" class="py-10 text-center text-base-content/60">
+								<td colspan="8" class="py-10 text-center text-base-content/60">
 									Aucun log disponible pour ces critères.
 								</td>
 							</tr>
@@ -155,6 +243,19 @@
 												type="button"
 												class="btn text-primary btn-ghost btn-xs"
 												onclick={() => openPayloadModal(log.payload ?? '')}
+											>
+												Voir
+											</button>
+										{:else}
+											<span class="text-base-content/60">—</span>
+										{/if}
+									</td>
+									<td class="max-w-xs">
+										{#if log.errorMessage}
+											<button
+												type="button"
+												class="btn text-error btn-ghost btn-xs"
+												onclick={() => openErrorModal(log.errorMessage ?? '')}
 											>
 												Voir
 											</button>
@@ -192,5 +293,26 @@
 			</div>
 		</div>
 		<button class="modal-backdrop" onclick={closePayloadModal}> Fermer </button>
+	</div>
+{/if}
+
+{#if showErrorModal && errorMessage}
+	<div class="modal-open modal">
+		<div class="modal-box max-w-4xl">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div>
+					<h3 class="text-lg font-bold text-error">Détails de l'erreur</h3>
+					<p class="text-sm text-base-content/60">Message d'erreur et stack trace.</p>
+				</div>
+				<span class="badge badge-error">Erreur</span>
+			</div>
+			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
+{errorMessage}
+</pre>
+			<div class="modal-action">
+				<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
+			</div>
+		</div>
+		<button class="modal-backdrop" onclick={closeErrorModal}> Fermer </button>
 	</div>
 {/if}

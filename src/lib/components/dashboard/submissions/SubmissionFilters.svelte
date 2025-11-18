@@ -16,7 +16,7 @@
 
 	let { currentFilter, pendingCount, acceptedCount, rejectedCount, onFilterChange }: Props = $props();
 
-	const filters: FilterConfig[] = [
+	const filters = $derived<FilterConfig[]>([
 		{
 			value: 'pending',
 			label: 'En attente',
@@ -41,7 +41,7 @@
 			count: 0,
 			badgeClass: ''
 		}
-	];
+	]);
 </script>
 
 <div class="flex gap-2">

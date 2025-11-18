@@ -6,7 +6,8 @@ export type NotificationType =
 	| 'submission_status_changed'
 	| 'new_user_registered'
 	| 'submission_accepted'
-	| 'submission_rejected';
+	| 'submission_rejected'
+	| 'api_error';
 
 interface CreateNotificationParams {
 	userId: string;
@@ -122,6 +123,71 @@ export async function notifyNewUserRegistration(userId: string, username: string
 				username
 			}
 		});
+	}
+}
+
+/**
+ * Crée une notification pour une erreur API (pour les superadmins)
+ */
+export async function notifyApiError(
+	method: string,
+	route: string,
+	status: number,
+	userId: string | null,
+	username?: string | null
+) {
+	try {
+		// Récupérer tous les superadmins
+		const superadmins = await db
+			.select({ id: table.user.id })
+			.from(table.user)
+			.where(eq(table.user.role, 'superadmin'));
+
+		// Ne pas notifier si c'est une erreur 404 (ressource non trouvée) pour éviter le spam
+		if (status === 404) {
+			return;
+		}
+
+		const statusLabel = status >= 500 ? 'Erreur serveur' : status >= 400 ? 'Erreur client' : 'Erreur';
+		
+		// Récupérer le nom d'utilisateur si non fourni
+		let finalUsername = username || 'Anonyme';
+		if (!username && userId) {
+			try {
+				const users = await db
+					.select({ username: table.user.username })
+					.from(table.user)
+					.where(eq(table.user.id, userId))
+					.limit(1);
+				finalUsername = users[0]?.username || 'Inconnu';
+			} catch {
+				finalUsername = 'Inconnu';
+			}
+		}
+
+		// Créer une notification pour chaque superadmin
+		for (const admin of superadmins) {
+			await createNotification({
+				userId: admin.id,
+				type: 'api_error',
+				title: `${statusLabel} ${status}`,
+				message: `${method} ${route} - Utilisateur: ${finalUsername}`,
+				link: `/dashboard/logs?q=${encodeURIComponent(route)}&errors=true`,
+				metadata: {
+					method,
+					route,
+					status,
+					userId,
+					username: finalUsername
+				}
+			}).catch((error) => {
+				// Ne pas propager l'erreur si la table n'existe pas encore
+				console.warn('Erreur lors de la création de la notification API:', error);
+			});
+		}
+	} catch (error) {
+		// Ne pas propager l'erreur pour éviter de bloquer la requête
+		console.warn('Erreur lors de la notification d\'erreur API:', error);
 	}
 }
 

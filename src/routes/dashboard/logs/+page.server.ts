@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, like, or } from 'drizzle-orm';
+import { and, desc, eq, gte, like, lt, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -13,6 +13,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const limit = Number.isNaN(limitParam) ? 100 : Math.min(Math.max(limitParam, 25), 500);
 	const methodFilter = url.searchParams.get('method')?.toUpperCase() ?? '';
 	const search = url.searchParams.get('q')?.trim() ?? '';
+	const userSearch = url.searchParams.get('user')?.trim() ?? '';
+	const errorsOnly = url.searchParams.get('errors') === 'true';
+	const warningsOnly = url.searchParams.get('warnings') === 'true';
+	const redirectsOnly = url.searchParams.get('redirects') === 'true';
 
 	const conditions = [];
 	if (methodFilter) {
@@ -22,6 +26,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const pattern = `%${search}%`;
 		conditions.push(or(like(apiLog.route, pattern), like(apiLog.payload, pattern)));
 	}
+	if (userSearch) {
+		const userPattern = `%${userSearch}%`;
+		conditions.push(like(user.username, userPattern));
+	}
+	if (errorsOnly) {
+		// Filtrer uniquement les erreurs serveur (5xx)
+		conditions.push(gte(apiLog.status, 500));
+	}
+	if (warningsOnly) {
+		// Filtrer uniquement les warnings (4xx)
+		conditions.push(and(gte(apiLog.status, 400), lt(apiLog.status, 500)));
+	}
+	if (redirectsOnly) {
+		// Filtrer uniquement les redirections (3xx)
+		conditions.push(and(gte(apiLog.status, 300), lt(apiLog.status, 400)));
+	}
 
 	let query = db
 		.select({
@@ -30,6 +50,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			route: apiLog.route,
 			status: apiLog.status,
 			payload: apiLog.payload,
+			errorMessage: apiLog.errorMessage,
 			createdAt: apiLog.createdAt,
 			user: {
 				id: user.id,
@@ -53,6 +74,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		filters: {
 			method: methodFilter,
 			search,
+			user: userSearch,
+			errorsOnly,
+			warningsOnly,
+			redirectsOnly,
 			limit
 		}
 	};

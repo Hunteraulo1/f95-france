@@ -1,31 +1,16 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { error } from '@sveltejs/kit';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const { id } = params;
-
-	const user = await db
-		.select({
-			id: table.user.id,
-			username: table.user.username,
-			avatar: table.user.avatar,
-			role: table.user.role,
-			directMode: table.user.directMode,
-			gameAdd: table.user.gameAdd,
-			gameEdit: table.user.gameEdit,
-			createdAt: table.user.createdAt,
-			updatedAt: table.user.updatedAt
-		})
-		.from(table.user)
-		.where(eq(table.user.id, id))
-		.limit(1);
-
-	if (user.length === 0) {
-		throw error(404, 'Utilisateur non trouvé');
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user) {
+		return {
+			stats: null
+		};
 	}
+
+	const userId = locals.user.id;
 
 	// Compter les soumissions acceptées par type
 	let gameAddSubmissions = 0;
@@ -40,7 +25,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(table.submission)
 			.where(
 				and(
-					eq(table.submission.userId, id),
+					eq(table.submission.userId, userId),
 					eq(table.submission.status, 'accepted'),
 					eq(table.submission.type, 'game')
 				)
@@ -53,7 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(table.submission)
 			.where(
 				and(
-					eq(table.submission.userId, id),
+					eq(table.submission.userId, userId),
 					eq(table.submission.status, 'accepted'),
 					eq(table.submission.type, 'update')
 				)
@@ -66,7 +51,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(table.submission)
 			.where(
 				and(
-					eq(table.submission.userId, id),
+					eq(table.submission.userId, userId),
 					eq(table.submission.status, 'accepted'),
 					inArray(table.submission.type, ['game', 'translation'])
 				)
@@ -79,7 +64,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			.from(table.submission)
 			.where(
 				and(
-					eq(table.submission.userId, id),
+					eq(table.submission.userId, userId),
 					eq(table.submission.status, 'accepted'),
 					inArray(table.submission.type, ['update', 'delete'])
 				)
@@ -90,7 +75,6 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	return {
-		user: user[0] || null,
 		stats: {
 			gameAdd: gameAddSubmissions,
 			gameEdit: gameEditSubmissions,

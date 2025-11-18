@@ -20,9 +20,12 @@
 		showSubmissionModal = true;
 	};
 
-	const closeSubmissionModal = () => {
+	const closeSubmissionModal = async () => {
 		showSubmissionModal = false;
 		selectedSubmission = null;
+		// Invalider les données pour mettre à jour les compteurs
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(`/dashboard/submits?status=${data.statusFilter}`, { noScroll: true, invalidateAll: true });
 	};
 
 	const updateFilter = async (status: string) => {

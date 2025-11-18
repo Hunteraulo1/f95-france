@@ -29,6 +29,13 @@
       "when": 1763466884701,
       "tag": "0003_mean_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1763471169988,
+      "tag": "0004_open_black_panther",
+      "breakpoints": true
     }
   ]
 }

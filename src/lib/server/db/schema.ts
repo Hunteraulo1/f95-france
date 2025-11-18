@@ -172,6 +172,7 @@ export const apiLog = mysqlTable('api_log', {
 	status: int('status').notNull(),
 	ipAddress: varchar('ip_address', { length: 64 }),
 	payload: text('payload'),
+	errorMessage: text('error_message'),
 	createdAt: datetime('created_at')
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`)
@@ -191,7 +192,8 @@ export const notification = mysqlTable('notification', {
 		'submission_status_changed',
 		'new_user_registered',
 		'submission_accepted',
-		'submission_rejected'
+		'submission_rejected',
+		'api_error'
 	]).notNull(),
 	title: varchar('title', { length: 255 }).notNull(),
 	message: text('message').notNull(),

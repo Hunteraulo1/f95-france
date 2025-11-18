@@ -6,6 +6,10 @@ export default defineConfig({
 	schema: './src/lib/server/db/schema.ts',
 	dialect: 'mysql',
 	dbCredentials: { url: process.env.DATABASE_URL },
+	out: './drizzle',
 	verbose: true,
-	strict: true
+	strict: true,
+	migrations: {
+		table: '__drizzle_migrations'
+	}
 });

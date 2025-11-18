@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import type { Game, GameTranslation } from '$lib/server/db/schema';
 	import { user } from '$lib/stores';
 	import { getStatusBadge, getTypeBadge, getTypeLabel, validateStatusChange } from '$lib/utils/submissions';
@@ -31,6 +32,7 @@
 	interface Translator {
 		id: string;
 		name: string;
+		userId?: string | null;
 	}
 
 	interface Props {
@@ -112,6 +114,18 @@
 		return translator?.name || null;
 	};
 
+	const getTranslator = (translatorId: string | null | undefined): Translator | null => {
+		if (!translatorId) return null;
+		return translators.find((t) => t.id === translatorId) || null;
+	};
+
+	const handleTranslatorClick = async (translatorId: string | null | undefined) => {
+		const translator = getTranslator(translatorId);
+		if (translator?.userId) {
+			await goto(`/dashboard/profile/${translator.userId}`);
+		}
+	};
+
 	const formatFieldValue = (
 		value: string | number | boolean | null | undefined,
 		showIfEmpty: boolean,
@@ -191,6 +205,7 @@
 							{#each gameFields as field (field.key)}
 								{@const oldValue = getFieldValue(submission.currentGame, field.key)}
 								{@const newValue = getFieldValue(submission.parsedData.game, field.key)}
+								{@const fieldKey = String(field.key)}
 								{#if !valuesAreEqual(oldValue, newValue)}
 									{@const formattedOld = formatFieldValue(
 										oldValue,
@@ -210,14 +225,52 @@
 									<div class="border-b border-base-300 pb-3">
 										<div class="mb-2 font-semibold">{field.label}:</div>
 										<div class="space-y-1">
-											<div class="{classes} text-error line-through">{formattedOld}</div>
-											<div
-												class="{classes} {field.options?.isMultiline || field.options?.isUrl
-													? ''
-													: 'font-medium'} text-success"
-											>
-												{formattedNew}
-											</div>
+											{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
+												{@const oldTranslator = getTranslator(oldValue as string)}
+												{#if oldTranslator?.userId}
+													<button
+														type="button"
+														class="link link-error {classes} line-through"
+														onclick={() => handleTranslatorClick(oldValue as string)}
+													>
+														{formattedOld}
+													</button>
+												{:else}
+													<div class="{classes} text-error line-through">{formattedOld}</div>
+												{/if}
+											{:else}
+												<div class="{classes} text-error line-through">{formattedOld}</div>
+											{/if}
+											{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
+												{@const newTranslator = getTranslator(newValue as string)}
+												{#if newTranslator?.userId}
+													<button
+														type="button"
+														class="link link-success {classes} {field.options?.isMultiline || field.options?.isUrl
+															? ''
+															: 'font-medium'}"
+														onclick={() => handleTranslatorClick(newValue as string)}
+													>
+														{formattedNew}
+													</button>
+												{:else}
+													<div
+														class="{classes} {field.options?.isMultiline || field.options?.isUrl
+															? ''
+															: 'font-medium'} text-success"
+													>
+														{formattedNew}
+													</div>
+												{/if}
+											{:else}
+												<div
+													class="{classes} {field.options?.isMultiline || field.options?.isUrl
+														? ''
+														: 'font-medium'} text-success"
+												>
+													{formattedNew}
+												</div>
+											{/if}
 										</div>
 									</div>
 								{/if}
@@ -228,16 +281,21 @@
 							<span>Aucun changement détecté entre le jeu actuel et les modifications proposées.</span>
 						</div>
 					{/if}
-				{:else if submission.type === 'game' && submission.parsedData?.game}
-					<div class="space-y-4">
-						<h4 class="text-md font-semibold mb-2">Détails du jeu</h4>
-						{#each gameFields as field (field.key)}
-							{@const value = getFieldValue(submission.parsedData.game, field.key)}
+				{:else if submission.type === 'game' && (submission.currentGame || submission.parsedData?.game)}
+					{#if submission.currentGame || submission.parsedData?.game}
+						{@const gameData = submission.status === 'accepted' 
+							? submission.parsedData?.game 
+							: (submission.currentGame || submission.parsedData?.game)}
+						<div class="space-y-4">
+							<h4 class="text-md font-semibold mb-2">Détails du jeu</h4>
+							{#each gameFields as field (field.key)}
+								{@const value = getFieldValue(gameData!, field.key)}
 							{@const formattedValue = formatFieldValue(
 								value,
 								field.options?.showIfEmpty ?? false,
 								field.key as string
 							)}
+							{@const fieldKey = String(field.key)}
 							{#if formattedValue !== '' || field.options?.showIfEmpty}
 								{@const classes = `${
 									field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
@@ -246,15 +304,33 @@
 								}`.trim()}
 								<div class="border-b border-base-300 pb-3">
 									<div class="mb-2 font-semibold">{field.label}:</div>
-									<div class={classes}>{formattedValue}</div>
+									{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && value}
+										{@const translator = getTranslator(value as string)}
+										{#if translator?.userId}
+											<button
+												type="button"
+												class="link link-primary {classes}"
+												onclick={() => handleTranslatorClick(value as string)}
+											>
+												{formattedValue}
+											</button>
+										{:else}
+											<div class={classes}>{formattedValue}</div>
+										{/if}
+									{:else}
+										<div class={classes}>{formattedValue}</div>
+									{/if}
 								</div>
 							{/if}
 						{/each}
-						{#if submission.parsedData?.translation}
+						{#if submission.currentTranslation || submission.parsedData?.translation}
+							{@const translationData = submission.status === 'accepted' 
+								? submission.parsedData?.translation 
+								: (submission.currentTranslation || submission.parsedData?.translation)}
 							<div class="mt-6">
 								<h4 class="text-md font-semibold mb-2">Détails de la traduction</h4>
 								{#each translationFields as field (field.key)}
-									{@const value = getFieldValue(submission.parsedData.translation, field.key)}
+									{@const value = getFieldValue(translationData!, field.key)}
 									{@const formattedValue = formatFieldValue(
 										value,
 										field.options?.showIfEmpty ?? false,
@@ -275,9 +351,14 @@
 							</div>
 						{/if}
 					</div>
-				{:else if submission.type === 'translation' && submission.parsedData?.translation}
-					{#if submission.currentTranslation}
-						{@const hasAnyChanges = translationFields.some((field) => {
+					{/if}
+				{:else if submission.type === 'translation' && (submission.currentTranslation || submission.parsedData?.translation)}
+					{#if submission.currentTranslation || submission.parsedData?.translation}
+						{@const translationData = submission.status === 'accepted' 
+							? submission.parsedData?.translation 
+							: (submission.currentTranslation || submission.parsedData?.translation)}
+						{#if submission.currentTranslation && submission.parsedData?.translation && submission.status !== 'accepted'}
+							{@const hasAnyChanges = translationFields.some((field) => {
 							if (!submission?.currentTranslation || !submission?.parsedData?.translation) {
 								return false;
 							}
@@ -293,6 +374,7 @@
 										submission.parsedData.translation,
 										field.key
 									)}
+									{@const fieldKey = String(field.key)}
 									{#if !valuesAreEqual(oldValue, newValue)}
 										{@const formattedOld = formatFieldValue(
 											oldValue,
@@ -312,14 +394,52 @@
 										<div class="border-b border-base-300 pb-3">
 											<div class="mb-2 font-semibold">{field.label}:</div>
 											<div class="space-y-1">
-												<div class="{classes} text-error line-through">{formattedOld}</div>
-												<div
-													class="{classes} {field.options?.isMultiline || field.options?.isUrl
-														? ''
-														: 'font-medium'} text-success"
-												>
-													{formattedNew}
-												</div>
+												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
+													{@const oldTranslator = getTranslator(oldValue as string)}
+													{#if oldTranslator?.userId}
+														<button
+															type="button"
+															class="link link-error {classes} line-through"
+															onclick={() => handleTranslatorClick(oldValue as string)}
+														>
+															{formattedOld}
+														</button>
+													{:else}
+														<div class="{classes} text-error line-through">{formattedOld}</div>
+													{/if}
+												{:else}
+													<div class="{classes} text-error line-through">{formattedOld}</div>
+												{/if}
+												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
+													{@const newTranslator = getTranslator(newValue as string)}
+													{#if newTranslator?.userId}
+														<button
+															type="button"
+															class="link link-success {classes} {field.options?.isMultiline || field.options?.isUrl
+																? ''
+																: 'font-medium'}"
+															onclick={() => handleTranslatorClick(newValue as string)}
+														>
+															{formattedNew}
+														</button>
+													{:else}
+														<div
+															class="{classes} {field.options?.isMultiline || field.options?.isUrl
+																? ''
+																: 'font-medium'} text-success"
+														>
+															{formattedNew}
+														</div>
+													{/if}
+												{:else}
+													<div
+														class="{classes} {field.options?.isMultiline || field.options?.isUrl
+															? ''
+															: 'font-medium'} text-success"
+													>
+														{formattedNew}
+													</div>
+												{/if}
 											</div>
 										</div>
 									{/if}
@@ -330,10 +450,10 @@
 								<span>Aucun changement détecté entre la traduction actuelle et les modifications proposées.</span>
 							</div>
 						{/if}
-					{:else}
-						<div class="space-y-4">
-							{#each translationFields as field (field.key)}
-								{@const value = getFieldValue(submission.parsedData.translation, field.key)}
+						{:else}
+							<div class="space-y-4">
+								{#each translationFields as field (field.key)}
+									{@const value = getFieldValue(translationData!, field.key)}
 								{@const formattedValue = formatFieldValue(
 									value,
 									field.options?.showIfEmpty ?? false,
@@ -352,6 +472,7 @@
 								{/if}
 							{/each}
 						</div>
+						{/if}
 					{/if}
 				{/if}
 			</div>
@@ -382,7 +503,7 @@
 
 							return async ({ result, update }) => {
 								if (result.type === 'success') {
-									await update();
+									await update({ invalidateAll: true });
 									onClose();
 								} else if (result.type === 'failure' && result.data) {
 									const message =

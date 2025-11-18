@@ -8,4 +8,4 @@
 	let { data }: Props = $props();
 </script>
 
-<Profile user={data.user} />
+<Profile user={data.user} stats={data.stats} />

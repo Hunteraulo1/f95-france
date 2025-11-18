@@ -1,0 +1,2 @@
+ALTER TABLE `notification` MODIFY COLUMN `type` enum('submission_status_changed','new_user_registered','submission_accepted','submission_rejected','api_error') NOT NULL;--> statement-breakpoint
+ALTER TABLE `api_log` ADD `error_message` text;

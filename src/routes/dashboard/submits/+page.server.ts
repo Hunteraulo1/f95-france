@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
-import { eq, sql } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
-			.orderBy(table.submission.createdAt);
+			.orderBy(statusFilter === 'pending' ? asc(table.submission.createdAt) : desc(table.submission.createdAt));
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(
@@ -77,8 +77,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					}
 				}
 
+				// Pour les soumissions acceptées, charger les données actuelles depuis la base de données
 				// Pour les modifications de jeu, récupérer le jeu actuel
-				if (sub.type === 'update' && sub.gameId && !sub.translationId) {
+				if (sub.gameId) {
 					const currentGameResult = await db
 						.select()
 						.from(table.game)
@@ -91,7 +92,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}
 
 				// Pour les modifications de traduction, récupérer la traduction actuelle
-				if (sub.type === 'translation' && sub.translationId) {
+				if (sub.translationId) {
 					const currentTranslationResult = await db
 						.select()
 						.from(table.gameTranslation)
@@ -137,7 +138,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const translators = await db
 			.select({
 				id: table.translator.id,
-				name: table.translator.name
+				name: table.translator.name,
+				userId: table.translator.userId
 			})
 			.from(table.translator);
 
