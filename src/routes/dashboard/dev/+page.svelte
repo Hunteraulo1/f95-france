@@ -1,44 +1,39 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { Config } from '$lib/server/db/schema';
-	import { CircleCheck, CircleX, ExternalLink, Loader, Table2 } from '@lucide/svelte';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import CircleX from '@lucide/svelte/icons/circle-x';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import Loader from '@lucide/svelte/icons/loader';
+	import Table2 from '@lucide/svelte/icons/table-2';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	// Type assertion pour config
-	const config = data.config as Config | null | undefined;
+	const config = $derived(data.config as Config | null | undefined);
 
 	let isLoading = $state(false);
-	let testResult = $state<{
-		success: boolean;
-		message: string;
-		details:
-			| {
-					title?: string;
-					spreadsheetId?: string;
-					sheets?: string[];
-			  }
-			| string
-			| null;
-	} | null>(null);
+	type SheetsDetails = { title?: string; spreadsheetId?: string; sheets?: string[] };
+	type ScrapeDetails = {
+		name: string | null;
+		version: string | null;
+		status: string | null;
+		tags: string | null;
+		type: string | null;
+		image: string | null;
+	};
+	type TestResult = { success: boolean; message: string; details: string | SheetsDetails | null };
+	type ScrapeResult = { success: boolean; message: string; details: string | ScrapeDetails | null };
+
+	let testResult = $state<TestResult | null>(null);
 
 	let scrapeIsLoading = $state(false);
-	let scrapeResult = $state<{
-		success: boolean;
-		message: string;
-		details:
-			| {
-					name: string | null;
-					version: string | null;
-					status: string | null;
-					tags: string | null;
-					type: string | null;
-					image: string | null;
-			  }
-			| string
-			| null;
-	} | null>(null);
+	let scrapeResult = $state<ScrapeResult | null>(null);
+
+	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
+		typeof value === 'object' && value !== null;
+	const isScrapeDetailsObject = (value: unknown): value is ScrapeDetails =>
+		typeof value === 'object' && value !== null;
 </script>
 
 <div class="container mx-auto max-w-4xl p-6">
@@ -64,38 +59,70 @@
 				use:enhance={() => {
 					isLoading = true;
 					testResult = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						await update();
 						isLoading = false;
 
 						// Traiter le résultat de l'action
 						if (result.type === 'success' && result.data) {
-							const successData = result.data as {
-								success: boolean;
-								message: string;
-								details?:
-									| string
-									| { title?: string; spreadsheetId?: string; sheets?: string[] }
-									| null;
-							};
+							const successData = result.data;
+							const success =
+								typeof successData === 'object' &&
+								successData &&
+								'success' in successData &&
+								Boolean(successData.success);
+							const message =
+								typeof successData === 'object' &&
+								successData &&
+								'message' in successData &&
+								typeof successData.message === 'string'
+									? successData.message
+									: '';
+							const detailsRaw =
+								typeof successData === 'object' &&
+								successData &&
+								'details' in successData &&
+								(typeof successData.details === 'object' ||
+									typeof successData.details === 'string' ||
+									successData.details === null)
+									? successData.details
+									: null;
+							const details =
+								typeof detailsRaw === 'string' || detailsRaw === null || isSheetsDetails(detailsRaw)
+									? detailsRaw
+									: null;
 							testResult = {
-								success: successData.success,
-								message: successData.message,
-								details: successData.details || null
+								success,
+								message,
+								details
 							};
 						} else if (result.type === 'failure' && result.data) {
 							// En cas d'erreur, result.data contient les données d'erreur
-							const errorData = result.data as {
-								message?: string;
-								details?:
-									| string
-									| { title?: string; spreadsheetId?: string; sheets?: string[] }
-									| null;
-							};
+							const errorData = result.data;
+							const message =
+								typeof errorData === 'object' &&
+								errorData &&
+								'message' in errorData &&
+								typeof errorData.message === 'string'
+									? errorData.message
+									: 'Erreur inconnue';
+							const detailsRaw =
+								typeof errorData === 'object' &&
+								errorData &&
+								'details' in errorData &&
+								(typeof errorData.details === 'object' ||
+									typeof errorData.details === 'string' ||
+									errorData.details === null)
+									? errorData.details
+									: null;
+							const details =
+								typeof detailsRaw === 'string' || detailsRaw === null || isSheetsDetails(detailsRaw)
+									? detailsRaw
+									: null;
 							testResult = {
 								success: false,
-								message: errorData.message || 'Erreur inconnue',
-								details: errorData.details || null
+								message,
+								details
 							};
 						}
 					};
@@ -160,12 +187,8 @@
 							<CircleCheck class="h-6 w-6" />
 							<div class="flex-1">
 								<h3 class="font-bold">{testResult.message}</h3>
-								{#if typeof testResult.details === 'object' && testResult.details !== null && !(typeof testResult.details === 'string')}
-									{@const details = testResult.details as {
-										title?: string;
-										spreadsheetId?: string;
-										sheets?: string[];
-									}}
+								{#if isSheetsDetails(testResult.details)}
+									{@const details = testResult.details}
 									<div class="mt-2 space-y-1">
 										{#if details.title}
 											<p><strong>Titre :</strong> {details.title}</p>
@@ -269,50 +292,72 @@
 				use:enhance={() => {
 					scrapeIsLoading = true;
 					scrapeResult = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						await update();
 						scrapeIsLoading = false;
 
 						if (result.type === 'success' && result.data) {
-							const successData = result.data as {
-								success: boolean;
-								message: string;
-								details?:
-									| string
-									| {
-											name: string | null;
-											version: string | null;
-											status: string | null;
-											tags: string | null;
-											type: string | null;
-											image: string | null;
-									  }
-									| null;
-							};
+							const successData = result.data;
+							const success =
+								typeof successData === 'object' &&
+								successData &&
+								'success' in successData &&
+								Boolean(successData.success);
+							const message =
+								typeof successData === 'object' &&
+								successData &&
+								'message' in successData &&
+								typeof successData.message === 'string'
+									? successData.message
+									: '';
+							const detailsRaw =
+								typeof successData === 'object' &&
+								successData &&
+								'details' in successData &&
+								(typeof successData.details === 'object' ||
+									typeof successData.details === 'string' ||
+									successData.details === null)
+									? successData.details
+									: null;
+							const details =
+								typeof detailsRaw === 'string' ||
+								detailsRaw === null ||
+								isScrapeDetailsObject(detailsRaw)
+									? detailsRaw
+									: null;
 							scrapeResult = {
-								success: successData.success,
-								message: successData.message,
-								details: successData.details || null
+								success,
+								message,
+								details
 							};
 						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data as {
-								message?: string;
-								details?:
-									| string
-									| {
-											name: string | null;
-											version: string | null;
-											status: string | null;
-											tags: string | null;
-											type: string | null;
-											image: string | null;
-									  }
-									| null;
-							};
+							const errorData = result.data;
+							const message =
+								typeof errorData === 'object' &&
+								errorData &&
+								'message' in errorData &&
+								typeof errorData.message === 'string'
+									? errorData.message
+									: 'Erreur inconnue';
+							const detailsRaw =
+								typeof errorData === 'object' &&
+								errorData &&
+								'details' in errorData &&
+								(typeof errorData.details === 'object' ||
+									typeof errorData.details === 'string' ||
+									errorData.details === null)
+									? errorData.details
+									: null;
+							const details =
+								typeof detailsRaw === 'string' ||
+								detailsRaw === null ||
+								isScrapeDetailsObject(detailsRaw)
+									? detailsRaw
+									: null;
 							scrapeResult = {
 								success: false,
-								message: errorData.message || 'Erreur inconnue',
-								details: errorData.details || null
+								message,
+								details
 							};
 						}
 					};
@@ -370,15 +415,8 @@
 							<CircleCheck class="h-6 w-6" />
 							<div class="flex-1">
 								<h3 class="font-bold">{scrapeResult.message}</h3>
-								{#if typeof scrapeResult.details === 'object' && scrapeResult.details !== null && !(typeof scrapeResult.details === 'string')}
-									{@const details = scrapeResult.details as {
-										name: string | null;
-										version: string | null;
-										status: string | null;
-										tags: string | null;
-										type: string | null;
-										image: string | null;
-									}}
+								{#if isScrapeDetailsObject(scrapeResult.details)}
+									{@const details = scrapeResult.details}
 									<div class="mt-2 grid gap-4 md:grid-cols-2">
 										<div class="space-y-1 text-sm">
 											{#if details.name}

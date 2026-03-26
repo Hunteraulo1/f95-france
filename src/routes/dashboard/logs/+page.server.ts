@@ -47,10 +47,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Vérifier si la colonne errorMessage existe en essayant une requête simple
 		let hasErrorMessageColumn = false;
 		try {
-			await db
-				.select({ errorMessage: apiLog.errorMessage })
-				.from(apiLog)
-				.limit(1);
+			await db.select({ errorMessage: apiLog.errorMessage }).from(apiLog).limit(1);
 			hasErrorMessageColumn = true;
 		} catch {
 			// La colonne n'existe pas encore, on continuera sans elle
@@ -118,6 +115,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		};
 	} catch (err) {
 		console.error('Erreur lors du chargement des logs:', err);
-		throw error(500, `Erreur lors du chargement des logs: ${err instanceof Error ? err.message : String(err)}`);
+		throw error(
+			500,
+			`Erreur lors du chargement des logs: ${err instanceof Error ? err.message : String(err)}`
+		);
 	}
 };

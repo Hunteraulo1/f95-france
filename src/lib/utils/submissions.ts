@@ -1,4 +1,6 @@
-import { CircleCheck, CircleX, Clock } from '@lucide/svelte';
+import CircleCheck from '@lucide/svelte/icons/circle-check';
+import CircleX from '@lucide/svelte/icons/circle-x';
+import Clock from '@lucide/svelte/icons/clock';
 
 export const getStatusBadge = (status: string) => {
 	switch (status) {

@@ -11,7 +11,7 @@
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
-	import { LoaderCircle } from '@lucide/svelte';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -23,8 +23,6 @@
 
 	let { data }: Props = $props();
 	let step = $state(0);
-
-	let translators = $state(data.translators);
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({
@@ -421,7 +419,15 @@
 			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each elements as { Component, name, title, active, className, values, type, needsTranslators } (name)}
 					{#if needsTranslators && Component === Datalist}
-						<Datalist {step} {name} {title} {active} {className} bind:game bind:translators />
+						<Datalist
+							{step}
+							{name}
+							{title}
+							{active}
+							{className}
+							bind:game
+							translators={data.translators}
+						/>
 					{:else}
 						<Component {step} {name} {title} {active} {className} {values} {type} bind:game />
 					{/if}

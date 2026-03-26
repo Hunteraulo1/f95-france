@@ -1,10 +1,10 @@
-import { drizzle } from 'drizzle-orm/mysql2';
-import mysql from 'mysql2/promise';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
+import { getPostgresConfig } from './connection';
 
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+const config = getPostgresConfig(env);
+const client = typeof config === 'string' ? postgres(config, { prepare: false }) : postgres(config);
 
-const client = mysql.createPool(env.DATABASE_URL);
-
-export const db = drizzle(client, { schema, mode: 'default' });
+export const db = drizzle(client, { schema });

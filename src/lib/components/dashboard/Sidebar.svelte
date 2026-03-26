@@ -1,32 +1,29 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
-	import {
-		Box,
-		BrickWallShield,
-		Inbox,
-		Languages,
-		Library,
-		LogOut,
-		MonitorCog,
-		ScrollText,
-		Settings,
-		Settings2,
-		UserPen,
-		type Icon as IconType
-	} from '@lucide/svelte';
+	import Box from '@lucide/svelte/icons/box';
+	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
+	import Inbox from '@lucide/svelte/icons/inbox';
+	import Languages from '@lucide/svelte/icons/languages';
+	import Library from '@lucide/svelte/icons/library';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import MonitorCog from '@lucide/svelte/icons/monitor-cog';
+	import ScrollText from '@lucide/svelte/icons/scroll-text';
+	import Settings from '@lucide/svelte/icons/settings';
+	import Settings2 from '@lucide/svelte/icons/settings-2';
+	import UserPen from '@lucide/svelte/icons/user-pen';
 
 	interface Props {
-		isSidebarOpen: boolean;
 		pendingSubmissionsCount?: number;
 	}
 
-	let { isSidebarOpen = $bindable(), pendingSubmissionsCount = 0 }: Props = $props();
+	let { pendingSubmissionsCount = 0 }: Pick<Props, 'pendingSubmissionsCount'> = $props();
 
 	interface NavItem {
 		label: string;
 		href: string;
-		icon: typeof IconType;
+		icon: Component;
 		roles: checkRoleType[];
 		badge?: number;
 		badgeKey?: boolean;

@@ -459,7 +459,8 @@ export async function applySubmission(submissionId: string) {
 							| 'hs',
 						tlink: translationData.tlink || '',
 						translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
-						proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+						proofreaderId:
+							translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
 						ac: translationData.ac ?? originalTranslation.ac ?? false,
 						updatedAt: new Date()
 					})
@@ -472,7 +473,13 @@ export async function applySubmission(submissionId: string) {
 					version: translationData.version,
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
-					ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
+					ttype: translationData.ttype as
+						| 'auto'
+						| 'vf'
+						| 'manual'
+						| 'semi-auto'
+						| 'to_tested'
+						| 'hs',
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
 					proofreaderId: translationData.proofreaderId ?? null,
@@ -831,7 +838,9 @@ export async function revertSubmission(submissionId: string) {
 
 			// Si translationId existe, utiliser directement cet ID pour supprimer
 			if (sub.translationId) {
-				await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, sub.translationId));
+				await db
+					.delete(table.gameTranslation)
+					.where(eq(table.gameTranslation.id, sub.translationId));
 			} else {
 				// Sinon, chercher la traduction par les données de la soumission
 				const translationData = parsedData.translation;

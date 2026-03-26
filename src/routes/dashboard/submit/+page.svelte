@@ -12,16 +12,13 @@
 
 	let { data }: Props = $props();
 
-	let showSubmissionModal = $state(false);
 	let selectedSubmission: (typeof data.submissions)[0] | null = $state(null);
 
 	const openSubmissionModal = (submission: (typeof data.submissions)[0]) => {
 		selectedSubmission = submission;
-		showSubmissionModal = true;
 	};
 
 	const closeSubmissionModal = () => {
-		showSubmissionModal = false;
 		selectedSubmission = null;
 	};
 
@@ -61,7 +58,7 @@
 	{:else}
 		<div class="grid gap-4">
 			{#each data.submissions as submission (submission.id)}
-				<SubmissionCard submission={submission} onClick={() => openSubmissionModal(submission)} />
+				<SubmissionCard {submission} onClick={() => openSubmissionModal(submission)} />
 			{/each}
 		</div>
 	{/if}

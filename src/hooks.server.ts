@@ -1,10 +1,7 @@
 import * as auth from '$lib/server/auth';
-import { db } from '$lib/server/db';
-import { apiLog } from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
@@ -35,19 +32,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 	let capturedBody: string | null = null;
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
-	
+
 	// Exclure les fichiers statiques du logging pour éviter la surcharge
-	const isStaticAsset = pathname.startsWith('/_app/') || 
-		pathname.startsWith('/favicon') || 
+	const isStaticAsset =
+		pathname.startsWith('/_app/') ||
+		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
-	
+
 	const isApiRequest = pathname.startsWith('/api/');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
-	const isSubmissionRoute = 
-		pathname.startsWith('/dashboard/submit') || 
-		pathname.startsWith('/dashboard/submits');
+	const isSubmissionRoute =
+		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
 	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
 	const shouldCaptureBody = shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
@@ -68,7 +65,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (shouldLog) {
 		const route = `${event.url.pathname}${event.url.search}`;
-		
+
 		// Logger l'action API
 		logApiAction({
 			method,
@@ -91,7 +88,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				event.locals.user?.id ?? null,
 				event.locals.user?.username ?? null
 			).catch((error) => {
-				console.error('Erreur lors de la création de la notification d\'erreur API:', error);
+				console.error("Erreur lors de la création de la notification d'erreur API:", error);
 			});
 		}
 	}
@@ -99,27 +96,37 @@ export const handle: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-export const handleError = async ({ error, event, status, message }: { error: unknown; event: RequestEvent; status: number; message: string }) => {
+export const handleError = async ({
+	error,
+	event,
+	status,
+	message
+}: {
+	error: unknown;
+	event: RequestEvent;
+	status: number;
+	message: string;
+}) => {
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
-	
+
 	// Exclure les fichiers statiques du logging pour éviter la surcharge
-	const isStaticAsset = pathname.startsWith('/_app/') || 
-		pathname.startsWith('/favicon') || 
+	const isStaticAsset =
+		pathname.startsWith('/_app/') ||
+		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
-	
+
 	const isApiRequest = pathname.startsWith('/api/');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
-	const isSubmissionRoute = 
-		pathname.startsWith('/dashboard/submit') || 
-		pathname.startsWith('/dashboard/submits');
+	const isSubmissionRoute =
+		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
 	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
 
 	if (shouldLog && status >= 500) {
 		const route = `${event.url.pathname}${event.url.search}`;
-		
+
 		// Construire le message d'erreur avec la stack trace
 		let errorMessage = message || 'Erreur inconnue';
 		if (error instanceof Error) {
@@ -128,26 +135,15 @@ export const handleError = async ({ error, event, status, message }: { error: un
 			errorMessage = String(error);
 		}
 
-		// Mettre à jour le dernier log pour cette route avec le message d'erreur
-		try {
-			const recentLogs = await db
-				.select({ id: apiLog.id })
-				.from(apiLog)
-				.where(eq(apiLog.route, route))
-				.orderBy(desc(apiLog.createdAt))
-				.limit(1);
-
-			if (recentLogs.length > 0) {
-				await db
-					.update(apiLog)
-					.set({
-						errorMessage: errorMessage.length > 10000 ? `${errorMessage.slice(0, 10000)}…` : errorMessage
-					})
-					.where(eq(apiLog.id, recentLogs[0].id));
-			}
-		} catch (dbError) {
-			console.error('Erreur lors de la mise à jour du log avec le message d\'erreur:', dbError);
-		}
+		// Best effort: create a dedicated error log entry.
+		await logApiAction({
+			method,
+			route,
+			status,
+			userId: event.locals.user?.id ?? null,
+			payload: null,
+			errorMessage
+		});
 	}
 
 	return {

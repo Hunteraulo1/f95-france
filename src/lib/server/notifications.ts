@@ -45,7 +45,9 @@ export async function createNotification(params: CreateNotificationParams) {
 			'code' in error.cause &&
 			error.cause.code === 'ER_NO_SUCH_TABLE'
 		) {
-			console.warn('Table notification n\'existe pas encore. Créez la migration avec: npm run db:generate');
+			console.warn(
+				"Table notification n'existe pas encore. Créez la migration avec: npm run db:generate"
+			);
 			return;
 		}
 		// Propager les autres erreurs
@@ -148,8 +150,9 @@ export async function notifyApiError(
 			return;
 		}
 
-		const statusLabel = status >= 500 ? 'Erreur serveur' : status >= 400 ? 'Erreur client' : 'Erreur';
-		
+		const statusLabel =
+			status >= 500 ? 'Erreur serveur' : status >= 400 ? 'Erreur client' : 'Erreur';
+
 		// Récupérer le nom d'utilisateur si non fourni
 		let finalUsername = username || 'Anonyme';
 		if (!username && userId) {
@@ -187,7 +190,7 @@ export async function notifyApiError(
 		}
 	} catch (error) {
 		// Ne pas propager l'erreur pour éviter de bloquer la requête
-		console.warn('Erreur lors de la notification d\'erreur API:', error);
+		console.warn("Erreur lors de la notification d'erreur API:", error);
 	}
 }
 
@@ -221,8 +224,7 @@ export async function markNotificationAsRead(notificationId: string, userId: str
 	await db
 		.update(table.notification)
 		.set({ read: true })
-		.where(eq(table.notification.id, notificationId))
-		.where(eq(table.notification.userId, userId));
+		.where(and(eq(table.notification.id, notificationId), eq(table.notification.userId, userId)));
 }
 
 /**

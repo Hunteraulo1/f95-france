@@ -58,7 +58,7 @@ export const initializeUserFromLocals = (userData: User | null) => {
 		// console.log('🔍 Store - Mise à jour du store avec:', userWithoutPassword.username);
 		user.set(userWithoutPassword as User);
 	} else {
-		console.error('🔍 Store - Mise à jour du store avec null');
+		console.debug('🔍 Store - Mise à jour du store avec null');
 		user.set(null);
 	}
 };

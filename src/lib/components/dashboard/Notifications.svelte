@@ -1,21 +1,15 @@
-<script lang="ts">
+<script>
 	import { user } from '$lib/stores';
-	import { Bell, Check, CheckCheck } from '@lucide/svelte';
+	import Bell from '@lucide/svelte/icons/bell';
+	import Check from '@lucide/svelte/icons/check';
+	import CheckCheck from '@lucide/svelte/icons/check-check';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	interface Notification {
-		id: string;
-		type: string;
-		title: string;
-		message: string;
-		read: boolean;
-		link: string | null;
-		createdAt: Date | string;
-		metadata: Record<string, unknown> | null;
-	}
+	/** @typedef {{ id: string; type: string; title: string; message: string; read: boolean; link: string | null; createdAt: Date | string; metadata: Record<string, unknown> | null }} Notification */
 
-	let notifications = $state<Notification[]>([]);
+	/** @type {Notification[]} */
+	let notifications = $state([]);
 	let unreadCount = $state(0);
 	let isDrawerOpen = $state(false);
 	let isLoading = $state(false);
@@ -38,7 +32,8 @@
 		}
 	};
 
-	const markAsRead = async (notificationId: string) => {
+	/** @param {string} notificationId */
+	const markAsRead = async (notificationId) => {
 		try {
 			const response = await fetch('/api/notifications', {
 				method: 'POST',
@@ -75,18 +70,21 @@
 		}
 	};
 
-	const handleNotificationClick = async (notification: Notification) => {
+	/** @param {Notification} notification */
+	const handleNotificationClick = async (notification) => {
 		if (!notification.read) {
 			await markAsRead(notification.id);
 		}
 
 		if (notification.link) {
 			isDrawerOpen = false;
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			await goto(notification.link);
 		}
 	};
 
-	const formatDate = (date: Date | string) => {
+	/** @param {Date | string} date */
+	const formatDate = (date) => {
 		const d = new Date(date);
 		const now = new Date();
 		const diffMs = now.getTime() - d.getTime();
@@ -94,7 +92,7 @@
 		const diffHours = Math.floor(diffMs / 3600000);
 		const diffDays = Math.floor(diffMs / 86400000);
 
-		if (diffMins < 1) return 'À l\'instant';
+		if (diffMins < 1) return "À l'instant";
 		if (diffMins < 60) return `Il y a ${diffMins} min`;
 		if (diffHours < 24) return `Il y a ${diffHours}h`;
 		if (diffDays < 7) return `Il y a ${diffDays}j`;
@@ -116,25 +114,23 @@
 </script>
 
 <div class="dropdown dropdown-end">
-	<button type="button" tabindex="0" class="btn btn-ghost btn-circle relative">
+	<button type="button" tabindex="0" class="btn relative btn-circle btn-ghost">
 		<Bell size={20} />
 		{#if unreadCount > 0}
-			<span class="badge badge-sm badge-error absolute -top-1 -right-1 min-w-[18px] h-[18px] p-0 flex items-center justify-center">
+			<span
+				class="absolute -top-1 -right-1 badge flex h-[18px] min-w-[18px] items-center justify-center p-0 badge-sm badge-error"
+			>
 				{unreadCount > 99 ? '99+' : unreadCount}
 			</span>
 		{/if}
 	</button>
 	<div
-		class="dropdown-content menu bg-base-100 rounded-box z-[1] w-96 shadow-lg border border-base-300 mt-2"
+		class="dropdown-content menu z-1 mt-2 w-96 rounded-box border border-base-300 bg-base-100 shadow-lg"
 	>
-		<div class="p-4 border-b border-base-300 flex items-center justify-between">
-			<h3 class="font-semibold text-lg">Notifications</h3>
+		<div class="flex items-center justify-between border-b border-base-300 p-4">
+			<h3 class="text-lg font-semibold">Notifications</h3>
 			{#if unreadCount > 0}
-				<button
-					class="btn btn-ghost btn-sm"
-					onclick={markAllAsRead}
-					title="Tout marquer comme lu"
-				>
+				<button class="btn btn-ghost btn-sm" onclick={markAllAsRead} title="Tout marquer comme lu">
 					<CheckCheck size={16} />
 				</button>
 			{/if}
@@ -142,7 +138,7 @@
 		<div class="max-h-[500px] overflow-y-auto">
 			{#if isLoading}
 				<div class="p-8 text-center">
-					<span class="loading loading-spinner loading-md"></span>
+					<span class="loading loading-md loading-spinner"></span>
 				</div>
 			{:else if notifications.length === 0}
 				<div class="p-8 text-center text-base-content/60">
@@ -154,7 +150,7 @@
 					<div
 						role="button"
 						tabindex="0"
-						class="w-full p-4 hover:bg-base-200 transition-colors border-b border-base-300 last:border-b-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary {notification.read
+						class="w-full cursor-pointer border-b border-base-300 p-4 transition-colors last:border-b-0 hover:bg-base-200 focus:ring-2 focus:ring-primary focus:outline-none {notification.read
 							? ''
 							: 'bg-base-200/50'}"
 						onclick={() => handleNotificationClick(notification)}
@@ -166,22 +162,24 @@
 						}}
 					>
 						<div class="flex items-start gap-3">
-							<div class="flex-1 min-w-0">
-								<div class="flex items-center gap-2 mb-1">
-									<h4 class="font-semibold text-sm {notification.read ? '' : 'font-bold'}">
+							<div class="min-w-0 flex-1">
+								<div class="mb-1 flex items-center gap-2">
+									<h4 class="text-sm font-semibold {notification.read ? '' : 'font-bold'}">
 										{notification.title}
 									</h4>
 									{#if !notification.read}
-										<div class="badge badge-primary badge-xs"></div>
+										<div class="badge badge-xs badge-primary"></div>
 									{/if}
 								</div>
-								<p class="text-sm text-base-content/70 line-clamp-2">{notification.message}</p>
-								<p class="text-xs text-base-content/50 mt-1">{formatDate(notification.createdAt)}</p>
+								<p class="line-clamp-2 text-sm text-base-content/70">{notification.message}</p>
+								<p class="mt-1 text-xs text-base-content/50">
+									{formatDate(notification.createdAt)}
+								</p>
 							</div>
 							{#if !notification.read}
 								<button
 									type="button"
-									class="btn btn-ghost btn-xs btn-circle"
+									class="btn btn-circle btn-ghost btn-xs"
 									onclick={(e) => {
 										e.stopPropagation();
 										markAsRead(notification.id);

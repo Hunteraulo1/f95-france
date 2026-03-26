@@ -1,15 +1,17 @@
 <script lang="ts">
 	import type { Translator } from '$lib/server/db/schema';
-	import { createEventDispatcher } from 'svelte';
 
 	interface Props {
 		showModal: boolean;
 		translators: Translator[];
+		onAdded?: (payload: { name: string }) => void;
 	}
 
-	const dispatch = createEventDispatcher<{ added: { name: string } }>();
-
-	let { showModal = $bindable(), translators = $bindable() }: Props = $props();
+	let {
+		showModal = $bindable(),
+		translators = $bindable<Translator[]>([]),
+		onAdded
+	}: Pick<Props, 'showModal' | 'translators' | 'onAdded'> = $props();
 
 	let newTranslatorName = $state<Translator['name']>();
 	let errorMessage = $state<string | null>(null);
@@ -20,6 +22,10 @@
 		const trimmed = newTranslatorName.trim();
 		if (!trimmed) {
 			errorMessage = 'Le nom est requis';
+			return;
+		}
+		if (translators.some((item) => item.name === trimmed)) {
+			errorMessage = 'Ce traducteur existe deja';
 			return;
 		}
 
@@ -39,7 +45,7 @@
 				newTranslatorName = '';
 				showModal = false;
 				errorMessage = null;
-				dispatch('added', { name: trimmed });
+				onAdded?.({ name: trimmed });
 			} else {
 				const errorData = await response.json();
 				errorMessage = errorData.error || 'Erreur lors de la création du traducteur';

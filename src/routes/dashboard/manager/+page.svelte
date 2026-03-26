@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
-	import { Plus, Search, X } from '@lucide/svelte';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Search from '@lucide/svelte/icons/search';
+	import X from '@lucide/svelte/icons/x';
 
 	let searchQuery = $state('');
 	let searchResults = $state<Game[]>([]);

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
-	import { Copy, Link2, Link2Off } from '@lucide/svelte';
+	import Copy from '@lucide/svelte/icons/copy';
+	import Link2 from '@lucide/svelte/icons/link-2';
+	import Link2Off from '@lucide/svelte/icons/link-2-off';
 	import type { Snippet } from 'svelte';
 	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
 

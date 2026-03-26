@@ -5,6 +5,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
+	optimizeDeps: {
+		exclude: ['@lucide/svelte']
+	},
 	server: {
 		fs: {
 			allow: ['..']

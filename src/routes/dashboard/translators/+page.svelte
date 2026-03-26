@@ -78,19 +78,18 @@
 		</thead>
 		<tbody>
 			{#each filteredTranslators as translator, index (translator.id)}
-				{@const handleTranslatorClick = async () => {
-					if (translator.userId) {
-						// eslint-disable-next-line svelte/no-navigation-without-resolve
-						await goto(`/dashboard/profile/${translator.userId}`, { invalidateAll: true });
-					}
-				}}
 				<tr>
 					<td class="font-bold">{index + 1}</td>
 					<th
 						class="font-bold"
 						class:cursor-pointer={translator.userId}
 						class:hover:text-primary={translator.userId}
-						onclick={handleTranslatorClick}>{translator.name}</th
+						onclick={() => {
+							if (translator.userId) {
+								// eslint-disable-next-line svelte/no-navigation-without-resolve
+								void goto(`/dashboard/profile/${translator.userId}`, { invalidateAll: true });
+							}
+						}}>{translator.name}</th
 					>
 					{#if translator.discordId}
 						<td>
@@ -141,15 +140,19 @@
 				action="?/addTranslator"
 				use:enhance={() => {
 					addError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							showAddModal = false;
 							pages = [{ name: '', link: '' }];
 							addError = null;
 						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data as { message?: string };
-							addError = errorData.message || "Erreur lors de l'ajout du traducteur";
+							const errorData = result.data;
+							const message =
+								typeof errorData === 'object' && errorData && 'message' in errorData
+									? String(errorData.message)
+									: "Erreur lors de l'ajout du traducteur";
+							addError = message;
 						}
 					};
 				}}
@@ -246,14 +249,18 @@
 				action="?/editTranslator"
 				use:enhance={() => {
 					editError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							handleEditSuccess();
 							editError = null;
 						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data as { message?: string };
-							editError = errorData.message || 'Erreur lors de la modification du traducteur';
+							const errorData = result.data;
+							const message =
+								typeof errorData === 'object' && errorData && 'message' in errorData
+									? String(errorData.message)
+									: 'Erreur lors de la modification du traducteur';
+							editError = message;
 						}
 					};
 				}}

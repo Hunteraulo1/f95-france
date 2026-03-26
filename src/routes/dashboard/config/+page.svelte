@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { User } from '@lucide/svelte';
+	import User from '@lucide/svelte/icons/user';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -66,7 +66,7 @@
 				action="?/updateConfig"
 				use:enhance={() => {
 					configError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							configError = null;
@@ -369,7 +369,7 @@
 				action="?/updateUser"
 				use:enhance={() => {
 					userError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							closeEditUserModal();

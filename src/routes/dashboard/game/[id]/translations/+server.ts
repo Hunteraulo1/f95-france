@@ -107,8 +107,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tversion,
 			status,
 			ttype,
-			tlink: linkNotRequired || tlink === null ? '' : (tlink || ''),
-			tname: (tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') || 'translation',
+			tlink: linkNotRequired || tlink === null ? '' : tlink || '',
+			tname:
+				(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+				'translation',
 			translatorId: translatorId || null,
 			proofreaderId: proofreaderId || null,
 			ac: ac ?? false

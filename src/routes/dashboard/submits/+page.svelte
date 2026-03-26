@@ -12,20 +12,20 @@
 
 	let { data }: Props = $props();
 
-	let showSubmissionModal = $state(false);
 	let selectedSubmission: (typeof data.submissions)[0] | null = $state(null);
 
 	const openSubmissionModal = (submission: (typeof data.submissions)[0]) => {
 		selectedSubmission = submission;
-		showSubmissionModal = true;
 	};
 
 	const closeSubmissionModal = async () => {
-		showSubmissionModal = false;
 		selectedSubmission = null;
 		// Invalider les données pour mettre à jour les compteurs
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		await goto(`/dashboard/submits?status=${data.statusFilter}`, { noScroll: true, invalidateAll: true });
+		await goto(`/dashboard/submits?status=${data.statusFilter}`, {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const updateFilter = async (status: string) => {
@@ -64,7 +64,7 @@
 	{:else}
 		<div class="grid gap-4">
 			{#each data.submissions as submission (submission.id)}
-				<SubmissionCard submission={submission} onClick={() => openSubmissionModal(submission)} />
+				<SubmissionCard {submission} onClick={() => openSubmissionModal(submission)} />
 			{/each}
 		</div>
 	{/if}

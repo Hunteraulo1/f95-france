@@ -1,27 +1,30 @@
 <script lang="ts">
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
-	import {
-		ArrowLeft,
-		CalendarCheck2,
-		CalendarClock,
-		ExternalLink,
-		Gamepad2,
-		Globe,
-		Plus,
-		RefreshCcw,
-		Square,
-		SquareCheckBig,
-		SquarePen,
-		Tag,
-		Trash2
-	} from '@lucide/svelte';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+	import Globe from '@lucide/svelte/icons/globe';
+	import Plus from '@lucide/svelte/icons/plus';
+	import RefreshCcw from '@lucide/svelte/icons/refresh-ccw';
+	import Square from '@lucide/svelte/icons/square';
+	import SquareCheckBig from '@lucide/svelte/icons/square-check-big';
+	import SquarePen from '@lucide/svelte/icons/square-pen';
+	import Tag from '@lucide/svelte/icons/tag';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	const { game, translations, translators, user: currentUser } = data;
-	const canRefreshGame = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+	const game = $derived(data.game);
+	const translations = $derived(data.translations);
+	const translators = $derived(data.translators);
+	const currentUser = $derived(data.user);
+	const canRefreshGame = $derived(
+		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+	);
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -245,8 +248,13 @@
 	const addTranslation = async () => {
 		// Validation des champs requis
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
-		const linkNotRequired = newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
-		if (!newTranslation.version || !newTranslation.tversion || (!linkNotRequired && !newTranslation.tlink)) {
+		const linkNotRequired =
+			newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
+		if (
+			!newTranslation.version ||
+			!newTranslation.tversion ||
+			(!linkNotRequired && !newTranslation.tlink)
+		) {
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
@@ -826,8 +834,10 @@
 						placeholder="https://..."
 						class="w-full input-ghost"
 						bind:value={newTranslation.tlink}
-						disabled={newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation'}
-						required={newTranslation.tname !== 'integrated' && newTranslation.tname !== 'no_translation'}
+						disabled={newTranslation.tname === 'integrated' ||
+							newTranslation.tname === 'no_translation'}
+						required={newTranslation.tname !== 'integrated' &&
+							newTranslation.tname !== 'no_translation'}
 					/>
 				</label>
 			</div>
@@ -835,15 +845,11 @@
 			<div class="form-control mb-6 w-full">
 				<label class="label cursor-pointer" for="ac">
 					<span class="label-text">Auto-Check</span>
-					<input
-						id="ac"
-						type="checkbox"
-						class="toggle"
-						bind:checked={newTranslation.ac}
-					/>
+					<input id="ac" type="checkbox" class="toggle" bind:checked={newTranslation.ac} />
 				</label>
 				<p class="mt-1 text-xs text-base-content/60">
-					Activez cette option pour que les données de la traduction soient automatiquement rafraîchies lors d'une nouvelle version du jeu.
+					Activez cette option pour que les données de la traduction soient automatiquement
+					rafraîchies lors d'une nouvelle version du jeu.
 				</p>
 			</div>
 
@@ -991,20 +997,16 @@
 				</label>
 			</div>
 
-				<div class="form-control mb-6 w-full">
-					<label class="label cursor-pointer" for="edit-ac">
-						<span class="label-text">Auto-Check</span>
-						<input
-							id="edit-ac"
-							type="checkbox"
-							class="toggle"
-							bind:checked={editingTranslation.ac}
-						/>
-					</label>
-					<p class="mt-1 text-xs text-base-content/60">
-						Activez cette option pour que les données de la traduction soient automatiquement rafraîchies lors d'une nouvelle version du jeu.
-					</p>
-				</div>
+			<div class="form-control mb-6 w-full">
+				<label class="label cursor-pointer" for="edit-ac">
+					<span class="label-text">Auto-Check</span>
+					<input id="edit-ac" type="checkbox" class="toggle" bind:checked={editingTranslation.ac} />
+				</label>
+				<p class="mt-1 text-xs text-base-content/60">
+					Activez cette option pour que les données de la traduction soient automatiquement
+					rafraîchies lors d'une nouvelle version du jeu.
+				</p>
+			</div>
 
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control">

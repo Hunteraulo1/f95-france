@@ -2,18 +2,31 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-	let methodFilter = $state(data.filters.method ?? '');
-	let search = $state(data.filters.search ?? '');
-	let userSearch = $state(data.filters.user ?? '');
-	let errorsOnly = $state(data.filters.errorsOnly ?? false);
-	let warningsOnly = $state(data.filters.warningsOnly ?? false);
-	let redirectsOnly = $state(data.filters.redirectsOnly ?? false);
-	let limit = $state(String(data.filters.limit));
+	let methodFilter = $state('');
+	let search = $state('');
+	let userSearch = $state('');
+	let errorsOnly = $state(false);
+	let warningsOnly = $state(false);
+	let redirectsOnly = $state(false);
+	let limit = $state('50');
 	let showPayloadModal = $state(false);
 	let formattedPayload = $state<string | null>(null);
 	let payloadFormat = $state<'json' | 'texte'>('texte');
 	let showErrorModal = $state(false);
 	let errorMessage = $state<string | null>(null);
+	let filtersInitialized = $state(false);
+
+	$effect(() => {
+		if (filtersInitialized) return;
+		methodFilter = data.filters.method ?? '';
+		search = data.filters.search ?? '';
+		userSearch = data.filters.user ?? '';
+		errorsOnly = data.filters.errorsOnly ?? false;
+		warningsOnly = data.filters.warningsOnly ?? false;
+		redirectsOnly = data.filters.redirectsOnly ?? false;
+		limit = String(data.filters.limit);
+		filtersInitialized = true;
+	});
 
 	const methodOptions = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -251,11 +264,14 @@
 										{/if}
 									</td>
 									<td class="max-w-xs">
-										{#if log.errorMessage}
+										{#if 'errorMessage' in log && log.errorMessage}
 											<button
 												type="button"
 												class="btn text-error btn-ghost btn-xs"
-												onclick={() => openErrorModal(log.errorMessage ?? '')}
+												onclick={() =>
+													openErrorModal(
+														typeof log.errorMessage === 'string' ? log.errorMessage : ''
+													)}
 											>
 												Voir
 											</button>
@@ -306,7 +322,8 @@
 				</div>
 				<span class="badge badge-error">Erreur</span>
 			</div>
-			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
+			<pre
+				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
 {errorMessage}
 </pre>
 			<div class="modal-action">

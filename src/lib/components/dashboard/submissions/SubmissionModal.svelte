@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import type { Game, GameTranslation } from '$lib/server/db/schema';
 	import { user } from '$lib/stores';
-	import { getStatusBadge, getTypeBadge, getTypeLabel, validateStatusChange } from '$lib/utils/submissions';
+	import {
+		getStatusBadge,
+		getTypeBadge,
+		getTypeLabel,
+		validateStatusChange
+	} from '$lib/utils/submissions';
 
 	interface FieldConfig<T extends GameTranslation | Game = GameTranslation | Game> {
 		key: keyof T;
@@ -108,21 +114,21 @@
 		return String(normalizedOld) === String(normalizedNew);
 	};
 
-	const getTranslatorName = (translatorId: string | null | undefined): string | null => {
-		if (!translatorId) return null;
+	const getTranslatorName = (translatorId: unknown): string | null => {
+		if (typeof translatorId !== 'string' || !translatorId) return null;
 		const translator = translators.find((t) => t.id === translatorId);
 		return translator?.name || null;
 	};
 
-	const getTranslator = (translatorId: string | null | undefined): Translator | null => {
-		if (!translatorId) return null;
+	const getTranslator = (translatorId: unknown): Translator | null => {
+		if (typeof translatorId !== 'string' || !translatorId) return null;
 		return translators.find((t) => t.id === translatorId) || null;
 	};
 
-	const handleTranslatorClick = async (translatorId: string | null | undefined) => {
+	const handleTranslatorClick = async (translatorId: unknown) => {
 		const translator = getTranslator(translatorId);
 		if (translator?.userId) {
-			await goto(`/dashboard/profile/${translator.userId}`);
+			await goto(resolve(`/dashboard/profile/${translator.userId}`));
 		}
 	};
 
@@ -137,7 +143,7 @@
 		}
 
 		if (key === 'translatorId' || key === 'proofreaderId') {
-			const translatorName = getTranslatorName(value as string);
+			const translatorName = getTranslatorName(value);
 			return translatorName || String(value);
 		}
 
@@ -151,7 +157,7 @@
 
 {#if submission}
 	<div class="modal-open modal">
-		<div class="modal-box max-h-[90vh] max-w-4xl flex flex-col">
+		<div class="modal-box flex max-h-[90vh] max-w-4xl flex-col">
 			<!-- En-tête avec informations de la soumission -->
 			<div class="mb-4 flex items-center justify-between border-b border-base-300 pb-4">
 				<div class="flex-1">
@@ -196,8 +202,8 @@
 						if (!submission?.currentGame || !submission?.parsedData?.game) {
 							return false;
 						}
-						const oldValue = getFieldValue(submission.currentGame, field.key as string);
-						const newValue = getFieldValue(submission.parsedData.game, field.key as string);
+						const oldValue = getFieldValue(submission.currentGame, String(field.key));
+						const newValue = getFieldValue(submission.parsedData.game, String(field.key));
 						return !valuesAreEqual(oldValue, newValue);
 					})}
 					{#if hasAnyChanges}
@@ -210,12 +216,12 @@
 									{@const formattedOld = formatFieldValue(
 										oldValue,
 										field.options?.showIfEmpty ?? false,
-										field.key as string
+										String(field.key)
 									)}
 									{@const formattedNew = formatFieldValue(
 										newValue,
 										field.options?.showIfEmpty ?? false,
-										field.key as string
+										String(field.key)
 									)}
 									{@const classes = `${
 										field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
@@ -226,12 +232,12 @@
 										<div class="mb-2 font-semibold">{field.label}:</div>
 										<div class="space-y-1">
 											{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
-												{@const oldTranslator = getTranslator(oldValue as string)}
+												{@const oldTranslator = getTranslator(oldValue)}
 												{#if oldTranslator?.userId}
 													<button
 														type="button"
 														class="link link-error {classes} line-through"
-														onclick={() => handleTranslatorClick(oldValue as string)}
+														onclick={() => handleTranslatorClick(oldValue)}
 													>
 														{formattedOld}
 													</button>
@@ -242,14 +248,15 @@
 												<div class="{classes} text-error line-through">{formattedOld}</div>
 											{/if}
 											{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
-												{@const newTranslator = getTranslator(newValue as string)}
+												{@const newTranslator = getTranslator(newValue)}
 												{#if newTranslator?.userId}
 													<button
 														type="button"
-														class="link link-success {classes} {field.options?.isMultiline || field.options?.isUrl
+														class="link link-success {classes} {field.options?.isMultiline ||
+														field.options?.isUrl
 															? ''
 															: 'font-medium'}"
-														onclick={() => handleTranslatorClick(newValue as string)}
+														onclick={() => handleTranslatorClick(newValue)}
 													>
 														{formattedNew}
 													</button>
@@ -278,63 +285,195 @@
 						</div>
 					{:else}
 						<div class="alert alert-info">
-							<span>Aucun changement détecté entre le jeu actuel et les modifications proposées.</span>
+							<span
+								>Aucun changement détecté entre le jeu actuel et les modifications proposées.</span
+							>
 						</div>
 					{/if}
 				{:else if submission.type === 'game' && (submission.currentGame || submission.parsedData?.game)}
 					{#if submission.currentGame || submission.parsedData?.game}
-						{@const gameData = submission.status === 'accepted' 
-							? submission.parsedData?.game 
-							: (submission.currentGame || submission.parsedData?.game)}
+						{@const gameData =
+							submission.status === 'accepted'
+								? submission.parsedData?.game
+								: submission.currentGame || submission.parsedData?.game}
 						<div class="space-y-4">
-							<h4 class="text-md font-semibold mb-2">Détails du jeu</h4>
+							<h4 class="text-md mb-2 font-semibold">Détails du jeu</h4>
 							{#each gameFields as field (field.key)}
 								{@const value = getFieldValue(gameData!, field.key)}
-							{@const formattedValue = formatFieldValue(
-								value,
-								field.options?.showIfEmpty ?? false,
-								field.key as string
-							)}
-							{@const fieldKey = String(field.key)}
-							{#if formattedValue !== '' || field.options?.showIfEmpty}
-								{@const classes = `${
-									field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-								} ${field.options?.isUrl ? 'break-all' : ''} ${
-									field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-								}`.trim()}
-								<div class="border-b border-base-300 pb-3">
-									<div class="mb-2 font-semibold">{field.label}:</div>
-									{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && value}
-										{@const translator = getTranslator(value as string)}
-										{#if translator?.userId}
-											<button
-												type="button"
-												class="link link-primary {classes}"
-												onclick={() => handleTranslatorClick(value as string)}
-											>
-												{formattedValue}
-											</button>
+								{@const formattedValue = formatFieldValue(
+									value,
+									field.options?.showIfEmpty ?? false,
+									String(field.key)
+								)}
+								{@const fieldKey = String(field.key)}
+								{#if formattedValue !== '' || field.options?.showIfEmpty}
+									{@const classes = `${
+										field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
+									} ${field.options?.isUrl ? 'break-all' : ''} ${
+										field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
+									}`.trim()}
+									<div class="border-b border-base-300 pb-3">
+										<div class="mb-2 font-semibold">{field.label}:</div>
+										{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && value}
+											{@const translator = getTranslator(value)}
+											{#if translator?.userId}
+												<button
+													type="button"
+													class="link link-primary {classes}"
+													onclick={() => handleTranslatorClick(value)}
+												>
+													{formattedValue}
+												</button>
+											{:else}
+												<div class={classes}>{formattedValue}</div>
+											{/if}
 										{:else}
 											<div class={classes}>{formattedValue}</div>
 										{/if}
-									{:else}
-										<div class={classes}>{formattedValue}</div>
-									{/if}
+									</div>
+								{/if}
+							{/each}
+							{#if submission.currentTranslation || submission.parsedData?.translation}
+								{@const translationData =
+									submission.status === 'accepted'
+										? submission.parsedData?.translation
+										: submission.currentTranslation || submission.parsedData?.translation}
+								<div class="mt-6">
+									<h4 class="text-md mb-2 font-semibold">Détails de la traduction</h4>
+									{#each translationFields as field (field.key)}
+										{@const value = getFieldValue(translationData!, field.key)}
+										{@const formattedValue = formatFieldValue(
+											value,
+											field.options?.showIfEmpty ?? false,
+											String(field.key)
+										)}
+										{#if formattedValue !== '' || field.options?.showIfEmpty}
+											{@const classes = `${
+												field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
+											} ${field.options?.isUrl ? 'break-all' : ''} ${
+												field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
+											}`.trim()}
+											<div class="border-b border-base-300 pb-3">
+												<div class="mb-2 font-semibold">{field.label}:</div>
+												<div class={classes}>{formattedValue}</div>
+											</div>
+										{/if}
+									{/each}
 								</div>
 							{/if}
-						{/each}
-						{#if submission.currentTranslation || submission.parsedData?.translation}
-							{@const translationData = submission.status === 'accepted' 
-								? submission.parsedData?.translation 
-								: (submission.currentTranslation || submission.parsedData?.translation)}
-							<div class="mt-6">
-								<h4 class="text-md font-semibold mb-2">Détails de la traduction</h4>
+						</div>
+					{/if}
+				{:else if submission.type === 'translation' && (submission.currentTranslation || submission.parsedData?.translation)}
+					{#if submission.currentTranslation || submission.parsedData?.translation}
+						{@const translationData =
+							submission.status === 'accepted'
+								? submission.parsedData?.translation
+								: submission.currentTranslation || submission.parsedData?.translation}
+						{#if submission.currentTranslation && submission.parsedData?.translation && submission.status !== 'accepted'}
+							{@const hasAnyChanges = translationFields.some((field) => {
+								if (!submission?.currentTranslation || !submission?.parsedData?.translation) {
+									return false;
+								}
+								const oldValue = getFieldValue(submission.currentTranslation, String(field.key));
+								const newValue = getFieldValue(
+									submission.parsedData.translation,
+									String(field.key)
+								);
+								return !valuesAreEqual(oldValue, newValue);
+							})}
+							{#if hasAnyChanges}
+								<div class="space-y-4">
+									{#each translationFields as field (field.key)}
+										{@const oldValue = getFieldValue(submission.currentTranslation, field.key)}
+										{@const newValue = getFieldValue(submission.parsedData.translation, field.key)}
+										{@const fieldKey = String(field.key)}
+										{#if !valuesAreEqual(oldValue, newValue)}
+											{@const formattedOld = formatFieldValue(
+												oldValue,
+												field.options?.showIfEmpty ?? false,
+												String(field.key)
+											)}
+											{@const formattedNew = formatFieldValue(
+												newValue,
+												field.options?.showIfEmpty ?? false,
+												String(field.key)
+											)}
+											{@const classes = `${
+												field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
+											} ${field.options?.isUrl ? 'break-all' : ''} ${
+												field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
+											}`.trim()}
+											<div class="border-b border-base-300 pb-3">
+												<div class="mb-2 font-semibold">{field.label}:</div>
+												<div class="space-y-1">
+													{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
+														{@const oldTranslator = getTranslator(oldValue)}
+														{#if oldTranslator?.userId}
+															<button
+																type="button"
+																class="link link-error {classes} line-through"
+																onclick={() => handleTranslatorClick(oldValue)}
+															>
+																{formattedOld}
+															</button>
+														{:else}
+															<div class="{classes} text-error line-through">{formattedOld}</div>
+														{/if}
+													{:else}
+														<div class="{classes} text-error line-through">{formattedOld}</div>
+													{/if}
+													{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
+														{@const newTranslator = getTranslator(newValue)}
+														{#if newTranslator?.userId}
+															<button
+																type="button"
+																class="link link-success {classes} {field.options?.isMultiline ||
+																field.options?.isUrl
+																	? ''
+																	: 'font-medium'}"
+																onclick={() => handleTranslatorClick(newValue)}
+															>
+																{formattedNew}
+															</button>
+														{:else}
+															<div
+																class="{classes} {field.options?.isMultiline || field.options?.isUrl
+																	? ''
+																	: 'font-medium'} text-success"
+															>
+																{formattedNew}
+															</div>
+														{/if}
+													{:else}
+														<div
+															class="{classes} {field.options?.isMultiline || field.options?.isUrl
+																? ''
+																: 'font-medium'} text-success"
+														>
+															{formattedNew}
+														</div>
+													{/if}
+												</div>
+											</div>
+										{/if}
+									{/each}
+								</div>
+							{:else}
+								<div class="alert alert-info">
+									<span
+										>Aucun changement détecté entre la traduction actuelle et les modifications
+										proposées.</span
+									>
+								</div>
+							{/if}
+						{:else}
+							<div class="space-y-4">
 								{#each translationFields as field (field.key)}
 									{@const value = getFieldValue(translationData!, field.key)}
 									{@const formattedValue = formatFieldValue(
 										value,
 										field.options?.showIfEmpty ?? false,
-										field.key as string
+										String(field.key)
 									)}
 									{#if formattedValue !== '' || field.options?.showIfEmpty}
 										{@const classes = `${
@@ -350,129 +489,6 @@
 								{/each}
 							</div>
 						{/if}
-					</div>
-					{/if}
-				{:else if submission.type === 'translation' && (submission.currentTranslation || submission.parsedData?.translation)}
-					{#if submission.currentTranslation || submission.parsedData?.translation}
-						{@const translationData = submission.status === 'accepted' 
-							? submission.parsedData?.translation 
-							: (submission.currentTranslation || submission.parsedData?.translation)}
-						{#if submission.currentTranslation && submission.parsedData?.translation && submission.status !== 'accepted'}
-							{@const hasAnyChanges = translationFields.some((field) => {
-							if (!submission?.currentTranslation || !submission?.parsedData?.translation) {
-								return false;
-							}
-							const oldValue = getFieldValue(submission.currentTranslation, field.key as string);
-							const newValue = getFieldValue(submission.parsedData.translation, field.key as string);
-							return !valuesAreEqual(oldValue, newValue);
-						})}
-						{#if hasAnyChanges}
-							<div class="space-y-4">
-								{#each translationFields as field (field.key)}
-									{@const oldValue = getFieldValue(submission.currentTranslation, field.key)}
-									{@const newValue = getFieldValue(
-										submission.parsedData.translation,
-										field.key
-									)}
-									{@const fieldKey = String(field.key)}
-									{#if !valuesAreEqual(oldValue, newValue)}
-										{@const formattedOld = formatFieldValue(
-											oldValue,
-											field.options?.showIfEmpty ?? false,
-											field.key as string
-										)}
-										{@const formattedNew = formatFieldValue(
-											newValue,
-											field.options?.showIfEmpty ?? false,
-											field.key as string
-										)}
-										{@const classes = `${
-											field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-										} ${field.options?.isUrl ? 'break-all' : ''} ${
-											field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-										}`.trim()}
-										<div class="border-b border-base-300 pb-3">
-											<div class="mb-2 font-semibold">{field.label}:</div>
-											<div class="space-y-1">
-												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
-													{@const oldTranslator = getTranslator(oldValue as string)}
-													{#if oldTranslator?.userId}
-														<button
-															type="button"
-															class="link link-error {classes} line-through"
-															onclick={() => handleTranslatorClick(oldValue as string)}
-														>
-															{formattedOld}
-														</button>
-													{:else}
-														<div class="{classes} text-error line-through">{formattedOld}</div>
-													{/if}
-												{:else}
-													<div class="{classes} text-error line-through">{formattedOld}</div>
-												{/if}
-												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
-													{@const newTranslator = getTranslator(newValue as string)}
-													{#if newTranslator?.userId}
-														<button
-															type="button"
-															class="link link-success {classes} {field.options?.isMultiline || field.options?.isUrl
-																? ''
-																: 'font-medium'}"
-															onclick={() => handleTranslatorClick(newValue as string)}
-														>
-															{formattedNew}
-														</button>
-													{:else}
-														<div
-															class="{classes} {field.options?.isMultiline || field.options?.isUrl
-																? ''
-																: 'font-medium'} text-success"
-														>
-															{formattedNew}
-														</div>
-													{/if}
-												{:else}
-													<div
-														class="{classes} {field.options?.isMultiline || field.options?.isUrl
-															? ''
-															: 'font-medium'} text-success"
-													>
-														{formattedNew}
-													</div>
-												{/if}
-											</div>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						{:else}
-							<div class="alert alert-info">
-								<span>Aucun changement détecté entre la traduction actuelle et les modifications proposées.</span>
-							</div>
-						{/if}
-						{:else}
-							<div class="space-y-4">
-								{#each translationFields as field (field.key)}
-									{@const value = getFieldValue(translationData!, field.key)}
-								{@const formattedValue = formatFieldValue(
-									value,
-									field.options?.showIfEmpty ?? false,
-									field.key as string
-								)}
-								{#if formattedValue !== '' || field.options?.showIfEmpty}
-									{@const classes = `${
-										field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-									} ${field.options?.isUrl ? 'break-all' : ''} ${
-										field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-									}`.trim()}
-									<div class="border-b border-base-300 pb-3">
-										<div class="mb-2 font-semibold">{field.label}:</div>
-										<div class={classes}>{formattedValue}</div>
-									</div>
-								{/if}
-							{/each}
-						</div>
-						{/if}
 					{/if}
 				{/if}
 			</div>
@@ -480,7 +496,7 @@
 			<!-- Section de modification du statut -->
 			{#if canEditStatus}
 				<div class="mt-6 border-t border-base-300 pt-4">
-					<h4 class="mb-4 text-md font-semibold">Modifier le statut</h4>
+					<h4 class="text-md mb-4 font-semibold">Modifier le statut</h4>
 
 					{#if statusError}
 						<div class="mb-4 alert alert-error">
@@ -501,7 +517,7 @@
 								return;
 							}
 
-							return async ({ result, update }) => {
+							return async function ({ result, update }) {
 								if (result.type === 'success') {
 									await update({ invalidateAll: true });
 									onClose();
@@ -577,11 +593,7 @@
 				</div>
 			{/if}
 		</div>
-		<button
-			type="button"
-			class="modal-backdrop"
-			onclick={onClose}
-			aria-label="Fermer la modal"
+		<button type="button" class="modal-backdrop" onclick={onClose} aria-label="Fermer la modal"
 		></button>
 	</div>
 {/if}

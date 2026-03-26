@@ -1,17 +1,15 @@
 <script lang="ts">
-	import {
-		CircleCheck,
-		CirclePlus,
-		CircleX,
-		Clock,
-		Gamepad2,
-		Inbox,
-		Languages,
-		Pencil,
-		TrendingUp,
-		UserCheck,
-		Users
-	} from '@lucide/svelte';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import CirclePlus from '@lucide/svelte/icons/circle-plus';
+	import CircleX from '@lucide/svelte/icons/circle-x';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+	import Inbox from '@lucide/svelte/icons/inbox';
+	import Languages from '@lucide/svelte/icons/languages';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import TrendingUp from '@lucide/svelte/icons/trending-up';
+	import UserCheck from '@lucide/svelte/icons/user-check';
+	import Users from '@lucide/svelte/icons/users';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const isAdmin = locals.user.role === 'admin' || locals.user.role === 'superadmin';
 
 	// Statistiques générales (pour tous les utilisateurs)
-	let userStats = null;
+	let userStats;
 	try {
 		// Statistiques personnelles de l'utilisateur
 		const userSubmissionsResult = await db

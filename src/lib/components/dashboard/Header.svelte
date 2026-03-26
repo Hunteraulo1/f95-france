@@ -1,9 +1,8 @@
-<script lang="ts">
+<script>
 	import { user } from '$lib/stores';
-	import { Menu, User } from '@lucide/svelte';
+	import Menu from '@lucide/svelte/icons/menu';
+	import User from '@lucide/svelte/icons/user';
 	import Notifications from './Notifications.svelte';
-
-	let { isSidebarOpen = $bindable() }: { isSidebarOpen: boolean } = $props();
 </script>
 
 <div class="navbar h-4 bg-base-100 shadow-sm">

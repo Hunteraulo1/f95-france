@@ -14,7 +14,8 @@
 		onFilterChange: (status: string) => void;
 	}
 
-	let { currentFilter, pendingCount, acceptedCount, rejectedCount, onFilterChange }: Props = $props();
+	let { currentFilter, pendingCount, acceptedCount, rejectedCount, onFilterChange }: Props =
+		$props();
 
 	const filters = $derived<FilterConfig[]>([
 		{

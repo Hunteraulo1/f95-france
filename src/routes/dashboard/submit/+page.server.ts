@@ -52,7 +52,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
-			.orderBy(statusFilter === 'pending' ? asc(table.submission.createdAt) : desc(table.submission.createdAt));
+			.orderBy(
+				statusFilter === 'pending'
+					? asc(table.submission.createdAt)
+					: desc(table.submission.createdAt)
+			);
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(

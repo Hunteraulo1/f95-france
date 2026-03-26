@@ -3,9 +3,7 @@
 	import type { Translator } from '$lib/server/db/schema';
 	import type { FormGameType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
-
-	import { UserPlus } from '@lucide/svelte';
-	import { createEventDispatcher } from 'svelte';
+	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLInputAttributes {
@@ -17,8 +15,6 @@
 		game: FormGameType;
 		translators?: Translator[];
 	}
-
-	const dispatch = createEventDispatcher<{ added: { name: string } }>();
 
 	let {
 		title,
@@ -46,22 +42,16 @@
 		return game.translatorId === game.proofreaderId;
 	};
 
-	let warning = $state(handleWarning(game[name] as string));
-	let error = $state(handleError());
+	let warning = $derived(handleWarning(game[name] as string));
+	let error = $derived(handleError());
 
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event): void => {
 		const value = event.currentTarget.value;
 		(game[name] as string) = value;
 	};
 
-	const handleInput: ChangeEventHandler<HTMLInputElement> = (event): void => {
-		warning = handleWarning(event.currentTarget.value);
-		error = handleError();
-	};
-
 	const handleTranslatorAdded = (value: string) => {
 		(game[name] as string) = value;
-		dispatch('added', { name: value });
 	};
 
 	let modal = $state(false);
@@ -77,7 +67,6 @@
 			list="traductor-list"
 			disabled={translators.length === 0}
 			onchange={handleChange}
-			oninput={handleInput}
 			bind:value={game[name]}
 			class="input-bordered input w-full"
 			class:input-warning={warning}
@@ -106,5 +95,5 @@
 <AddTraductorModal
 	bind:showModal={modal}
 	bind:translators
-	on:added={(event) => handleTranslatorAdded(event.detail.name)}
+	onAdded={({ name }) => handleTranslatorAdded(name)}
 />

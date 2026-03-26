@@ -56,7 +56,7 @@
 				action="?/updateProfile"
 				use:enhance={() => {
 					profileError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							await loadUserData(); // Recharger les données utilisateur
@@ -121,7 +121,7 @@
 				action="?/updateTheme"
 				use:enhance={() => {
 					themeError = null;
-					return async ({ result, update }) => {
+					return async function ({ result, update }) {
 						if (result.type === 'success') {
 							await update();
 							await loadUserData(); // Recharger les données utilisateur
@@ -184,7 +184,7 @@
 					action="?/updateDirectMode"
 					use:enhance={() => {
 						directModeError = null;
-						return async ({ result, update }) => {
+						return async function ({ result, update }) {
 							if (result.type === 'success') {
 								await update();
 								await loadUserData(); // Recharger les données utilisateur
@@ -218,10 +218,8 @@
 									const form = e.currentTarget.closest('form');
 									if (form) {
 										// Mettre à jour la valeur du checkbox pour l'envoi
-										const hiddenInput = form.querySelector(
-											'input[type="hidden"]'
-										) as HTMLInputElement;
-										if (hiddenInput) {
+										const hiddenInput = form.querySelector('input[type="hidden"]');
+										if (hiddenInput instanceof HTMLInputElement) {
 											hiddenInput.value = e.currentTarget.checked ? 'true' : 'false';
 										}
 										form.requestSubmit();

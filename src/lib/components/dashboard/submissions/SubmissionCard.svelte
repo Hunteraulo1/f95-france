@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { newToast, user } from '$lib/stores';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
-	import { Eye, User } from '@lucide/svelte';
+	import Eye from '@lucide/svelte/icons/eye';
+	import User from '@lucide/svelte/icons/user';
 
 	interface Submission {
 		id: string;
@@ -71,10 +73,10 @@
 							</div>
 							<button
 								type="button"
-								class="text-primary text-sm opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100"
 								onclick={() => {
 									if (submission.user?.id) {
-										goto(`/dashboard/profile/${submission.user.id}`);
+										goto(resolve(`/dashboard/profile/${submission.user.id}`));
 									}
 								}}
 							>
@@ -96,15 +98,15 @@
 						{/if}
 						{#if $user?.role === 'superadmin'}
 							<button
-                class="badge badge-outline badge-sm overflow-hidden hover:bg-base-200"
-                onclick={() => {
-                  navigator.clipboard.writeText(submission.id);
-                  newToast({
-                    alertType: 'success',
-                    message: 'ID de la soumission copié dans le presse-papiers'
-                  });
-                }}
-              >
+								class="badge overflow-hidden badge-outline badge-sm hover:bg-base-200"
+								onclick={() => {
+									navigator.clipboard.writeText(submission.id);
+									newToast({
+										alertType: 'success',
+										message: 'ID de la soumission copié dans le presse-papiers'
+									});
+								}}
+							>
 								ID: {submission.id}
 							</button>
 						{/if}

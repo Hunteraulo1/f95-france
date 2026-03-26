@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { User as UserType } from '$lib/server/db/schema';
 	import type { PublicUser } from '$lib/types';
-	import { CirclePlus, SquarePen, User } from '@lucide/svelte';
+	import CirclePlus from '@lucide/svelte/icons/circle-plus';
+	import SquarePen from '@lucide/svelte/icons/square-pen';
+	import User from '@lucide/svelte/icons/user';
 	interface Props {
 		user: PublicUser | UserType | null;
 		email?: UserType['email'] | null;
