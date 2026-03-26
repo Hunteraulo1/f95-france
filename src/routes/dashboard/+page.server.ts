@@ -85,15 +85,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.status, 'abandoned'));
 
-			const translationsUniqueTotalResult = await db.execute(sql`
-				select count(*) as count
-				from (
-					select lower(trim(g.name)) as n, lower(trim(gt.version)) as v
-					from game_translation gt
-					join game g on g.id = gt.game_id
-					group by 1, 2
-				) x
-			`);
+			const translationsUniqueTotalResult = await db
+				.select({ count: sql<number>`count(*)`.as('count') })
+				.from(table.gameTranslation)
 
 			// Nombre de soumissions par statut
 			const submissionsPendingResult = await db
@@ -142,9 +136,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const translationsInProgress = toCount(translationsInProgressResult[0]?.count);
 			const translationsCompleted = toCount(translationsCompletedResult[0]?.count);
 			const translationsAbandoned = toCount(translationsAbandonedResult[0]?.count);
-			const translationsUniqueTotal = toCount(
-				(translationsUniqueTotalResult as unknown as Array<{ count: unknown }>)[0]?.count
-			);
+			const translationsUniqueTotal = toCount(translationsUniqueTotalResult[0]?.count);
 			const submissionsPending = toCount(submissionsPendingResult[0]?.count);
 			const submissionsAccepted = toCount(submissionsAcceptedResult[0]?.count);
 			const submissionsRejected = toCount(submissionsRejectedResult[0]?.count);
