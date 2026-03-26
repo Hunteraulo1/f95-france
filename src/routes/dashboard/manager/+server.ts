@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
-import { eq, like, or } from 'drizzle-orm';
+import { eq, ilike, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -19,7 +19,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	try {
-		// Rechercher par nom de jeu ou par threadId
+		// Rechercher par nom de jeu (insensible à la casse) ou par threadId
+		const threadIdQuery = Number.parseInt(query, 10);
+		const whereClause = Number.isNaN(threadIdQuery)
+			? ilike(table.game.name, `%${query}%`)
+			: or(ilike(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
 		const games = await db
 			.select({
 				id: table.game.id,
@@ -35,7 +39,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				updatedAt: table.game.updatedAt
 			})
 			.from(table.game)
-			.where(or(like(table.game.name, `%${query}%`), eq(table.game.threadId, parseInt(query) || 0)))
+			.where(whereClause)
 			.orderBy(table.game.name)
 			.limit(20);
 

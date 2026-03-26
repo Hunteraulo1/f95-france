@@ -118,6 +118,12 @@
 		}
 	};
 
+	const getTranslatorNameById = (id: string | null | undefined) => {
+		if (!id) return null;
+		const translator = translators.find((t) => t.id === id);
+		return translator?.name ?? id;
+	};
+
 	const openAddTranslationModal = () => {
 		showAddTranslationModal = true;
 	};
@@ -658,13 +664,13 @@
 													{#if translation.translatorId}
 														<p>
 															<strong>Traducteur :</strong>
-															{translation.translatorId}
+															{getTranslatorNameById(translation.translatorId)}
 														</p>
 													{/if}
 													{#if translation.proofreaderId}
 														<p>
 															<strong>Relecteur :</strong>
-															{translation.proofreaderId}
+															{getTranslatorNameById(translation.proofreaderId)}
 														</p>
 													{/if}
 												</div>

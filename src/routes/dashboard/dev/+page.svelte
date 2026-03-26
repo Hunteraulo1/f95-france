@@ -24,16 +24,70 @@
 	};
 	type TestResult = { success: boolean; message: string; details: string | SheetsDetails | null };
 	type ScrapeResult = { success: boolean; message: string; details: string | ScrapeDetails | null };
+	type ImportResult = {
+		success: boolean;
+		message: string;
+		details:
+			| string
+			| {
+					total: number;
+					insertedGames: number;
+					updatedGames: number;
+					insertedTranslations: number;
+					updatedTranslations: number;
+					createdTranslators: number;
+					createdProofreaders: number;
+					skipped: number;
+			  }
+			| null;
+	};
+	type CompareResult = {
+		success: boolean;
+		message: string;
+		details:
+			| string
+			| {
+					totalApiGames: number;
+					missingCount: number;
+					missingTranslationsCount: number;
+					outdatedCount: number;
+					missingGames: Array<{ id: string | number | null; name: string; domain: string | null }>;
+					missingTranslations: Array<{ id: string | number | null; name: string; version: string }>;
+					outdatedGames: Array<{ id: string | number | null; name: string; reason: string }>;
+			  }
+			| null;
+	};
+	type CleanupResult = {
+		success: boolean;
+		message: string;
+		details: string | { before: number; after: number; removed: number } | null;
+	};
 
 	let testResult = $state<TestResult | null>(null);
 
 	let scrapeIsLoading = $state(false);
 	let scrapeResult = $state<ScrapeResult | null>(null);
+	let importIsLoading = $state(false);
+	let importResult = $state<ImportResult | null>(null);
+	let compareIsLoading = $state(false);
+	let compareResult = $state<CompareResult | null>(null);
+	let syncIsLoading = $state(false);
+	let syncResult = $state<ImportResult | null>(null);
+	let cleanupIsLoading = $state(false);
+	let cleanupResult = $state<CleanupResult | null>(null);
+	const legacyApiUrl =
+		'https://script.googleusercontent.com/macros/echo?user_content_key=AWDtjMWlhcPyHDwbzHY3KDJW29hXDREFp6fFEGqWkX4p6ebClNugJpo5PhNNOAlXzAVwKEDOyuPRHtxcxZOry7cW9HiMJwupr8WDEDha-BeMcFvNflxT8Re408akwtbRX8BVwL6WuNiGj7VC9RtythogETklkzqLqhwE-ZK4Z5gbt5UhBdcGnsw2miRsBU7o7HgbECsWkeN01kKaTPro3E6IY0-3DyfbcmKSlq2Bto_hEV6TiBuQughUEchXCSB2qCAScbO5CWIXLgCKhF9n-3GLYwXYVi5Keg&lib=MmJ3_wIeYZIsSQ7lBCVS01d4QdpKO_nee';
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
 	const isScrapeDetailsObject = (value: unknown): value is ScrapeDetails =>
 		typeof value === 'object' && value !== null;
+	const isImportDetailsObject = (value: unknown): value is ImportResult['details'] =>
+		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
+	const isCompareDetailsObject = (value: unknown): value is CompareResult['details'] =>
+		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
+	const isCleanupDetailsObject = (value: unknown): value is CleanupResult['details'] =>
+		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
 </script>
 
 <div class="container mx-auto max-w-4xl p-6">
@@ -471,6 +525,398 @@
 									{/if}
 								{:else if !scrapeResult.message}
 									<p class="mt-1 text-sm">Aucun détail disponible</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Import JSON legacy -->
+	<div class="card mb-6 bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h2 class="mb-4 card-title text-2xl">Import JSON ancien systeme</h2>
+			<p class="mb-4 text-base-content/70">
+				Colle ici un JSON de l'ancien systeme (tableau ou objet contenant <code>games</code>). Le
+				script cree les jeux, traducteurs et traductions manquants.
+			</p>
+			<form
+				method="POST"
+				action="?/importLegacyGamesJson"
+				use:enhance={() => {
+					importIsLoading = true;
+					importResult = null;
+					return async function ({ result, update }) {
+						await update();
+						importIsLoading = false;
+						if ((result.type === 'success' || result.type === 'failure') && result.data) {
+							const data = result.data;
+							importResult = {
+								success:
+									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+								message:
+									typeof data === 'object' &&
+									data &&
+									'message' in data &&
+									typeof data.message === 'string'
+										? data.message
+										: '',
+								details:
+									typeof data === 'object' &&
+									data &&
+									'details' in data &&
+									isImportDetailsObject(data.details)
+										? data.details
+										: null
+							};
+						}
+					};
+				}}
+			>
+				<div class="form-control">
+					<label class="label" for="legacyJson">
+						<span class="label-text">JSON</span>
+					</label>
+					<textarea
+						id="legacyJson"
+						name="legacyJson"
+						class="textarea-bordered textarea h-48 w-full font-mono text-xs"
+						placeholder="Collez ici votre JSON legacy"
+						required
+						disabled={importIsLoading}
+					></textarea>
+				</div>
+				<div class="form-control mt-4">
+					<button type="submit" class="btn btn-accent" disabled={importIsLoading}>
+						{#if importIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Import en cours...</span>
+						{:else}
+							<span>Importer les jeux</span>
+						{/if}
+					</button>
+				</div>
+			</form>
+
+			{#if importResult}
+				<div class="mt-6">
+					{#if importResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{importResult.message}</h3>
+								{#if importResult.details && typeof importResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Total: {importResult.details.total} | Jeux ajoutes: {importResult.details
+											.insertedGames} | Jeux mis a jour: {importResult.details.updatedGames} | Traductions
+										ajoutees: {importResult.details.insertedTranslations} | Traductions mises a jour:
+										{importResult.details.updatedTranslations} | Traducteurs crees: {importResult
+											.details.createdTranslators} | Relecteurs crees: {importResult.details
+											.createdProofreaders} | Ignores: {importResult.details.skipped}
+									</p>
+								{:else if typeof importResult.details === 'string'}
+									<p class="mt-1 text-sm">{importResult.details}</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{importResult.message || 'Erreur inconnue'}</h3>
+								{#if importResult.details}
+									<p class="mt-1 text-sm">
+										{typeof importResult.details === 'string'
+											? importResult.details
+											: JSON.stringify(importResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<div class="card mb-6 bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h2 class="mb-4 card-title text-2xl">Comparer la base avec l'API legacy</h2>
+			<p class="mb-4 text-base-content/70">
+				Verifie les jeux manquants ou pas a jour depuis l'API (structure <code>data.games</code>).
+			</p>
+			<form
+				method="POST"
+				action="?/checkLegacyApiGames"
+				use:enhance={() => {
+					compareIsLoading = true;
+					compareResult = null;
+					return async function ({ result, update }) {
+						await update();
+						compareIsLoading = false;
+						if ((result.type === 'success' || result.type === 'failure') && result.data) {
+							const data = result.data;
+							compareResult = {
+								success:
+									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+								message:
+									typeof data === 'object' &&
+									data &&
+									'message' in data &&
+									typeof data.message === 'string'
+										? data.message
+										: '',
+								details:
+									typeof data === 'object' &&
+									data &&
+									'details' in data &&
+									isCompareDetailsObject(data.details)
+										? data.details
+										: null
+							};
+						}
+					};
+				}}
+			>
+				<div class="form-control">
+					<label class="label" for="apiUrl"><span class="label-text">URL API games</span></label>
+					<input
+						id="apiUrl"
+						name="apiUrl"
+						type="url"
+						class="input-bordered input w-full"
+						value={legacyApiUrl}
+						disabled={compareIsLoading}
+					/>
+				</div>
+				<div class="form-control mt-4">
+					<button type="submit" class="btn btn-info" disabled={compareIsLoading}>
+						{#if compareIsLoading}
+							<Loader class="h-5 w-5 animate-spin" /><span>Comparaison...</span>
+						{:else}
+							<span>Verifier manquants / pas a jour</span>
+						{/if}
+					</button>
+				</div>
+			</form>
+			<form
+				method="POST"
+				action="?/syncLegacyApiGames"
+				use:enhance={() => {
+					syncIsLoading = true;
+					syncResult = null;
+					return async function ({ result, update }) {
+						await update();
+						syncIsLoading = false;
+						if ((result.type === 'success' || result.type === 'failure') && result.data) {
+							const data = result.data;
+							syncResult = {
+								success:
+									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+								message:
+									typeof data === 'object' &&
+									data &&
+									'message' in data &&
+									typeof data.message === 'string'
+										? data.message
+										: '',
+								details:
+									typeof data === 'object' &&
+									data &&
+									'details' in data &&
+									isImportDetailsObject(data.details)
+										? data.details
+										: null
+							};
+						}
+					};
+				}}
+				class="mt-3"
+			>
+				<input type="hidden" name="apiUrl" value={legacyApiUrl} />
+				<button type="submit" class="btn btn-accent" disabled={syncIsLoading}>
+					{#if syncIsLoading}
+						<Loader class="h-5 w-5 animate-spin" />
+						<span>Ajout global en cours...</span>
+					{:else}
+						<span>Tout ajouter / synchroniser depuis l'API</span>
+					{/if}
+				</button>
+			</form>
+			{#if compareResult}
+				<div class="mt-6">
+					{#if compareResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{compareResult.message}</h3>
+								{#if compareResult.details && typeof compareResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Total API: {compareResult.details.totalApiGames} | Manquants: {compareResult
+											.details.missingCount} | Traductions manquantes: {compareResult.details
+											.missingTranslationsCount} | Pas a jour: {compareResult.details.outdatedCount}
+									</p>
+									{#if compareResult.details.missingGames.length > 0}
+										<details class="mt-2">
+											<summary class="cursor-pointer font-semibold">
+												Jeux manquants (top 100)
+											</summary>
+											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
+												{#each compareResult.details.missingGames as g, i (`${g.id}-${g.name}-${i}`)}
+													<li>{g.name} ({g.domain || 'n/a'})</li>
+												{/each}
+											</ul>
+										</details>
+									{/if}
+									{#if compareResult.details.missingTranslations.length > 0}
+										<details class="mt-2">
+											<summary class="cursor-pointer font-semibold">
+												Traductions manquantes (top 100)
+											</summary>
+											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
+												{#each compareResult.details.missingTranslations as t, i (`${t.id}-${t.name}-${t.version}-${i}`)}
+													<li>{t.name} - {t.version}</li>
+												{/each}
+											</ul>
+										</details>
+									{/if}
+									{#if compareResult.details.outdatedGames.length > 0}
+										<details class="mt-2">
+											<summary class="cursor-pointer font-semibold">
+												Jeux pas a jour (top 100)
+											</summary>
+											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
+												{#each compareResult.details.outdatedGames as o, i (`${o.id}-${o.name}-${i}`)}
+													<li>{o.name} - {o.reason}</li>
+												{/each}
+											</ul>
+										</details>
+									{/if}
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{compareResult.message || 'Erreur inconnue'}</h3>
+								{#if compareResult.details}
+									<p class="mt-1 text-sm">
+										{typeof compareResult.details === 'string'
+											? compareResult.details
+											: JSON.stringify(compareResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+			{#if syncResult}
+				<div class="mt-4">
+					{#if syncResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{syncResult.message}</h3>
+								{#if syncResult.details && typeof syncResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Total: {syncResult.details.total} | Jeux ajoutes: {syncResult.details
+											.insertedGames} | Jeux mis a jour: {syncResult.details.updatedGames} | Traductions
+										ajoutees: {syncResult.details.insertedTranslations} | Traductions mises a jour:
+										{syncResult.details.updatedTranslations}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{syncResult.message || 'Erreur inconnue'}</h3>
+								{#if syncResult.details}
+									<p class="mt-1 text-sm">
+										{typeof syncResult.details === 'string'
+											? syncResult.details
+											: JSON.stringify(syncResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+			<form
+				method="POST"
+				action="?/cleanupDuplicateTranslations"
+				use:enhance={() => {
+					cleanupIsLoading = true;
+					cleanupResult = null;
+					return async function ({ result, update }) {
+						await update();
+						cleanupIsLoading = false;
+						if ((result.type === 'success' || result.type === 'failure') && result.data) {
+							const data = result.data;
+							cleanupResult = {
+								success:
+									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+								message:
+									typeof data === 'object' &&
+									data &&
+									'message' in data &&
+									typeof data.message === 'string'
+										? data.message
+										: '',
+								details:
+									typeof data === 'object' &&
+									data &&
+									'details' in data &&
+									isCleanupDetailsObject(data.details)
+										? data.details
+										: null
+							};
+						}
+					};
+				}}
+				class="mt-3"
+			>
+				<button type="submit" class="btn btn-warning" disabled={cleanupIsLoading}>
+					{#if cleanupIsLoading}
+						<Loader class="h-5 w-5 animate-spin" />
+						<span>Nettoyage...</span>
+					{:else}
+						<span>Nettoyer les doublons de traductions</span>
+					{/if}
+				</button>
+			</form>
+			{#if cleanupResult}
+				<div class="mt-3">
+					{#if cleanupResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{cleanupResult.message}</h3>
+								{#if cleanupResult.details && typeof cleanupResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Avant: {cleanupResult.details.before} | Après: {cleanupResult.details.after} | Supprimées:
+										{cleanupResult.details.removed}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{cleanupResult.message || 'Erreur inconnue'}</h3>
+								{#if cleanupResult.details}
+									<p class="mt-1 text-sm">
+										{typeof cleanupResult.details === 'string'
+											? cleanupResult.details
+											: JSON.stringify(cleanupResult.details)}
+									</p>
 								{/if}
 							</div>
 						</div>

@@ -3,6 +3,11 @@ import * as table from '$lib/server/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
+const toCount = (value: unknown): number => {
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
 		return {
@@ -38,9 +43,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 			);
 
 		userStats = {
-			totalSubmissions: userSubmissionsResult[0]?.count || 0,
-			pendingSubmissions: userPendingSubmissionsResult[0]?.count || 0,
-			acceptedSubmissions: userAcceptedSubmissionsResult[0]?.count || 0,
+			totalSubmissions: toCount(userSubmissionsResult[0]?.count),
+			pendingSubmissions: toCount(userPendingSubmissionsResult[0]?.count),
+			acceptedSubmissions: toCount(userAcceptedSubmissionsResult[0]?.count),
 			gameAdd: locals.user.gameAdd || 0,
 			gameEdit: locals.user.gameEdit || 0
 		};
@@ -80,6 +85,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.status, 'abandoned'));
 
+			const translationsUniqueTotalResult = await db.execute(sql`
+				select count(*) as count
+				from (
+					select lower(trim(g.name)) as n, lower(trim(gt.version)) as v
+					from game_translation gt
+					join game g on g.id = gt.game_id
+					group by 1, 2
+				) x
+			`);
+
 			// Nombre de soumissions par statut
 			const submissionsPendingResult = await db
 				.select({ count: sql<number>`count(*)`.as('count') })
@@ -110,46 +125,50 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const recentGamesResult = await db
 				.select({ count: sql<number>`count(*)`.as('count') })
 				.from(table.game)
-				.where(sql`${table.game.createdAt} >= DATE_SUB(NOW(), INTERVAL 7 DAY)`);
+				.where(sql`${table.game.createdAt} >= NOW() - INTERVAL '7 days'`);
 
 			// Traductions récemment mises à jour (7 derniers jours)
 			const recentTranslationsResult = await db
 				.select({ count: sql<number>`count(*)`.as('count') })
 				.from(table.gameTranslation)
-				.where(sql`${table.gameTranslation.updatedAt} >= DATE_SUB(NOW(), INTERVAL 7 DAY)`);
+				.where(sql`${table.gameTranslation.updatedAt} >= NOW() - INTERVAL '7 days'`);
 
 			// Utilisateurs récemment inscrits (7 derniers jours)
 			const recentUsersResult = await db
 				.select({ count: sql<number>`count(*)`.as('count') })
 				.from(table.user)
-				.where(sql`${table.user.createdAt} >= DATE_SUB(NOW(), INTERVAL 7 DAY)`);
+				.where(sql`${table.user.createdAt} >= NOW() - INTERVAL '7 days'`);
+
+			const translationsInProgress = toCount(translationsInProgressResult[0]?.count);
+			const translationsCompleted = toCount(translationsCompletedResult[0]?.count);
+			const translationsAbandoned = toCount(translationsAbandonedResult[0]?.count);
+			const translationsUniqueTotal = toCount(
+				(translationsUniqueTotalResult as unknown as Array<{ count: unknown }>)[0]?.count
+			);
+			const submissionsPending = toCount(submissionsPendingResult[0]?.count);
+			const submissionsAccepted = toCount(submissionsAcceptedResult[0]?.count);
+			const submissionsRejected = toCount(submissionsRejectedResult[0]?.count);
 
 			stats = {
-				totalGames: totalGamesResult[0]?.count || 0,
+				totalGames: toCount(totalGamesResult[0]?.count),
 				translations: {
-					inProgress: translationsInProgressResult[0]?.count || 0,
-					completed: translationsCompletedResult[0]?.count || 0,
-					abandoned: translationsAbandonedResult[0]?.count || 0,
-					total:
-						(translationsInProgressResult[0]?.count || 0) +
-						(translationsCompletedResult[0]?.count || 0) +
-						(translationsAbandonedResult[0]?.count || 0)
+					inProgress: translationsInProgress,
+					completed: translationsCompleted,
+					abandoned: translationsAbandoned,
+					total: translationsUniqueTotal
 				},
 				submissions: {
-					pending: submissionsPendingResult[0]?.count || 0,
-					accepted: submissionsAcceptedResult[0]?.count || 0,
-					rejected: submissionsRejectedResult[0]?.count || 0,
-					total:
-						(submissionsPendingResult[0]?.count || 0) +
-						(submissionsAcceptedResult[0]?.count || 0) +
-						(submissionsRejectedResult[0]?.count || 0)
+					pending: submissionsPending,
+					accepted: submissionsAccepted,
+					rejected: submissionsRejected,
+					total: submissionsPending + submissionsAccepted + submissionsRejected
 				},
-				totalUsers: totalUsersResult[0]?.count || 0,
-				totalTranslators: totalTranslatorsResult[0]?.count || 0,
+				totalUsers: toCount(totalUsersResult[0]?.count),
+				totalTranslators: toCount(totalTranslatorsResult[0]?.count),
 				recent: {
-					games: recentGamesResult[0]?.count || 0,
-					translations: recentTranslationsResult[0]?.count || 0,
-					users: recentUsersResult[0]?.count || 0
+					games: toCount(recentGamesResult[0]?.count),
+					translations: toCount(recentTranslationsResult[0]?.count),
+					users: toCount(recentUsersResult[0]?.count)
 				}
 			};
 		} catch (error: unknown) {
