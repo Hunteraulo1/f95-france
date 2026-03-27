@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
 	import Box from '@lucide/svelte/icons/box';
@@ -14,6 +13,7 @@
 	import Settings2 from '@lucide/svelte/icons/settings-2';
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import Users from '@lucide/svelte/icons/users';
+	import type { Component } from 'svelte';
 
 	interface Props {
 		pendingSubmissionsCount?: number;
@@ -81,7 +81,7 @@
 			label: 'Configuration',
 			href: '/dashboard/config',
 			icon: Settings,
-			roles: ['admin']
+			roles: ['superadmin']
 		},
 		{
 			label: 'Logs API',
