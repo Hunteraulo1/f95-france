@@ -1,12 +1,14 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { env } from '$env/dynamic/private';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const LEGACY_API_URL =
-	'https://script.googleusercontent.com/macros/echo?user_content_key=AWDtjMWlhcPyHDwbzHY3KDJW29hXDREFp6fFEGqWkX4p6ebClNugJpo5PhNNOAlXzAVwKEDOyuPRHtxcxZOry7cW9HiMJwupr8WDEDha-BeMcFvNflxT8Re408akwtbRX8BVwL6WuNiGj7VC9RtythogETklkzqLqhwE-ZK4Z5gbt5UhBdcGnsw2miRsBU7o7HgbECsWkeN01kKaTPro3E6IY0-3DyfbcmKSlq2Bto_hEV6TiBuQughUEchXCSB2qCAScbO5CWIXLgCKhF9n-3GLYwXYVi5Keg&lib=MmJ3_wIeYZIsSQ7lBCVS01d4QdpKO_nee';
+	env.LEGACY_API_URL ||
+	'https://script.google.com/macros/s/AKfycbybvrFy6B2L7rkLWJnrwRHhP0F6Sv0uk6V9zUTZibwEzUjKXf-abOK_N6jUhqFPs9US/exec';
 
 type LegacyGame = {
 	id?: number | string;
@@ -25,6 +27,15 @@ type LegacyGame = {
 	image?: string | null;
 	link?: string | null;
 	tlink?: string | null;
+};
+
+type LegacyTranslator = {
+	id?: string | number | null;
+	name?: string | number | null;
+	discordId?: string | number | null;
+	pages?: string[] | string | null;
+	tradCount?: number | string | null;
+	readCount?: number | string | null;
 };
 
 const mapType = (value: string | null | undefined): string => {
@@ -84,6 +95,174 @@ const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
 	return null;
 };
 
+const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
+	if (
+		typeof input === 'object' &&
+		input !== null &&
+		'data' in input &&
+		typeof (input as { data?: unknown }).data === 'object' &&
+		(input as { data?: unknown }).data !== null &&
+		'traductors' in ((input as { data: { traductors?: unknown } }).data ?? {}) &&
+		Array.isArray((input as { data: { traductors?: unknown[] } }).data.traductors)
+	) {
+		return (input as { data: { traductors: LegacyTranslator[] } }).data.traductors;
+	}
+	return null;
+};
+
+const safeNumber = (value: unknown): number | null => {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string') {
+		const parsed = Number.parseInt(value, 10);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+};
+
+const parsePages = (value: unknown): string => {
+	if (Array.isArray(value)) {
+		return JSON.stringify(
+			value
+				.filter((v): v is string => typeof v === 'string')
+				.map((v) => v.trim())
+				.filter((v) => v.length > 0)
+		);
+	}
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return '[]';
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				return JSON.stringify(
+					parsed
+						.filter((v): v is string => typeof v === 'string')
+						.map((v) => v.trim())
+						.filter((v) => v.length > 0)
+				);
+			}
+		} catch {
+			return JSON.stringify(
+				trimmed
+					.split(',')
+					.map((v) => v.trim())
+					.filter((v) => v.length > 0)
+			);
+		}
+	}
+	return '[]';
+};
+
+const upsertLegacyTranslators = async (
+	translators: LegacyTranslator[],
+	options: { dryRun?: boolean } = {}
+) => {
+	const dryRun = options.dryRun === true;
+	let inserted = 0;
+	let updated = 0;
+	let skipped = 0;
+
+	const existing = await db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			discordId: table.translator.discordId,
+			pages: table.translator.pages,
+			tradCount: table.translator.tradCount,
+			readCount: table.translator.readCount
+		})
+		.from(table.translator);
+
+	const byName = new Map<string, (typeof existing)[number]>();
+	const byDiscordId = new Map<string, (typeof existing)[number]>();
+
+	for (const row of existing) {
+		byName.set(row.name.toLowerCase(), row);
+		if (row.discordId) byDiscordId.set(row.discordId, row);
+	}
+
+	for (const item of translators) {
+		const name =
+			typeof item.name === 'string'
+				? item.name.trim()
+				: typeof item.name === 'number'
+					? String(item.name).trim()
+					: '';
+		if (!name) {
+			skipped++;
+			continue;
+		}
+
+		const discordId =
+			typeof item.discordId === 'string'
+				? item.discordId.trim() || null
+				: typeof item.discordId === 'number'
+					? String(item.discordId)
+					: null;
+		const pages = parsePages(item.pages);
+		const tradCount = safeNumber(item.tradCount) ?? 0;
+		const readCount = safeNumber(item.readCount) ?? 0;
+
+		let current =
+			(discordId ? byDiscordId.get(discordId) : undefined) ??
+			byName.get(name.toLowerCase()) ??
+			null;
+
+		if (!current) {
+			const id = crypto.randomUUID();
+			if (!dryRun) {
+				await db.insert(table.translator).values({
+					id,
+					name,
+					discordId,
+					pages,
+					tradCount,
+					readCount
+				});
+			}
+			const created = { id, name, discordId, pages, tradCount, readCount };
+			byName.set(name.toLowerCase(), created);
+			if (discordId) byDiscordId.set(discordId, created);
+			inserted++;
+			continue;
+		}
+
+		const shouldUpdate =
+			current.name !== name ||
+			(current.discordId ?? null) !== discordId ||
+			current.pages !== pages ||
+			current.tradCount !== tradCount ||
+			current.readCount !== readCount;
+
+		if (!shouldUpdate) continue;
+
+		if (!dryRun) {
+			await db
+				.update(table.translator)
+				.set({
+					name,
+					discordId,
+					pages,
+					tradCount,
+					readCount
+				})
+				.where(eq(table.translator.id, current.id));
+		}
+
+		current = { ...current, name, discordId, pages, tradCount, readCount };
+		byName.set(name.toLowerCase(), current);
+		if (discordId) byDiscordId.set(discordId, current);
+		updated++;
+	}
+
+	return {
+		total: translators.length,
+		inserted,
+		updated,
+		skipped
+	};
+};
+
 const normalizeKeyPart = (value: string | null | undefined): string =>
 	(value ?? '')
 		.normalize('NFD')
@@ -98,7 +277,8 @@ const translationKeyFrom = (
 	version: string | null | undefined
 ): string => `${normalizeKeyPart(name)}:${normalizeKeyPart(version)}`;
 
-const upsertLegacyGames = async (games: LegacyGame[]) => {
+const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolean } = {}) => {
+	const dryRun = options.dryRun === true;
 	let insertedGames = 0;
 	let updatedGames = 0;
 	let insertedTranslations = 0;
@@ -197,7 +377,10 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 				prev.threadId !== nextValues.threadId ||
 				prev.link !== nextValues.link
 			) {
-				await db.update(table.game).set(nextValues).where(eq(table.game.id, gameId));
+				if (!dryRun) {
+					await db.update(table.game).set(nextValues).where(eq(table.game.id, gameId));
+				}
+				gamesSnapshot.set(gameId, { ...(prev ?? { id: gameId }), ...nextValues });
 				updatedGames++;
 			}
 		} else {
@@ -212,7 +395,9 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 				threadId: threadId && Number.isFinite(threadId) ? threadId : null,
 				link
 			};
-			await db.insert(table.game).values(row);
+			if (!dryRun) {
+				await db.insert(table.game).values(row);
+			}
 			gamesSnapshot.set(gameId, row);
 			if (row.threadId !== null) gamesByThread.set(`${row.website}:${row.threadId}`, gameId);
 			if (row.link) gamesByLink.set(row.link, gameId);
@@ -224,10 +409,12 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 		if (translatorName) {
 			translatorId = translatorByName.get(translatorName.toLowerCase()) ?? null;
 			if (!translatorId) {
-				translatorId = crypto.randomUUID();
-				await db
-					.insert(table.translator)
-					.values({ id: translatorId, name: translatorName, pages: '[]' });
+				translatorId = dryRun ? `dry-tr-${translatorName.toLowerCase()}` : crypto.randomUUID();
+				if (!dryRun) {
+					await db
+						.insert(table.translator)
+						.values({ id: translatorId, name: translatorName, pages: '[]' });
+				}
 				translatorByName.set(translatorName.toLowerCase(), translatorId);
 				createdTranslators++;
 			}
@@ -238,10 +425,12 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 		if (proofreaderName) {
 			proofreaderId = translatorByName.get(proofreaderName.toLowerCase()) ?? null;
 			if (!proofreaderId) {
-				proofreaderId = crypto.randomUUID();
-				await db
-					.insert(table.translator)
-					.values({ id: proofreaderId, name: proofreaderName, pages: '[]' });
+				proofreaderId = dryRun ? `dry-pr-${proofreaderName.toLowerCase()}` : crypto.randomUUID();
+				if (!dryRun) {
+					await db
+						.insert(table.translator)
+						.values({ id: proofreaderId, name: proofreaderName, pages: '[]' });
+				}
 				translatorByName.set(proofreaderName.toLowerCase(), proofreaderId);
 				createdProofreaders++;
 			}
@@ -253,26 +442,9 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 		const existingTranslationId = translationByKey.get(translationKey);
 
 		if (!existingTranslationId) {
-			await db.insert(table.gameTranslation).values({
-				id: crypto.randomUUID(),
-				gameId,
-				translationName: item.tname?.trim() || null,
-				status: mapStatus(item.status),
-				version,
-				tversion,
-				tlink: item.tlink?.trim() || '',
-				tname: mapTName(item.tname),
-				translatorId,
-				proofreaderId,
-				ttype: mapTType(item.ttype),
-				ac: Boolean(item.ac)
-			});
-			translationByKey.set(translationKey, 'created');
-			insertedTranslations++;
-		} else {
-			await db
-				.update(table.gameTranslation)
-				.set({
+			if (!dryRun) {
+				await db.insert(table.gameTranslation).values({
+					id: crypto.randomUUID(),
 					gameId,
 					translationName: item.tname?.trim() || null,
 					status: mapStatus(item.status),
@@ -284,8 +456,29 @@ const upsertLegacyGames = async (games: LegacyGame[]) => {
 					proofreaderId,
 					ttype: mapTType(item.ttype),
 					ac: Boolean(item.ac)
-				})
-				.where(eq(table.gameTranslation.id, existingTranslationId));
+				});
+			}
+			translationByKey.set(translationKey, 'created');
+			insertedTranslations++;
+		} else {
+			if (!dryRun) {
+				await db
+					.update(table.gameTranslation)
+					.set({
+						gameId,
+						translationName: item.tname?.trim() || null,
+						status: mapStatus(item.status),
+						version,
+						tversion,
+						tlink: item.tlink?.trim() || '',
+						tname: mapTName(item.tname),
+						translatorId,
+						proofreaderId,
+						ttype: mapTType(item.ttype),
+						ac: Boolean(item.ac)
+					})
+					.where(eq(table.gameTranslation.id, existingTranslationId));
+			}
 			updatedTranslations++;
 		}
 	}
@@ -553,131 +746,89 @@ export const actions: Actions = {
 			};
 		}
 	},
+	syncLegacyApiTranslators: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return { success: false, message: 'Accès non autorisé', details: null };
+		}
+
+		await request.formData();
+
+		try {
+			const response = await fetch(LEGACY_API_URL);
+			if (!response.ok) {
+				return { success: false, message: `Erreur API: ${response.status}`, details: null };
+			}
+
+			const payload = (await response.json()) as unknown;
+			const translators = parseLegacyTranslators(payload);
+			if (!translators || translators.length === 0) {
+				return { success: false, message: 'Aucun traducteur dans data.traductors', details: null };
+			}
+
+			const details = await upsertLegacyTranslators(translators);
+			return {
+				success: true,
+				message: 'Synchronisation traducteurs terminée',
+				details
+			};
+		} catch (error: unknown) {
+			return {
+				success: false,
+				message: 'Erreur pendant la synchronisation des traducteurs',
+				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			};
+		}
+	},
 	checkLegacyApiGames: async ({ request, locals }) => {
 		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
 			return { success: false, message: 'Accès non autorisé', details: null };
 		}
-		const formData = await request.formData();
-		const apiUrl = String(formData.get('apiUrl') ?? '').trim() || LEGACY_API_URL;
+		await request.formData();
 
 		try {
-			const response = await fetch(apiUrl);
+			const response = await fetch(LEGACY_API_URL);
 			if (!response.ok) {
 				return { success: false, message: `Erreur API: ${response.status}`, details: null };
 			}
-			const payload = (await response.json()) as { data?: { games?: LegacyGame[] } };
+			const payload = (await response.json()) as {
+				data?: { games?: LegacyGame[]; traductors?: unknown[] };
+			};
 			const games = payload?.data?.games ?? [];
-			if (!Array.isArray(games) || games.length === 0) {
-				return { success: false, message: 'Aucun game dans data.games', details: null };
+			const translators = parseLegacyTranslators(payload) ?? [];
+
+			if (!Array.isArray(games) && translators.length === 0) {
+				return { success: false, message: 'Aucune donnée legacy exploitable', details: null };
 			}
 
-			const existingGames = await db
-				.select({
-					id: table.game.id,
-					threadId: table.game.threadId,
-					website: table.game.website,
-					link: table.game.link,
-					name: table.game.name,
-					type: table.game.type,
-					tags: table.game.tags,
-					image: table.game.image
-				})
-				.from(table.game);
-			const existingTranslations = await db
-				.select({
-					version: table.gameTranslation.version,
-					gameName: table.game.name
-				})
-				.from(table.gameTranslation)
-				.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId));
-
-			const gamesByThread = new Map<string, (typeof existingGames)[number]>();
-			const gamesByLink = new Map<string, (typeof existingGames)[number]>();
-			for (const g of existingGames) {
-				if (g.threadId !== null && g.threadId !== undefined) {
-					gamesByThread.set(`${g.website}:${g.threadId}`, g);
-				}
-				if (g.link) gamesByLink.set(g.link, g);
-			}
-			const transByKey = new Set<string>();
-			for (const t of existingTranslations) {
-				transByKey.add(translationKeyFrom(t.gameName, t.version));
-			}
-
-			const missingGames: Array<{
-				id: string | number | null;
-				name: string;
-				domain: string | null;
-			}> = [];
-			const missingTranslations: Array<{
-				id: string | number | null;
-				name: string;
-				version: string;
-			}> = [];
-			const missingGameKeys = new Set<string>();
-			const missingTranslationKeys = new Set<string>();
-			const outdatedGames: Array<{ id: string | number | null; name: string; reason: string }> = [];
-			for (const item of games) {
-				const threadId =
-					typeof item.id === 'number'
-						? item.id
-						: typeof item.id === 'string'
-							? Number.parseInt(item.id, 10)
-							: null;
-				const website = mapWebsite(item.domain);
-				const link = item.link?.trim() ?? '';
-				const local =
-					(threadId && Number.isFinite(threadId)
-						? gamesByThread.get(`${website}:${threadId}`)
-						: undefined) || (link ? gamesByLink.get(link) : undefined);
-				if (!local) {
-					const mg = {
-						id: item.id ?? null,
-						name: item.name?.trim() || '(sans nom)',
-						domain: item.domain ?? null
-					};
-					const key = `${mg.id}|${mg.name}|${mg.domain ?? ''}`;
-					if (!missingGameKeys.has(key)) {
-						missingGameKeys.add(key);
-						missingGames.push(mg);
-					}
-					continue;
-				}
-				const expectedType = mapType(item.type);
-				const version = item.version?.trim() || 'unknown';
-				if (!transByKey.has(translationKeyFrom(item.name?.trim() || local.name, version))) {
-					const mt = {
-						id: item.id ?? null,
-						name: item.name?.trim() || local.name,
-						version
-					};
-					const key = `${mt.id}|${mt.name}|${mt.version}`;
-					if (!missingTranslationKeys.has(key)) {
-						missingTranslationKeys.add(key);
-						missingTranslations.push(mt);
-					}
-					continue;
-				}
-				if (local.type !== expectedType || local.name !== (item.name?.trim() || local.name)) {
-					outdatedGames.push({
-						id: item.id ?? null,
-						name: item.name?.trim() || local.name,
-						reason: 'Metadonnees jeu differentes (nom/type)'
-					});
-				}
-			}
+			const [gamesPreview, translatorsPreview] = await Promise.all([
+				Array.isArray(games) ? upsertLegacyGames(games, { dryRun: true }) : null,
+				translators.length > 0 ? upsertLegacyTranslators(translators, { dryRun: true }) : null
+			]);
 
 			return {
 				success: true,
-				message: 'Comparaison terminee',
+				message: 'Vérification terminée (aperçu synchronisation)',
 				details: {
-					totalApiGames: games.length,
-					missingCount: missingGames.length,
-					missingTranslationsCount: missingTranslations.length,
-					outdatedCount: outdatedGames.length,
-					missingGames: missingGames.slice(0, 100),
-					missingTranslations: missingTranslations.slice(0, 100),
-					outdatedGames: outdatedGames.slice(0, 100)
+					games:
+						gamesPreview ??
+						({
+							total: 0,
+							insertedGames: 0,
+							updatedGames: 0,
+							insertedTranslations: 0,
+							updatedTranslations: 0,
+							createdTranslators: 0,
+							createdProofreaders: 0,
+							skipped: 0
+						} as const),
+					translators:
+						translatorsPreview ??
+						({
+							total: 0,
+							inserted: 0,
+							updated: 0,
+							skipped: 0
+						} as const)
 				}
 			};
 		} catch (error: unknown) {
@@ -693,11 +844,10 @@ export const actions: Actions = {
 			return { success: false, message: 'Accès non autorisé', details: null };
 		}
 
-		const formData = await request.formData();
-		const apiUrl = String(formData.get('apiUrl') ?? '').trim() || LEGACY_API_URL;
+		await request.formData();
 
 		try {
-			const response = await fetch(apiUrl);
+			const response = await fetch(LEGACY_API_URL);
 			if (!response.ok) {
 				return { success: false, message: `Erreur API: ${response.status}`, details: null };
 			}

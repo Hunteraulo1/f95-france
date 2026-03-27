@@ -87,7 +87,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 			const translationsUniqueTotalResult = await db
 				.select({ count: sql<number>`count(*)`.as('count') })
-				.from(table.gameTranslation)
+				.from(table.gameTranslation);
 
 			// Nombre de soumissions par statut
 			const submissionsPendingResult = await db

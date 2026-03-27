@@ -13,6 +13,7 @@
 	import Settings from '@lucide/svelte/icons/settings';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
 	import UserPen from '@lucide/svelte/icons/user-pen';
+	import Users from '@lucide/svelte/icons/users';
 
 	interface Props {
 		pendingSubmissionsCount?: number;
@@ -68,6 +69,12 @@
 		},
 		{
 			split: true,
+			roles: ['admin']
+		},
+		{
+			label: 'Utilisateurs',
+			href: '/dashboard/users',
+			icon: Users,
 			roles: ['admin']
 		},
 		{

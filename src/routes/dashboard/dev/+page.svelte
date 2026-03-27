@@ -47,13 +47,22 @@
 		details:
 			| string
 			| {
-					totalApiGames: number;
-					missingCount: number;
-					missingTranslationsCount: number;
-					outdatedCount: number;
-					missingGames: Array<{ id: string | number | null; name: string; domain: string | null }>;
-					missingTranslations: Array<{ id: string | number | null; name: string; version: string }>;
-					outdatedGames: Array<{ id: string | number | null; name: string; reason: string }>;
+					games: {
+						total: number;
+						insertedGames: number;
+						updatedGames: number;
+						insertedTranslations: number;
+						updatedTranslations: number;
+						createdTranslators: number;
+						createdProofreaders: number;
+						skipped: number;
+					};
+					translators: {
+						total: number;
+						inserted: number;
+						updated: number;
+						skipped: number;
+					};
 			  }
 			| null;
 	};
@@ -61,6 +70,11 @@
 		success: boolean;
 		message: string;
 		details: string | { before: number; after: number; removed: number } | null;
+	};
+	type TranslatorsImportResult = {
+		success: boolean;
+		message: string;
+		details: string | { total: number; inserted: number; updated: number; skipped: number } | null;
 	};
 
 	let testResult = $state<TestResult | null>(null);
@@ -75,8 +89,8 @@
 	let syncResult = $state<ImportResult | null>(null);
 	let cleanupIsLoading = $state(false);
 	let cleanupResult = $state<CleanupResult | null>(null);
-	const legacyApiUrl =
-		'https://script.googleusercontent.com/macros/echo?user_content_key=AWDtjMWlhcPyHDwbzHY3KDJW29hXDREFp6fFEGqWkX4p6ebClNugJpo5PhNNOAlXzAVwKEDOyuPRHtxcxZOry7cW9HiMJwupr8WDEDha-BeMcFvNflxT8Re408akwtbRX8BVwL6WuNiGj7VC9RtythogETklkzqLqhwE-ZK4Z5gbt5UhBdcGnsw2miRsBU7o7HgbECsWkeN01kKaTPro3E6IY0-3DyfbcmKSlq2Bto_hEV6TiBuQughUEchXCSB2qCAScbO5CWIXLgCKhF9n-3GLYwXYVi5Keg&lib=MmJ3_wIeYZIsSQ7lBCVS01d4QdpKO_nee';
+	let translatorsImportIsLoading = $state(false);
+	let translatorsImportResult = $state<TranslatorsImportResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -87,6 +101,10 @@
 	const isCompareDetailsObject = (value: unknown): value is CompareResult['details'] =>
 		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
 	const isCleanupDetailsObject = (value: unknown): value is CleanupResult['details'] =>
+		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
+	const isTranslatorsImportDetailsObject = (
+		value: unknown
+	): value is TranslatorsImportResult['details'] =>
 		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
 </script>
 
@@ -643,110 +661,223 @@
 
 	<div class="card mb-6 bg-base-100 shadow-xl">
 		<div class="card-body">
-			<h2 class="mb-4 card-title text-2xl">Comparer la base avec l'API legacy</h2>
+			<h2 class="mb-4 card-title text-2xl">Synchronisation API legacy</h2>
 			<p class="mb-4 text-base-content/70">
-				Verifie les jeux manquants ou pas a jour depuis l'API (structure <code>data.games</code>).
+				Toutes les actions legacy sont regroupées ici (traducteurs + jeux/traductions).
 			</p>
-			<form
-				method="POST"
-				action="?/checkLegacyApiGames"
-				use:enhance={() => {
-					compareIsLoading = true;
-					compareResult = null;
-					return async function ({ result, update }) {
-						await update();
-						compareIsLoading = false;
-						if ((result.type === 'success' || result.type === 'failure') && result.data) {
-							const data = result.data;
-							compareResult = {
-								success:
-									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-								message:
-									typeof data === 'object' &&
-									data &&
-									'message' in data &&
-									typeof data.message === 'string'
-										? data.message
-										: '',
-								details:
-									typeof data === 'object' &&
-									data &&
-									'details' in data &&
-									isCompareDetailsObject(data.details)
-										? data.details
-										: null
-							};
-						}
-					};
-				}}
-			>
-				<div class="form-control">
-					<label class="label" for="apiUrl"><span class="label-text">URL API games</span></label>
-					<input
-						id="apiUrl"
-						name="apiUrl"
-						type="url"
-						class="input-bordered input w-full"
-						value={legacyApiUrl}
-						disabled={compareIsLoading}
-					/>
-				</div>
-				<div class="form-control mt-4">
-					<button type="submit" class="btn btn-info" disabled={compareIsLoading}>
-						{#if compareIsLoading}
-							<Loader class="h-5 w-5 animate-spin" /><span>Comparaison...</span>
+			<div class="grid gap-3 md:grid-cols-4">
+				<form
+					method="POST"
+					action="?/syncLegacyApiTranslators"
+					use:enhance={() => {
+						translatorsImportIsLoading = true;
+						translatorsImportResult = null;
+						return async function ({ result, update }) {
+							await update();
+							translatorsImportIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data;
+								translatorsImportResult = {
+									success:
+										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+									message:
+										typeof data === 'object' &&
+										data &&
+										'message' in data &&
+										typeof data.message === 'string'
+											? data.message
+											: '',
+									details:
+										typeof data === 'object' &&
+										data &&
+										'details' in data &&
+										isTranslatorsImportDetailsObject(data.details)
+											? data.details
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-3"
+				>
+					<div class="form-control h-full">
+						<button type="submit" class="btn btn-accent" disabled={translatorsImportIsLoading}>
+							{#if translatorsImportIsLoading}
+								<Loader class="h-5 w-5 animate-spin" />
+								<span>Import en cours...</span>
+							{:else}
+								<span>Ajouter/Synchroniser les traducteur/relecteur</span>
+							{/if}
+						</button>
+					</div>
+				</form>
+				<form
+					method="POST"
+					action="?/checkLegacyApiGames"
+					use:enhance={() => {
+						compareIsLoading = true;
+						compareResult = null;
+						return async function ({ result, update }) {
+							await update();
+							compareIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data;
+								compareResult = {
+									success:
+										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+									message:
+										typeof data === 'object' &&
+										data &&
+										'message' in data &&
+										typeof data.message === 'string'
+											? data.message
+											: '',
+									details:
+										typeof data === 'object' &&
+										data &&
+										'details' in data &&
+										isCompareDetailsObject(data.details)
+											? data.details
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-1"
+				>
+					<div class="form-control h-full">
+						<button type="submit" class="btn btn-info" disabled={compareIsLoading}>
+							{#if compareIsLoading}
+								<Loader class="h-5 w-5 animate-spin" /><span>Comparaison...</span>
+							{:else}
+								<span>Vérification des données</span>
+							{/if}
+						</button>
+					</div>
+				</form>
+				<form
+					method="POST"
+					action="?/syncLegacyApiGames"
+					use:enhance={() => {
+						syncIsLoading = true;
+						syncResult = null;
+						return async function ({ result, update }) {
+							await update();
+							syncIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data;
+								syncResult = {
+									success:
+										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+									message:
+										typeof data === 'object' &&
+										data &&
+										'message' in data &&
+										typeof data.message === 'string'
+											? data.message
+											: '',
+									details:
+										typeof data === 'object' &&
+										data &&
+										'details' in data &&
+										isImportDetailsObject(data.details)
+											? data.details
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-2"
+				>
+					<button type="submit" class="btn h-full w-full btn-accent" disabled={syncIsLoading}>
+						{#if syncIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Ajout global en cours...</span>
 						{:else}
-							<span>Verifier manquants / pas a jour</span>
+							<span>Ajouter/Synchroniser les jeux/traductions</span>
 						{/if}
 					</button>
-				</div>
-			</form>
-			<form
-				method="POST"
-				action="?/syncLegacyApiGames"
-				use:enhance={() => {
-					syncIsLoading = true;
-					syncResult = null;
-					return async function ({ result, update }) {
-						await update();
-						syncIsLoading = false;
-						if ((result.type === 'success' || result.type === 'failure') && result.data) {
-							const data = result.data;
-							syncResult = {
-								success:
-									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-								message:
-									typeof data === 'object' &&
-									data &&
-									'message' in data &&
-									typeof data.message === 'string'
-										? data.message
-										: '',
-								details:
-									typeof data === 'object' &&
-									data &&
-									'details' in data &&
-									isImportDetailsObject(data.details)
-										? data.details
-										: null
-							};
-						}
-					};
-				}}
-				class="mt-3"
-			>
-				<input type="hidden" name="apiUrl" value={legacyApiUrl} />
-				<button type="submit" class="btn btn-accent" disabled={syncIsLoading}>
-					{#if syncIsLoading}
-						<Loader class="h-5 w-5 animate-spin" />
-						<span>Ajout global en cours...</span>
+				</form>
+				<form
+					method="POST"
+					action="?/cleanupDuplicateTranslations"
+					use:enhance={() => {
+						cleanupIsLoading = true;
+						cleanupResult = null;
+						return async function ({ result, update }) {
+							await update();
+							cleanupIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data;
+								cleanupResult = {
+									success:
+										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
+									message:
+										typeof data === 'object' &&
+										data &&
+										'message' in data &&
+										typeof data.message === 'string'
+											? data.message
+											: '',
+									details:
+										typeof data === 'object' &&
+										data &&
+										'details' in data &&
+										isCleanupDetailsObject(data.details)
+											? data.details
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-4"
+				>
+					<button type="submit" class="btn h-full w-full btn-warning" disabled={cleanupIsLoading}>
+						{#if cleanupIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Nettoyage...</span>
+						{:else}
+							<span>Netoyer les doublons de traductions</span>
+						{/if}
+					</button>
+				</form>
+			</div>
+			<div class="mt-6 space-y-3">
+				{#if translatorsImportResult}
+					{#if translatorsImportResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{translatorsImportResult.message}</h3>
+								{#if translatorsImportResult.details && typeof translatorsImportResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Total: {translatorsImportResult.details.total} | Créés:
+										{translatorsImportResult.details.inserted} | Mis à jour:
+										{translatorsImportResult.details.updated} | Ignorés:
+										{translatorsImportResult.details.skipped}
+									</p>
+								{:else if typeof translatorsImportResult.details === 'string'}
+									<p class="mt-1 text-sm">{translatorsImportResult.details}</p>
+								{/if}
+							</div>
+						</div>
 					{:else}
-						<span>Tout ajouter / synchroniser depuis l'API</span>
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{translatorsImportResult.message || 'Erreur inconnue'}</h3>
+								{#if translatorsImportResult.details}
+									<p class="mt-1 text-sm">
+										{typeof translatorsImportResult.details === 'string'
+											? translatorsImportResult.details
+											: JSON.stringify(translatorsImportResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
 					{/if}
-				</button>
-			</form>
-			{#if compareResult}
-				<div class="mt-6">
+				{/if}
+				{#if compareResult}
 					{#if compareResult.success}
 						<div class="alert alert-success">
 							<CircleCheck class="h-6 w-6" />
@@ -754,46 +885,21 @@
 								<h3 class="font-bold">{compareResult.message}</h3>
 								{#if compareResult.details && typeof compareResult.details === 'object'}
 									<p class="mt-1 text-sm">
-										Total API: {compareResult.details.totalApiGames} | Manquants: {compareResult
-											.details.missingCount} | Traductions manquantes: {compareResult.details
-											.missingTranslationsCount} | Pas a jour: {compareResult.details.outdatedCount}
+										<strong>Traducteurs:</strong>
+										total {compareResult.details.translators.total}, créés {compareResult.details
+											.translators.inserted}, mis à jour {compareResult.details.translators
+											.updated}, ignorés {compareResult.details.translators.skipped}
 									</p>
-									{#if compareResult.details.missingGames.length > 0}
-										<details class="mt-2">
-											<summary class="cursor-pointer font-semibold">
-												Jeux manquants (top 100)
-											</summary>
-											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
-												{#each compareResult.details.missingGames as g, i (`${g.id}-${g.name}-${i}`)}
-													<li>{g.name} ({g.domain || 'n/a'})</li>
-												{/each}
-											</ul>
-										</details>
-									{/if}
-									{#if compareResult.details.missingTranslations.length > 0}
-										<details class="mt-2">
-											<summary class="cursor-pointer font-semibold">
-												Traductions manquantes (top 100)
-											</summary>
-											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
-												{#each compareResult.details.missingTranslations as t, i (`${t.id}-${t.name}-${t.version}-${i}`)}
-													<li>{t.name} - {t.version}</li>
-												{/each}
-											</ul>
-										</details>
-									{/if}
-									{#if compareResult.details.outdatedGames.length > 0}
-										<details class="mt-2">
-											<summary class="cursor-pointer font-semibold">
-												Jeux pas a jour (top 100)
-											</summary>
-											<ul class="mt-2 max-h-40 list-inside list-disc overflow-auto text-sm">
-												{#each compareResult.details.outdatedGames as o, i (`${o.id}-${o.name}-${i}`)}
-													<li>{o.name} - {o.reason}</li>
-												{/each}
-											</ul>
-										</details>
-									{/if}
+									<p class="mt-1 text-sm">
+										<strong>Jeux/Traductions:</strong>
+										total {compareResult.details.games.total}, jeux créés {compareResult.details
+											.games.insertedGames}, jeux MAJ {compareResult.details.games.updatedGames},
+										traductions créées {compareResult.details.games.insertedTranslations},
+										traductions MAJ {compareResult.details.games.updatedTranslations}, traducteurs
+										créés {compareResult.details.games.createdTranslators}, relecteurs créés {compareResult
+											.details.games.createdProofreaders}, ignorés {compareResult.details.games
+											.skipped}
+									</p>
 								{/if}
 							</div>
 						</div>
@@ -812,10 +918,8 @@
 							</div>
 						</div>
 					{/if}
-				</div>
-			{/if}
-			{#if syncResult}
-				<div class="mt-4">
+				{/if}
+				{#if syncResult}
 					{#if syncResult.success}
 						<div class="alert alert-success">
 							<CircleCheck class="h-6 w-6" />
@@ -846,51 +950,8 @@
 							</div>
 						</div>
 					{/if}
-				</div>
-			{/if}
-			<form
-				method="POST"
-				action="?/cleanupDuplicateTranslations"
-				use:enhance={() => {
-					cleanupIsLoading = true;
-					cleanupResult = null;
-					return async function ({ result, update }) {
-						await update();
-						cleanupIsLoading = false;
-						if ((result.type === 'success' || result.type === 'failure') && result.data) {
-							const data = result.data;
-							cleanupResult = {
-								success:
-									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-								message:
-									typeof data === 'object' &&
-									data &&
-									'message' in data &&
-									typeof data.message === 'string'
-										? data.message
-										: '',
-								details:
-									typeof data === 'object' &&
-									data &&
-									'details' in data &&
-									isCleanupDetailsObject(data.details)
-										? data.details
-										: null
-							};
-						}
-					};
-				}}
-				class="mt-3"
-			>
-				<button type="submit" class="btn btn-warning" disabled={cleanupIsLoading}>
-					{#if cleanupIsLoading}
-						<Loader class="h-5 w-5 animate-spin" />
-						<span>Nettoyage...</span>
-					{:else}
-						<span>Nettoyer les doublons de traductions</span>
-					{/if}
-				</button>
-			</form>
+				{/if}
+			</div>
 			{#if cleanupResult}
 				<div class="mt-3">
 					{#if cleanupResult.success}
