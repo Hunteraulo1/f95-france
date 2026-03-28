@@ -30,6 +30,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				type: table.game.type,
 				image: table.game.image,
 				gameAutoCheck: table.game.gameAutoCheck,
+				gameVersion: table.game.gameVersion,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
@@ -53,6 +54,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				translatorId: table.gameTranslation.translatorId,
 				proofreaderId: table.gameTranslation.proofreaderId,
 				ttype: table.gameTranslation.ttype,
+				tname: table.gameTranslation.tname,
 				ac: table.gameTranslation.ac,
 				createdAt: table.gameTranslation.createdAt,
 				updatedAt: table.gameTranslation.updatedAt

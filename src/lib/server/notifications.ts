@@ -1,3 +1,4 @@
+import { sendDiscordWebhookLogsApiError } from '$lib/server/discord-webhook';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq, sql, and, desc } from 'drizzle-orm';
@@ -138,37 +139,34 @@ export async function notifyApiError(
 	userId: string | null,
 	username?: string | null
 ) {
+	// Ne pas notifier si c'est une erreur 404 (ressource non trouvée) pour éviter le spam
+	if (status === 404) {
+		return;
+	}
+
+	let finalUsername = username || 'Anonyme';
+	if (!username && userId) {
+		try {
+			const users = await db
+				.select({ username: table.user.username })
+				.from(table.user)
+				.where(eq(table.user.id, userId))
+				.limit(1);
+			finalUsername = users[0]?.username || 'Inconnu';
+		} catch {
+			finalUsername = 'Inconnu';
+		}
+	}
+
 	try {
-		// Récupérer tous les superadmins
 		const superadmins = await db
 			.select({ id: table.user.id })
 			.from(table.user)
 			.where(eq(table.user.role, 'superadmin'));
 
-		// Ne pas notifier si c'est une erreur 404 (ressource non trouvée) pour éviter le spam
-		if (status === 404) {
-			return;
-		}
-
 		const statusLabel =
 			status >= 500 ? 'Erreur serveur' : status >= 400 ? 'Erreur client' : 'Erreur';
 
-		// Récupérer le nom d'utilisateur si non fourni
-		let finalUsername = username || 'Anonyme';
-		if (!username && userId) {
-			try {
-				const users = await db
-					.select({ username: table.user.username })
-					.from(table.user)
-					.where(eq(table.user.id, userId))
-					.limit(1);
-				finalUsername = users[0]?.username || 'Inconnu';
-			} catch {
-				finalUsername = 'Inconnu';
-			}
-		}
-
-		// Créer une notification pour chaque superadmin
 		for (const admin of superadmins) {
 			await createNotification({
 				userId: admin.id,
@@ -184,14 +182,20 @@ export async function notifyApiError(
 					username: finalUsername
 				}
 			}).catch((error) => {
-				// Ne pas propager l'erreur si la table n'existe pas encore
 				console.warn('Erreur lors de la création de la notification API:', error);
 			});
 		}
 	} catch (error) {
-		// Ne pas propager l'erreur pour éviter de bloquer la requête
 		console.warn("Erreur lors de la notification d'erreur API:", error);
 	}
+
+	void sendDiscordWebhookLogsApiError({
+		method,
+		route,
+		status,
+		userId,
+		username: finalUsername
+	});
 }
 
 /**

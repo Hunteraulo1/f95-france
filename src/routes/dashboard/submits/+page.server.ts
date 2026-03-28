@@ -1,3 +1,4 @@
+import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
@@ -201,7 +202,9 @@ export const actions: Actions = {
 				.select({
 					status: table.submission.status,
 					userId: table.submission.userId,
-					type: table.submission.type
+					type: table.submission.type,
+					data: table.submission.data,
+					translationId: table.submission.translationId
 				})
 				.from(table.submission)
 				.where(eq(table.submission.id, submissionId))
@@ -244,7 +247,27 @@ export const actions: Actions = {
 			// Si la soumission est acceptée et qu'elle ne l'était pas déjà, appliquer les changements
 			if (status === 'accepted' && currentStatus !== 'accepted') {
 				try {
+					const translationWasUpdate =
+						submissionType === 'translation' && !!currentSubmission[0].translationId;
+
 					await applySubmission(submissionId);
+
+					const [afterApply] = await db
+						.select({
+							data: table.submission.data,
+							adminNotes: table.submission.adminNotes
+						})
+						.from(table.submission)
+						.where(eq(table.submission.id, submissionId))
+						.limit(1);
+
+					void sendDiscordWebhookUpdatesSubmissionApplied({
+						submissionId,
+						submissionType,
+						dataJson: afterApply.data,
+						translationWasUpdate,
+						adminNotes: afterApply.adminNotes
+					});
 				} catch (applyError: unknown) {
 					console.error("Erreur lors de l'application de la soumission:", applyError);
 					// Revenir au statut précédent en cas d'erreur

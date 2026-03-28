@@ -1,4 +1,5 @@
 import { getUserById } from '$lib/server/auth';
+import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -104,20 +105,46 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Créer la nouvelle traduction
 		// Pour les traductions intégrées ou "pas de traduction", le lien doit être une chaîne vide
 		// (le champ est NOT NULL dans le schéma, donc on utilise '' au lieu de null)
-		await db.insert(table.gameTranslation).values({
+		const tlinkStored = linkNotRequired || tlink === null ? '' : tlink || '';
+		const [created] = await db
+			.insert(table.gameTranslation)
+			.values({
+				gameId,
+				translationName,
+				version,
+				tversion,
+				status,
+				ttype,
+				tlink: tlinkStored,
+				tname:
+					(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+					'translation',
+				translatorId: translatorId || null,
+				proofreaderId: proofreaderId || null,
+				ac: acValue
+			})
+			.returning({ id: table.gameTranslation.id });
+
+		const dataJson = JSON.stringify({
 			gameId,
-			translationName,
-			version,
-			tversion,
-			status,
-			ttype,
-			tlink: linkNotRequired || tlink === null ? '' : tlink || '',
-			tname:
-				(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
-				'translation',
-			translatorId: translatorId || null,
-			proofreaderId: proofreaderId || null,
-			ac: acValue
+			translation: {
+				translationName: translationName || null,
+				version,
+				tversion,
+				status,
+				ttype,
+				tlink: tlinkStored,
+				translatorId: translatorId || null,
+				proofreaderId: proofreaderId || null,
+				ac: acValue
+			}
+		});
+		void sendDiscordWebhookUpdatesSubmissionApplied({
+			submissionId: created?.id ?? 'direct-translation',
+			submissionType: 'translation',
+			dataJson,
+			translationWasUpdate: false,
+			adminNotes: null
 		});
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });

@@ -67,6 +67,8 @@ export async function createGameUpdateSubmission(
 		link: string | null;
 		image: string;
 		gameAutoCheck?: boolean;
+		/** Version de référence sur la fiche jeu */
+		gameVersion?: string | null;
 	}
 ) {
 	const submissionData = {
@@ -133,6 +135,7 @@ export async function createTranslationUpdateSubmission(
 		status: string;
 		ttype: string;
 		tlink: string;
+		tname?: string | null;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
 		ac?: boolean | null;
@@ -159,9 +162,14 @@ export async function createTranslationUpdateSubmission(
 /**
  * Crée une soumission pour une suppression de jeu
  */
-export async function createGameDeleteSubmission(userId: string, gameId: string) {
+export async function createGameDeleteSubmission(userId: string, gameId: string, reason: string) {
+	const r = reason.trim();
+	if (!r) {
+		throw new Error('La raison de la suppression est obligatoire');
+	}
 	const submissionData = {
-		gameId
+		gameId,
+		reason: r
 	};
 
 	const submission = await db.insert(table.submission).values({
@@ -181,11 +189,17 @@ export async function createGameDeleteSubmission(userId: string, gameId: string)
 export async function createTranslationDeleteSubmission(
 	userId: string,
 	gameId: string,
-	translationId: string
+	translationId: string,
+	reason: string
 ) {
+	const r = reason.trim();
+	if (!r) {
+		throw new Error('La raison de la suppression est obligatoire');
+	}
 	const submissionData = {
 		gameId,
-		translationId
+		translationId,
+		reason: r
 	};
 
 	const submission = await db.insert(table.submission).values({
@@ -229,6 +243,7 @@ export async function applySubmission(submissionId: string) {
 			link?: string | null;
 			image: string;
 			gameAutoCheck?: boolean;
+			gameVersion?: string | null;
 		};
 		translation?: {
 			translationName?: string | null;
@@ -237,6 +252,7 @@ export async function applySubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string | null;
+			tname?: string | null;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
@@ -378,7 +394,8 @@ export async function applySubmission(submissionId: string) {
 				tags: originalGame.tags,
 				link: originalGame.link,
 				image: originalGame.image,
-				gameAutoCheck: originalGame.gameAutoCheck ?? true
+				gameAutoCheck: originalGame.gameAutoCheck ?? true,
+				gameVersion: originalGame.gameVersion ?? null
 			}
 		};
 
@@ -389,6 +406,13 @@ export async function applySubmission(submissionId: string) {
 				data: JSON.stringify(updatedData)
 			})
 			.where(eq(table.submission.id, submissionId));
+
+		const nextGameVersion =
+			gameData.gameVersion !== undefined
+				? gameData.gameVersion && String(gameData.gameVersion).trim()
+					? String(gameData.gameVersion).trim()
+					: null
+				: (originalGame.gameVersion ?? null);
 
 		// Mettre à jour le jeu
 		await db
@@ -415,6 +439,7 @@ export async function applySubmission(submissionId: string) {
 				link: gameData.link || '',
 				image: gameData.image,
 				gameAutoCheck: nextGameAutoCheck,
+				gameVersion: nextGameVersion,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
@@ -457,6 +482,7 @@ export async function applySubmission(submissionId: string) {
 						status: originalTranslation.status,
 						ttype: originalTranslation.ttype,
 						tlink: originalTranslation.tlink,
+						tname: originalTranslation.tname,
 						translatorId: originalTranslation.translatorId,
 						proofreaderId: originalTranslation.proofreaderId,
 						ac: originalTranslation.ac
@@ -472,6 +498,11 @@ export async function applySubmission(submissionId: string) {
 					.where(eq(table.submission.id, submissionId));
 
 				// Mettre à jour la traduction
+				const nextTname =
+					translationData.tname != null && String(translationData.tname).length > 0
+						? (translationData.tname as (typeof originalTranslation)['tname'])
+						: originalTranslation.tname;
+
 				await db
 					.update(table.gameTranslation)
 					.set({
@@ -487,6 +518,7 @@ export async function applySubmission(submissionId: string) {
 							| 'to_tested'
 							| 'hs',
 						tlink: translationData.tlink || '',
+						tname: nextTname,
 						translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
 						proofreaderId:
 							translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
@@ -499,6 +531,10 @@ export async function applySubmission(submissionId: string) {
 					.where(eq(table.gameTranslation.id, sub.translationId));
 			} else {
 				// La traduction a été supprimée (probablement lors d'un revert), créer une nouvelle traduction
+				const insertTname =
+					translationData.tname != null && String(translationData.tname).length > 0
+						? translationData.tname
+						: 'translation';
 				await db.insert(table.gameTranslation).values({
 					gameId: sub.gameId,
 					translationName: translationData.translationName || null,
@@ -513,6 +549,7 @@ export async function applySubmission(submissionId: string) {
 						| 'to_tested'
 						| 'hs',
 					tlink: translationData.tlink || '',
+					tname: insertTname as typeof table.gameTranslation.$inferInsert.tname,
 					translatorId: translationData.translatorId ?? null,
 					proofreaderId: translationData.proofreaderId ?? null,
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
@@ -545,6 +582,10 @@ export async function applySubmission(submissionId: string) {
 			}
 		} else {
 			// Créer une nouvelle traduction
+			const insertTnameNew =
+				translationData.tname != null && String(translationData.tname).length > 0
+					? translationData.tname
+					: 'translation';
 			await db.insert(table.gameTranslation).values({
 				gameId: sub.gameId,
 				translationName: translationData.translationName || null,
@@ -553,6 +594,7 @@ export async function applySubmission(submissionId: string) {
 				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tlink: translationData.tlink || '',
+				tname: insertTnameNew as typeof table.gameTranslation.$inferInsert.tname,
 				translatorId: translationData.translatorId ?? null,
 				proofreaderId: translationData.proofreaderId ?? null,
 				ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
@@ -737,6 +779,7 @@ export async function revertSubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string | null;
+			tname?: string | null;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
@@ -832,6 +875,12 @@ export async function revertSubmission(submissionId: string) {
 				tags: originalGame.tags || '',
 				link: originalGame.link || '',
 				image: originalGame.image,
+				gameAutoCheck:
+					'gameAutoCheck' in originalGame && typeof originalGame.gameAutoCheck === 'boolean'
+						? originalGame.gameAutoCheck
+						: true,
+				gameVersion:
+					'gameVersion' in originalGame ? (originalGame.gameVersion as string | null) : null,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));

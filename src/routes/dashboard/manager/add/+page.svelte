@@ -42,6 +42,7 @@
 		link: '',
 		description: null,
 		gameAutoCheck: true,
+		gameVersion: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 

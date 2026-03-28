@@ -60,14 +60,25 @@
 		status: 'in_progress',
 		ttype: 'manual',
 		tlink: '',
+		tname: 'translation' as
+			| 'no_translation'
+			| 'integrated'
+			| 'translation'
+			| 'translation_with_mods',
 		ac: false,
 		translatorId: '',
 		proofreaderId: ''
 	});
 
+	const editTranslationLinkNotRequired = $derived(
+		editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation'
+	);
+
 	// État pour la suppression
 	let translationToDelete = $state<(typeof translations)[number] | null>(null);
+	let translationDeleteReason = $state('');
 	let gameToDelete = $state<boolean>(false);
+	let gameDeleteReason = $state('');
 
 	// État pour le modal de modification du jeu
 	let showEditGameModal = $state(false);
@@ -80,7 +91,8 @@
 		tags: '',
 		link: '',
 		image: '',
-		gameAutoCheck: true
+		gameAutoCheck: true,
+		gameVersion: ''
 	});
 
 	const getStatusColor = (status: string) => {
@@ -134,7 +146,26 @@
 		return translator?.name ?? id;
 	};
 
+	const normalizeTranslationProgressStatus = (
+		s: string | undefined | null
+	): 'in_progress' | 'completed' | 'abandoned' => {
+		if (s === 'completed' || s === 'abandoned' || s === 'in_progress') return s;
+		return 'in_progress';
+	};
+
 	const openAddTranslationModal = () => {
+		newTranslation = {
+			translationName: '',
+			version: game.gameVersion?.trim() || '',
+			tversion: '',
+			status: 'in_progress',
+			ttype: 'manual',
+			tlink: '',
+			tname: 'translation',
+			ac: false,
+			translatorId: '',
+			proofreaderId: ''
+		};
 		showAddTranslationModal = true;
 	};
 
@@ -169,6 +200,17 @@
 		if (!translationAcUiAllowed) {
 			newTranslation.ac = false;
 			editingTranslation.ac = false;
+		}
+	});
+
+	/** Même logique que l’ajout : lien vide si intégrée / pas de traduction ; type hs si pas de traduction */
+	$effect(() => {
+		if (!showEditTranslationModal) return;
+		if (editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation') {
+			editingTranslation.tlink = '';
+		}
+		if (editingTranslation.tname === 'no_translation') {
+			editingTranslation.ttype = 'hs';
 		}
 	});
 
@@ -240,13 +282,41 @@
 				return;
 			}
 
+			const gameUpdateRes = await fetch(`/dashboard/game/${game.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: data.name ?? game.name,
+					description: game.description ?? '',
+					type: data.type ?? game.type,
+					website: game.website,
+					threadId: game.threadId ? String(game.threadId) : '',
+					tags: data.tags ?? game.tags ?? '',
+					link: game.link ?? '',
+					image: data.image ?? game.image,
+					gameAutoCheck: game.gameAutoCheck ?? true,
+					gameVersion: data.version,
+					directMode: true
+				})
+			});
+
+			if (!gameUpdateRes.ok) {
+				const details = await gameUpdateRes.json().catch(() => ({}));
+				throw new Error(
+					(details as { error?: string }).error || 'Erreur lors de la mise à jour de la fiche jeu'
+				);
+			}
+
 			showEditGameModal = true;
 			editingGame = {
 				...editingGame,
 				name: data.name ?? game.name,
 				tags: data.tags ?? game.tags,
 				type: data.type ?? game.type,
-				image: data.image ?? game.image
+				image: data.image ?? game.image,
+				gameVersion: data.version
 			};
 
 			const translationResponse = await fetch(
@@ -402,9 +472,10 @@
 			id: translation.id,
 			version: translation.version,
 			tversion: translation.tversion,
-			status: translation.status,
+			status: normalizeTranslationProgressStatus(translation.status),
 			ttype: translation.ttype,
 			tlink: translation.tlink,
+			tname: translation.tname as (typeof editingTranslation)['tname'],
 			translatorId: translation.translatorId || '',
 			proofreaderId: translation.proofreaderId || '',
 			ac: translation.ac ?? false
@@ -422,6 +493,7 @@
 			status: 'in_progress',
 			ttype: 'manual',
 			tlink: '',
+			tname: 'translation',
 			ac: false,
 			translatorId: '',
 			proofreaderId: ''
@@ -429,7 +501,78 @@
 	};
 
 	const editTranslation = async () => {
+		const linkNotRequired = editTranslationLinkNotRequired;
+		if (
+			!editingTranslation.version ||
+			!editingTranslation.tversion ||
+			!editingTranslation.status ||
+			!editingTranslation.ttype ||
+			(!linkNotRequired && !editingTranslation.tlink)
+		) {
+			newToast({
+				alertType: 'error',
+				message: linkNotRequired
+					? 'Veuillez remplir les champs requis (versions, statut, type)'
+					: 'Veuillez remplir tous les champs requis (y compris le lien)'
+			});
+			return;
+		}
+
 		try {
+			let translatorIdValue: string | null = null;
+			let proofreaderIdValue: string | null = null;
+
+			if (editingTranslation.translatorId) {
+				const tr = translators.find((t) => t.name === editingTranslation.translatorId);
+				if (tr) {
+					translatorIdValue = tr.id;
+				} else {
+					const byId = translators.find((t) => t.id === editingTranslation.translatorId);
+					if (byId) {
+						translatorIdValue = byId.id;
+					} else {
+						newToast({
+							alertType: 'error',
+							message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
+						});
+						return;
+					}
+				}
+			}
+
+			if (editingTranslation.proofreaderId) {
+				const pr = translators.find((t) => t.name === editingTranslation.proofreaderId);
+				if (pr) {
+					proofreaderIdValue = pr.id;
+				} else {
+					const byId = translators.find((t) => t.id === editingTranslation.proofreaderId);
+					if (byId) {
+						proofreaderIdValue = byId.id;
+					} else {
+						newToast({
+							alertType: 'error',
+							message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
+						});
+						return;
+					}
+				}
+			}
+
+			const tlinkValue = linkNotRequired ? null : editingTranslation.tlink;
+
+			const payload = {
+				translationName: editingTranslation.translationName || null,
+				version: editingTranslation.version,
+				tversion: editingTranslation.tversion,
+				status: editingTranslation.status,
+				ttype: editingTranslation.ttype,
+				tlink: tlinkValue,
+				tname: editingTranslation.tname,
+				ac: editingTranslation.ac ?? false,
+				translatorId: translatorIdValue,
+				proofreaderId: proofreaderIdValue
+			};
+
 			const response = await fetch(
 				`/dashboard/game/${game.id}/translations/${editingTranslation.id}`,
 				{
@@ -437,76 +580,166 @@
 					headers: {
 						'Content-Type': 'application/json'
 					},
-					body: JSON.stringify(editingTranslation)
+					body: JSON.stringify(payload)
 				}
 			);
 
+			const data = (await response.json().catch(() => ({}))) as {
+				error?: string;
+				message?: string;
+				submission?: boolean;
+			};
+
 			if (response.ok) {
-				// Recharger la page pour voir les modifications
+				if (data.submission) {
+					newToast({
+						alertType: 'success',
+						message: 'Soumission créée. Elle sera examinée par un administrateur.'
+					});
+				} else {
+					newToast({ alertType: 'success', message: 'Traduction modifiée avec succès' });
+				}
+				closeEditTranslationModal();
 				window.location.reload();
 			} else {
-				console.error('Erreur lors de la modification de la traduction');
+				newToast({
+					alertType: 'error',
+					message: data.error || 'Erreur lors de la modification de la traduction'
+				});
 			}
 		} catch (error) {
 			console.error('Erreur lors de la modification de la traduction:', error);
+			newToast({
+				alertType: 'error',
+				message: 'Une erreur est survenue lors de la modification de la traduction'
+			});
 		}
 	};
 
 	const confirmDeleteTranslation = (translation: (typeof translations)[number]) => {
 		translationToDelete = translation;
+		translationDeleteReason = '';
 	};
 
 	const cancelDeleteTranslation = () => {
 		translationToDelete = null;
+		translationDeleteReason = '';
 	};
 
 	const deleteTranslation = async () => {
 		if (!translationToDelete) return;
 
+		const reason = translationDeleteReason.trim();
+		if (!reason) {
+			newToast({
+				alertType: 'error',
+				message: 'La raison de la suppression est obligatoire'
+			});
+			return;
+		}
+
 		try {
 			const response = await fetch(
 				`/dashboard/game/${game.id}/translations/${translationToDelete.id}`,
 				{
-					method: 'DELETE'
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ reason })
 				}
 			);
 
+			const data = (await response.json().catch(() => ({}))) as {
+				error?: string;
+				message?: string;
+				submission?: boolean;
+			};
+
 			if (response.ok) {
-				// Recharger la page pour voir les modifications
-				window.location.reload();
+				if (data.submission) {
+					newToast({
+						alertType: 'success',
+						message:
+							'Soumission de suppression créée. Elle sera examinée par un administrateur.'
+					});
+					cancelDeleteTranslation();
+				} else {
+					newToast({ alertType: 'success', message: 'Traduction supprimée' });
+					translationToDelete = null;
+					translationDeleteReason = '';
+					window.location.reload();
+				}
 			} else {
-				console.error('Erreur lors de la suppression de la traduction');
+				newToast({
+					alertType: 'error',
+					message: data.error || 'Erreur lors de la suppression de la traduction'
+				});
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression de la traduction:', error);
+			newToast({
+				alertType: 'error',
+				message: 'Erreur lors de la suppression de la traduction'
+			});
 		}
 	};
 
 	const confirmDeleteGame = () => {
 		gameToDelete = true;
+		gameDeleteReason = '';
 	};
 
 	const cancelDeleteGame = () => {
 		gameToDelete = false;
+		gameDeleteReason = '';
 	};
 
 	const deleteGame = async () => {
+		const reason = gameDeleteReason.trim();
+		if (!reason) {
+			newToast({
+				alertType: 'error',
+				message: 'La raison de la suppression est obligatoire'
+			});
+			return;
+		}
+
 		try {
 			const response = await fetch(`/dashboard/game/${game.id}`, {
-				method: 'DELETE'
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ reason })
 			});
 
+			const data = (await response.json().catch(() => ({}))) as {
+				error?: string;
+				message?: string;
+				submission?: boolean;
+			};
+
 			if (response.ok) {
-				// Rediriger vers la liste des jeux après suppression
-				window.location.href = '/dashboard/manager';
+				if (data.submission) {
+					newToast({
+						alertType: 'success',
+						message:
+							'Soumission de suppression créée. Elle sera examinée par un administrateur.'
+					});
+					cancelDeleteGame();
+				} else {
+					newToast({ alertType: 'success', message: 'Jeu supprimé' });
+					window.location.href = '/dashboard/manager';
+				}
 			} else {
-				const data = await response.json();
-				console.error('Erreur lors de la suppression du jeu:', data.error || 'Erreur inconnue');
-				alert('Erreur lors de la suppression du jeu: ' + (data.error || 'Erreur inconnue'));
+				newToast({
+					alertType: 'error',
+					message: data.error || 'Erreur lors de la suppression du jeu'
+				});
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression du jeu:', error);
-			alert('Erreur lors de la suppression du jeu');
+			newToast({
+				alertType: 'error',
+				message: 'Erreur lors de la suppression du jeu'
+			});
 		}
 	};
 
@@ -519,7 +752,6 @@
 	});
 
 	const openEditGameModal = () => {
-		console.log('openEditGameModal called');
 		const isF95 = game.website === 'f95z';
 		editingGame = {
 			name: game.name,
@@ -530,10 +762,10 @@
 			tags: game.tags || '',
 			link: game.link || '',
 			image: game.image,
-			gameAutoCheck: isF95 ? (game.gameAutoCheck ?? true) : false
+			gameAutoCheck: isF95 ? (game.gameAutoCheck ?? true) : false,
+			gameVersion: game.gameVersion?.trim() || ''
 		};
 		showEditGameModal = true;
-		console.log('showEditGameModal set to:', showEditGameModal);
 	};
 
 	const closeEditGameModal = () => {
@@ -547,7 +779,8 @@
 			tags: '',
 			link: '',
 			image: '',
-			gameAutoCheck: true
+			gameAutoCheck: true,
+			gameVersion: ''
 		};
 	};
 
@@ -640,6 +873,11 @@
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
 							{#if game.threadId}
 								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
+							{/if}
+							{#if game.gameVersion}
+								<span class="badge badge-accent badge-lg" title="Version de référence sur la fiche jeu"
+									>Version jeu : {game.gameVersion}</span
+								>
 							{/if}
 						</div>
 
@@ -819,7 +1057,7 @@
 
 			<div class="form-control mb-4 w-full">
 				<label class="input" for="version">
-					Version du jeu
+					Version du jeu (ligne de traduction)
 					<input
 						id="version"
 						type="text"
@@ -829,6 +1067,10 @@
 						required
 					/>
 				</label>
+				<p class="mt-1 text-xs text-base-content/60">
+					Prérempli depuis la version de référence de la fiche jeu si elle est renseignée. La
+					référence officielle du titre se gère dans « Modifier le jeu ».
+				</p>
 			</div>
 
 			<div class="form-control mb-4 w-full">
@@ -987,6 +1229,7 @@
 		<div class="modal-box">
 			<h3 class="mb-4 text-lg font-bold">Modifier la traduction</h3>
 
+			{#key editingTranslation.id}
 			<div class="form-control mb-4 w-full">
 				<label class="input" for="edit-translationName">
 					Nom de la traduction
@@ -1003,7 +1246,7 @@
 
 			<div class="form-control mb-4 w-full">
 				<label class="input" for="edit-version">
-					Version du jeu
+					Version du jeu (ligne de traduction)
 					<input
 						id="edit-version"
 						type="text"
@@ -1013,6 +1256,10 @@
 						required
 					/>
 				</label>
+				<p class="mt-1 text-xs text-base-content/60">
+					Version portée par cette entrée ; la version de référence du jeu est sur la fiche («
+					Modifier le jeu »).
+				</p>
 			</div>
 
 			<div class="form-control mb-4 w-full">
@@ -1030,39 +1277,55 @@
 			</div>
 
 			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="edit-status">
-					Statut
-					<select
-						id="edit-status"
-						class="w-full select-ghost"
-						bind:value={editingTranslation.status}
-						required
-					>
-						<option value="in_progress">En cours</option>
-						<option value="completed">Terminé</option>
-						<option value="abandoned">Abandonné</option>
-					</select>
+				<label class="label" for="edit-status">
+					<span class="label-text">Progression</span>
 				</label>
+				<select
+					id="edit-status"
+					class="select-bordered select w-full"
+					bind:value={editingTranslation.status}
+				>
+					<option value="in_progress">En cours</option>
+					<option value="completed">Terminé</option>
+					<option value="abandoned">Abandonné</option>
+				</select>
 			</div>
 
 			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="edit-ttype">
-					Type de traduction
-					<select
-						id="edit-ttype"
-						class="w-full select-ghost"
-						bind:value={editingTranslation.ttype}
-						required
-					>
-						<option value="manual">Manuelle</option>
-						<option value="auto">Automatique</option>
-						<option value="semi-auto">Semi-Automatique</option>
-						<option value="vf">VO Française</option>
-						<option value="to_tested">À tester</option>
-						<option value="hs">Lien HS</option>
-					</select>
+				<label class="label" for="edit-tname">
+					<span class="label-text">Statut de traduction</span>
 				</label>
+				<select
+					id="edit-tname"
+					class="select-bordered select w-full"
+					bind:value={editingTranslation.tname}
+				>
+					<option value="no_translation">Pas de traduction</option>
+					<option value="integrated">Intégrée</option>
+					<option value="translation">Traduction</option>
+					<option value="translation_with_mods">Traduction avec mods</option>
+				</select>
 			</div>
+
+			<div class="form-control mb-4 w-full">
+				<label class="label" for="edit-ttype">
+					<span class="label-text">Type de traduction</span>
+				</label>
+				<select
+					id="edit-ttype"
+					class="select-bordered select w-full"
+					bind:value={editingTranslation.ttype}
+					disabled={editingTranslation.tname === 'no_translation'}
+				>
+					<option value="manual">Manuelle</option>
+					<option value="auto">Automatique</option>
+					<option value="semi-auto">Semi-Automatique</option>
+					<option value="vf">VO Française</option>
+					<option value="to_tested">À tester</option>
+					<option value="hs">Lien HS</option>
+				</select>
+			</div>
+			{/key}
 
 			<div class="form-control mb-6 w-full">
 				<label class="input" for="edit-tlink">
@@ -1073,7 +1336,8 @@
 						placeholder="https://..."
 						class="w-full input-ghost"
 						bind:value={editingTranslation.tlink}
-						required
+						disabled={editTranslationLinkNotRequired}
+						required={!editTranslationLinkNotRequired}
 					/>
 				</label>
 			</div>
@@ -1208,6 +1472,22 @@
 					</label>
 				</div>
 				<div class="form-control w-full">
+					<label class="input" for="edit-game-gameVersion">
+						Version de référence (jeu)
+						<input
+							id="edit-game-gameVersion"
+							type="text"
+							placeholder="Ex: 1.2.3 — build du jeu côté thread"
+							class="w-full input-ghost"
+							bind:value={editingGame.gameVersion}
+						/>
+					</label>
+					<p class="mt-1 text-xs text-base-content/60">
+						À distinguer des champs « version » sur chaque ligne de traduction : c’est la version
+						du titre telle que suivie sur la fiche.
+					</p>
+				</div>
+				<div class="form-control w-full">
 					<label class="input" for="edit-game-link">
 						Lien du thread
 						<input
@@ -1290,6 +1570,17 @@
 				<p><strong>Version Trad:</strong> {translationToDelete.tversion}</p>
 				<p><strong>Statut:</strong> {getStatusText(translationToDelete.status)}</p>
 			</div>
+			<div class="form-control mb-6 w-full">
+				<label class="label" for="translation-delete-reason">
+					<span class="label-text">Raison de la suppression <span class="text-error">*</span></span>
+				</label>
+				<textarea
+					id="translation-delete-reason"
+					class="textarea-bordered textarea min-h-24 w-full"
+					placeholder="Expliquez pourquoi cette traduction doit être retirée…"
+					bind:value={translationDeleteReason}
+				></textarea>
+			</div>
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={cancelDeleteTranslation}>Annuler</button>
 				<button class="btn btn-error" onclick={deleteTranslation}>Supprimer</button>
@@ -1310,6 +1601,17 @@
 					<strong>Attention:</strong> Cette action supprimera également toutes les traductions associées
 					à ce jeu.
 				</p>
+			</div>
+			<div class="form-control mb-6 w-full">
+				<label class="label" for="game-delete-reason">
+					<span class="label-text">Raison de la suppression <span class="text-error">*</span></span>
+				</label>
+				<textarea
+					id="game-delete-reason"
+					class="textarea-bordered textarea min-h-24 w-full"
+					placeholder="Expliquez pourquoi ce jeu doit être retiré…"
+					bind:value={gameDeleteReason}
+				></textarea>
 			</div>
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={cancelDeleteGame}>Annuler</button>
