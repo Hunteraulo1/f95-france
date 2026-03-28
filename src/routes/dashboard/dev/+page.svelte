@@ -706,7 +706,7 @@
 								<Loader class="h-5 w-5 animate-spin" />
 								<span>Import en cours...</span>
 							{:else}
-								<span>Ajouter/Synchroniser les traducteur/relecteur</span>
+								<span>Ajouter/Synchroniser les traducteurs/relecteurs</span>
 							{/if}
 						</button>
 					</div>
