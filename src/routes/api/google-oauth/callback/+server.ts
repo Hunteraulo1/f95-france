@@ -2,7 +2,7 @@ import { exchangeCodeForToken, saveOAuthTokens } from '$lib/server/google-oauth'
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { redirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -56,6 +56,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rediriger vers la page de configuration avec un message de succès
 		throw redirect(302, '/dashboard/config?oauth_success=true');
 	} catch (error: unknown) {
+		if (isRedirect(error)) throw error;
 		console.error("Erreur lors de l'autorisation OAuth2:", error);
 		const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
 		throw redirect(302, `/dashboard/config?oauth_error=${encodeURIComponent(errorMessage)}`);
