@@ -23,7 +23,6 @@
 			<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
 				<div class="flex w-10 items-center justify-center rounded-full">
 					{#if $user?.avatar && $user.avatar !== ''}
-						{console.log($user.avatar)}
 						<img alt="avatar" src={$user.avatar} />
 					{:else}
 						<User />
