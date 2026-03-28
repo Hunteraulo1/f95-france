@@ -5,17 +5,17 @@ import { user } from './stores';
 export type checkRoleType = User['role'] | 'all';
 
 const checkRole = (roles: checkRoleType[]) => {
-  const loggedUser = get(user);
+	const loggedUser = get(user);
 
-  if (!loggedUser) throw new Error('User is required');
-  
-  if (!loggedUser.role) throw new Error('Role is required');
-  if (loggedUser.role === 'superadmin') return true;
-  
-  if (roles.includes('all')) return true;
-  if (roles.includes(loggedUser.role)) return true;
+	if (!loggedUser) throw new Error('User is required');
 
-  return false;
-}
+	if (!loggedUser.role) throw new Error('Role is required');
+	if (loggedUser.role === 'superadmin') return true;
+
+	if (roles.includes('all')) return true;
+	if (roles.includes(loggedUser.role)) return true;
+
+	return false;
+};
 
 export { checkRole };

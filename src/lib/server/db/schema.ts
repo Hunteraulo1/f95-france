@@ -1,84 +1,165 @@
 import { sql } from 'drizzle-orm';
-import { boolean, datetime, int, mysqlEnum, mysqlTable, text, varchar } from 'drizzle-orm/mysql-core';
+import { boolean, integer, pgEnum, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
-export const user = mysqlTable('user', {
+export const themeEnum = pgEnum('theme_enum', ['system', 'light', 'dark']);
+
+export const user = pgTable('user', {
 	id: varchar('id', { length: 255 }).primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+	email: varchar('email', { length: 255 }).notNull().unique(),
 	username: varchar('username', { length: 32 }).notNull().unique(),
-  avatar: varchar('avatar', { length: 255 }).notNull(),
+	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
-  role: varchar('role', { length: 255 }).notNull().default('user'),
-  theme: mysqlEnum('theme', ['light', 'dark']).notNull().default('light'),
-  devUserId: varchar('dev_user_id', { length: 255 }),
-  gameAdd: int('game_add').notNull().default(0),
-  gameEdit: int('game_edit').notNull().default(0),
-  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+	role: varchar('role', { length: 255 }).notNull().default('user'),
+	theme: themeEnum('theme').default('system'),
+	directMode: boolean('direct_mode').notNull().default(true),
+	devUserId: varchar('dev_user_id', { length: 255 }),
+	gameAdd: integer('game_add').notNull().default(0),
+	gameEdit: integer('game_edit').notNull().default(0),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-export const session = mysqlTable('session', {
+export const session = pgTable('session', {
 	id: varchar('id', { length: 255 }).primaryKey(),
 	userId: varchar('user_id', { length: 255 })
 		.notNull()
 		.references(() => user.id),
-	expiresAt: datetime('expires_at').notNull()
+	expiresAt: timestamp('expires_at').notNull()
 });
 
-export const game = mysqlTable('game', {
-	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
+export const game = pgTable('game', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
 	name: varchar('name', { length: 255 }).notNull(),
 	tags: text('tags').notNull(),
-	type: text('type').notNull(),
+	type: varchar('type', { length: 32 }).notNull().default('other'),
 	image: varchar('image', { length: 500 }).notNull(),
-	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 	description: text('description'),
-	website: mysqlEnum('website', ['f95z', 'lc', 'other']).notNull().default('f95z'),
-	threadId: int('thread_id'),
-	link: varchar('link', { length: 500 }).notNull().default('')
+	website: varchar('website', { length: 32 }).notNull().default('f95z'),
+	threadId: integer('thread_id'),
+	link: varchar('link', { length: 500 }).notNull().default(''),
+	/** Si false, aucune traduction ne peut avoir l’Auto-Check */
+	gameAutoCheck: boolean('game_auto_check').notNull().default(true)
 });
 
-export const gameTranslation = mysqlTable('game_translation', {
-	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
+export const gameTranslation = pgTable('game_translation', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => game.id),
-  translationName: varchar('translation_name', { length: 255 }),
-	status: mysqlEnum('status', ['in_progress', 'completed', 'abandoned']).notNull(),
+	translationName: varchar('translation_name', { length: 255 }),
+	status: varchar('status', { length: 32 }).notNull(),
 	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
-	tname: mysqlEnum('tname', ['Pas de traduction', 'Intégrée', 'Traduction']).notNull().default('Pas de traduction'),
+	tname: varchar('tname', { length: 64 }).notNull().default('no_translation'),
 	translatorId: varchar('traductor_id', { length: 255 }),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
-	ttype: mysqlEnum('ttype', ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']).notNull(),
+	ttype: varchar('ttype', { length: 32 }).notNull(),
 	ac: boolean('ac').notNull().default(false),
-	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-export const update = mysqlTable('update', {
-	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
+export const update = pgTable('update', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => game.id),
-	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-export const translator = mysqlTable('translator', {
-	id: varchar('id', { length: 255 }).primaryKey().default(sql`(UUID())`),
+export const translator = pgTable('translator', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
 	name: varchar('name', { length: 255 }).notNull().unique(),
-	userId: varchar('user_id', { length: 255 })
-		.references(() => user.id),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id),
 	pages: text('pages').notNull(),
 	discordId: varchar('discord_id', { length: 255 }).unique(),
-	tradCount: int('trad_count').notNull().default(0),
-	readCount: int('read_count').notNull().default(0),
-	createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`)
+	tradCount: integer('trad_count').notNull().default(0),
+	readCount: integer('read_count').notNull().default(0),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+export const config = pgTable('config', {
+	id: varchar('id', { length: 255 }).primaryKey().default('main'),
+	appName: varchar('app_name', { length: 255 }).notNull().default('F95 France'),
+	discordWebhookUpdates: text('discord_webhook_updates'),
+	discordWebhookLogs: text('discord_webhook_logs'),
+	discordWebhookTranslators: text('discord_webhook_translators'),
+	discordWebhookProofreaders: text('discord_webhook_proofreaders'),
+	googleSpreadsheetId: varchar('google_spreadsheet_id', { length: 255 }),
+	googleApiKey: text('google_api_key'),
+	googleOAuthClientId: text('google_oauth_client_id'),
+	googleOAuthClientSecret: text('google_oauth_client_secret'),
+	googleOAuthAccessToken: text('google_oauth_access_token'),
+	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
+	googleOAuthTokenExpiry: timestamp('google_oauth_token_expiry'),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const submission = pgTable('submission', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id),
+	status: varchar('status', { length: 32 }).notNull().default('pending'),
+	gameId: varchar('game_id', { length: 255 }).references(() => game.id),
+	translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id),
+	type: varchar('type', { length: 32 }).notNull(),
+	data: text('data').notNull(), // JSON data for the submission
+	adminNotes: text('admin_notes'),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const apiLog = pgTable('api_log', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	method: varchar('method', { length: 16 }).notNull(),
+	route: varchar('route', { length: 255 }).notNull(),
+	status: integer('status').notNull(),
+	ipAddress: varchar('ip_address', { length: 64 }),
+	payload: text('payload'),
+	errorMessage: text('error_message'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export const notification = pgTable('notification', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, {
+			onDelete: 'cascade',
+			onUpdate: 'cascade'
+		}),
+	type: varchar('type', { length: 64 }).notNull(),
+	title: varchar('title', { length: 255 }).notNull(),
+	message: text('message').notNull(),
+	read: boolean('read').notNull().default(false),
+	link: varchar('link', { length: 500 }),
+	metadata: text('metadata'), // JSON pour stocker des données supplémentaires
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
@@ -86,3 +167,7 @@ export type Game = typeof game.$inferSelect;
 export type GameTranslation = typeof gameTranslation.$inferSelect;
 export type Update = typeof update.$inferSelect;
 export type Translator = typeof translator.$inferSelect;
+export type Config = typeof config.$inferSelect;
+export type Submission = typeof submission.$inferSelect;
+export type ApiLog = typeof apiLog.$inferSelect;
+export type Notification = typeof notification.$inferSelect;

@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) {
 		throw redirect(302, '/dashboard');
 	}
-	
+
 	return {};
 };
 
@@ -18,18 +18,18 @@ export const actions: Actions = {
 		const password = formData.get('password') as string;
 
 		if (!username || !password) {
-			return fail(400, { message: 'Nom d\'utilisateur et mot de passe requis' });
+			return fail(400, { message: "Nom d'utilisateur et mot de passe requis" });
 		}
 
 		try {
 			const user = await auth.getUserByUsername(username);
 			if (!user) {
-				return fail(400, { message: 'Nom d\'utilisateur ou mot de passe incorrect' });
+				return fail(400, { message: "Nom d'utilisateur ou mot de passe incorrect" });
 			}
 
 			const validPassword = auth.verifyPassword(password, user.passwordHash);
 			if (!validPassword) {
-				return fail(400, { message: 'Nom d\'utilisateur ou mot de passe incorrect' });
+				return fail(400, { message: "Nom d'utilisateur ou mot de passe incorrect" });
 			}
 
 			// Créer une session

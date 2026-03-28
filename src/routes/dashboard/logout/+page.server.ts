@@ -25,7 +25,7 @@ export const actions: Actions = {
 		try {
 			// Invalider la session dans la base de données
 			await auth.invalidateSession(event.locals.session.id);
-			
+
 			// Supprimer le cookie de session
 			auth.deleteSessionTokenCookie(event);
 
@@ -36,7 +36,7 @@ export const actions: Actions = {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;
 			}
-			
+
 			console.error('Erreur lors de la déconnexion:', error);
 			return fail(500, {
 				message: 'Une erreur est survenue lors de la déconnexion. Veuillez réessayer.'

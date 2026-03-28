@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 
 	const gameId = params.id;
-	
+
 	if (!gameId) {
 		throw error(400, 'ID du jeu requis');
 	}
@@ -29,6 +29,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				tags: table.game.tags,
 				type: table.game.type,
 				image: table.game.image,
+				gameAutoCheck: table.game.gameAutoCheck,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
@@ -44,7 +45,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const translations = await db
 			.select({
 				id: table.gameTranslation.id,
-        translationName: table.gameTranslation.translationName,
+				translationName: table.gameTranslation.translationName,
 				status: table.gameTranslation.status,
 				version: table.gameTranslation.version,
 				tversion: table.gameTranslation.tversion,
@@ -59,9 +60,19 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.from(table.gameTranslation)
 			.where(eq(table.gameTranslation.gameId, gameId));
 
+		const translators = await db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name
+			})
+			.from(table.translator)
+			.orderBy(asc(table.translator.name));
+
 		return {
 			game: game[0],
-			translations
+			translations,
+			translators,
+			user: locals.user
 		};
 	} catch (err) {
 		if (err instanceof Error && err.message.includes('404')) {
