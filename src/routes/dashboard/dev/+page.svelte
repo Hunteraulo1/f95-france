@@ -837,7 +837,7 @@
 							<Loader class="h-5 w-5 animate-spin" />
 							<span>Nettoyage...</span>
 						{:else}
-							<span>Netoyer les doublons de traductions</span>
+							<span>Nettoyer les doublons de traductions</span>
 						{/if}
 					</button>
 				</form>
