@@ -76,6 +76,13 @@
 		message: string;
 		details: string | { total: number; inserted: number; updated: number; skipped: number } | null;
 	};
+	type WebhookTestResult = {
+		success: boolean;
+		message: string;
+		details: string | null;
+		channel: string | null;
+		httpStatus: number | null;
+	};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -91,6 +98,8 @@
 	let cleanupResult = $state<CleanupResult | null>(null);
 	let translatorsImportIsLoading = $state(false);
 	let translatorsImportResult = $state<TranslatorsImportResult | null>(null);
+	let webhookTestIsLoading = $state(false);
+	let webhookTestResult = $state<WebhookTestResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -106,6 +115,24 @@
 		value: unknown
 	): value is TranslatorsImportResult['details'] =>
 		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
+
+	const webhookStatus = $derived(
+		data.webhookStatus ?? {
+			updates: false,
+			logs: false,
+			translators: false,
+			proofreaders: false
+		}
+	);
+	const webhookChannelLabel = (c: string) =>
+		(
+			{
+				updates: 'Mises à jour',
+				logs: 'Logs',
+				translators: 'Traducteurs',
+				proofreaders: 'Relecteurs'
+			} as Record<string, string>
+		)[c] ?? c;
 </script>
 
 <div class="container mx-auto max-w-4xl p-6">
@@ -345,6 +372,170 @@
 					</li>
 				</ul>
 			</div>
+		</div>
+	</div>
+
+	<!-- Test webhooks Discord -->
+	<div class="card mb-6 bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h2 class="mb-4 card-title text-2xl">Test des webhooks Discord</h2>
+			<p class="mb-4 text-base-content/70">
+				Envoie un embed de test sur l’URL enregistrée dans
+				<a href="/dashboard/config" class="link link-primary">les paramètres</a> pour vérifier que le
+				salon reçoit bien les messages.
+			</p>
+
+			<div class="mb-4 grid gap-2 text-sm sm:grid-cols-2">
+				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
+					<span>Mises à jour</span>
+					{#if webhookStatus.updates}
+						<span class="badge badge-success badge-sm">configuré</span>
+					{:else}
+						<span class="badge badge-ghost badge-sm">vide</span>
+					{/if}
+				</div>
+				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
+					<span>Logs</span>
+					{#if webhookStatus.logs}
+						<span class="badge badge-success badge-sm">configuré</span>
+					{:else}
+						<span class="badge badge-ghost badge-sm">vide</span>
+					{/if}
+				</div>
+				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
+					<span>Traducteurs</span>
+					{#if webhookStatus.translators}
+						<span class="badge badge-success badge-sm">configuré</span>
+					{:else}
+						<span class="badge badge-ghost badge-sm">vide</span>
+					{/if}
+				</div>
+				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
+					<span>Relecteurs</span>
+					{#if webhookStatus.proofreaders}
+						<span class="badge badge-success badge-sm">configuré</span>
+					{:else}
+						<span class="badge badge-ghost badge-sm">vide</span>
+					{/if}
+				</div>
+			</div>
+
+			{#if !webhookStatus.updates && !webhookStatus.logs && !webhookStatus.translators && !webhookStatus.proofreaders}
+				<p class="mb-4 text-sm text-warning">
+					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour tester.
+				</p>
+			{/if}
+
+			<form
+				method="POST"
+				action="?/testDiscordWebhook"
+				use:enhance={() => {
+					webhookTestIsLoading = true;
+					webhookTestResult = null;
+					return async function ({ result, update }) {
+						await update();
+						webhookTestIsLoading = false;
+						if (result.type === 'success' && result.data) {
+							const d = result.data as Record<string, unknown>;
+							const success = Boolean(d.success);
+							const message = typeof d.message === 'string' ? d.message : '';
+							const details = typeof d.details === 'string' || d.details === null ? d.details : null;
+							const channel = typeof d.channel === 'string' ? d.channel : null;
+							const httpStatus =
+								typeof d.httpStatus === 'number' || d.httpStatus === null ? d.httpStatus : null;
+							webhookTestResult = { success, message, details, channel, httpStatus };
+						} else if (result.type === 'failure' && result.data) {
+							const d = result.data as Record<string, unknown>;
+							webhookTestResult = {
+								success: false,
+								message: typeof d.message === 'string' ? d.message : 'Erreur',
+								details: typeof d.details === 'string' ? d.details : null,
+								channel: typeof d.channel === 'string' ? d.channel : null,
+								httpStatus:
+									typeof d.httpStatus === 'number' || d.httpStatus === null ? d.httpStatus : null
+							};
+						}
+					};
+				}}
+			>
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-end">
+					<div class="form-control flex-1">
+						<label for="webhookChannel" class="label">
+							<span class="label-text">Canal</span>
+						</label>
+						<select
+							id="webhookChannel"
+							name="channel"
+							class="select-bordered select w-full max-w-md"
+							disabled={webhookTestIsLoading ||
+								!webhookStatus.updates &&
+									!webhookStatus.logs &&
+									!webhookStatus.translators &&
+									!webhookStatus.proofreaders}
+						>
+							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
+							{#if webhookStatus.logs}<option value="logs">Logs</option>{/if}
+							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
+							{#if webhookStatus.proofreaders}<option value="proofreaders">Relecteurs</option>{/if}
+						</select>
+					</div>
+					<button
+						type="submit"
+						class="btn btn-primary"
+						disabled={webhookTestIsLoading ||
+							(!webhookStatus.updates &&
+								!webhookStatus.logs &&
+								!webhookStatus.translators &&
+								!webhookStatus.proofreaders)}
+					>
+						{#if webhookTestIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Envoi…</span>
+						{:else}
+							<span>Envoyer un message de test</span>
+						{/if}
+					</button>
+				</div>
+			</form>
+
+			{#if webhookTestResult}
+				<div class="mt-4">
+					{#if webhookTestResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{webhookTestResult.message}</h3>
+								{#if webhookTestResult.channel}
+									<p class="mt-1 text-sm opacity-80">
+										Canal : {webhookChannelLabel(webhookTestResult.channel)}
+										{#if webhookTestResult.httpStatus != null}
+											· HTTP {webhookTestResult.httpStatus}
+										{/if}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{webhookTestResult.message}</h3>
+								{#if webhookTestResult.channel}
+									<p class="mt-1 text-sm">
+										Canal : {webhookChannelLabel(webhookTestResult.channel)}
+										{#if webhookTestResult.httpStatus != null}
+											· HTTP {webhookTestResult.httpStatus}
+										{/if}
+									</p>
+								{/if}
+								{#if webhookTestResult.details}
+									<pre class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{webhookTestResult.details}</pre>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 

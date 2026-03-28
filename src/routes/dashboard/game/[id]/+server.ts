@@ -36,6 +36,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				type: table.game.type,
 				image: table.game.image,
 				gameAutoCheck: table.game.gameAutoCheck,
+				gameVersion: table.game.gameVersion,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
@@ -90,8 +91,19 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, description, type, website, threadId, tags, link, image, directMode, gameAutoCheck } =
-			body;
+		const {
+			name,
+			description,
+			type,
+			website,
+			threadId,
+			tags,
+			link,
+			image,
+			directMode,
+			gameAutoCheck,
+			gameVersion
+		} = body;
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {
@@ -143,7 +155,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tags: tags || null,
 				link: link || null,
 				image,
-				gameAutoCheck: nextGameAutoCheck
+				gameAutoCheck: nextGameAutoCheck,
+				gameVersion: typeof gameVersion === 'string' ? gameVersion : null
 			});
 
 			return json({
@@ -166,6 +179,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
+				gameVersion: typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
@@ -196,6 +210,27 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
+		let deleteBody: { reason?: string; directMode?: boolean } = {};
+		try {
+			const bodyText = await request.text();
+			if (bodyText) {
+				deleteBody = JSON.parse(bodyText) as { reason?: string; directMode?: boolean };
+			}
+		} catch {
+			return json({ error: 'Corps de requête invalide' }, { status: 400 });
+		}
+
+		const reason =
+			typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
+		if (!reason) {
+			return json(
+				{ error: 'La raison de la suppression est obligatoire' },
+				{ status: 400 }
+			);
+		}
+
+		const directMode = deleteBody.directMode;
+
 		// Vérifier que le jeu existe
 		const existingGame = await db
 			.select({ id: table.game.id })
@@ -213,18 +248,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
 		}
 
-		// Récupérer directMode depuis le body si fourni
-		let directMode: boolean | undefined;
-		try {
-			const bodyText = await request.text();
-			if (bodyText) {
-				const body = JSON.parse(bodyText);
-				directMode = body.directMode;
-			}
-		} catch {
-			// Si pas de body ou erreur de parsing, utiliser la préférence de l'utilisateur
-		}
-
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
@@ -234,7 +257,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
-			await createGameDeleteSubmission(currentUser.id, gameId);
+			await createGameDeleteSubmission(currentUser.id, gameId, reason);
 
 			return json({
 				message:

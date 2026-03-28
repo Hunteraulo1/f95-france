@@ -541,8 +541,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		config = null;
 	}
 
+	const c = config;
+	const webhookStatus = {
+		updates: Boolean(c?.discordWebhookUpdates?.trim()),
+		logs: Boolean(c?.discordWebhookLogs?.trim()),
+		translators: Boolean(c?.discordWebhookTranslators?.trim()),
+		proofreaders: Boolean(c?.discordWebhookProofreaders?.trim())
+	};
+
 	return {
-		config
+		config,
+		webhookStatus
 	};
 };
 
@@ -994,6 +1003,123 @@ export const actions: Actions = {
 				success: false,
 				message: 'Erreur pendant le nettoyage des doublons',
 				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			};
+		}
+	},
+	testDiscordWebhook: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return {
+				success: false,
+				message: 'Accès non autorisé',
+				details: null,
+				channel: null,
+				httpStatus: null as number | null
+			};
+		}
+
+		const formData = await request.formData();
+		const raw = formData.get('channel');
+		const channel =
+			raw === 'updates' || raw === 'logs' || raw === 'translators' || raw === 'proofreaders'
+				? raw
+				: null;
+
+		if (!channel) {
+			return {
+				success: false,
+				message: 'Canal invalide',
+				details: null,
+				channel: null,
+				httpStatus: null
+			};
+		}
+
+		const configResult = await db
+			.select({
+				discordWebhookUpdates: table.config.discordWebhookUpdates,
+				discordWebhookLogs: table.config.discordWebhookLogs,
+				discordWebhookTranslators: table.config.discordWebhookTranslators,
+				discordWebhookProofreaders: table.config.discordWebhookProofreaders
+			})
+			.from(table.config)
+			.where(eq(table.config.id, 'main'))
+			.limit(1);
+
+		const cfg = configResult[0];
+		const urlByChannel = {
+			updates: cfg?.discordWebhookUpdates,
+			logs: cfg?.discordWebhookLogs,
+			translators: cfg?.discordWebhookTranslators,
+			proofreaders: cfg?.discordWebhookProofreaders
+		} as const;
+
+		const url = urlByChannel[channel]?.trim();
+		if (!url) {
+			return {
+				success: false,
+				message: 'Aucune URL enregistrée pour ce canal (paramètres).',
+				details: null,
+				channel,
+				httpStatus: null
+			};
+		}
+
+		const labels: Record<typeof channel, string> = {
+			updates: 'Mises à jour',
+			logs: 'Logs',
+			translators: 'Traducteurs',
+			proofreaders: 'Relecteurs'
+		};
+
+		const payload = {
+			content: '',
+			tts: false,
+			embeds: [
+				{
+					title: 'Test webhook — F95 France',
+					description: `Canal **${labels[channel]}** : la configuration est joignable depuis l’outil dev.`,
+					color: 0x5865f2,
+					footer: {
+						text: `Dev · ${new Date().toISOString()}`
+					}
+				}
+			]
+		};
+
+		try {
+			const res = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+				signal: AbortSignal.timeout(15_000)
+			});
+
+			const bodyText = await res.text().catch(() => '');
+			if (!res.ok) {
+				return {
+					success: false,
+					message: `Discord a répondu ${res.status}`,
+					details: bodyText ? bodyText.slice(0, 600) : 'Corps de réponse vide',
+					channel,
+					httpStatus: res.status
+				};
+			}
+
+			return {
+				success: true,
+				message: `Message de test envoyé (${labels[channel]}).`,
+				details: null,
+				channel,
+				httpStatus: res.status
+			};
+		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : 'Erreur inconnue';
+			return {
+				success: false,
+				message: 'Échec de la requête vers Discord',
+				details: msg,
+				channel,
+				httpStatus: null
 			};
 		}
 	}
