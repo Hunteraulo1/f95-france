@@ -14,6 +14,8 @@
 		name: keyof FormGameType;
 		game: FormGameType;
 		translators?: Translator[];
+		/** Erreur bloquante (nom inconnu ou conflit traducteur/relecteur) */
+		invalid?: boolean;
 	}
 
 	let {
@@ -23,27 +25,11 @@
 		step,
 		name,
 		game = $bindable(),
-		translators = $bindable<Translator[]>([])
+		translators = $bindable<Translator[]>([]),
+		invalid = false
 	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
-
-	const isTraductor = checkRole(['translator']);
-
-	const handleWarning = (value: string): boolean => {
-		if (isTraductor || game[name] === '') return false;
-
-		return !translators.find((item) => item.name === value);
-	};
-
-	const handleError = (): boolean => {
-		if (game.translatorId === '') return false;
-
-		return game.translatorId === game.proofreaderId;
-	};
-
-	let warning = $derived(handleWarning(game[name] as string));
-	let error = $derived(handleError());
 
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event): void => {
 		const value = event.currentTarget.value;
@@ -69,8 +55,7 @@
 			onchange={handleChange}
 			bind:value={game[name]}
 			class="input-bordered input w-full"
-			class:input-warning={warning}
-			class:input-error={error}
+			class:input-error={invalid}
 		/>
 		<datalist id="traductor-list">
 			{#each translators as item (item.id || item.name)}

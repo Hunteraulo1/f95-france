@@ -40,7 +40,9 @@ export const game = pgTable('game', {
 	description: text('description'),
 	website: varchar('website', { length: 32 }).notNull().default('f95z'),
 	threadId: integer('thread_id'),
-	link: varchar('link', { length: 500 }).notNull().default('')
+	link: varchar('link', { length: 500 }).notNull().default(''),
+	/** Si false, aucune traduction ne peut avoir l’Auto-Check */
+	gameAutoCheck: boolean('game_auto_check').notNull().default(true)
 });
 
 export const gameTranslation = pgTable('game_translation', {

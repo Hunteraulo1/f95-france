@@ -1,3 +1,9 @@
+import {
+	clampTranslationAc,
+	clearAllTranslationAutoCheckForGame,
+	getGameAllowsTranslationAutoCheck,
+	resolveGameAutoCheckForWebsite
+} from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -16,6 +22,7 @@ export async function createGameSubmission(
 		tags: string | null;
 		link: string | null;
 		image: string;
+		gameAutoCheck?: boolean;
 	},
 	translationData?: {
 		translationName: string;
@@ -59,6 +66,7 @@ export async function createGameUpdateSubmission(
 		tags: string | null;
 		link: string | null;
 		image: string;
+		gameAutoCheck?: boolean;
 	}
 ) {
 	const submissionData = {
@@ -220,6 +228,7 @@ export async function applySubmission(submissionId: string) {
 			tags?: string | null;
 			link?: string | null;
 			image: string;
+			gameAutoCheck?: boolean;
 		};
 		translation?: {
 			translationName?: string | null;
@@ -282,6 +291,11 @@ export async function applySubmission(submissionId: string) {
 			tags: gameData.tags || '',
 			link: gameData.link || '',
 			image: gameData.image,
+			gameAutoCheck: resolveGameAutoCheckForWebsite(
+				String(gameData.website),
+				gameData.gameAutoCheck,
+				true
+			),
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
@@ -298,6 +312,7 @@ export async function applySubmission(submissionId: string) {
 		// Créer la traduction si elle est fournie
 		if (parsedData.translation && parsedData.translation.translationName) {
 			const translationData = parsedData.translation;
+			const allowsNewGameAc = await getGameAllowsTranslationAutoCheck(gameId!);
 			await db.insert(table.gameTranslation).values({
 				gameId: gameId!,
 				translationName: translationData.translationName || null,
@@ -308,7 +323,7 @@ export async function applySubmission(submissionId: string) {
 				tlink: translationData.tlink || '',
 				translatorId: translationData.translatorId ?? null,
 				proofreaderId: translationData.proofreaderId ?? null,
-				ac: translationData.ac ?? false,
+				ac: clampTranslationAc(allowsNewGameAc, translationData.ac ?? false),
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -345,6 +360,12 @@ export async function applySubmission(submissionId: string) {
 
 		const originalGame = existingGame[0];
 
+		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+			String(gameData.website),
+			gameData.gameAutoCheck,
+			originalGame.gameAutoCheck ?? true
+		);
+
 		// Sauvegarder les anciennes valeurs dans les données de la soumission
 		const updatedData = {
 			...parsedData,
@@ -356,7 +377,8 @@ export async function applySubmission(submissionId: string) {
 				threadId: originalGame.threadId,
 				tags: originalGame.tags,
 				link: originalGame.link,
-				image: originalGame.image
+				image: originalGame.image,
+				gameAutoCheck: originalGame.gameAutoCheck ?? true
 			}
 		};
 
@@ -392,9 +414,14 @@ export async function applySubmission(submissionId: string) {
 				tags: gameData.tags || '',
 				link: gameData.link || '',
 				image: gameData.image,
+				gameAutoCheck: nextGameAutoCheck,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+
+		if (!nextGameAutoCheck) {
+			await clearAllTranslationAutoCheckForGame(sub.gameId);
+		}
 	} else if (sub.type === 'translation') {
 		// Créer ou mettre à jour une traduction
 		if (!sub.gameId) {
@@ -405,6 +432,8 @@ export async function applySubmission(submissionId: string) {
 		if (!translationData) {
 			throw new Error('Données de traduction manquantes');
 		}
+
+		const allowsAc = await getGameAllowsTranslationAutoCheck(sub.gameId);
 
 		if (sub.translationId) {
 			// Vérifier si la traduction existe toujours (elle peut avoir été supprimée lors d'un revert)
@@ -461,7 +490,10 @@ export async function applySubmission(submissionId: string) {
 						translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
 						proofreaderId:
 							translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
-						ac: translationData.ac ?? originalTranslation.ac ?? false,
+						ac: clampTranslationAc(
+							allowsAc,
+							translationData.ac ?? originalTranslation.ac ?? false
+						),
 						updatedAt: new Date()
 					})
 					.where(eq(table.gameTranslation.id, sub.translationId));
@@ -483,7 +515,7 @@ export async function applySubmission(submissionId: string) {
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
 					proofreaderId: translationData.proofreaderId ?? null,
-					ac: translationData.ac ?? false,
+					ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
 					createdAt: new Date(),
 					updatedAt: new Date()
 				});
@@ -523,7 +555,7 @@ export async function applySubmission(submissionId: string) {
 				tlink: translationData.tlink || '',
 				translatorId: translationData.translatorId ?? null,
 				proofreaderId: translationData.proofreaderId ?? null,
-				ac: translationData.ac ?? false,
+				ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -939,6 +971,13 @@ export async function revertSubmission(submissionId: string) {
 				tags: originalGame.tags || '',
 				link: originalGame.link || '',
 				image: originalGame.image,
+				gameAutoCheck: resolveGameAutoCheckForWebsite(
+					String(originalGame.website),
+					'gameAutoCheck' in originalGame && typeof originalGame.gameAutoCheck === 'boolean'
+						? originalGame.gameAutoCheck
+						: undefined,
+					true
+				),
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});

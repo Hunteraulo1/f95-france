@@ -29,6 +29,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				tags: table.game.tags,
 				type: table.game.type,
 				image: table.game.image,
+				gameAutoCheck: table.game.gameAutoCheck,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})

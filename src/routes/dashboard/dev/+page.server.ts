@@ -1,6 +1,6 @@
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { env } from '$env/dynamic/private';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { eq, inArray, sql } from 'drizzle-orm';
@@ -29,11 +29,13 @@ type LegacyGame = {
 	tlink?: string | null;
 };
 
+type LegacyTranslatorPage = { title?: string | null; name?: string | null; link?: string | null };
+
 type LegacyTranslator = {
 	id?: string | number | null;
 	name?: string | number | null;
 	discordId?: string | number | null;
-	pages?: string[] | string | null;
+	pages?: string[] | string | LegacyTranslatorPage[] | null;
 	tradCount?: number | string | null;
 	readCount?: number | string | null;
 };
@@ -119,27 +121,48 @@ const safeNumber = (value: unknown): number | null => {
 	return null;
 };
 
+/** Same shape as le tableau édité dans /dashboard/translators : { name, link }[] */
 const parsePages = (value: unknown): string => {
+	const normalizeEntry = (entry: unknown): { name: string; link: string } | null => {
+		if (typeof entry === 'string') {
+			const link = entry.trim();
+			if (!link) return null;
+			return { name: '', link };
+		}
+		if (entry && typeof entry === 'object') {
+			const o = entry as Record<string, unknown>;
+			const linkRaw =
+				(typeof o.link === 'string' && o.link.trim()) ||
+				(typeof o.url === 'string' && o.url.trim()) ||
+				(typeof o.href === 'string' && o.href.trim()) ||
+				'';
+			const nameRaw =
+				(typeof o.name === 'string' && o.name.trim()) ||
+				(typeof o.title === 'string' && o.title.trim()) ||
+				(typeof o.label === 'string' && o.label.trim()) ||
+				'';
+			if (!linkRaw && !nameRaw) return null;
+			return { name: nameRaw, link: linkRaw };
+		}
+		return null;
+	};
+
 	if (Array.isArray(value)) {
-		return JSON.stringify(
-			value
-				.filter((v): v is string => typeof v === 'string')
-				.map((v) => v.trim())
-				.filter((v) => v.length > 0)
-		);
+		const out = value
+			.map(normalizeEntry)
+			.filter((x): x is { name: string; link: string } => x !== null);
+		return JSON.stringify(out);
 	}
 	if (typeof value === 'string') {
 		const trimmed = value.trim();
 		if (!trimmed) return '[]';
 		try {
-			const parsed = JSON.parse(trimmed);
+			const parsed: unknown = JSON.parse(trimmed);
 			if (Array.isArray(parsed)) {
-				return JSON.stringify(
-					parsed
-						.filter((v): v is string => typeof v === 'string')
-						.map((v) => v.trim())
-						.filter((v) => v.length > 0)
-				);
+				const out = parsed
+					.map(normalizeEntry)
+					.filter((x): x is { name: string; link: string } => x !== null);
+				return JSON.stringify(out);
 			}
 		} catch {
 			return JSON.stringify(
@@ -147,6 +170,7 @@ const parsePages = (value: unknown): string => {
 					.split(',')
 					.map((v) => v.trim())
 					.filter((v) => v.length > 0)
+					.map((link) => ({ name: '', link }))
 			);
 		}
 	}
@@ -393,7 +417,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				image: item.image?.trim() || '',
 				website,
 				threadId: threadId && Number.isFinite(threadId) ? threadId : null,
-				link
+				link,
+				gameAutoCheck: website === 'f95z'
 			};
 			if (!dryRun) {
 				await db.insert(table.game).values(row);

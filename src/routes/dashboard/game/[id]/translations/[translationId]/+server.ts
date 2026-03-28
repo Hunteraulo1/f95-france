@@ -1,4 +1,5 @@
 import { getUserById } from '$lib/server/auth';
+import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -55,6 +56,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Traduction non trouvée' }, { status: 404 });
 		}
 
+		const allowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
+		const acValue = clampTranslationAc(allowsTranslationAc, ac);
+
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
 		if (!currentUser) {
@@ -79,7 +83,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tlink,
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
-				ac: ac ?? null
+				ac: acValue
 			});
 
 			return json({
@@ -101,7 +105,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tlink,
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
-				ac: ac ?? false,
+				ac: acValue,
 				updatedAt: new Date()
 			})
 			.where(eq(table.gameTranslation.id, translationId));

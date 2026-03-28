@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -11,28 +12,36 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const page = 1;
 	const pageSize = 20;
-	const users = await db
-		.select({
-			id: table.user.id,
-			username: table.user.username,
-			email: table.user.email,
-			role: table.user.role,
-			avatar: table.user.avatar,
-			createdAt: table.user.createdAt
-		})
-		.from(table.user)
-		.orderBy(table.user.createdAt)
-		.limit(pageSize)
-		.offset((page - 1) * pageSize);
-
-	const totalUsersResult = await db
-		.select({ count: sql<number>`count(*)`.as('count') })
-		.from(table.user);
+	const [users, translatorsList, totalUsersResult] = await Promise.all([
+		db
+			.select({
+				id: table.user.id,
+				username: table.user.username,
+				email: table.user.email,
+				role: table.user.role,
+				avatar: table.user.avatar,
+				createdAt: table.user.createdAt
+			})
+			.from(table.user)
+			.orderBy(table.user.createdAt)
+			.limit(pageSize)
+			.offset((page - 1) * pageSize),
+		db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name,
+				userId: table.translator.userId
+			})
+			.from(table.translator)
+			.orderBy(table.translator.name),
+		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user)
+	]);
 
 	const totalUsers = totalUsersResult[0]?.count || 0;
 
 	return {
 		users,
+		translators: translatorsList,
 		totalUsers,
 		currentPage: page,
 		pageSize
@@ -51,6 +60,11 @@ export const actions: Actions = {
 		const email = formData.get('email') as string;
 		const role = formData.get('role') as string;
 		const avatar = formData.get('avatar') as string;
+		const linkedTranslatorRaw = formData.get('linkedTranslatorId');
+		const linkedTranslatorId =
+			typeof linkedTranslatorRaw === 'string' && linkedTranslatorRaw.trim()
+				? linkedTranslatorRaw.trim()
+				: '';
 
 		if (!userId || !username || !email || !role) {
 			return fail(400, { message: 'Tous les champs sont requis' });
@@ -94,6 +108,20 @@ export const actions: Actions = {
 					avatar: avatar || ''
 				})
 				.where(eq(table.user.id, userId));
+
+			if (linkedTranslatorId) {
+				const tr = await db
+					.select({ id: table.translator.id })
+					.from(table.translator)
+					.where(eq(table.translator.id, linkedTranslatorId))
+					.limit(1);
+				if (!tr[0]) {
+					return fail(400, { message: 'Profil traducteur introuvable' });
+				}
+				await assignTranslatorUser(linkedTranslatorId, userId);
+			} else {
+				await unlinkUserFromTranslators(userId);
+			}
 
 			return { success: true, message: 'Utilisateur mis à jour avec succès' };
 		} catch (error: unknown) {

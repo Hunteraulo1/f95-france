@@ -1,4 +1,8 @@
 import { getUserById } from '$lib/server/auth';
+import {
+	clearAllTranslationAutoCheckForGame,
+	resolveGameAutoCheckForWebsite
+} from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
@@ -31,6 +35,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				tags: table.game.tags,
 				type: table.game.type,
 				image: table.game.image,
+				gameAutoCheck: table.game.gameAutoCheck,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
@@ -85,7 +90,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, description, type, website, threadId, tags, link, image, directMode } = body;
+		const { name, description, type, website, threadId, tags, link, image, directMode, gameAutoCheck } =
+			body;
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {
@@ -93,15 +99,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Vérifier que le jeu existe
-		const existingGame = await db
-			.select({ id: table.game.id })
+		const existingGameRows = await db
+			.select({
+				id: table.game.id,
+				gameAutoCheck: table.game.gameAutoCheck
+			})
 			.from(table.game)
 			.where(eq(table.game.id, gameId))
 			.limit(1);
 
-		if (existingGame.length === 0) {
+		if (existingGameRows.length === 0) {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
+
+		const prevGameAutoCheck = existingGameRows[0].gameAutoCheck;
+		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+			website,
+			typeof gameAutoCheck === 'boolean' ? gameAutoCheck : undefined,
+			prevGameAutoCheck ?? true
+		);
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
@@ -126,7 +142,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				threadId: threadId ? parseInt(threadId) : null,
 				tags: tags || null,
 				link: link || null,
-				image
+				image,
+				gameAutoCheck: nextGameAutoCheck
 			});
 
 			return json({
@@ -148,9 +165,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				tags: tags || null,
 				link: link || null,
 				image,
+				gameAutoCheck: nextGameAutoCheck,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
+
+		if (!nextGameAutoCheck) {
+			await clearAllTranslationAutoCheckForGame(gameId);
+		}
 
 		return json({
 			message: 'Jeu modifié avec succès'

@@ -1,40 +1,74 @@
 <script lang="ts">
+	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { FormGameType } from '$lib/types';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
+	interface SelectOption {
+		value: string;
+		label: string;
+	}
+
 	interface Props {
 		values?: Array<FormGameType[keyof FormGameType]>;
+		/** Alternative à `values` : options avec value / libellé (ex. statut de traduction) */
+		selectOptions?: SelectOption[];
 		title: string;
 		className?: string;
 		active?: number[];
 		step?: number;
 		name: keyof FormGameType;
 		game: FormGameType;
+		invalid?: boolean;
+		warn?: boolean;
 	}
 
-	const { title, values = [], className, active, step, name, game = $bindable() }: Props = $props();
+	const {
+		values = [],
+		selectOptions,
+		title,
+		className,
+		active,
+		step,
+		name,
+		game = $bindable(),
+		invalid = false,
+		warn = false
+	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
 
+	let ttypeLocked = $derived(name === 'ttype' && isNoTranslation(game.tname));
+
 	const handleChange: ChangeEventHandler<HTMLSelectElement> = (event) => {
-		if (name === 'tname' && event.currentTarget.value === 'Pas de traduction') {
-			game.tversion = '';
-			game.tlink = '';
-		}
+		const val = event.currentTarget.value;
 
-		if (name === 'tname' && event.currentTarget.value === 'Intégrée') {
-			game.tversion = 'Intégrée';
-			game.tlink = '';
-
-			console.info('handleChange ~ game:', $state.snapshot(game)); // TODO: Remove this
-
+		if (name === 'tname') {
+			(game[name] as string) = val;
+			if (val === 'no_translation') {
+				game.tversion = '';
+				game.tlink = '';
+				game.ttype = 'hs';
+			} else if (val === 'integrated') {
+				game.tversion = 'Intégrée';
+				game.tlink = '';
+			} else {
+				/* Traduction / Traduction (avec mods) : débloquer les champs, retirer la valeur figée « Intégrée » */
+				if (game.tversion === 'Intégrée') {
+					game.tversion = '';
+				}
+			}
 			return;
 		}
 
-		(game[name] as FormGameType[keyof FormGameType]) = event.currentTarget.value;
+		(game[name] as FormGameType[keyof FormGameType]) = val;
 
 		if (name === 'website') {
-			if (game.website !== 'f95z') game.ac = false;
+			if (game.website !== 'f95z') {
+				game.ac = false;
+				game.gameAutoCheck = false;
+			} else {
+				game.gameAutoCheck = true;
+			}
 
 			const gameId = game.threadId;
 
@@ -64,11 +98,19 @@
 		id={name}
 		onchange={handleChange}
 		bind:value={game[name]}
+		disabled={ttypeLocked}
 		class="select-bordered select w-full"
-		class:border-error={game[name] === ''}
+		class:select-error={invalid}
+		class:select-warning={warn}
 	>
-		{#each Object.values(values) as value (value)}
-			<option>{value}</option>
-		{/each}
+		{#if selectOptions?.length}
+			{#each selectOptions as opt (opt.value)}
+				<option value={opt.value}>{opt.label}</option>
+			{/each}
+		{:else}
+			{#each Object.values(values) as value (value)}
+				<option>{value}</option>
+			{/each}
+		{/if}
 	</select>
 </div>

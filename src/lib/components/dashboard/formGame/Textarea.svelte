@@ -9,14 +9,30 @@
 		step?: number;
 		name: keyof FormGameType;
 		game: FormGameType;
+		invalid?: boolean;
+		warn?: boolean;
 	}
 
-	const { title, className, active, step, name, game = $bindable() }: Props = $props();
+	const {
+		title,
+		className,
+		active,
+		step,
+		name,
+		game = $bindable(),
+		invalid = false,
+		warn = false,
+		...rest
+	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
 
-	const handleChange: ChangeEventHandler<HTMLTextAreaElement> = (event) => {
-		(game[name] as FormGameType[keyof FormGameType]) = event.currentTarget.value;
+	const stringValue = $derived(
+		game[name] == null ? '' : String(game[name] as string | number | boolean)
+	);
+
+	const handleInput: ChangeEventHandler<HTMLTextAreaElement> = (event) => {
+		(game[name] as string) = event.currentTarget.value;
 	};
 </script>
 
@@ -26,9 +42,12 @@
 		<textarea
 			placeholder={title}
 			id={name}
-			onchange={handleChange}
+			oninput={handleInput}
+			value={stringValue}
 			class="textarea-bordered textarea h-10 max-h-32 min-h-10 w-full textarea-xs"
-			>{game[name]}</textarea
-		>
+			class:textarea-error={invalid}
+			class:textarea-warning={warn}
+			{...rest}
+		></textarea>
 	</div>
 </div>

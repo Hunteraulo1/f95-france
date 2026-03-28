@@ -8,13 +8,14 @@
 		step?: number;
 		name: keyof FormGameType & string;
 		game: FormGameType;
+		invalid?: boolean;
+		warn?: boolean;
 	}
 
-	const { title, active, step, name, game = $bindable() }: Props = $props();
+	const { title, active, step, name, game = $bindable(), invalid = false, warn = false }: Props =
+		$props();
 
 	if (!game) throw new Error('no game data');
-
-	const error = $state(false);
 
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
 		(game[name] as boolean) = event.currentTarget.checked;
@@ -35,7 +36,8 @@
 			disabled={name === 'ac' && game.website !== 'f95z'}
 			bind:checked={game[name]}
 			class="checkbox checkbox-lg"
-			class:border-error={error}
+			class:border-error={invalid}
+			class:border-warning={warn}
 		/>
 	</div>
 {/if}

@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return json({ success: true, data: scrapedData });
 	} catch (error) {
-		console.error('Erreur lors du scraping:', error);
+		console.warn('Erreur lors du scraping:', error);
 		return json({ error: 'Erreur serveur lors du scraping' }, { status: 500 });
 	}
 };

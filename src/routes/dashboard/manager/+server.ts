@@ -1,15 +1,56 @@
 import { getUserById } from '$lib/server/auth';
+import {
+	clampTranslationAc,
+	gameAutoCheckEnabledForWebsite,
+	getGameAllowsTranslationAutoCheck
+} from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
-import { eq, ilike, or } from 'drizzle-orm';
+import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
+	}
+
+	const threadIdCheck = url.searchParams.get('threadIdCheck');
+	if (threadIdCheck !== null) {
+		const parsed = Number.parseInt(threadIdCheck, 10);
+		if (Number.isNaN(parsed) || parsed <= 0) {
+			return json({ gameExists: false, pendingSubmission: false });
+		}
+
+		try {
+			const existingGame = await db
+				.select({ id: table.game.id })
+				.from(table.game)
+				.where(eq(table.game.threadId, parsed))
+				.limit(1);
+
+			const pendingGameSubmission = await db
+				.select({ id: table.submission.id })
+				.from(table.submission)
+				.where(
+					and(
+						eq(table.submission.type, 'game'),
+						eq(table.submission.status, 'pending'),
+						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${parsed}`
+					)
+				)
+				.limit(1);
+
+			return json({
+				gameExists: existingGame.length > 0,
+				pendingSubmission: pendingGameSubmission.length > 0
+			});
+		} catch (error) {
+			console.error('Erreur lors de la vérification du thread:', error);
+			return json({ error: 'Erreur serveur' }, { status: 500 });
+		}
 	}
 
 	const query = url.searchParams.get('q');
@@ -68,15 +109,47 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
 		}
 
-		// Vérifier si un jeu avec le même nom existe déjà
-		const existingGame = await db
-			.select({ id: table.game.id })
-			.from(table.game)
-			.where(eq(table.game.name, name))
-			.limit(1);
+		const parsedThreadId =
+			threadId !== null && threadId !== undefined && threadId !== ''
+				? Number.parseInt(String(threadId), 10)
+				: null;
+		const validThreadId =
+			parsedThreadId !== null && !Number.isNaN(parsedThreadId) && parsedThreadId > 0
+				? parsedThreadId
+				: null;
 
-		if (existingGame.length > 0) {
-			return json({ error: 'Un jeu avec ce nom existe déjà' }, { status: 409 });
+		// Doublon : même thread (le nom peut être partagé entre plusieurs jeux)
+		if (validThreadId !== null) {
+			const existingGameByThread = await db
+				.select({ id: table.game.id })
+				.from(table.game)
+				.where(eq(table.game.threadId, validThreadId))
+				.limit(1);
+
+			if (existingGameByThread.length > 0) {
+				return json({ error: 'Un jeu avec cet ID de thread existe déjà' }, { status: 409 });
+			}
+
+			const pendingForThread = await db
+				.select({ id: table.submission.id })
+				.from(table.submission)
+				.where(
+					and(
+						eq(table.submission.type, 'game'),
+						eq(table.submission.status, 'pending'),
+						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${validThreadId}`
+					)
+				)
+				.limit(1);
+
+			if (pendingForThread.length > 0) {
+				return json(
+					{
+						error: 'Une soumission pour ce thread est déjà en attente de validation.'
+					},
+					{ status: 409 }
+				);
+			}
 		}
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -101,7 +174,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					description: description || null,
 					type,
 					website,
-					threadId: threadId ? parseInt(threadId) : null,
+					threadId: validThreadId,
 					tags: tags || null,
 					link: link || null,
 					image
@@ -134,25 +207,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			description: description || null,
 			type,
 			website,
-			threadId: threadId ? parseInt(threadId) : null,
+			threadId: validThreadId,
 			tags: tags || null,
 			link: link || null,
 			image,
+			gameAutoCheck: gameAutoCheckEnabledForWebsite(website),
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
 
-		// Récupérer l'ID du jeu créé en le recherchant par nom
+		// Récupérer l'ID du jeu créé (threadId si présent, sinon nom — les noms peuvent être dupliqués)
 		const createdGame = await db
 			.select({ id: table.game.id })
 			.from(table.game)
-			.where(eq(table.game.name, name))
+			.where(
+				validThreadId !== null
+					? eq(table.game.threadId, validThreadId)
+					: eq(table.game.name, name)
+			)
 			.limit(1);
 
 		const gameId = createdGame[0]?.id;
 
 		// Créer la traduction si elle est fournie
-		if (translation) {
+		if (translation && gameId) {
+			const allowsT = await getGameAllowsTranslationAutoCheck(gameId);
 			await db.insert(table.gameTranslation).values({
 				gameId: gameId,
 				translationName: translation.translationName,
@@ -163,7 +242,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				tlink: translation.tlink || '',
 				translatorId: translation.translatorId || null,
 				proofreaderId: translation.proofreaderId || null,
-				ac: translation.ac ?? false,
+				ac: clampTranslationAc(allowsT, translation.ac ?? false),
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});

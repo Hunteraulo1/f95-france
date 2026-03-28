@@ -11,6 +11,11 @@
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
+	import { computeGameFormFieldState } from '$lib/utils/game-form-validation';
+	import {
+		formHasTranslatorInputIssue,
+		getTranslatorFieldErrors
+	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { writable } from 'svelte/store';
 	import type { PageData } from './$types';
@@ -36,6 +41,7 @@
 		threadId: null,
 		link: '',
 		description: null,
+		gameAutoCheck: true,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 
@@ -45,11 +51,11 @@
 		status: 'in_progress',
 		version: '',
 		tversion: '',
-		tname: 'translation',
+		tname: 'no_translation',
 		tlink: '',
 		translatorId: null,
 		proofreaderId: null,
-		ttype: 'manual',
+		ttype: 'hs',
 		ac: false
 	});
 
@@ -57,7 +63,55 @@
 	let scraping = $state(false);
 	let savedId = $state<number | null>(null);
 
+	/** Valeurs normalisées après un scraping réussi — si l’utilisateur les modifie, Auto-Check repasse à false */
+	type ScrapeBaseline = { name: string; tags: string; type: string; image: string; version: string };
+	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
+
+	const normScrapeField = (v: unknown): string => (v == null ? '' : String(v).trim());
+
+	let threadDuplicateCheck = $state<{
+		gameExists: boolean;
+		pendingSubmission: boolean;
+	} | null>(null);
+	let checkingDuplicateThread = $state(false);
+
 	const isAdmin = checkRole(['admin', 'superadmin']);
+
+	let fieldFormState = $derived(computeGameFormFieldState(game));
+	let translatorFieldErrors = $derived(
+		getTranslatorFieldErrors(game, data.translators, data.warnUnknownTranslators)
+	);
+	let blockFinalSubmit = $derived(
+		fieldFormState.hasBlockingError ||
+			formHasTranslatorInputIssue(game, data.translators, data.warnUnknownTranslators)
+	);
+
+	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
+		if (v === null || v === undefined) return null;
+		const n = typeof v === 'number' ? v : Number.parseInt(String(v), 10);
+		if (Number.isNaN(n) || n <= 0) return null;
+		return n;
+	};
+
+	$effect(() => {
+		if (game.tname === 'no_translation') {
+			game.ttype = 'hs';
+		}
+	});
+
+	$effect(() => {
+		const b = scrapeBaseline;
+		if (!b) return;
+		if (
+			normScrapeField(game.name) !== b.name ||
+			normScrapeField(game.tags) !== b.tags ||
+			normScrapeField(game.type) !== b.type ||
+			normScrapeField(game.image) !== b.image ||
+			normScrapeField(game.version) !== b.version
+		) {
+			game.ac = false;
+		}
+	});
 
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
@@ -68,16 +122,6 @@
 
 		if ((step === 4 && game.website === 'other' && isAdmin) || (step === 4 && !isAdmin))
 			step += amount;
-
-		const gameId = game.threadId;
-
-		if (step === 3 && game.website === 'f95z' && gameId && savedId !== gameId) {
-			const { threadId } = game;
-
-			savedId = gameId;
-
-			await scrapeData({ threadId, website: game.website });
-		}
 	};
 
 	const scrapeData = async ({
@@ -120,10 +164,20 @@
 				tags: data.tags ?? game.tags,
 				type: data.type ?? game.type,
 				image: data.image ?? game.image,
-				version: data.version ?? game.version
+				version: data.version ?? game.version,
+				ac: true
 			};
+
+			scrapeBaseline = {
+				name: normScrapeField(game.name),
+				tags: normScrapeField(game.tags),
+				type: normScrapeField(game.type),
+				image: normScrapeField(game.image),
+				version: normScrapeField(game.version)
+			};
+			savedId = threadId;
 		} catch (error) {
-			console.error('Erreur lors du scraping', error);
+			console.warn('Erreur lors du scraping', error);
 			newToast({
 				alertType: 'error',
 				message: 'Impossible de récupérer les informations du jeu'
@@ -131,6 +185,60 @@
 		} finally {
 			scraping = false;
 		}
+	};
+
+	const runThreadDuplicateCheckForTid = async (tid: number | null) => {
+		if (tid === null) {
+			threadDuplicateCheck = null;
+			checkingDuplicateThread = false;
+			return;
+		}
+
+		checkingDuplicateThread = true;
+		try {
+			const response = await fetch(
+				`/dashboard/manager?threadIdCheck=${encodeURIComponent(String(tid))}`
+			);
+			const payload = (await response.json()) as {
+				gameExists?: boolean;
+				pendingSubmission?: boolean;
+			};
+			if (
+				response.ok &&
+				typeof payload.gameExists === 'boolean' &&
+				typeof payload.pendingSubmission === 'boolean'
+			) {
+				threadDuplicateCheck = {
+					gameExists: payload.gameExists,
+					pendingSubmission: payload.pendingSubmission
+				};
+			} else {
+				threadDuplicateCheck = null;
+			}
+		} catch {
+			threadDuplicateCheck = null;
+		} finally {
+			checkingDuplicateThread = false;
+		}
+	};
+
+	/** Vérif doublon + scrape F95 : uniquement après blur sur l’ID du thread */
+	const handleThreadIdFieldBlur = async () => {
+		const tid = threadIdForDuplicateCheck(game.threadId);
+		await runThreadDuplicateCheckForTid(tid);
+
+		if (!tid || game.website !== 'f95z') {
+			if (!tid) savedId = null;
+			return;
+		}
+
+		if (savedId === tid) return;
+
+		await scrapeData({ threadId: tid, website: game.website });
+	};
+
+	const onInputBlurCommit = async (field: keyof FormGameType) => {
+		if (field === 'threadId') await handleThreadIdFieldBlur();
 	};
 
 	const handleSubmit = async (event: SubmitEvent): Promise<void> => {
@@ -144,16 +252,20 @@
 			return;
 		}
 
-		const requiredFields: Array<keyof FormGameType> = ['name', 'type', 'website', 'image'];
-		const missingField = requiredFields.find((field) => {
-			const value = game[field];
-			return value === null || value === undefined || value === '';
-		});
-
-		if (missingField) {
+		const fieldState = computeGameFormFieldState(game);
+		if (fieldState.hasBlockingError) {
 			newToast({
 				alertType: 'error',
-				message: `Le champ ${missingField} est requis`
+				message: 'Corrigez les champs obligatoires en erreur (bordure rouge).'
+			});
+			return;
+		}
+
+		if (formHasTranslatorInputIssue(game, data.translators, data.warnUnknownTranslators)) {
+			newToast({
+				alertType: 'error',
+				message:
+					'Corrigez le traducteur ou le relecteur (nom inconnu en base ou conflit entre les deux).'
 			});
 			return;
 		}
@@ -262,6 +374,7 @@
 			| typeof Checkbox;
 		type?: HTMLInputElement['type'];
 		values?: string[];
+		selectOptions?: { value: string; label: string }[];
 		title: string;
 		className?: string;
 		active?: number[];
@@ -349,7 +462,12 @@
 			active: [3, 5],
 			title: 'Status de la traduction',
 			name: 'tname',
-			values: ['Pas de traduction', 'Intégrée', 'Traduction', 'Traduction (avec mods)']
+			selectOptions: [
+				{ value: 'no_translation', label: 'Pas de traduction' },
+				{ value: 'integrated', label: 'Intégrée' },
+				{ value: 'translation', label: 'Traduction' },
+				{ value: 'translation_with_mods', label: 'Traduction (avec mods)' }
+			]
 		},
 		{
 			Component: Input,
@@ -401,6 +519,24 @@
 					Chargement des données en cours
 				</div>
 			{/if}
+			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
+				<div class="w-full px-8 text-sm text-base-content/60">Vérification du thread…</div>
+			{/if}
+			{#if threadDuplicateCheck && (threadDuplicateCheck.gameExists || threadDuplicateCheck.pendingSubmission)}
+				<div class="alert alert-warning mb-2 w-full max-w-3xl shadow-sm" role="alert">
+					<div class="flex flex-col gap-1 text-sm">
+						<span class="font-medium">Attention — conflit possible</span>
+						<ul class="list-inside list-disc space-y-0.5">
+							{#if threadDuplicateCheck.gameExists}
+								<li>Un jeu avec cet ID de thread existe déjà dans la base.</li>
+							{/if}
+							{#if threadDuplicateCheck.pendingSubmission}
+								<li>Une soumission pour ce thread est déjà en attente de validation.</li>
+							{/if}
+						</ul>
+					</div>
+				</div>
+			{/if}
 			{#if isAdmin}
 				<div class="form-control">
 					<label class="label cursor-pointer">
@@ -417,7 +553,7 @@
 				</div>
 			{/if}
 			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each elements as { Component, name, title, active, className, values, type, needsTranslators } (name)}
+				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators } (name)}
 					{#if needsTranslators && Component === Datalist}
 						<Datalist
 							{step}
@@ -427,9 +563,25 @@
 							{className}
 							bind:game
 							translators={data.translators}
+							invalid={name === 'translatorId'
+								? translatorFieldErrors.translatorId
+								: translatorFieldErrors.proofreaderId}
 						/>
 					{:else}
-						<Component {step} {name} {title} {active} {className} {values} {type} bind:game />
+						<Component
+							{step}
+							{name}
+							{title}
+							{active}
+							{className}
+							{values}
+							{selectOptions}
+							{type}
+							bind:game
+							invalid={fieldFormState.fieldErrors[name] ?? false}
+							warn={fieldFormState.fieldWarns[name] ?? false}
+							onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
+						/>
 					{/if}
 				{/each}
 			</div>
@@ -451,7 +603,16 @@
 						Suivant
 					</button>
 				{:else}
-					<button class="btn w-full btn-primary sm:w-48" type="submit"> Ajouter le jeu </button>
+					<button
+						class="btn w-full btn-primary sm:w-48"
+						type="submit"
+						disabled={blockFinalSubmit}
+						title={blockFinalSubmit
+							? 'Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas'
+							: undefined}
+					>
+						Ajouter le jeu
+					</button>
 				{/if}
 				{#if checkRole(['superadmin'])}
 					<Dev bind:game />

@@ -1,10 +1,15 @@
 <script lang="ts">
+	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { FormGameType } from '$lib/types';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import Link2Off from '@lucide/svelte/icons/link-2-off';
 	import type { Snippet } from 'svelte';
-	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
+	import type {
+		ChangeEventHandler,
+		FocusEventHandler,
+		HTMLInputAttributes
+	} from 'svelte/elements';
 
 	interface Props {
 		title: string;
@@ -16,6 +21,10 @@
 		children?: Snippet;
 		attributes?: HTMLInputAttributes;
 		game: FormGameType;
+		invalid?: boolean;
+		warn?: boolean;
+		/** Appelé au blur après synchro (ex. ID thread : vérif doublon + scrape) */
+		onBlurCommit?: (name: keyof FormGameType) => void | Promise<void>;
 	}
 
 	const {
@@ -27,12 +36,13 @@
 		type,
 		children,
 		attributes,
-		game = $bindable()
+		game = $bindable(),
+		invalid = false,
+		warn = false,
+		onBlurCommit
 	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
-
-	let error = $state(false);
 
 	const updateGameLink = () => {
 		const gameId = game.threadId;
@@ -75,40 +85,47 @@
 		}
 	};
 
-	const handleInput: ChangeEventHandler<HTMLInputElement> = () => {
-		if (name === 'ac' || name === 'threadId') return;
-
-		// Validation simplifiée pour l'instant
-		error = false;
+	const handleBlur: FocusEventHandler<HTMLInputElement> = async (event) => {
+		if (name === 'threadId') {
+			updateGameLink();
+		}
+		await onBlurCommit?.(name);
+		attributes?.onblur?.(event);
 	};
+
+	/** Réactif : sinon disabled reste figé après changement de statut de traduction */
+	let tlinkLocked = $derived(isIntegrated(game.tname) || isNoTranslation(game.tname));
+	let tversionLocked = $derived(isIntegrated(game.tname) || isNoTranslation(game.tname));
+	/** f95z / lc : lien du jeu imposé par l’ID de thread */
+	let gameLinkLocked = $derived(game.website === 'f95z' || game.website === 'lc');
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
 	<label for={name}>{title}:</label>
 	<div class="flex gap-1">
 		<input
+			{...attributes}
 			placeholder={title}
 			id={name}
 			onchange={handleChange}
-			oninput={handleInput}
-			disabled={(name === 'tlink' && game.tname === 'integrated') ||
+			onblur={handleBlur}
+			disabled={(name === 'link' && gameLinkLocked) ||
+				(name === 'tlink' && tlinkLocked) ||
 				(name === 'ac' && game.website !== 'f95z') ||
 				(name === 'id' && game.website === 'other') ||
-				(name === 'tversion' && game.tname === 'integrated') ||
-				(name === 'tlink' && game.tname === 'no_translation') ||
-				(name === 'tversion' && game.tname === 'no_translation')}
+				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}
 			{type}
 			class={type === 'checkbox' ? 'checkbox checkbox-lg' : 'input-bordered input w-full'}
-			class:border-error={error}
-			{...attributes}
+			class:input-error={invalid}
+			class:input-warning={warn}
 		/>
 		{#if name === 'tversion'}
 			<button
 				class="btn w-min"
 				class:btn-disable={!game.version}
 				class:btn-primary={game.version}
-				disabled={game.tname === 'integrated' && name === 'tversion'}
+				disabled={tversionLocked}
 				onclick={(e) => {
 					e.preventDefault();
 					if (game.version) game.tversion = game.version;

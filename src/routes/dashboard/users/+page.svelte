@@ -50,6 +50,7 @@
 						<th>Nom d'utilisateur</th>
 						<th>Email</th>
 						<th>Rôle</th>
+						<th>Profil traducteur</th>
 						<th>Date de création</th>
 						<th>Actions</th>
 					</tr>
@@ -77,6 +78,11 @@
 								<div class="badge badge-outline">
 									{roles.find((r) => r.value === user.role)?.label || user.role}
 								</div>
+							</td>
+							<td>
+								<span class="text-sm">
+									{data.translators.find((t) => t.userId === user.id)?.name ?? '—'}
+								</span>
 							</td>
 							<td>
 								{new Date(user.createdAt).toLocaleDateString('fr-FR', {
@@ -201,6 +207,33 @@
 							<option value={role.value}>{role.label}</option>
 						{/each}
 					</select>
+				</div>
+
+				<div class="form-control mt-4 w-full">
+					<label for="edit-translator" class="label">
+						<span class="label-text">Profil traducteur lié</span>
+					</label>
+					<select
+						id="edit-translator"
+						name="linkedTranslatorId"
+						class="select-bordered select w-full"
+						class:select-error={userError}
+					>
+						<option
+							value=""
+							selected={!data.translators.some((t) => t.userId === selectedUser?.id)}
+						>
+							Aucun
+						</option>
+						{#each data.translators as tr (tr.id)}
+							<option value={tr.id} selected={tr.userId === selectedUser?.id}>
+								{tr.name}
+							</option>
+						{/each}
+					</select>
+					<p class="label text-xs text-base-content/60">
+						Lie ce compte à une fiche traducteur/relecteur (même choix que sur la page Traducteurs).
+					</p>
 				</div>
 
 				<div class="modal-action">

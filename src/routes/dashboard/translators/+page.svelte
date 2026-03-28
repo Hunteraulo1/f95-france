@@ -71,6 +71,7 @@
 			<tr>
 				<th></th>
 				<th>Traducteurs/Relecteurs</th>
+				<th>Compte utilisateur</th>
 				<th>ID Discord</th>
 				<th>Pages</th>
 				<th>Action</th>
@@ -80,17 +81,23 @@
 			{#each filteredTranslators as translator, index (translator.id)}
 				<tr>
 					<td class="font-bold">{index + 1}</td>
-					<th
-						class="font-bold"
-						class:cursor-pointer={translator.userId}
-						class:hover:text-primary={translator.userId}
-						onclick={() => {
-							if (translator.userId) {
-								// eslint-disable-next-line svelte/no-navigation-without-resolve
-								void goto(`/dashboard/profile/${translator.userId}`, { invalidateAll: true });
-							}
-						}}>{translator.name}</th
-					>
+					<th class="font-bold">{translator.name}</th>
+					<td>
+						{#if translator.userId}
+							<button
+								type="button"
+								class="link text-left font-medium link-primary"
+								onclick={() => {
+									// eslint-disable-next-line svelte/no-navigation-without-resolve
+									void goto(`/dashboard/profile/${translator.userId}`, { invalidateAll: true });
+								}}
+							>
+								{data.users.find((u) => u.id === translator.userId)?.username ?? translator.userId}
+							</button>
+						{:else}
+							<span class="text-base-content/50">N/A</span>
+						{/if}
+					</td>
 					{#if translator.discordId}
 						<td>
 							{translator.discordId}
@@ -180,6 +187,17 @@
 						name="discordId"
 						class="input-bordered input w-full"
 					/>
+				</div>
+				<div class="form-control w-full">
+					<label for="add-user-link" class="label">
+						<span class="label-text">Compte utilisateur lié</span>
+					</label>
+					<select id="add-user-link" name="userId" class="select-bordered select w-full">
+						<option value="">Aucun</option>
+						{#each data.users as u (u.id)}
+							<option value={u.id}>{u.username} ({u.email})</option>
+						{/each}
+					</select>
 				</div>
 				<div class="form-control w-full">
 					<label class="label" for="pages">
@@ -291,6 +309,19 @@
 						class="input-bordered input w-full"
 						value={selectedTranslator.discordId || ''}
 					/>
+				</div>
+				<div class="form-control w-full">
+					<label for="edit-user-link" class="label">
+						<span class="label-text">Compte utilisateur lié</span>
+					</label>
+					<select id="edit-user-link" name="userId" class="select-bordered select w-full">
+						<option value="" selected={!selectedTranslator.userId}>Aucun</option>
+						{#each data.users as u (u.id)}
+							<option value={u.id} selected={selectedTranslator.userId === u.id}>
+								{u.username} ({u.email})
+							</option>
+						{/each}
+					</select>
 				</div>
 				<div class="form-control w-full">
 					<label class="label" for="pages">

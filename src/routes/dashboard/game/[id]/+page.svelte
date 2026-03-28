@@ -22,8 +22,17 @@
 	const translations = $derived(data.translations);
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
-	const canRefreshGame = $derived(
+	const canShowRefreshButton = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+	);
+	/** Actualisation manuelle : seulement F95 + auto-check jeu désactivé */
+	const refreshBlockedByGameAutoCheck = $derived(
+		game.website !== 'f95z' || game.gameAutoCheck !== false
+	);
+
+	/** Auto-check traduction : F95 uniquement, et seulement si l’auto-check jeu est actif */
+	const translationAcUiAllowed = $derived(
+		game.website === 'f95z' && game.gameAutoCheck !== false
 	);
 
 	// État pour le modal d'ajout de traduction
@@ -70,7 +79,8 @@
 		threadId: '',
 		tags: '',
 		link: '',
-		image: ''
+		image: '',
+		gameAutoCheck: true
 	});
 
 	const getStatusColor = (status: string) => {
@@ -144,15 +154,43 @@
 		};
 	};
 
-	// Réinitialiser le lien lorsque le statut change vers intégrée ou pas de traduction
+	// Réinitialiser le lien lorsque le statut change vers intégrée ou pas de traduction ;
+	// « Pas de traduction » impose le type « hs »
 	$effect(() => {
 		if (newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation') {
 			newTranslation.tlink = '';
 		}
+		if (newTranslation.tname === 'no_translation') {
+			newTranslation.ttype = 'hs';
+		}
+	});
+
+	$effect(() => {
+		if (!translationAcUiAllowed) {
+			newTranslation.ac = false;
+			editingTranslation.ac = false;
+		}
 	});
 
 	const refreshGame = async () => {
-		if (!game.threadId || game.website === 'other') {
+		if (game.website !== 'f95z') {
+			newToast({
+				alertType: 'warning',
+				message: "L'actualisation manuelle n'est disponible que pour les jeux F95Zone."
+			});
+			return;
+		}
+
+		if (game.gameAutoCheck !== false) {
+			newToast({
+				alertType: 'warning',
+				message:
+					'Actualisation impossible tant que l’Auto-check jeu est activé. Désactivez-le dans « Modifier le jeu » pour actualiser manuellement.'
+			});
+			return;
+		}
+
+		if (!game.threadId) {
 			newToast({
 				alertType: 'warning',
 				message: "Ce jeu n'est pas lié à un thread compatible."
@@ -472,8 +510,17 @@
 		}
 	};
 
+	const editGameAutoCheckAllowed = $derived(editingGame.website.trim() === 'f95z');
+
+	$effect(() => {
+		if (showEditGameModal && !editGameAutoCheckAllowed) {
+			editingGame.gameAutoCheck = false;
+		}
+	});
+
 	const openEditGameModal = () => {
 		console.log('openEditGameModal called');
+		const isF95 = game.website === 'f95z';
 		editingGame = {
 			name: game.name,
 			description: game.description || '',
@@ -482,7 +529,8 @@
 			threadId: game.threadId ? String(game.threadId) : '',
 			tags: game.tags || '',
 			link: game.link || '',
-			image: game.image
+			image: game.image,
+			gameAutoCheck: isF95 ? (game.gameAutoCheck ?? true) : false
 		};
 		showEditGameModal = true;
 		console.log('showEditGameModal set to:', showEditGameModal);
@@ -498,7 +546,8 @@
 			threadId: '',
 			tags: '',
 			link: '',
-			image: ''
+			image: '',
+			gameAutoCheck: true
 		};
 	};
 
@@ -559,8 +608,15 @@
 							<SquarePen size={16} />
 							Modifier le jeu
 						</button>
-						{#if canRefreshGame}
-							<button class="btn btn-sm btn-secondary" onclick={refreshGame}>
+						{#if canShowRefreshButton}
+							<button
+								class="btn btn-sm btn-secondary"
+								onclick={refreshGame}
+								disabled={refreshBlockedByGameAutoCheck}
+								title={refreshBlockedByGameAutoCheck
+									? 'Désactivez l’Auto-check jeu (Modifier le jeu) pour autoriser l’actualisation manuelle'
+									: undefined}
+							>
 								<RefreshCcw size={16} />
 								Actualiser le jeu
 							</button>
@@ -820,7 +876,13 @@
 			<div class="form-control mb-4 w-full">
 				<label class="input pr-0" for="ttype">
 					Type de traduction
-					<select id="ttype" class="w-full select-ghost" bind:value={newTranslation.ttype} required>
+					<select
+						id="ttype"
+						class="w-full select-ghost"
+						bind:value={newTranslation.ttype}
+						disabled={newTranslation.tname === 'no_translation'}
+						required
+					>
 						<option value="manual">Manuelle</option>
 						<option value="auto">Automatique</option>
 						<option value="semi-auto">Semi-Automatique</option>
@@ -851,11 +913,24 @@
 			<div class="form-control mb-6 w-full">
 				<label class="label cursor-pointer" for="ac">
 					<span class="label-text">Auto-Check</span>
-					<input id="ac" type="checkbox" class="toggle" bind:checked={newTranslation.ac} />
+					<input
+						id="ac"
+						type="checkbox"
+						class="toggle"
+						bind:checked={newTranslation.ac}
+						disabled={!translationAcUiAllowed}
+					/>
 				</label>
 				<p class="mt-1 text-xs text-base-content/60">
 					Activez cette option pour que les données de la traduction soient automatiquement
 					rafraîchies lors d'une nouvelle version du jeu.
+					{#if game.website !== 'f95z'}
+						<span class="block text-warning">
+							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
+						</span>
+					{:else if !game.gameAutoCheck}
+						<span class="block text-warning">Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span>
+					{/if}
 				</p>
 			</div>
 
@@ -1006,11 +1081,24 @@
 			<div class="form-control mb-6 w-full">
 				<label class="label cursor-pointer" for="edit-ac">
 					<span class="label-text">Auto-Check</span>
-					<input id="edit-ac" type="checkbox" class="toggle" bind:checked={editingTranslation.ac} />
+					<input
+						id="edit-ac"
+						type="checkbox"
+						class="toggle"
+						bind:checked={editingTranslation.ac}
+						disabled={!translationAcUiAllowed}
+					/>
 				</label>
 				<p class="mt-1 text-xs text-base-content/60">
 					Activez cette option pour que les données de la traduction soient automatiquement
 					rafraîchies lors d'une nouvelle version du jeu.
+					{#if game.website !== 'f95z'}
+						<span class="block text-warning">
+							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
+						</span>
+					{:else if !game.gameAutoCheck}
+						<span class="block text-warning">Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span>
+					{/if}
 				</p>
 			</div>
 
@@ -1161,6 +1249,25 @@
 						class="textarea h-full w-full"
 						bind:value={editingGame.description}
 					></textarea>
+				</div>
+				<div class="form-control col-span-2 w-full">
+					<label class="label cursor-pointer" for="edit-game-autocheck">
+						<span class="label-text">Auto-check jeu (autorise l’Auto-check sur les traductions)</span>
+						<input
+							id="edit-game-autocheck"
+							type="checkbox"
+							class="toggle"
+							bind:checked={editingGame.gameAutoCheck}
+							disabled={!editGameAutoCheckAllowed}
+						/>
+					</label>
+					<p class="label-text-alt text-base-content/60">
+						{#if editGameAutoCheckAllowed}
+							Si désactivé, aucune traduction ne pourra avoir l’Auto-Check.
+						{:else}
+							Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
+						{/if}
+					</p>
 				</div>
 			</div>
 

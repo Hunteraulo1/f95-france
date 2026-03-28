@@ -1,4 +1,5 @@
 import { getUserById } from '$lib/server/auth';
+import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -60,6 +61,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
+		const allowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
+		const acValue = clampTranslationAc(allowsTranslationAc, ac);
+
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
 		if (!currentUser) {
@@ -84,7 +88,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				tlink,
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
-				ac: ac ?? null
+				ac: acValue
 			});
 
 			return json(
@@ -113,7 +117,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				'translation',
 			translatorId: translatorId || null,
 			proofreaderId: proofreaderId || null,
-			ac: ac ?? false
+			ac: acValue
 		});
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
