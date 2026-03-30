@@ -12,8 +12,15 @@
 		warn?: boolean;
 	}
 
-	const { title, active, step, name, game = $bindable(), invalid = false, warn = false }: Props =
-		$props();
+	const {
+		title,
+		active,
+		step,
+		name,
+		game = $bindable(),
+		invalid = false,
+		warn = false
+	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
 
@@ -33,7 +40,7 @@
 			id={name}
 			type="checkbox"
 			onchange={handleChange}
-			disabled={name === 'ac' && game.website !== 'f95z'}
+			disabled={name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)}
 			bind:checked={game[name]}
 			class="checkbox checkbox-lg"
 			class:border-error={invalid}

@@ -21,7 +21,6 @@
 		gameId?: string | null;
 		translation?: {
 			id: string;
-			version: string;
 			tversion?: string | null;
 			translationName?: string | null;
 		} | null;
@@ -31,7 +30,6 @@
 				image?: string | null;
 			};
 			translation?: {
-				version: string;
 				tversion?: string | null;
 				translationName?: string | null;
 			};
@@ -127,9 +125,9 @@
 							{#if submission.translation}
 								{@const translation = submission.translation}
 								<span class="text-xs opacity-70">
-									Traduction: {translation.version}
+									Traduction
 									{#if translation.tversion}
-										- {translation.tversion}
+										: {translation.tversion}
 									{/if}
 									{#if translation.translationName}
 										({translation.translationName})
@@ -138,9 +136,9 @@
 							{:else if submission.parsedData?.translation}
 								{@const translation = submission.parsedData.translation}
 								<span class="text-xs opacity-70">
-									Traduction: {translation.version}
+									Traduction
 									{#if translation.tversion}
-										- {translation.tversion}
+										: {translation.tversion}
 									{/if}
 									{#if translation.translationName}
 										({translation.translationName})
@@ -156,9 +154,9 @@
 							{#if submission.parsedData?.translation}
 								{@const translation = submission.parsedData.translation}
 								<span class="text-xs opacity-70">
-									Traduction: {translation.version}
+									Traduction
 									{#if translation.tversion}
-										- {translation.tversion}
+										: {translation.tversion}
 									{/if}
 									{#if translation.translationName}
 										({translation.translationName})

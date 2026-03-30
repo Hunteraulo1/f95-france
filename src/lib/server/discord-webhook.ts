@@ -71,7 +71,6 @@ function embedImageUrl(raw: string | null | undefined): string | undefined {
 
 type TrRow = {
 	translationName?: string | null;
-	version: string;
 	tversion: string;
 };
 
@@ -215,9 +214,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	const st = args.submissionType;
 
 	if (st === 'game') {
-		const hasTr =
-			translation &&
-			(translation.translationName || translation.version || translation.tversion);
+		const hasTr = translation && (translation.translationName || translation.tversion);
 		title = hasTr ? 'Ajout de jeu et traduction' : 'Ajout de jeu';
 		color = 0x2ecc71;
 		if (hasTr) {
@@ -226,11 +223,6 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 					name: 'Nom de la traduction',
 					value: trimFieldValue(translation.translationName || '—', 200),
 					inline: false
-				},
-				{
-					name: 'Version du jeu',
-					value: trimFieldValue(translation.version ?? '—', 120),
-					inline: true
 				},
 				{
 					name: 'Version de la traduction',
@@ -261,37 +253,17 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		});
 
 		if (isEdit && originalTranslation && translation) {
-			fields.push(
-				{
-					name: 'Version du jeu (avant → après)',
-					value: trimFieldValue(
-						`${originalTranslation.version} → ${translation.version}`,
-						200
-					),
-					inline: false
-				},
-				{
-					name: 'Version de la traduction (avant → après)',
-					value: trimFieldValue(
-						`${originalTranslation.tversion} → ${translation.tversion}`,
-						200
-					),
-					inline: false
-				}
-			);
+			fields.push({
+				name: 'Version de la traduction (avant → après)',
+				value: trimFieldValue(`${originalTranslation.tversion} → ${translation.tversion}`, 200),
+				inline: false
+			});
 		} else if (translation) {
-			fields.push(
-				{
-					name: 'Version du jeu',
-					value: trimFieldValue(translation.version ?? '—', 120),
-					inline: true
-				},
-				{
-					name: 'Version de la traduction',
-					value: trimFieldValue(translation.tversion ?? '—', 120),
-					inline: true
-				}
-			);
+			fields.push({
+				name: 'Version de la traduction',
+				value: trimFieldValue(translation.tversion ?? '—', 120),
+				inline: true
+			});
 		}
 		embed = { ...embed, title, color };
 	} else if (st === 'update') {
@@ -299,9 +271,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		color = 0x3498db;
 		if (originalGame && game) {
 			const nameLine =
-				originalGame.name !== game.name
-					? `${originalGame.name} → ${game.name}`
-					: game.name;
+				originalGame.name !== game.name ? `${originalGame.name} → ${game.name}` : game.name;
 			fields[0] = { name: 'Nom du jeu', value: trimFieldValue(nameLine), inline: false };
 			const updateCover = embedImageUrl(game.image) ?? coverUrl;
 			if (updateCover) embed.image = { url: updateCover };
@@ -327,11 +297,8 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 					inline: false
 				},
 				{
-					name: 'Versions (jeu · traduction)',
-					value: trimFieldValue(
-						`${originalTranslation.version} · ${originalTranslation.tversion}`,
-						300
-					),
+					name: 'Version de traduction',
+					value: trimFieldValue(originalTranslation.tversion ?? '—', 300),
 					inline: false
 				}
 			);
@@ -342,8 +309,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 
 			if (originalTranslations && originalTranslations.length > 0) {
 				const lines = originalTranslations.map(
-					(t, i) =>
-						`${i + 1}. ${t.translationName || 'Sans nom'} — jeu ${t.version} · trad ${t.tversion}`
+					(t, i) => `${i + 1}. ${t.translationName || 'Sans nom'} — trad ${t.tversion}`
 				);
 				fields.push({
 					name: 'Traductions supprimées',
@@ -354,9 +320,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		}
 
 		const reasonText =
-			args.adminNotes?.trim() ||
-			(typeof data.reason === 'string' ? data.reason.trim() : '') ||
-			'—';
+			args.adminNotes?.trim() || (typeof data.reason === 'string' ? data.reason.trim() : '') || '—';
 		fields.push({
 			name: 'Raison / notes',
 			value: trimFieldValue(reasonText, 900),

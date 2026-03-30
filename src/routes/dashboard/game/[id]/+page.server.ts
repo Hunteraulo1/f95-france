@@ -48,7 +48,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				id: table.gameTranslation.id,
 				translationName: table.gameTranslation.translationName,
 				status: table.gameTranslation.status,
-				version: table.gameTranslation.version,
 				tversion: table.gameTranslation.tversion,
 				tlink: table.gameTranslation.tlink,
 				translatorId: table.gameTranslation.translatorId,

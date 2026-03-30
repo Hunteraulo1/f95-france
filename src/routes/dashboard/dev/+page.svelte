@@ -83,6 +83,20 @@
 		channel: string | null;
 		httpStatus: number | null;
 	};
+type DbSheetSyncResult = {
+	success: boolean;
+	message: string;
+	details:
+		| string
+		| {
+				totalTranslations: number;
+				totalTranslators: number;
+				syncedTranslations: number;
+				syncedTranslators: number;
+				errors: string[];
+		  }
+		| null;
+};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -100,6 +114,8 @@
 	let translatorsImportResult = $state<TranslatorsImportResult | null>(null);
 	let webhookTestIsLoading = $state(false);
 	let webhookTestResult = $state<WebhookTestResult | null>(null);
+let dbSheetSyncIsLoading = $state(false);
+let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -126,12 +142,12 @@
 	);
 	const webhookChannelLabel = (c: string) =>
 		(
-			{
+			({
 				updates: 'Mises à jour',
 				logs: 'Logs',
 				translators: 'Traducteurs',
 				proofreaders: 'Relecteurs'
-			} as Record<string, string>
+			}) as Record<string, string>
 		)[c] ?? c;
 </script>
 
@@ -389,7 +405,7 @@
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Mises à jour</span>
 					{#if webhookStatus.updates}
-						<span class="badge badge-success badge-sm">configuré</span>
+						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
 					{/if}
@@ -397,7 +413,7 @@
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Logs</span>
 					{#if webhookStatus.logs}
-						<span class="badge badge-success badge-sm">configuré</span>
+						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
 					{/if}
@@ -405,7 +421,7 @@
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Traducteurs</span>
 					{#if webhookStatus.translators}
-						<span class="badge badge-success badge-sm">configuré</span>
+						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
 					{/if}
@@ -413,7 +429,7 @@
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Relecteurs</span>
 					{#if webhookStatus.proofreaders}
-						<span class="badge badge-success badge-sm">configuré</span>
+						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
 					{/if}
@@ -422,7 +438,8 @@
 
 			{#if !webhookStatus.updates && !webhookStatus.logs && !webhookStatus.translators && !webhookStatus.proofreaders}
 				<p class="mb-4 text-sm text-warning">
-					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour tester.
+					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
+					tester.
 				</p>
 			{/if}
 
@@ -439,7 +456,8 @@
 							const d = result.data as Record<string, unknown>;
 							const success = Boolean(d.success);
 							const message = typeof d.message === 'string' ? d.message : '';
-							const details = typeof d.details === 'string' || d.details === null ? d.details : null;
+							const details =
+								typeof d.details === 'string' || d.details === null ? d.details : null;
 							const channel = typeof d.channel === 'string' ? d.channel : null;
 							const httpStatus =
 								typeof d.httpStatus === 'number' || d.httpStatus === null ? d.httpStatus : null;
@@ -468,10 +486,10 @@
 							name="channel"
 							class="select-bordered select w-full max-w-md"
 							disabled={webhookTestIsLoading ||
-								!webhookStatus.updates &&
+								(!webhookStatus.updates &&
 									!webhookStatus.logs &&
 									!webhookStatus.translators &&
-									!webhookStatus.proofreaders}
+									!webhookStatus.proofreaders)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
 							{#if webhookStatus.logs}<option value="logs">Logs</option>{/if}
@@ -529,7 +547,8 @@
 									</p>
 								{/if}
 								{#if webhookTestResult.details}
-									<pre class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{webhookTestResult.details}</pre>
+									<pre
+										class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{webhookTestResult.details}</pre>
 								{/if}
 							</div>
 						</div>
@@ -991,6 +1010,41 @@
 				</form>
 				<form
 					method="POST"
+					action="?/syncDbToSpreadsheet"
+					use:enhance={() => {
+						dbSheetSyncIsLoading = true;
+						dbSheetSyncResult = null;
+						return async function ({ result, update }) {
+							await update();
+							dbSheetSyncIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data as Record<string, unknown>;
+								dbSheetSyncResult = {
+									success: Boolean(data.success),
+									message: typeof data.message === 'string' ? data.message : '',
+									details:
+										typeof data.details === 'string' ||
+										data.details === null ||
+										(typeof data.details === 'object' && data.details !== null)
+											? (data.details as DbSheetSyncResult['details'])
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-3"
+				>
+					<button type="submit" class="btn h-full w-full btn-secondary" disabled={dbSheetSyncIsLoading}>
+						{#if dbSheetSyncIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Sync DB -> Spreadsheet...</span>
+						{:else}
+							<span>Synchroniser DB vers Spreadsheet</span>
+						{/if}
+					</button>
+				</form>
+				<form
+					method="POST"
 					action="?/cleanupDuplicateTranslations"
 					use:enhance={() => {
 						cleanupIsLoading = true;
@@ -1137,6 +1191,46 @@
 											? syncResult.details
 											: JSON.stringify(syncResult.details)}
 									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				{/if}
+				{#if dbSheetSyncResult}
+					{#if dbSheetSyncResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{dbSheetSyncResult.message}</h3>
+								{#if dbSheetSyncResult.details && typeof dbSheetSyncResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
+											.totalTranslations}
+										| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
+											.details.totalTranslators}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{dbSheetSyncResult.message || 'Erreur inconnue'}</h3>
+								{#if dbSheetSyncResult.details}
+									{#if typeof dbSheetSyncResult.details === 'string'}
+										<p class="mt-1 text-sm">{dbSheetSyncResult.details}</p>
+									{:else}
+										<p class="mt-1 text-sm">
+											Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
+												.totalTranslations}
+											| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
+												.details.totalTranslators}
+										</p>
+										{#if dbSheetSyncResult.details.errors.length > 0}
+											<pre class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{dbSheetSyncResult.details.errors.join('\n')}</pre>
+										{/if}
+									{/if}
 								{/if}
 							</div>
 						</div>

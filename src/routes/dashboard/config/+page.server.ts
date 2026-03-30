@@ -7,7 +7,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'superadmin')) {
+	if (!locals.user || locals.user.role !== 'superadmin') {
 		throw new Error('Accès non autorisé');
 	}
 

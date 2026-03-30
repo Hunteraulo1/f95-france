@@ -5,11 +5,7 @@
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import Link2Off from '@lucide/svelte/icons/link-2-off';
 	import type { Snippet } from 'svelte';
-	import type {
-		ChangeEventHandler,
-		FocusEventHandler,
-		HTMLInputAttributes
-	} from 'svelte/elements';
+	import type { ChangeEventHandler, FocusEventHandler, HTMLInputAttributes } from 'svelte/elements';
 
 	interface Props {
 		title: string;
@@ -111,7 +107,7 @@
 			onblur={handleBlur}
 			disabled={(name === 'link' && gameLinkLocked) ||
 				(name === 'tlink' && tlinkLocked) ||
-				(name === 'ac' && game.website !== 'f95z') ||
+				(name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)) ||
 				(name === 'id' && game.website === 'other') ||
 				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}
@@ -123,12 +119,13 @@
 		{#if name === 'tversion'}
 			<button
 				class="btn w-min"
-				class:btn-disable={!game.version}
-				class:btn-primary={game.version}
+				class:btn-disable={!game.gameVersion}
+				class:btn-primary={!!game.gameVersion}
 				disabled={tversionLocked}
 				onclick={(e) => {
 					e.preventDefault();
-					if (game.version) game.tversion = game.version;
+					const gv = game.gameVersion;
+					if (gv != null && String(gv).trim()) game.tversion = String(gv).trim();
 				}}
 			>
 				<Copy size="1rem" />

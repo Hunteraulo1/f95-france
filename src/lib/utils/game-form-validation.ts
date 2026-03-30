@@ -28,7 +28,7 @@ export function computeGameFormFieldState(game: FormGameType): {
 	if (!trimStr(game.link)) fieldErrors.link = true;
 	if (!trimStr(game.tags)) fieldErrors.tags = true;
 	if (!trimStr(game.image)) fieldErrors.image = true;
-	if (!trimStr(game.version)) fieldErrors.version = true;
+	if (!trimStr(game.gameVersion)) fieldErrors.gameVersion = true;
 
 	if (noTr) {
 		if (trimStr(game.tversion)) fieldErrors.tversion = true;

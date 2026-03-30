@@ -13,8 +13,15 @@
 		warn?: boolean;
 	}
 
-	const { step, title, active, name, game = $bindable(), invalid = false, warn = false }: Props =
-		$props();
+	const {
+		step,
+		title,
+		active,
+		name,
+		game = $bindable(),
+		invalid = false,
+		warn = false
+	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
 
@@ -37,7 +44,18 @@
 	};
 </script>
 
-<Input {active} {step} className="imgHint relative" {title} {name} {attributes} {game} {invalid} {warn} type="text">
+<Input
+	{active}
+	{step}
+	className="imgHint relative"
+	{title}
+	{name}
+	{attributes}
+	{game}
+	{invalid}
+	{warn}
+	type="text"
+>
 	<img
 		src={game.image}
 		alt="bannière du jeu 2"

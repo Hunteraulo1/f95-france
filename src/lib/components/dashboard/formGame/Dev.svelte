@@ -19,7 +19,7 @@
 			status: 'abandoned',
 			tags: 'TEST, DEV, NE PAS TOUCHER',
 			type: 'other',
-			version: 'v666',
+			gameVersion: 'v666',
 			tversion: 'n/a',
 			tname: 'no_translation',
 			tlink: '',

@@ -3,11 +3,15 @@ import {
 	clearAllTranslationAutoCheckForGame,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import {
+	deleteGameTranslationsFromGoogleSheet,
+	syncGameTranslationsToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -54,7 +58,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				id: table.gameTranslation.id,
 				translationName: table.gameTranslation.translationName,
 				status: table.gameTranslation.status,
-				version: table.gameTranslation.version,
 				tversion: table.gameTranslation.tversion,
 				tlink: table.gameTranslation.tlink,
 				translatorId: table.gameTranslation.translatorId,
@@ -179,7 +182,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion: typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+				gameVersion:
+					typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
@@ -187,6 +191,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(gameId);
 		}
+		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
+			console.warn('[google-sheets-sync] game update rows failed:', err);
+		});
 
 		return json({
 			message: 'Jeu modifié avec succès'
@@ -220,13 +227,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Corps de requête invalide' }, { status: 400 });
 		}
 
-		const reason =
-			typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
+		const reason = typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
 		if (!reason) {
-			return json(
-				{ error: 'La raison de la suppression est obligatoire' },
-				{ status: 400 }
-			);
+			return json({ error: 'La raison de la suppression est obligatoire' }, { status: 400 });
 		}
 
 		const directMode = deleteBody.directMode;
@@ -267,11 +270,69 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Mode direct pour les admins ou superadmins en mode direct
-		// Supprimer d'abord toutes les traductions associées
-		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, gameId));
+		let deletedTranslationIds: string[] = [];
+		await db.transaction(async (tx) => {
+			// Détacher les FK de submission avant suppression physique.
+			const linkedTranslations = await tx
+				.select({ id: table.gameTranslation.id })
+				.from(table.gameTranslation)
+				.where(eq(table.gameTranslation.gameId, gameId));
 
-		// Supprimer le jeu
-		await db.delete(table.game).where(eq(table.game.id, gameId));
+			const translationIds = linkedTranslations.map((t) => t.id);
+			deletedTranslationIds = translationIds;
+			const rejectionNote = `Rejet automatique: jeu supprimé (raison: ${reason}).`;
+
+			// Les soumissions en attente liées à ce jeu/traductions deviennent refusées.
+			if (translationIds.length > 0) {
+				await tx
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(
+						and(
+							eq(table.submission.status, 'pending'),
+							or(
+								eq(table.submission.gameId, gameId),
+								inArray(table.submission.translationId, translationIds)
+							)
+						)
+					);
+			} else {
+				await tx
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(
+						and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, gameId))
+					);
+			}
+
+			if (translationIds.length > 0) {
+				await tx
+					.update(table.submission)
+					.set({ translationId: null, updatedAt: new Date() })
+					.where(inArray(table.submission.translationId, translationIds));
+			}
+
+			await tx
+				.update(table.submission)
+				.set({ gameId: null, updatedAt: new Date() })
+				.where(eq(table.submission.gameId, gameId));
+
+			await tx.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, gameId));
+			await tx.delete(table.game).where(eq(table.game.id, gameId));
+		});
+		if (deletedTranslationIds.length > 0) {
+			void deleteGameTranslationsFromGoogleSheet(deletedTranslationIds).catch((err) => {
+				console.warn('[google-sheets-sync] delete game rows failed:', err);
+			});
+		}
 
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {
