@@ -1,6 +1,10 @@
 import { getUserById } from '$lib/server/auth';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
+import {
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -25,7 +29,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			translationName,
-			version,
 			tversion,
 			status,
 			ttype,
@@ -40,11 +43,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Validation des données requises
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired = tname === 'integrated' || tname === 'no_translation';
-		if (!version || !tversion || !status || !ttype || (!linkNotRequired && !tlink)) {
+		if (!tversion || !status || !ttype || (!linkNotRequired && !tlink)) {
 			return json(
 				{
 					error: linkNotRequired
-						? 'Les champs Version, Version de traduction, Statut et Type sont requis'
+						? 'Les champs Version de traduction, Statut et Type sont requis'
 						: 'Tous les champs sont requis'
 				},
 				{ status: 400 }
@@ -82,7 +85,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationSubmission(currentUser.id, gameId, {
 				translationName: translationName || null,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -111,7 +113,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			.values({
 				gameId,
 				translationName,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -129,7 +130,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			gameId,
 			translation: {
 				translationName: translationName || null,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -146,6 +146,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			translationWasUpdate: false,
 			adminNotes: null
 		});
+		if (created?.id) {
+			void syncTranslationToGoogleSheet(created.id).catch((err) => {
+				console.warn('[google-sheets-sync] add translation failed:', err);
+			});
+		}
+		if (translatorId) {
+			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
+				console.warn('[google-sheets-sync] add translator failed:', err);
+			});
+		}
+		if (proofreaderId) {
+			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
+				console.warn('[google-sheets-sync] add proofreader failed:', err);
+			});
+		}
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {

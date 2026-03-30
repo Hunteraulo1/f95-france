@@ -20,6 +20,11 @@ export function resolveGameAutoCheckForWebsite(
 	return fallback;
 }
 
+/**
+ * Indique si une traduction *peut* avoir l’auto-check activé : F95 + auto-check jeu actif.
+ * Règle : `ac === true` ⇒ auto-check jeu actif (et F95) ; l’inverse est faux : jeu avec auto-check
+ * activé n’impose pas `ac` sur les traductions.
+ */
 export async function getGameAllowsTranslationAutoCheck(gameId: string): Promise<boolean> {
 	const rows = await db
 		.select({ gameAutoCheck: table.game.gameAutoCheck, website: table.game.website })
@@ -32,6 +37,7 @@ export async function getGameAllowsTranslationAutoCheck(gameId: string): Promise
 	return r.gameAutoCheck !== false;
 }
 
+/** Si l’auto-check traduction n’est pas autorisé, force `false` ; sinon conserve la demande. */
 export function clampTranslationAc(
 	allowed: boolean,
 	requested: boolean | null | undefined

@@ -1,6 +1,11 @@
 import { getUserById } from '$lib/server/auth';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
+import {
+	deleteTranslationFromGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -28,7 +33,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			translationName,
-			version,
 			tversion,
 			status,
 			ttype,
@@ -64,18 +68,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			? (tnameBody as (typeof TNAMES)[number])
 			: before.tname;
 
-		const linkNotRequired =
-			effectiveTname === 'integrated' || effectiveTname === 'no_translation';
-		const tlinkStored = linkNotRequired
-			? ''
-			: typeof tlink === 'string'
-				? tlink
-				: '';
-		if (!version || !tversion || !status || !ttype || (!linkNotRequired && !tlinkStored.trim())) {
+		const linkNotRequired = effectiveTname === 'integrated' || effectiveTname === 'no_translation';
+		const tlinkStored = linkNotRequired ? '' : typeof tlink === 'string' ? tlink : '';
+		if (!tversion || !status || !ttype || (!linkNotRequired && !tlinkStored.trim())) {
 			return json(
 				{
 					error: linkNotRequired
-						? 'Version, version de traduction, statut et type sont requis'
+						? 'Version de traduction, statut et type sont requis'
 						: 'Tous les champs sont requis (y compris le lien de traduction)'
 				},
 				{ status: 400 }
@@ -102,7 +101,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
 				translationName: translationName || null,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -125,7 +123,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.gameTranslation)
 			.set({
 				translationName: translationName || null,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -142,7 +139,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			gameId,
 			translation: {
 				translationName: translationName || null,
-				version,
 				tversion,
 				status,
 				ttype,
@@ -153,7 +149,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
-				version: before.version,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,
@@ -170,6 +165,19 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			translationWasUpdate: true,
 			adminNotes: null
 		});
+		void syncTranslationToGoogleSheet(translationId).catch((err) => {
+			console.warn('[google-sheets-sync] update translation failed:', err);
+		});
+		if (translatorId) {
+			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
+				console.warn('[google-sheets-sync] update translator failed:', err);
+			});
+		}
+		if (proofreaderId) {
+			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
+				console.warn('[google-sheets-sync] update proofreader failed:', err);
+			});
+		}
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
@@ -202,13 +210,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Corps de requête invalide' }, { status: 400 });
 		}
 
-		const reason =
-			typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
+		const reason = typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
 		if (!reason) {
-			return json(
-				{ error: 'La raison de la suppression est obligatoire' },
-				{ status: 400 }
-			);
+			return json({ error: 'La raison de la suppression est obligatoire' }, { status: 400 });
 		}
 
 		const directMode = deleteBody.directMode;
@@ -242,12 +246,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
-			await createTranslationDeleteSubmission(
-				currentUser.id,
-				gameId,
-				translationId,
-				reason
-			);
+			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 
 			return json({
 				message:
@@ -262,7 +261,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			reason,
 			originalTranslation: {
 				translationName: tr.translationName,
-				version: tr.version,
 				tversion: tr.tversion,
 				status: tr.status,
 				ttype: tr.ttype,
@@ -280,6 +278,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
+		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
+			console.warn('[google-sheets-sync] delete translation row failed:', err);
+		});
 
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {

@@ -7,6 +7,7 @@ import {
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameSubmission } from '$lib/server/submissions';
+import { syncTranslationToGoogleSheet, syncTranslatorToGoogleSheet } from '$lib/server/google-sheets-sync';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -102,7 +103,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { game, translation, directMode } = body;
 
 		// Extraire les données du jeu
-		const { name, description, type, website, threadId, tags, link, image } = game;
+		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {
@@ -177,12 +178,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					threadId: validThreadId,
 					tags: tags || null,
 					link: link || null,
-					image
+					image,
+					gameVersion:
+						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
 				},
 				translation
 					? {
 							translationName: translation.translationName,
-							version: translation.version,
 							tversion: translation.tversion,
 							status: translation.status,
 							ttype: translation.ttype,
@@ -212,6 +214,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			link: link || null,
 			image,
 			gameAutoCheck: gameAutoCheckEnabledForWebsite(website),
+			gameVersion:
+				typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
@@ -221,9 +225,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.select({ id: table.game.id })
 			.from(table.game)
 			.where(
-				validThreadId !== null
-					? eq(table.game.threadId, validThreadId)
-					: eq(table.game.name, name)
+				validThreadId !== null ? eq(table.game.threadId, validThreadId) : eq(table.game.name, name)
 			)
 			.limit(1);
 
@@ -232,20 +234,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Créer la traduction si elle est fournie
 		if (translation && gameId) {
 			const allowsT = await getGameAllowsTranslationAutoCheck(gameId);
-			await db.insert(table.gameTranslation).values({
-				gameId: gameId,
-				translationName: translation.translationName,
-				version: translation.version,
-				tversion: translation.tversion,
-				status: translation.status,
-				ttype: translation.ttype,
-				tlink: translation.tlink || '',
-				translatorId: translation.translatorId || null,
-				proofreaderId: translation.proofreaderId || null,
-				ac: clampTranslationAc(allowsT, translation.ac ?? false),
-				createdAt: new Date(),
-				updatedAt: new Date()
-			});
+			const [createdTranslation] = await db
+				.insert(table.gameTranslation)
+				.values({
+					gameId: gameId,
+					translationName: translation.translationName,
+					tversion: translation.tversion,
+					status: translation.status,
+					ttype: translation.ttype,
+					tlink: translation.tlink || '',
+					translatorId: translation.translatorId || null,
+					proofreaderId: translation.proofreaderId || null,
+					ac: clampTranslationAc(allowsT, translation.ac ?? false),
+					createdAt: new Date(),
+					updatedAt: new Date()
+				})
+				.returning({ id: table.gameTranslation.id });
+
+			if (createdTranslation?.id) {
+				void syncTranslationToGoogleSheet(createdTranslation.id).catch((err) => {
+					console.warn('[google-sheets-sync] manager add translation failed:', err);
+				});
+			}
+			if (translation.translatorId) {
+				void syncTranslatorToGoogleSheet(String(translation.translatorId)).catch((err) => {
+					console.warn('[google-sheets-sync] manager add translator failed:', err);
+				});
+			}
+			if (translation.proofreaderId) {
+				void syncTranslatorToGoogleSheet(String(translation.proofreaderId)).catch((err) => {
+					console.warn('[google-sheets-sync] manager add proofreader failed:', err);
+				});
+			}
 		}
 
 		return json({

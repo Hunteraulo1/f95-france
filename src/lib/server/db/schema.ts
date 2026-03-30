@@ -43,7 +43,6 @@ export const game = pgTable('game', {
 	link: varchar('link', { length: 500 }).notNull().default(''),
 	/** Si false, aucune traduction ne peut avoir l’Auto-Check */
 	gameAutoCheck: boolean('game_auto_check').notNull().default(true),
-	/** Version courante du jeu (fiche) — à distinguer des champs version par traduction */
 	gameVersion: varchar('game_version', { length: 100 })
 });
 
@@ -56,7 +55,6 @@ export const gameTranslation = pgTable('game_translation', {
 		.references(() => game.id),
 	translationName: varchar('translation_name', { length: 255 }),
 	status: varchar('status', { length: 32 }).notNull(),
-	version: varchar('version', { length: 100 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
 	tname: varchar('tname', { length: 64 }).notNull().default('no_translation'),

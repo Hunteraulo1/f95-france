@@ -50,7 +50,6 @@
 		gameId: '',
 		translationName: null,
 		status: 'in_progress',
-		version: '',
 		tversion: '',
 		tname: 'no_translation',
 		tlink: '',
@@ -65,7 +64,13 @@
 	let savedId = $state<number | null>(null);
 
 	/** Valeurs normalisées après un scraping réussi — si l’utilisateur les modifie, Auto-Check repasse à false */
-	type ScrapeBaseline = { name: string; tags: string; type: string; image: string; version: string };
+	type ScrapeBaseline = {
+		name: string;
+		tags: string;
+		type: string;
+		image: string;
+		gameVersion: string;
+	};
 	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
 
 	const normScrapeField = (v: unknown): string => (v == null ? '' : String(v).trim());
@@ -100,6 +105,13 @@
 		}
 	});
 
+	/** Auto-check traduction seulement si auto-check jeu (F95) ; pas l’inverse : on peut désactiver `ac`. */
+	$effect(() => {
+		if (game.gameAutoCheck === false) {
+			game.ac = false;
+		}
+	});
+
 	$effect(() => {
 		const b = scrapeBaseline;
 		if (!b) return;
@@ -108,7 +120,7 @@
 			normScrapeField(game.tags) !== b.tags ||
 			normScrapeField(game.type) !== b.type ||
 			normScrapeField(game.image) !== b.image ||
-			normScrapeField(game.version) !== b.version
+			normScrapeField(game.gameVersion) !== b.gameVersion
 		) {
 			game.ac = false;
 		}
@@ -165,8 +177,7 @@
 				tags: data.tags ?? game.tags,
 				type: data.type ?? game.type,
 				image: data.image ?? game.image,
-				version: data.version ?? game.version,
-				ac: true
+				gameVersion: data.version ?? game.gameVersion
 			};
 
 			scrapeBaseline = {
@@ -174,7 +185,7 @@
 				tags: normScrapeField(game.tags),
 				type: normScrapeField(game.type),
 				image: normScrapeField(game.image),
-				version: normScrapeField(game.version)
+				gameVersion: normScrapeField(game.gameVersion)
 			};
 			savedId = threadId;
 		} catch (error) {
@@ -283,15 +294,19 @@
 				tags: string | null;
 				link: string | null;
 				image: string;
+				gameVersion: string | null;
 			};
 
 			type TranslationPayload = {
 				translationName: string;
-				version: string;
 				tversion: string;
 				status: FormGameType['status'];
 				ttype: FormGameType['ttype'];
 				tlink: string | null;
+				tname: FormGameType['tname'];
+				translatorId: string | null;
+				proofreaderId: string | null;
+				ac: boolean;
 			};
 
 			const payload: { game: GamePayload; translation?: TranslationPayload } = {
@@ -303,7 +318,8 @@
 					threadId: game.threadId ?? null,
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
-					image: game.image.trim()
+					image: game.image.trim(),
+					gameVersion: game.gameVersion?.trim() || null
 				}
 			};
 
@@ -325,11 +341,14 @@
 
 				payload.translation = {
 					translationName,
-					version: game.version?.trim() || '',
 					tversion: game.tversion?.trim() || '',
 					status: game.status,
 					ttype: game.ttype,
-					tlink: game.tlink?.trim() || null
+					tlink: game.tlink?.trim() || null,
+					tname: game.tname,
+					translatorId: game.translatorId?.trim() || null,
+					proofreaderId: game.proofreaderId?.trim() || null,
+					ac: !!game.ac
 				};
 			}
 
@@ -440,8 +459,8 @@
 		{
 			Component: Input,
 			active: [2, 5],
-			title: 'Version du jeu',
-			name: 'version',
+			title: 'Version du jeu (fiche)',
+			name: 'gameVersion',
 			type: 'text'
 		},
 		{
@@ -524,7 +543,7 @@
 				<div class="w-full px-8 text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
 			{#if threadDuplicateCheck && (threadDuplicateCheck.gameExists || threadDuplicateCheck.pendingSubmission)}
-				<div class="alert alert-warning mb-2 w-full max-w-3xl shadow-sm" role="alert">
+				<div class="mb-2 alert w-full max-w-3xl alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">
 						<span class="font-medium">Attention — conflit possible</span>
 						<ul class="list-inside list-disc space-y-0.5">

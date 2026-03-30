@@ -25,21 +25,19 @@
 	const canShowRefreshButton = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
-	/** Actualisation manuelle : seulement F95 + auto-check jeu désactivé */
-	const refreshBlockedByGameAutoCheck = $derived(
-		game.website !== 'f95z' || game.gameAutoCheck !== false
-	);
+	/** Actualisation manuelle depuis le thread : réservée aux jeux F95Zone */
+	const refreshManualBlocked = $derived(game.website !== 'f95z');
 
-	/** Auto-check traduction : F95 uniquement, et seulement si l’auto-check jeu est actif */
-	const translationAcUiAllowed = $derived(
-		game.website === 'f95z' && game.gameAutoCheck !== false
-	);
+	/**
+	 * Peut activer l’auto-check sur une traduction : F95 + auto-check jeu.
+	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
+	 */
+	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
 	let newTranslation = $state({
 		translationName: '',
-		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -55,7 +53,6 @@
 	let editingTranslation = $state({
 		translationName: '',
 		id: '',
-		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -156,7 +153,6 @@
 	const openAddTranslationModal = () => {
 		newTranslation = {
 			translationName: '',
-			version: game.gameVersion?.trim() || '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -173,7 +169,6 @@
 		showAddTranslationModal = false;
 		newTranslation = {
 			translationName: '',
-			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -206,7 +201,10 @@
 	/** Même logique que l’ajout : lien vide si intégrée / pas de traduction ; type hs si pas de traduction */
 	$effect(() => {
 		if (!showEditTranslationModal) return;
-		if (editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation') {
+		if (
+			editingTranslation.tname === 'integrated' ||
+			editingTranslation.tname === 'no_translation'
+		) {
 			editingTranslation.tlink = '';
 		}
 		if (editingTranslation.tname === 'no_translation') {
@@ -223,15 +221,6 @@
 			return;
 		}
 
-		if (game.gameAutoCheck !== false) {
-			newToast({
-				alertType: 'warning',
-				message:
-					'Actualisation impossible tant que l’Auto-check jeu est activé. Désactivez-le dans « Modifier le jeu » pour actualiser manuellement.'
-			});
-			return;
-		}
-
 		if (!game.threadId) {
 			newToast({
 				alertType: 'warning',
@@ -240,15 +229,8 @@
 			return;
 		}
 
-		const autoTranslation = translations.find((translation) => translation.ac);
-
-		if (!autoTranslation) {
-			newToast({
-				alertType: 'warning',
-				message: 'Ajoutez une traduction Auto-Check pour utiliser le rafraîchissement.'
-			});
-			return;
-		}
+		/** Si une ligne a l’auto-check traduction, on la met à jour aussi ; sinon seule la fiche jeu est rafraîchie. */
+		const acTranslation = translations.find((translation) => translation.ac);
 
 		try {
 			const response = await fetch('/dashboard/manager/scrape', {
@@ -319,34 +301,37 @@
 				gameVersion: data.version
 			};
 
-			const translationResponse = await fetch(
-				`/dashboard/game/${game.id}/translations/${autoTranslation.id}`,
-				{
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						translationName: autoTranslation.translationName,
-						version: data.version,
-						tversion: autoTranslation.tversion,
-						status: autoTranslation.status,
-						ttype: autoTranslation.ttype,
-						tlink: autoTranslation.tlink ?? '',
-						ac: autoTranslation.ac ?? false,
-						directMode: true
-					})
-				}
-			);
+			if (acTranslation) {
+				const translationResponse = await fetch(
+					`/dashboard/game/${game.id}/translations/${acTranslation.id}`,
+					{
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							translationName: acTranslation.translationName,
+							tversion: acTranslation.tversion,
+							status: acTranslation.status,
+							ttype: acTranslation.ttype,
+							tlink: acTranslation.tlink ?? '',
+							ac: acTranslation.ac ?? false,
+							directMode: true
+						})
+					}
+				);
 
-			if (!translationResponse.ok) {
-				const details = await translationResponse.json().catch(() => ({}));
-				throw new Error(details.error || 'Erreur lors de la mise à jour de la traduction');
+				if (!translationResponse.ok) {
+					const details = await translationResponse.json().catch(() => ({}));
+					throw new Error(details.error || 'Erreur lors de la mise à jour de la traduction');
+				}
 			}
 
 			newToast({
 				alertType: 'success',
-				message: 'Jeu et traduction Auto-Check rafraîchis'
+				message: acTranslation
+					? 'Fiche jeu et traduction en auto-check rafraîchies'
+					: 'Fiche jeu rafraîchie'
 			});
 
 			window.location.reload();
@@ -364,16 +349,12 @@
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired =
 			newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
-		if (
-			!newTranslation.version ||
-			!newTranslation.tversion ||
-			(!linkNotRequired && !newTranslation.tlink)
-		) {
+		if (!newTranslation.tversion || (!linkNotRequired && !newTranslation.tlink)) {
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir tous les champs requis (Version, Version de traduction)'
-					: 'Veuillez remplir tous les champs requis (Version, Version de traduction, Lien)'
+					? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
+					: 'Veuillez remplir tous les champs requis (version de traduction, lien, etc.)'
 			});
 			return;
 		}
@@ -414,7 +395,6 @@
 
 			const payload = {
 				translationName: newTranslation.translationName || null,
-				version: newTranslation.version,
 				tversion: newTranslation.tversion,
 				status: newTranslation.status,
 				ttype: newTranslation.ttype,
@@ -470,7 +450,6 @@
 		editingTranslation = {
 			translationName: translation.translationName || '',
 			id: translation.id,
-			version: translation.version,
 			tversion: translation.tversion,
 			status: normalizeTranslationProgressStatus(translation.status),
 			ttype: translation.ttype,
@@ -488,7 +467,6 @@
 		editingTranslation = {
 			translationName: '',
 			id: '',
-			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -503,7 +481,6 @@
 	const editTranslation = async () => {
 		const linkNotRequired = editTranslationLinkNotRequired;
 		if (
-			!editingTranslation.version ||
 			!editingTranslation.tversion ||
 			!editingTranslation.status ||
 			!editingTranslation.ttype ||
@@ -512,7 +489,7 @@
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir les champs requis (versions, statut, type)'
+					? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
 					: 'Veuillez remplir tous les champs requis (y compris le lien)'
 			});
 			return;
@@ -562,7 +539,6 @@
 
 			const payload = {
 				translationName: editingTranslation.translationName || null,
-				version: editingTranslation.version,
 				tversion: editingTranslation.tversion,
 				status: editingTranslation.status,
 				ttype: editingTranslation.ttype,
@@ -658,8 +634,7 @@
 				if (data.submission) {
 					newToast({
 						alertType: 'success',
-						message:
-							'Soumission de suppression créée. Elle sera examinée par un administrateur.'
+						message: 'Soumission de suppression créée. Elle sera examinée par un administrateur.'
 					});
 					cancelDeleteTranslation();
 				} else {
@@ -720,8 +695,7 @@
 				if (data.submission) {
 					newToast({
 						alertType: 'success',
-						message:
-							'Soumission de suppression créée. Elle sera examinée par un administrateur.'
+						message: 'Soumission de suppression créée. Elle sera examinée par un administrateur.'
 					});
 					cancelDeleteGame();
 				} else {
@@ -845,9 +819,9 @@
 							<button
 								class="btn btn-sm btn-secondary"
 								onclick={refreshGame}
-								disabled={refreshBlockedByGameAutoCheck}
-								title={refreshBlockedByGameAutoCheck
-									? 'Désactivez l’Auto-check jeu (Modifier le jeu) pour autoriser l’actualisation manuelle'
+								disabled={refreshManualBlocked}
+								title={refreshManualBlocked
+									? 'L’actualisation manuelle n’est disponible que pour les jeux F95Zone.'
 									: undefined}
 							>
 								<RefreshCcw size={16} />
@@ -875,7 +849,7 @@
 								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
 							{/if}
 							{#if game.gameVersion}
-								<span class="badge badge-accent badge-lg" title="Version de référence sur la fiche jeu"
+								<span class="badge badge-lg badge-accent" title="Version du jeu"
 									>Version jeu : {game.gameVersion}</span
 								>
 							{/if}
@@ -939,12 +913,11 @@
 							<thead>
 								<tr>
 									<th>Nom de la traduction</th>
-									<th>Version</th>
-									<th>Version Trad</th>
+									<th>Version traduction</th>
 									<th>Statut</th>
 									<th>Type</th>
-									<th>Auto-Check</th>
 									<th>Lien de traduction</th>
+									<th>Auto-Check</th>
 									<th>Actions</th>
 								</tr>
 							</thead>
@@ -970,7 +943,6 @@
 												</div>
 											{/if}
 										</td>
-										<td class="font-bold">{translation.version}</td>
 										<td class="font-bold">{translation.tversion}</td>
 										<td>
 											<span class="badge {getStatusColor(translation.status)}">
@@ -983,13 +955,6 @@
 											</span>
 										</td>
 										<td>
-											{#if translation.ac}
-												<SquareCheckBig size={14} />
-											{:else}
-												<Square size={14} />
-											{/if}
-										</td>
-										<td>
 											{#if translation.tlink}
 												<a
 													href={translation.tlink}
@@ -1000,6 +965,13 @@
 													<ExternalLink size={14} />
 													Lien
 												</a>
+											{/if}
+										</td>
+										<td>
+											{#if translation.ac}
+												<SquareCheckBig size={14} />
+											{:else}
+												<Square size={14} />
 											{/if}
 										</td>
 										<td>
@@ -1053,24 +1025,6 @@
 						required
 					/>
 				</label>
-			</div>
-
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="version">
-					Version du jeu (ligne de traduction)
-					<input
-						id="version"
-						type="text"
-						placeholder="Ex: 1.0.0"
-						class="w-full input-ghost"
-						bind:value={newTranslation.version}
-						required
-					/>
-				</label>
-				<p class="mt-1 text-xs text-base-content/60">
-					Prérempli depuis la version de référence de la fiche jeu si elle est renseignée. La
-					référence officielle du titre se gère dans « Modifier le jeu ».
-				</p>
 			</div>
 
 			<div class="form-control mb-4 w-full">
@@ -1164,14 +1118,16 @@
 					/>
 				</label>
 				<p class="mt-1 text-xs text-base-content/60">
-					Activez cette option pour que les données de la traduction soient automatiquement
-					rafraîchies lors d'une nouvelle version du jeu.
+					Optionnel : rafraîchissement auto de cette ligne si le jeu est à jour. Nécessite
+					l’Auto-check jeu ; ne s’active pas tout seul quand le jeu l’est.
 					{#if game.website !== 'f95z'}
 						<span class="block text-warning">
 							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
 						</span>
 					{:else if !game.gameAutoCheck}
-						<span class="block text-warning">Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span>
+						<span class="block text-warning"
+							>Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span
+						>
 					{/if}
 				</p>
 			</div>
@@ -1230,101 +1186,83 @@
 			<h3 class="mb-4 text-lg font-bold">Modifier la traduction</h3>
 
 			{#key editingTranslation.id}
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="edit-translationName">
-					Nom de la traduction
-					<input
-						id="edit-translationName"
-						type="text"
-						placeholder="Ex: Saison 1"
-						class="w-full input-ghost"
-						bind:value={editingTranslation.translationName}
-						required
-					/>
-				</label>
-			</div>
+				<div class="form-control mb-4 w-full">
+					<label class="input" for="edit-translationName">
+						Nom de la traduction
+						<input
+							id="edit-translationName"
+							type="text"
+							placeholder="Ex: Saison 1"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.translationName}
+							required
+						/>
+					</label>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="edit-version">
-					Version du jeu (ligne de traduction)
-					<input
-						id="edit-version"
-						type="text"
-						placeholder="Ex: 1.0.0"
-						class="w-full input-ghost"
-						bind:value={editingTranslation.version}
-						required
-					/>
-				</label>
-				<p class="mt-1 text-xs text-base-content/60">
-					Version portée par cette entrée ; la version de référence du jeu est sur la fiche («
-					Modifier le jeu »).
-				</p>
-			</div>
+				<div class="form-control mb-4 w-full">
+					<label class="input" for="edit-tversion">
+						Version de traduction
+						<input
+							id="edit-tversion"
+							type="text"
+							placeholder="Ex: 1.0"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.tversion}
+							required
+						/>
+					</label>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="edit-tversion">
-					Version de traduction
-					<input
-						id="edit-tversion"
-						type="text"
-						placeholder="Ex: 1.0"
-						class="w-full input-ghost"
-						bind:value={editingTranslation.tversion}
-						required
-					/>
-				</label>
-			</div>
+				<div class="form-control mb-4 w-full">
+					<label class="label" for="edit-status">
+						<span class="label-text">Progression</span>
+					</label>
+					<select
+						id="edit-status"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.status}
+					>
+						<option value="in_progress">En cours</option>
+						<option value="completed">Terminé</option>
+						<option value="abandoned">Abandonné</option>
+					</select>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="label" for="edit-status">
-					<span class="label-text">Progression</span>
-				</label>
-				<select
-					id="edit-status"
-					class="select-bordered select w-full"
-					bind:value={editingTranslation.status}
-				>
-					<option value="in_progress">En cours</option>
-					<option value="completed">Terminé</option>
-					<option value="abandoned">Abandonné</option>
-				</select>
-			</div>
+				<div class="form-control mb-4 w-full">
+					<label class="label" for="edit-tname">
+						<span class="label-text">Statut de traduction</span>
+					</label>
+					<select
+						id="edit-tname"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.tname}
+					>
+						<option value="no_translation">Pas de traduction</option>
+						<option value="integrated">Intégrée</option>
+						<option value="translation">Traduction</option>
+						<option value="translation_with_mods">Traduction avec mods</option>
+					</select>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="label" for="edit-tname">
-					<span class="label-text">Statut de traduction</span>
-				</label>
-				<select
-					id="edit-tname"
-					class="select-bordered select w-full"
-					bind:value={editingTranslation.tname}
-				>
-					<option value="no_translation">Pas de traduction</option>
-					<option value="integrated">Intégrée</option>
-					<option value="translation">Traduction</option>
-					<option value="translation_with_mods">Traduction avec mods</option>
-				</select>
-			</div>
-
-			<div class="form-control mb-4 w-full">
-				<label class="label" for="edit-ttype">
-					<span class="label-text">Type de traduction</span>
-				</label>
-				<select
-					id="edit-ttype"
-					class="select-bordered select w-full"
-					bind:value={editingTranslation.ttype}
-					disabled={editingTranslation.tname === 'no_translation'}
-				>
-					<option value="manual">Manuelle</option>
-					<option value="auto">Automatique</option>
-					<option value="semi-auto">Semi-Automatique</option>
-					<option value="vf">VO Française</option>
-					<option value="to_tested">À tester</option>
-					<option value="hs">Lien HS</option>
-				</select>
-			</div>
+				<div class="form-control mb-4 w-full">
+					<label class="label" for="edit-ttype">
+						<span class="label-text">Type de traduction</span>
+					</label>
+					<select
+						id="edit-ttype"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.ttype}
+						disabled={editingTranslation.tname === 'no_translation'}
+					>
+						<option value="manual">Manuelle</option>
+						<option value="auto">Automatique</option>
+						<option value="semi-auto">Semi-Automatique</option>
+						<option value="vf">VO Française</option>
+						<option value="to_tested">À tester</option>
+						<option value="hs">Lien HS</option>
+					</select>
+				</div>
 			{/key}
 
 			<div class="form-control mb-6 w-full">
@@ -1354,14 +1292,16 @@
 					/>
 				</label>
 				<p class="mt-1 text-xs text-base-content/60">
-					Activez cette option pour que les données de la traduction soient automatiquement
-					rafraîchies lors d'une nouvelle version du jeu.
+					Optionnel : rafraîchissement auto de cette ligne si le jeu est à jour. Nécessite
+					l’Auto-check jeu ; ne s’active pas tout seul quand le jeu l’est.
 					{#if game.website !== 'f95z'}
 						<span class="block text-warning">
 							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
 						</span>
 					{:else if !game.gameAutoCheck}
-						<span class="block text-warning">Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span>
+						<span class="block text-warning"
+							>Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span
+						>
 					{/if}
 				</p>
 			</div>
@@ -1473,7 +1413,7 @@
 				</div>
 				<div class="form-control w-full">
 					<label class="input" for="edit-game-gameVersion">
-						Version de référence (jeu)
+						Version du jeu
 						<input
 							id="edit-game-gameVersion"
 							type="text"
@@ -1482,10 +1422,6 @@
 							bind:value={editingGame.gameVersion}
 						/>
 					</label>
-					<p class="mt-1 text-xs text-base-content/60">
-						À distinguer des champs « version » sur chaque ligne de traduction : c’est la version
-						du titre telle que suivie sur la fiche.
-					</p>
 				</div>
 				<div class="form-control w-full">
 					<label class="input" for="edit-game-link">
@@ -1532,7 +1468,9 @@
 				</div>
 				<div class="form-control col-span-2 w-full">
 					<label class="label cursor-pointer" for="edit-game-autocheck">
-						<span class="label-text">Auto-check jeu (autorise l’Auto-check sur les traductions)</span>
+						<span class="label-text"
+							>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
+						>
 						<input
 							id="edit-game-autocheck"
 							type="checkbox"
@@ -1543,7 +1481,8 @@
 					</label>
 					<p class="label-text-alt text-base-content/60">
 						{#if editGameAutoCheckAllowed}
-							Si désactivé, aucune traduction ne pourra avoir l’Auto-Check.
+							Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est pas
+							obligatoire sur chaque traduction : vous choisissez ligne par ligne.
 						{:else}
 							Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
 						{/if}
@@ -1566,8 +1505,7 @@
 			<h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>
 			<p class="mb-6">Êtes-vous sûr de vouloir supprimer cette traduction ?</p>
 			<div class="mb-6 rounded-lg bg-base-200 p-4">
-				<p><strong>Version:</strong> {translationToDelete.version}</p>
-				<p><strong>Version Trad:</strong> {translationToDelete.tversion}</p>
+				<p><strong>Version traduction:</strong> {translationToDelete.tversion}</p>
 				<p><strong>Statut:</strong> {getStatusText(translationToDelete.status)}</p>
 			</div>
 			<div class="form-control mb-6 w-full">

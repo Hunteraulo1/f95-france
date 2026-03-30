@@ -2,6 +2,10 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
+import {
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -298,8 +302,8 @@ const normalizeKeyPart = (value: string | null | undefined): string =>
 
 const translationKeyFrom = (
 	name: string | null | undefined,
-	version: string | null | undefined
-): string => `${normalizeKeyPart(name)}:${normalizeKeyPart(version)}`;
+	tversionKey: string | null | undefined
+): string => `${normalizeKeyPart(name)}:${normalizeKeyPart(tversionKey)}`;
 
 const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolean } = {}) => {
 	const dryRun = options.dryRun === true;
@@ -320,7 +324,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			name: table.game.name,
 			type: table.game.type,
 			tags: table.game.tags,
-			image: table.game.image
+			image: table.game.image,
+			gameVersion: table.game.gameVersion
 		})
 		.from(table.game);
 	const gamesByThread = new Map<string, string>();
@@ -345,14 +350,14 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 	const existingTranslations = await db
 		.select({
 			id: table.gameTranslation.id,
-			version: table.gameTranslation.version,
+			tversion: table.gameTranslation.tversion,
 			gameName: table.game.name
 		})
 		.from(table.gameTranslation)
 		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId));
 	const translationByKey = new Map<string, string>();
 	for (const row of existingTranslations) {
-		translationByKey.set(translationKeyFrom(row.gameName, row.version), row.id);
+		translationByKey.set(translationKeyFrom(row.gameName, row.tversion), row.id);
 	}
 
 	for (const item of games) {
@@ -380,6 +385,9 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			: typeof item.tags === 'string'
 				? item.tags
 				: '';
+		const gameVersion =
+			typeof item.version === 'string' && item.version.trim() ? item.version.trim() : null;
+
 		if (gameId) {
 			const prev = gamesSnapshot.get(gameId);
 			const nextValues = {
@@ -389,7 +397,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				image: item.image?.trim() || '',
 				website,
 				threadId: threadId && Number.isFinite(threadId) ? threadId : null,
-				link
+				link,
+				gameVersion
 			};
 			if (
 				!prev ||
@@ -399,7 +408,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				prev.image !== nextValues.image ||
 				prev.website !== nextValues.website ||
 				prev.threadId !== nextValues.threadId ||
-				prev.link !== nextValues.link
+				prev.link !== nextValues.link ||
+				(prev.gameVersion ?? null) !== (nextValues.gameVersion ?? null)
 			) {
 				if (!dryRun) {
 					await db.update(table.game).set(nextValues).where(eq(table.game.id, gameId));
@@ -418,7 +428,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				website,
 				threadId: threadId && Number.isFinite(threadId) ? threadId : null,
 				link,
-				gameAutoCheck: website === 'f95z'
+				gameAutoCheck: website === 'f95z',
+				gameVersion
 			};
 			if (!dryRun) {
 				await db.insert(table.game).values(row);
@@ -461,9 +472,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			}
 		}
 
-		const version = item.version?.trim() || 'unknown';
 		const tversion = item.tversion?.trim() || 'unknown';
-		const translationKey = translationKeyFrom(name, version);
+		const translationKey = translationKeyFrom(name, tversion);
 		const existingTranslationId = translationByKey.get(translationKey);
 
 		if (!existingTranslationId) {
@@ -473,7 +483,6 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					gameId,
 					translationName: item.tname?.trim() || null,
 					status: mapStatus(item.status),
-					version,
 					tversion,
 					tlink: item.tlink?.trim() || '',
 					tname: mapTName(item.tname),
@@ -493,7 +502,6 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 						gameId,
 						translationName: item.tname?.trim() || null,
 						status: mapStatus(item.status),
-						version,
 						tversion,
 						tlink: item.tlink?.trim() || '',
 						tname: mapTName(item.tname),
@@ -924,9 +932,9 @@ export const actions: Actions = {
 					select
 						gt.id,
 						lower(trim(g.name)) as nkey,
-						lower(trim(gt.version)) as vkey,
+						lower(trim(gt.tversion)) as vkey,
 						row_number() over (
-							partition by lower(trim(g.name)), lower(trim(gt.version))
+							partition by lower(trim(g.name)), lower(trim(gt.tversion))
 							order by gt.updated_at desc, gt.created_at desc, gt.id desc
 						) as rn
 					from game_translation gt
@@ -952,9 +960,9 @@ export const actions: Actions = {
 						select
 							gt.id,
 							lower(trim(g.name)) as nkey,
-							lower(trim(gt.version)) as vkey,
+							lower(trim(gt.tversion)) as vkey,
 							row_number() over (
-								partition by lower(trim(g.name)), lower(trim(gt.version))
+								partition by lower(trim(g.name)), lower(trim(gt.tversion))
 								order by gt.updated_at desc, gt.created_at desc, gt.id desc
 							) as rn
 						from game_translation gt
@@ -1002,6 +1010,67 @@ export const actions: Actions = {
 			return {
 				success: false,
 				message: 'Erreur pendant le nettoyage des doublons',
+				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			};
+		}
+	},
+	syncDbToSpreadsheet: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return { success: false, message: 'Accès non autorisé', details: null };
+		}
+
+		await request.formData();
+
+		try {
+			const [translations, translators] = await Promise.all([
+				db.select({ id: table.gameTranslation.id }).from(table.gameTranslation),
+				db.select({ id: table.translator.id }).from(table.translator)
+			]);
+
+			let syncedTranslations = 0;
+			let syncedTranslators = 0;
+			const errors: string[] = [];
+
+			for (const row of translations) {
+				try {
+					await syncTranslationToGoogleSheet(row.id);
+					syncedTranslations++;
+				} catch (err) {
+					errors.push(
+						`translation ${row.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
+				}
+			}
+
+			for (const row of translators) {
+				try {
+					await syncTranslatorToGoogleSheet(row.id);
+					syncedTranslators++;
+				} catch (err) {
+					errors.push(
+						`translator ${row.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
+				}
+			}
+
+			return {
+				success: errors.length === 0,
+				message:
+					errors.length === 0
+						? 'Synchronisation DB -> Spreadsheet terminée'
+						: 'Synchronisation terminée avec erreurs',
+				details: {
+					totalTranslations: translations.length,
+					totalTranslators: translators.length,
+					syncedTranslations,
+					syncedTranslators,
+					errors
+				}
+			};
+		} catch (error: unknown) {
+			return {
+				success: false,
+				message: 'Erreur pendant la synchronisation globale',
 				details: error instanceof Error ? error.message : 'Erreur inconnue'
 			};
 		}

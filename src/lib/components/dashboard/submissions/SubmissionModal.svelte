@@ -73,13 +73,13 @@
 		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
 		{ key: 'link', label: 'Lien', options: { isUrl: true, showIfEmpty: true } },
-		{ key: 'image', label: 'Image', options: { isUrl: true } }
+		{ key: 'image', label: 'Image', options: { isUrl: true } },
+		{ key: 'gameVersion', label: 'Version jeu (fiche)', options: { showIfEmpty: true } }
 	];
 
 	const translationFields: FieldConfig<GameTranslation>[] = [
 		{ key: 'translationName', label: 'Nom de traduction' },
 		{ key: 'tname', label: 'Status de la traduction', options: { showIfEmpty: true } },
-		{ key: 'version', label: 'Version' },
 		{ key: 'tversion', label: 'Version traduction' },
 		{ key: 'status', label: 'Statut' },
 		{ key: 'ttype', label: 'Type de traduction' },

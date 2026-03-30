@@ -3,9 +3,9 @@
 	import { themeChange } from 'theme-change';
 	import '../app.css';
 
-  import { dev } from '$app/environment';
-  import { injectAnalytics } from '@vercel/analytics/sveltekit';
-  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+	import { dev } from '$app/environment';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
 	let { children } = $props();
 
@@ -13,8 +13,8 @@
 		themeChange(false);
 	});
 
-  injectAnalytics({ mode: dev ? 'development' : 'production' });
-injectSpeedInsights();
+	injectAnalytics({ mode: dev ? 'development' : 'production' });
+	injectSpeedInsights();
 </script>
 
 <svelte:head>
