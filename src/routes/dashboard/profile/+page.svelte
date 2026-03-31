@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Profile from '$lib/components/dashboard/Profile.svelte';
-	import { user } from '$lib/stores';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -10,4 +9,4 @@
 	let { data }: Props = $props();
 </script>
 
-<Profile user={$user} email={$user?.email} stats={data.stats} />
+<Profile user={data.user} email={data.user?.email} stats={data.stats} />

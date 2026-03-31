@@ -6,11 +6,28 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
 		return {
+			user: null,
 			stats: null
 		};
 	}
 
 	const userId = locals.user.id;
+	const user = await db
+		.select({
+			id: table.user.id,
+			username: table.user.username,
+			email: table.user.email,
+			avatar: table.user.avatar,
+			role: table.user.role,
+			directMode: table.user.directMode,
+			gameAdd: table.user.gameAdd,
+			gameEdit: table.user.gameEdit,
+			createdAt: table.user.createdAt,
+			updatedAt: table.user.updatedAt
+		})
+		.from(table.user)
+		.where(eq(table.user.id, userId))
+		.limit(1);
 
 	// Compter les soumissions acceptées par type
 	let gameAddSubmissions = 0;
@@ -75,6 +92,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
+		user: user[0] ?? null,
 		stats: {
 			gameAdd: gameAddSubmissions,
 			gameEdit: gameEditSubmissions,
