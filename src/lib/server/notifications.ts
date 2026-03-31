@@ -1,4 +1,3 @@
-import { sendDiscordWebhookLogsApiError } from '$lib/server/discord-webhook';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq, sql, and, desc } from 'drizzle-orm';
@@ -189,13 +188,6 @@ export async function notifyApiError(
 		console.warn("Erreur lors de la notification d'erreur API:", error);
 	}
 
-	void sendDiscordWebhookLogsApiError({
-		method,
-		route,
-		status,
-		userId,
-		username: finalUsername
-	});
 }
 
 /**

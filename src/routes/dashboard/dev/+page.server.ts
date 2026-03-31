@@ -562,7 +562,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const c = config;
 	const webhookStatus = {
 		updates: Boolean(c?.discordWebhookUpdates?.trim()),
-		logs: Boolean(c?.discordWebhookLogs?.trim()),
 		translators: Boolean(c?.discordWebhookTranslators?.trim()),
 		proofreaders: Boolean(c?.discordWebhookProofreaders?.trim())
 	};
@@ -1102,7 +1101,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const raw = formData.get('channel');
 		const channel =
-			raw === 'updates' || raw === 'logs' || raw === 'translators' || raw === 'proofreaders'
+			raw === 'updates' || raw === 'translators' || raw === 'proofreaders'
 				? raw
 				: null;
 
@@ -1119,7 +1118,6 @@ export const actions: Actions = {
 		const configResult = await db
 			.select({
 				discordWebhookUpdates: table.config.discordWebhookUpdates,
-				discordWebhookLogs: table.config.discordWebhookLogs,
 				discordWebhookTranslators: table.config.discordWebhookTranslators,
 				discordWebhookProofreaders: table.config.discordWebhookProofreaders
 			})
@@ -1130,7 +1128,6 @@ export const actions: Actions = {
 		const cfg = configResult[0];
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
-			logs: cfg?.discordWebhookLogs,
 			translators: cfg?.discordWebhookTranslators,
 			proofreaders: cfg?.discordWebhookProofreaders
 		} as const;
@@ -1148,7 +1145,6 @@ export const actions: Actions = {
 
 		const labels: Record<typeof channel, string> = {
 			updates: 'Mises à jour',
-			logs: 'Logs',
 			translators: 'Traducteurs',
 			proofreaders: 'Relecteurs'
 		};

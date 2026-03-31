@@ -142,7 +142,6 @@ type DbSheetSyncResult = {
 	const webhookStatus = $derived(
 		data.webhookStatus ?? {
 			updates: false,
-			logs: false,
 			translators: false,
 			proofreaders: false
 		}
@@ -151,7 +150,6 @@ type DbSheetSyncResult = {
 		(
 			({
 				updates: 'Mises à jour',
-				logs: 'Logs',
 				translators: 'Traducteurs',
 				proofreaders: 'Relecteurs'
 			}) as Record<string, string>
@@ -418,14 +416,6 @@ type DbSheetSyncResult = {
 					{/if}
 				</div>
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
-					<span>Logs</span>
-					{#if webhookStatus.logs}
-						<span class="badge badge-sm badge-success">configuré</span>
-					{:else}
-						<span class="badge badge-ghost badge-sm">vide</span>
-					{/if}
-				</div>
-				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Traducteurs</span>
 					{#if webhookStatus.translators}
 						<span class="badge badge-sm badge-success">configuré</span>
@@ -443,7 +433,7 @@ type DbSheetSyncResult = {
 				</div>
 			</div>
 
-			{#if !webhookStatus.updates && !webhookStatus.logs && !webhookStatus.translators && !webhookStatus.proofreaders}
+			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders}
 				<p class="mb-4 text-sm text-warning">
 					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
 					tester.
@@ -494,12 +484,10 @@ type DbSheetSyncResult = {
 							class="select-bordered select w-full max-w-md"
 							disabled={webhookTestIsLoading ||
 								(!webhookStatus.updates &&
-									!webhookStatus.logs &&
 									!webhookStatus.translators &&
 									!webhookStatus.proofreaders)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
-							{#if webhookStatus.logs}<option value="logs">Logs</option>{/if}
 							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
 							{#if webhookStatus.proofreaders}<option value="proofreaders">Relecteurs</option>{/if}
 						</select>
@@ -509,7 +497,6 @@ type DbSheetSyncResult = {
 						class="btn btn-primary"
 						disabled={webhookTestIsLoading ||
 							(!webhookStatus.updates &&
-								!webhookStatus.logs &&
 								!webhookStatus.translators &&
 								!webhookStatus.proofreaders)}
 					>

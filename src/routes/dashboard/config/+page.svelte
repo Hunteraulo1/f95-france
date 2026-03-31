@@ -90,20 +90,6 @@
 					</div>
 
 					<div class="form-control w-full">
-						<label for="discordWebhookLogs" class="label">
-							<span class="label-text">Webhook Discord - Logs</span>
-						</label>
-						<input
-							id="discordWebhookLogs"
-							name="discordWebhookLogs"
-							type="url"
-							class="input-bordered input w-full"
-							value={data.config?.discordWebhookLogs || ''}
-							placeholder="https://discord.com/api/webhooks/..."
-						/>
-					</div>
-
-					<div class="form-control w-full">
 						<label for="discordWebhookTranslators" class="label">
 							<span class="label-text">Webhook Discord - Translators</span>
 						</label>

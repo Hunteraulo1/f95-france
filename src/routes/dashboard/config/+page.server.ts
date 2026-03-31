@@ -35,7 +35,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 				id: 'main',
 				appName: 'F95 France',
 				discordWebhookUpdates: null,
-				discordWebhookLogs: null,
 				discordWebhookTranslators: null,
 				discordWebhookProofreaders: null,
 				googleSpreadsheetId: null,
@@ -65,7 +64,6 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const appName = formData.get('appName') as string;
 		const discordWebhookUpdates = formData.get('discordWebhookUpdates') as string;
-		const discordWebhookLogs = formData.get('discordWebhookLogs') as string;
 		const discordWebhookTranslators = formData.get('discordWebhookTranslators') as string;
 		const discordWebhookProofreaders = formData.get('discordWebhookProofreaders') as string;
 		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
@@ -92,7 +90,7 @@ export const actions: Actions = {
 					.set({
 						appName,
 						discordWebhookUpdates: discordWebhookUpdates || null,
-						discordWebhookLogs: discordWebhookLogs || null,
+						discordWebhookLogs: null,
 						discordWebhookTranslators: discordWebhookTranslators || null,
 						discordWebhookProofreaders: discordWebhookProofreaders || null,
 						googleSpreadsheetId: googleSpreadsheetId || null,
@@ -107,7 +105,7 @@ export const actions: Actions = {
 					id: 'main',
 					appName,
 					discordWebhookUpdates: discordWebhookUpdates || null,
-					discordWebhookLogs: discordWebhookLogs || null,
+					discordWebhookLogs: null,
 					discordWebhookTranslators: discordWebhookTranslators || null,
 					discordWebhookProofreaders: discordWebhookProofreaders || null,
 					googleSpreadsheetId: googleSpreadsheetId || null,
