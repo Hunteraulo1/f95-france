@@ -25,6 +25,9 @@
 	const canUseSilentMode = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
+	const canManageGameAutoCheck = $derived(
+		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+	);
 	const canShowRefreshButton = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
@@ -1446,28 +1449,30 @@
 						bind:value={editingGame.description}
 					></textarea>
 				</div>
-				<div class="form-control col-span-2 w-full">
-					<label class="label cursor-pointer" for="edit-game-autocheck">
-						<span class="label-text"
-							>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
-						>
-						<input
-							id="edit-game-autocheck"
-							type="checkbox"
-							class="toggle"
-							bind:checked={editingGame.gameAutoCheck}
-							disabled={!editGameAutoCheckAllowed}
-						/>
-					</label>
-					<p class="label-text-alt text-base-content/60">
-						{#if editGameAutoCheckAllowed}
-							Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est pas
-							obligatoire sur chaque traduction : vous choisissez ligne par ligne.
-						{:else}
-							Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
-						{/if}
-					</p>
-				</div>
+				{#if canManageGameAutoCheck}
+					<div class="form-control col-span-2 w-full">
+						<label class="label cursor-pointer" for="edit-game-autocheck">
+							<span class="label-text"
+								>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
+							>
+							<input
+								id="edit-game-autocheck"
+								type="checkbox"
+								class="toggle"
+								bind:checked={editingGame.gameAutoCheck}
+								disabled={!editGameAutoCheckAllowed}
+							/>
+						</label>
+						<p class="label-text-alt text-base-content/60">
+							{#if editGameAutoCheckAllowed}
+								Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est pas
+								obligatoire sur chaque traduction : vous choisissez ligne par ligne.
+							{:else}
+								Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
+							{/if}
+						</p>
+					</div>
+				{/if}
 				{#if canUseSilentMode}
 					<div class="form-control col-span-2">
 						<label class="label cursor-pointer">
