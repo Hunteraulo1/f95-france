@@ -89,8 +89,13 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 
-			if (role === 'superadmin' && locals.user.role !== 'superadmin') {
-				return fail(403, { message: "Vous n'avez pas les permissions pour définir un superadmin" });
+			if ((role === 'admin' || role === 'superadmin') && locals.user.role !== 'superadmin') {
+				return fail(403, {
+					message:
+						role === 'admin'
+							? "Vous n'avez pas les permissions pour définir un admin"
+							: "Vous n'avez pas les permissions pour définir un superadmin"
+				});
 			}
 
 			if (currentUserRole === 'superadmin' && locals.user.role !== 'superadmin') {
