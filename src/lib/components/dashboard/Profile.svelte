@@ -52,7 +52,7 @@
 		</div>
 
 		<div class="flex w-full flex-col gap-4">
-			{#if stats && (stats.gameAdd > 0 || stats.gameEdit > 0)}
+			{#if stats}
 				<div class="stats bg-base-100 shadow">
 					<div class="stat">
 						<div class="stat-figure text-primary">
@@ -71,7 +71,7 @@
 					</div>
 				</div>
 			{/if}
-			{#if stats && (stats.submissionAdd > 0 || stats.submissionEdit > 0)}
+			{#if stats}
 				<div class="stats bg-base-100 shadow">
 					<div class="stat">
 						<div class="stat-figure text-primary">

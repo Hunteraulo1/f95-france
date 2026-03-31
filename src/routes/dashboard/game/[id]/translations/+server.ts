@@ -1,6 +1,5 @@
 import { getUserById } from '$lib/server/auth';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
-import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
@@ -11,6 +10,8 @@ import { createTranslationSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
+
+const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
 // POST - Créer une nouvelle traduction
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -35,7 +36,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tlink,
 			tname,
 			directMode,
-			ac,
 			translatorId,
 			proofreaderId
 		} = body;
@@ -56,7 +56,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Vérifier que le jeu existe
 		const game = await db
-			.select({ id: table.game.id })
+			.select({
+				id: table.game.id,
+				gameAutoCheck: table.game.gameAutoCheck,
+				gameVersion: table.game.gameVersion
+			})
 			.from(table.game)
 			.where(eq(table.game.id, gameId))
 			.limit(1);
@@ -65,8 +69,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
-		const allowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
-		const acValue = clampTranslationAc(allowsTranslationAc, ac);
+		const acValue =
+			game[0].gameAutoCheck === true &&
+			normVersion(tversion).length > 0 &&
+			normVersion(tversion) === normVersion(game[0].gameVersion);
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);

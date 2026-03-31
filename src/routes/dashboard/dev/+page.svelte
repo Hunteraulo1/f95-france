@@ -83,20 +83,25 @@
 		channel: string | null;
 		httpStatus: number | null;
 	};
-type DbSheetSyncResult = {
-	success: boolean;
-	message: string;
-	details:
-		| string
-		| {
-				totalTranslations: number;
-				totalTranslators: number;
-				syncedTranslations: number;
-				syncedTranslators: number;
-				errors: string[];
-		  }
-		| null;
-};
+	type DbSheetSyncResult = {
+		success: boolean;
+		message: string;
+		details:
+			| string
+			| {
+					totalTranslations: number;
+					totalTranslators: number;
+					syncedTranslations: number;
+					syncedTranslators: number;
+					errors: string[];
+			  }
+			| null;
+	};
+	type ClearTranslationNamesResult = {
+		success: boolean;
+		message: string;
+		details: string | { updated: number } | null;
+	};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -114,8 +119,10 @@ type DbSheetSyncResult = {
 	let translatorsImportResult = $state<TranslatorsImportResult | null>(null);
 	let webhookTestIsLoading = $state(false);
 	let webhookTestResult = $state<WebhookTestResult | null>(null);
-let dbSheetSyncIsLoading = $state(false);
-let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
+	let dbSheetSyncIsLoading = $state(false);
+	let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
+	let clearTranslationNamesIsLoading = $state(false);
+	let clearTranslationNamesResult = $state<ClearTranslationNamesResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -135,7 +142,6 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 	const webhookStatus = $derived(
 		data.webhookStatus ?? {
 			updates: false,
-			logs: false,
 			translators: false,
 			proofreaders: false
 		}
@@ -144,7 +150,6 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 		(
 			({
 				updates: 'Mises à jour',
-				logs: 'Logs',
 				translators: 'Traducteurs',
 				proofreaders: 'Relecteurs'
 			}) as Record<string, string>
@@ -411,14 +416,6 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 					{/if}
 				</div>
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
-					<span>Logs</span>
-					{#if webhookStatus.logs}
-						<span class="badge badge-sm badge-success">configuré</span>
-					{:else}
-						<span class="badge badge-ghost badge-sm">vide</span>
-					{/if}
-				</div>
-				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Traducteurs</span>
 					{#if webhookStatus.translators}
 						<span class="badge badge-sm badge-success">configuré</span>
@@ -436,7 +433,7 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 				</div>
 			</div>
 
-			{#if !webhookStatus.updates && !webhookStatus.logs && !webhookStatus.translators && !webhookStatus.proofreaders}
+			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders}
 				<p class="mb-4 text-sm text-warning">
 					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
 					tester.
@@ -487,12 +484,10 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 							class="select-bordered select w-full max-w-md"
 							disabled={webhookTestIsLoading ||
 								(!webhookStatus.updates &&
-									!webhookStatus.logs &&
 									!webhookStatus.translators &&
 									!webhookStatus.proofreaders)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
-							{#if webhookStatus.logs}<option value="logs">Logs</option>{/if}
 							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
 							{#if webhookStatus.proofreaders}<option value="proofreaders">Relecteurs</option>{/if}
 						</select>
@@ -501,10 +496,7 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 						type="submit"
 						class="btn btn-primary"
 						disabled={webhookTestIsLoading ||
-							(!webhookStatus.updates &&
-								!webhookStatus.logs &&
-								!webhookStatus.translators &&
-								!webhookStatus.proofreaders)}
+							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders)}
 					>
 						{#if webhookTestIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />
@@ -1034,7 +1026,11 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 					}}
 					class="md:order-3"
 				>
-					<button type="submit" class="btn h-full w-full btn-secondary" disabled={dbSheetSyncIsLoading}>
+					<button
+						type="submit"
+						class="btn h-full w-full btn-secondary"
+						disabled={dbSheetSyncIsLoading}
+					>
 						{#if dbSheetSyncIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />
 							<span>Sync DB -> Spreadsheet...</span>
@@ -1083,6 +1079,45 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 							<span>Nettoyage...</span>
 						{:else}
 							<span>Nettoyer les doublons de traductions</span>
+						{/if}
+					</button>
+				</form>
+				<form
+					method="POST"
+					action="?/clearAllTranslationNames"
+					use:enhance={() => {
+						clearTranslationNamesIsLoading = true;
+						clearTranslationNamesResult = null;
+						return async function ({ result, update }) {
+							await update();
+							clearTranslationNamesIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data as Record<string, unknown>;
+								clearTranslationNamesResult = {
+									success: Boolean(data.success),
+									message: typeof data.message === 'string' ? data.message : '',
+									details:
+										typeof data.details === 'string' ||
+										data.details === null ||
+										(typeof data.details === 'object' && data.details !== null)
+											? (data.details as ClearTranslationNamesResult['details'])
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-5"
+				>
+					<button
+						type="submit"
+						class="btn h-full w-full btn-error"
+						disabled={clearTranslationNamesIsLoading}
+					>
+						{#if clearTranslationNamesIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Suppression en cours...</span>
+						{:else}
+							<span>Vider tous les noms de traduction</span>
 						{/if}
 					</button>
 				</form>
@@ -1204,8 +1239,8 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 								<h3 class="font-bold">{dbSheetSyncResult.message}</h3>
 								{#if dbSheetSyncResult.details && typeof dbSheetSyncResult.details === 'object'}
 									<p class="mt-1 text-sm">
-										Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
-											.totalTranslations}
+										Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult
+											.details.totalTranslations}
 										| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
 											.details.totalTranslators}
 									</p>
@@ -1222,13 +1257,16 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 										<p class="mt-1 text-sm">{dbSheetSyncResult.details}</p>
 									{:else}
 										<p class="mt-1 text-sm">
-											Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
-												.totalTranslations}
-											| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
-												.details.totalTranslators}
+											Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult
+												.details.totalTranslations}
+											| Traducteurs: {dbSheetSyncResult.details
+												.syncedTranslators}/{dbSheetSyncResult.details.totalTranslators}
 										</p>
 										{#if dbSheetSyncResult.details.errors.length > 0}
-											<pre class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{dbSheetSyncResult.details.errors.join('\n')}</pre>
+											<pre
+												class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{dbSheetSyncResult.details.errors.join(
+													'\n'
+												)}</pre>
 										{/if}
 									{/if}
 								{/if}
@@ -1262,6 +1300,39 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 										{typeof cleanupResult.details === 'string'
 											? cleanupResult.details
 											: JSON.stringify(cleanupResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+			{#if clearTranslationNamesResult}
+				<div class="mt-3">
+					{#if clearTranslationNamesResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{clearTranslationNamesResult.message}</h3>
+								{#if clearTranslationNamesResult.details && typeof clearTranslationNamesResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Lignes mises à jour: {clearTranslationNamesResult.details.updated}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">
+									{clearTranslationNamesResult.message || 'Erreur inconnue'}
+								</h3>
+								{#if clearTranslationNamesResult.details}
+									<p class="mt-1 text-sm">
+										{typeof clearTranslationNamesResult.details === 'string'
+											? clearTranslationNamesResult.details
+											: JSON.stringify(clearTranslationNamesResult.details)}
 									</p>
 								{/if}
 							</div>

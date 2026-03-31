@@ -4,16 +4,26 @@
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
 	import { themeChange } from 'theme-change';
+	import type { PageData } from './$types';
 
-	let users = $state<User[]>([]);
+	const { data }: { data: PageData } = $props();
+
+	type DevUserLite = Pick<User, 'id' | 'username' | 'role'>;
+	let users = $state<DevUserLite[]>([]);
 	let profileError = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
+	let switchUserError = $state<string | null>(null);
+	let returnUserError = $state<string | null>(null);
 	let selectedTheme = $state($user?.theme || 'system');
+	let targetUserId = $state('');
 
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
-			users = [$user as User]; // TODO: Get users from database
+			users = (data.devUsers ?? []) as DevUserLite[];
+			targetUserId = users.some((u) => u.id === $user?.id)
+				? ($user?.id ?? '')
+				: (users[0]?.id ?? '');
 		}
 		if ($user?.theme) {
 			selectedTheme = $user.theme;
@@ -237,23 +247,97 @@
 			<h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
 
 			<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+				{#if switchUserError}
+					<div class="mb-4 alert alert-error">
+						<span>{switchUserError}</span>
+					</div>
+				{/if}
 				<div class="flex w-full items-center justify-between gap-4">
 					<span class="opacity-70"
 						>Fonctionnalité permettant d'utiliser un autre compte utilisateur.</span
 					>
 				</div>
-				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
-					<label class="input box-content flex w-full">
-						Utilisateur
-						<select
-							class="select h-[calc(100%-2px)] grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
-						>
-							{#each users as user (user.id)}
-								<option value="user.id">{user.username}</option>
-							{/each}
-						</select>
-					</label>
+				<form
+					method="POST"
+					action="?/switchDevUser"
+					class="w-full"
+					use:enhance={() => {
+						switchUserError = null;
+						return async function ({ result, update }) {
+							if (result.type === 'success') {
+								await update();
+								window.location.href = '/dashboard';
+								return;
+							}
+							if (result.type === 'failure' && result.data) {
+								switchUserError =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: "Erreur lors du changement d'utilisateur";
+							}
+						};
+					}}
+				>
+					<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
+						<label class="input box-content flex w-full">
+							Utilisateur
+							<select
+								name="targetUserId"
+								class="select h-[calc(100%-2px)] grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
+								bind:value={targetUserId}
+							>
+								{#each users as user (user.id)}
+									<option value={user.id}>{user.username} ({user.role})</option>
+								{/each}
+							</select>
+						</label>
+						<button class="btn btn-primary" type="submit">Basculer</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{/if}
+
+	{#if data.canReturnToOwnAccount}
+		<div class="flex flex-col gap-4">
+			<h2 class="text-lg font-semibold text-base-content">Retour au compte d'origine</h2>
+			<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+				{#if returnUserError}
+					<div class="mb-4 alert alert-error">
+						<span>{returnUserError}</span>
+					</div>
+				{/if}
+				<div class="flex w-full items-center justify-between gap-4">
+					<span class="opacity-70">
+						Session actuellement en mode dev.
+						{#if data.devOriginUsername}
+							Retour possible vers <strong>{data.devOriginUsername}</strong>.
+						{/if}
+					</span>
 				</div>
+				<form
+					method="POST"
+					action="?/returnToOwnAccount"
+					class="w-full"
+					use:enhance={() => {
+						returnUserError = null;
+						return async function ({ result, update }) {
+							if (result.type === 'success') {
+								await update();
+								window.location.href = '/dashboard';
+								return;
+							}
+							if (result.type === 'failure' && result.data) {
+								returnUserError =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: 'Erreur lors du retour au compte';
+							}
+						};
+					}}
+				>
+					<button class="btn btn-secondary" type="submit">Revenir à mon compte</button>
+				</form>
 			</div>
 		</div>
 	{/if}

@@ -70,7 +70,9 @@
 											{/if}
 										</div>
 									</div>
-									<span class="font-bold">{user.username}</span>
+									<a href={`/dashboard/profile/${user.id}`} class="link font-bold link-hover">
+										{user.username}
+									</a>
 								</div>
 							</td>
 							<td>{user.email}</td>

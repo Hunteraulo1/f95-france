@@ -1,6 +1,5 @@
 import { getUserById } from '$lib/server/auth';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
-import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
@@ -39,10 +38,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tlink,
 			tname: tnameBody,
 			directMode,
-			ac,
+			silentMode,
+			ac: _acIgnored,
 			translatorId,
 			proofreaderId
 		} = body;
+		void _acIgnored;
 
 		const beforeRows = await db
 			.select()
@@ -81,8 +82,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		const allowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
-		const acValue = clampTranslationAc(allowsTranslationAc, ac);
+		// Règle métier: une modification de traduction ne change jamais l'auto-check.
+		const acValue = before.ac ?? false;
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
@@ -92,6 +93,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
+		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission =
@@ -158,13 +161,15 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				ac: before.ac
 			}
 		});
-		void sendDiscordWebhookUpdatesSubmissionApplied({
-			submissionId: translationId,
-			submissionType: 'translation',
-			dataJson,
-			translationWasUpdate: true,
-			adminNotes: null
-		});
+		if (!isSilentMode) {
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: translationId,
+				submissionType: 'translation',
+				dataJson,
+				translationWasUpdate: true,
+				adminNotes: null
+			});
+		}
 		void syncTranslationToGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] update translation failed:', err);
 		});

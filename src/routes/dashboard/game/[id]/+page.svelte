@@ -22,6 +22,12 @@
 	const translations = $derived(data.translations);
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
+	const canUseSilentMode = $derived(
+		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+	);
+	const canManageGameAutoCheck = $derived(
+		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+	);
 	const canShowRefreshButton = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
@@ -50,6 +56,7 @@
 
 	// État pour le modal de modification de traduction
 	let showEditTranslationModal = $state(false);
+	let editTranslationSilentMode = $state(false);
 	let editingTranslation = $state({
 		translationName: '',
 		id: '',
@@ -79,6 +86,7 @@
 
 	// État pour le modal de modification du jeu
 	let showEditGameModal = $state(false);
+	let editGameSilentMode = $state(false);
 	let editingGame = $state({
 		name: '',
 		description: '',
@@ -400,7 +408,6 @@
 				ttype: newTranslation.ttype,
 				tlink: tlinkValue,
 				tname: newTranslation.tname,
-				ac: newTranslation.ac ?? false,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue
 			};
@@ -447,6 +454,7 @@
 	};
 
 	const openEditTranslationModal = (translation: (typeof translations)[number]) => {
+		editTranslationSilentMode = false;
 		editingTranslation = {
 			translationName: translation.translationName || '',
 			id: translation.id,
@@ -464,6 +472,7 @@
 
 	const closeEditTranslationModal = () => {
 		showEditTranslationModal = false;
+		editTranslationSilentMode = false;
 		editingTranslation = {
 			translationName: '',
 			id: '',
@@ -544,9 +553,9 @@
 				ttype: editingTranslation.ttype,
 				tlink: tlinkValue,
 				tname: editingTranslation.tname,
-				ac: editingTranslation.ac ?? false,
 				translatorId: translatorIdValue,
-				proofreaderId: proofreaderIdValue
+				proofreaderId: proofreaderIdValue,
+				silentMode: canUseSilentMode ? editTranslationSilentMode : false
 			};
 
 			const response = await fetch(
@@ -726,6 +735,7 @@
 	});
 
 	const openEditGameModal = () => {
+		editGameSilentMode = false;
 		const isF95 = game.website === 'f95z';
 		editingGame = {
 			name: game.name,
@@ -744,6 +754,7 @@
 
 	const closeEditGameModal = () => {
 		showEditGameModal = false;
+		editGameSilentMode = false;
 		editingGame = {
 			name: '',
 			description: '',
@@ -765,7 +776,10 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(editingGame)
+				body: JSON.stringify({
+					...editingGame,
+					silentMode: canUseSilentMode ? editGameSilentMode : false
+				})
 			});
 
 			if (response.ok) {
@@ -1107,28 +1121,9 @@
 			</div>
 
 			<div class="form-control mb-6 w-full">
-				<label class="label cursor-pointer" for="ac">
-					<span class="label-text">Auto-Check</span>
-					<input
-						id="ac"
-						type="checkbox"
-						class="toggle"
-						bind:checked={newTranslation.ac}
-						disabled={!translationAcUiAllowed}
-					/>
-				</label>
 				<p class="mt-1 text-xs text-base-content/60">
-					Optionnel : rafraîchissement auto de cette ligne si le jeu est à jour. Nécessite
-					l’Auto-check jeu ; ne s’active pas tout seul quand le jeu l’est.
-					{#if game.website !== 'f95z'}
-						<span class="block text-warning">
-							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
-						</span>
-					{:else if !game.gameAutoCheck}
-						<span class="block text-warning"
-							>Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span
-						>
-					{/if}
+					Auto-check traduction déterminé automatiquement à l’ajout (version trad = version jeu et
+					auto-check jeu actif).
 				</p>
 			</div>
 
@@ -1281,28 +1276,8 @@
 			</div>
 
 			<div class="form-control mb-6 w-full">
-				<label class="label cursor-pointer" for="edit-ac">
-					<span class="label-text">Auto-Check</span>
-					<input
-						id="edit-ac"
-						type="checkbox"
-						class="toggle"
-						bind:checked={editingTranslation.ac}
-						disabled={!translationAcUiAllowed}
-					/>
-				</label>
 				<p class="mt-1 text-xs text-base-content/60">
-					Optionnel : rafraîchissement auto de cette ligne si le jeu est à jour. Nécessite
-					l’Auto-check jeu ; ne s’active pas tout seul quand le jeu l’est.
-					{#if game.website !== 'f95z'}
-						<span class="block text-warning">
-							Disponible uniquement pour les jeux dont la plateforme est F95Zone.
-						</span>
-					{:else if !game.gameAutoCheck}
-						<span class="block text-warning"
-							>Désactivé : l’Auto-check jeu est désactivé pour ce titre.</span
-						>
-					{/if}
+					L’auto-check d’une traduction n’est pas modifié depuis cette action.
 				</p>
 			</div>
 
@@ -1344,6 +1319,18 @@
 					</datalist>
 				</div>
 			</div>
+			{#if canUseSilentMode}
+				<div class="form-control mt-4">
+					<label class="label cursor-pointer">
+						<span class="label-text">Mode silencieux (sans notification Discord)</span>
+						<input
+							type="checkbox"
+							class="toggle toggle-sm"
+							bind:checked={editTranslationSilentMode}
+						/>
+					</label>
+				</div>
+			{/if}
 
 			<div class="modal-action">
 				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>
@@ -1466,28 +1453,43 @@
 						bind:value={editingGame.description}
 					></textarea>
 				</div>
-				<div class="form-control col-span-2 w-full">
-					<label class="label cursor-pointer" for="edit-game-autocheck">
-						<span class="label-text"
-							>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
-						>
-						<input
-							id="edit-game-autocheck"
-							type="checkbox"
-							class="toggle"
-							bind:checked={editingGame.gameAutoCheck}
-							disabled={!editGameAutoCheckAllowed}
-						/>
-					</label>
-					<p class="label-text-alt text-base-content/60">
-						{#if editGameAutoCheckAllowed}
-							Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est pas
-							obligatoire sur chaque traduction : vous choisissez ligne par ligne.
-						{:else}
-							Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
-						{/if}
-					</p>
-				</div>
+				{#if canManageGameAutoCheck}
+					<div class="form-control col-span-2 w-full">
+						<label class="label cursor-pointer" for="edit-game-autocheck">
+							<span class="label-text"
+								>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
+							>
+							<input
+								id="edit-game-autocheck"
+								type="checkbox"
+								class="toggle"
+								bind:checked={editingGame.gameAutoCheck}
+								disabled={!editGameAutoCheckAllowed}
+							/>
+						</label>
+						<p class="label-text-alt text-base-content/60">
+							{#if editGameAutoCheckAllowed}
+								Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est
+								pas obligatoire sur chaque traduction : vous choisissez ligne par ligne.
+							{:else}
+								Disponible uniquement lorsque le site web du jeu est <code class="text-xs"
+									>f95z</code
+								> (F95Zone).
+							{/if}
+						</p>
+					</div>
+				{/if}
+				{#if canUseSilentMode}
+					<div class="form-control col-span-2">
+						<label class="label cursor-pointer">
+							<span class="label-text">Mode silencieux</span>
+							<input type="checkbox" class="toggle toggle-sm" bind:checked={editGameSilentMode} />
+						</label>
+						<p class="label-text-alt text-base-content/60">
+							Aucune notification Discord envoyée pour la modification de traduction liée.
+						</p>
+					</div>
+				{/if}
 			</div>
 
 			<div class="modal-action">

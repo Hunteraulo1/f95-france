@@ -22,7 +22,6 @@ export type DiscordEmbed = {
 
 type WebhookUrls = {
 	updates: string | null;
-	logs: string | null;
 	translators: string | null;
 	proofreaders: string | null;
 };
@@ -38,7 +37,6 @@ async function getWebhookUrls(): Promise<WebhookUrls> {
 	const rows = await db
 		.select({
 			discordWebhookUpdates: table.config.discordWebhookUpdates,
-			discordWebhookLogs: table.config.discordWebhookLogs,
 			discordWebhookTranslators: table.config.discordWebhookTranslators,
 			discordWebhookProofreaders: table.config.discordWebhookProofreaders
 		})
@@ -48,7 +46,6 @@ async function getWebhookUrls(): Promise<WebhookUrls> {
 	const r = rows[0];
 	const urls: WebhookUrls = {
 		updates: r?.discordWebhookUpdates ?? null,
-		logs: r?.discordWebhookLogs ?? null,
 		translators: r?.discordWebhookTranslators ?? null,
 		proofreaders: r?.discordWebhookProofreaders ?? null
 	};
@@ -115,42 +112,6 @@ export async function executeDiscordWebhook(
 	} catch (e) {
 		console.warn('[discord-webhook] envoi échoué:', e);
 	}
-}
-
-/** Erreur API / route (équivalent canal « logs » côté f95list-form). */
-export async function sendDiscordWebhookLogsApiError(args: {
-	method: string;
-	route: string;
-	status: number;
-	username: string | null;
-	userId: string | null;
-}): Promise<void> {
-	const { logs } = await getWebhookUrls();
-	if (!logs) return;
-
-	const color = args.status >= 500 ? 0xe74c3c : 0xf39c12;
-	await executeDiscordWebhook(logs, {
-		embeds: [
-			{
-				title: `${args.status} — ${args.method}`,
-				color,
-				fields: [
-					{ name: 'Route', value: trimFieldValue(args.route, 900), inline: false },
-					{
-						name: 'Utilisateur',
-						value: trimFieldValue(args.username ?? '—', 200),
-						inline: true
-					},
-					{
-						name: 'ID',
-						value: trimFieldValue(args.userId ?? '—', 200),
-						inline: true
-					}
-				],
-				footer: { text: 'F95 France — logs' }
-			}
-		]
-	});
 }
 
 /** Soumission acceptée et appliquée (canal « updates ») : embed détaillé selon le type d’opération. */

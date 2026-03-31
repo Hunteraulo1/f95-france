@@ -784,9 +784,11 @@ export async function applySubmission(submissionId: string) {
 
 			// Supprimer d'abord toutes les traductions associées
 			await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, sub.gameId));
-			void deleteGameTranslationsFromGoogleSheet(existingTranslations.map((t) => t.id)).catch((err) => {
-				console.warn('[google-sheets-sync] submission delete game rows failed:', err);
-			});
+			void deleteGameTranslationsFromGoogleSheet(existingTranslations.map((t) => t.id)).catch(
+				(err) => {
+					console.warn('[google-sheets-sync] submission delete game rows failed:', err);
+				}
+			);
 
 			// Supprimer le jeu
 			await db.delete(table.game).where(eq(table.game.id, sub.gameId));
