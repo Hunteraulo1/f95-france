@@ -99,6 +99,17 @@ export const actions: Actions = {
 				});
 			}
 
+			// Un admin ne peut pas modifier un autre admin (sauf lui-même).
+			if (
+				currentUserRole === 'admin' &&
+				locals.user.role === 'admin' &&
+				locals.user.id !== userId
+			) {
+				return fail(403, {
+					message: "Un admin ne peut pas modifier un autre admin"
+				});
+			}
+
 			await db
 				.update(table.user)
 				.set({
