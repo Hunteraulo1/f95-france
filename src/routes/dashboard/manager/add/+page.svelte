@@ -126,6 +126,18 @@
 		}
 	});
 
+	const isScrapeUnchanged = (): boolean => {
+		const b = scrapeBaseline;
+		if (!b) return false;
+		return (
+			normScrapeField(game.name) === b.name &&
+			normScrapeField(game.tags) === b.tags &&
+			normScrapeField(game.type) === b.type &&
+			normScrapeField(game.image) === b.image &&
+			normScrapeField(game.gameVersion) === b.gameVersion
+		);
+	};
+
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
 
@@ -295,6 +307,7 @@
 				link: string | null;
 				image: string;
 				gameVersion: string | null;
+				scrapeUnchanged: boolean;
 			};
 
 			type TranslationPayload = {
@@ -306,7 +319,6 @@
 				tname: FormGameType['tname'];
 				translatorId: string | null;
 				proofreaderId: string | null;
-				ac: boolean;
 			};
 
 			const payload: { game: GamePayload; translation?: TranslationPayload } = {
@@ -319,7 +331,8 @@
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
 					image: game.image.trim(),
-					gameVersion: game.gameVersion?.trim() || null
+					gameVersion: game.gameVersion?.trim() || null,
+					scrapeUnchanged: isScrapeUnchanged()
 				}
 			};
 
@@ -347,8 +360,7 @@
 					tlink: game.tlink?.trim() || null,
 					tname: game.tname,
 					translatorId: game.translatorId?.trim() || null,
-					proofreaderId: game.proofreaderId?.trim() || null,
-					ac: !!game.ac
+					proofreaderId: game.proofreaderId?.trim() || null
 				};
 			}
 
@@ -517,12 +529,7 @@
 			name: 'ttype',
 			values: ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']
 		},
-		{
-			Component: Checkbox,
-			active: [4, 5],
-			title: 'Auto-Check',
-			name: 'ac'
-		}
+		// Auto-check translation est déterminé automatiquement à l'ajout.
 	];
 </script>
 

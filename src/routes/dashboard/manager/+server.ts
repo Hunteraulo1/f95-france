@@ -1,8 +1,6 @@
 import { getUserById } from '$lib/server/auth';
 import {
-	clampTranslationAc,
-	gameAutoCheckEnabledForWebsite,
-	getGameAllowsTranslationAutoCheck
+	gameAutoCheckEnabledForWebsite
 } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -11,6 +9,8 @@ import { syncTranslationToGoogleSheet, syncTranslatorToGoogleSheet } from '$lib/
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
+
+const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	// Vérifier que l'utilisateur est authentifié
@@ -104,6 +104,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Extraire les données du jeu
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
+		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
+		const computedGameAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
+		const computedTranslationAc =
+			computedGameAutoCheck &&
+			normVersion(translation?.tversion).length > 0 &&
+			normVersion(translation?.tversion) === normVersion(gameVersion);
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {
@@ -179,6 +185,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tags: tags || null,
 					link: link || null,
 					image,
+						gameAutoCheck: computedGameAutoCheck,
 					gameVersion:
 						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
 				},
@@ -191,7 +198,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							tlink: translation.tlink || null,
 							translatorId: translation.translatorId || null,
 							proofreaderId: translation.proofreaderId || null,
-							ac: translation.ac ?? null
+							ac: computedTranslationAc
 						}
 					: undefined
 			);
@@ -213,7 +220,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			tags: tags || null,
 			link: link || null,
 			image,
-			gameAutoCheck: gameAutoCheckEnabledForWebsite(website),
+			gameAutoCheck: computedGameAutoCheck,
 			gameVersion:
 				typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
 			createdAt: new Date(),
@@ -233,7 +240,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Créer la traduction si elle est fournie
 		if (translation && gameId) {
-			const allowsT = await getGameAllowsTranslationAutoCheck(gameId);
 			const [createdTranslation] = await db
 				.insert(table.gameTranslation)
 				.values({
@@ -245,7 +251,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tlink: translation.tlink || '',
 					translatorId: translation.translatorId || null,
 					proofreaderId: translation.proofreaderId || null,
-					ac: clampTranslationAc(allowsT, translation.ac ?? false),
+					ac: computedTranslationAc,
 					createdAt: new Date(),
 					updatedAt: new Date()
 				})

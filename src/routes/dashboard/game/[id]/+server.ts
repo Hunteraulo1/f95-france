@@ -104,6 +104,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			link,
 			image,
 			directMode,
+			silentMode,
 			gameAutoCheck,
 			gameVersion
 		} = body;
@@ -117,7 +118,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const existingGameRows = await db
 			.select({
 				id: table.game.id,
-				gameAutoCheck: table.game.gameAutoCheck
+				name: table.game.name,
+				description: table.game.description,
+				type: table.game.type,
+				website: table.game.website,
+				threadId: table.game.threadId,
+				tags: table.game.tags,
+				link: table.game.link,
+				image: table.game.image,
+				gameAutoCheck: table.game.gameAutoCheck,
+				gameVersion: table.game.gameVersion
 			})
 			.from(table.game)
 			.where(eq(table.game.id, gameId))
@@ -127,12 +137,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
-		const prevGameAutoCheck = existingGameRows[0].gameAutoCheck;
-		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
-			website,
-			typeof gameAutoCheck === 'boolean' ? gameAutoCheck : undefined,
-			prevGameAutoCheck ?? true
-		);
+		const existingGame = existingGameRows[0];
+		const prevGameAutoCheck = existingGame.gameAutoCheck;
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
@@ -142,6 +148,32 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
+		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const isSilentMode = canUseSilentMode && Boolean(silentMode);
+		const canManuallyToggleGameAutoCheck = userRole === 'admin' || userRole === 'superadmin';
+		const parsedThreadId =
+			threadId !== null && threadId !== undefined && threadId !== ''
+				? parseInt(String(threadId), 10)
+				: null;
+		const nextThreadId = parsedThreadId !== null && !Number.isNaN(parsedThreadId) ? parsedThreadId : null;
+		const hasNonVersionChanges =
+			(name ?? '') !== (existingGame.name ?? '') ||
+			(description || null) !== (existingGame.description ?? null) ||
+			(type ?? '') !== (existingGame.type ?? '') ||
+			(website ?? '') !== (existingGame.website ?? '') ||
+			nextThreadId !== (existingGame.threadId ?? null) ||
+			(tags || null) !== (existingGame.tags ?? null) ||
+			(link || null) !== (existingGame.link ?? null) ||
+			(image ?? '') !== (existingGame.image ?? '');
+		const nextGameAutoCheck = hasNonVersionChanges
+			? false
+			: resolveGameAutoCheckForWebsite(
+					website,
+					canManuallyToggleGameAutoCheck && typeof gameAutoCheck === 'boolean'
+						? gameAutoCheck
+						: undefined,
+					prevGameAutoCheck ?? true
+				);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission =
@@ -154,7 +186,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				description: description || null,
 				type,
 				website,
-				threadId: threadId ? parseInt(threadId) : null,
+				threadId: nextThreadId,
 				tags: tags || null,
 				link: link || null,
 				image,
@@ -163,7 +195,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 
 			return json({
-				message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
+				message: isSilentMode
+					? 'Soumission créée (mode silencieux). Elle sera examinée par un administrateur.'
+					: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
 				submission: true
 			});
 		}
