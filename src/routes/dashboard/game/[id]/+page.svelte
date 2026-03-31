@@ -1323,7 +1323,11 @@
 				<div class="form-control mt-4">
 					<label class="label cursor-pointer">
 						<span class="label-text">Mode silencieux (sans notification Discord)</span>
-						<input type="checkbox" class="toggle toggle-sm" bind:checked={editTranslationSilentMode} />
+						<input
+							type="checkbox"
+							class="toggle toggle-sm"
+							bind:checked={editTranslationSilentMode}
+						/>
 					</label>
 				</div>
 			{/if}
@@ -1465,10 +1469,12 @@
 						</label>
 						<p class="label-text-alt text-base-content/60">
 							{#if editGameAutoCheckAllowed}
-								Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est pas
-								obligatoire sur chaque traduction : vous choisissez ligne par ligne.
+								Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est
+								pas obligatoire sur chaque traduction : vous choisissez ligne par ligne.
 							{:else}
-								Disponible uniquement lorsque le site web du jeu est <code class="text-xs">f95z</code> (F95Zone).
+								Disponible uniquement lorsque le site web du jeu est <code class="text-xs"
+									>f95z</code
+								> (F95Zone).
 							{/if}
 						</p>
 					</div>

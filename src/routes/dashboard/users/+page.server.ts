@@ -111,7 +111,7 @@ export const actions: Actions = {
 				locals.user.id !== userId
 			) {
 				return fail(403, {
-					message: "Un admin ne peut pas modifier un autre admin"
+					message: 'Un admin ne peut pas modifier un autre admin'
 				});
 			}
 

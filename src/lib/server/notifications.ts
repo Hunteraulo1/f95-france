@@ -187,7 +187,6 @@ export async function notifyApiError(
 	} catch (error) {
 		console.warn("Erreur lors de la notification d'erreur API:", error);
 	}
-
 }
 
 /**

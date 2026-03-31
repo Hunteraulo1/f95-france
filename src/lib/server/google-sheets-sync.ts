@@ -258,14 +258,20 @@ async function sheetsBatchUpdate(
 	data: Array<{ range: string; values: string[][] }>
 ): Promise<void> {
 	if (data.length === 0) return;
-	const res = await sheetsFetch(auth.spreadsheetId, auth.headers, `/values:batchUpdate`, auth.apiKey, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			valueInputOption: 'USER_ENTERED',
-			data
-		})
-	});
+	const res = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values:batchUpdate`,
+		auth.apiKey,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				valueInputOption: 'USER_ENTERED',
+				data
+			})
+		}
+	);
 	if (!res.ok) {
 		const err = await res.text().catch(() => '');
 		throw new Error(`Sheets batchUpdate error (${res.status}): ${err.slice(0, 500)}`);
@@ -390,17 +396,11 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 			}
 		}));
 
-	const delRes = await sheetsFetch(
-		auth.spreadsheetId,
-		auth.headers,
-		`:batchUpdate`,
-		auth.apiKey,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ requests })
-		}
-	);
+	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ requests })
+	});
 	if (!delRes.ok) {
 		const err = await delRes.text().catch(() => '');
 		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
@@ -593,7 +593,9 @@ export async function deleteTranslationFromGoogleSheet(translationId: string): P
 	await deleteRowsByTranslationIds([translationId]);
 }
 
-export async function deleteGameTranslationsFromGoogleSheet(translationIds: string[]): Promise<void> {
+export async function deleteGameTranslationsFromGoogleSheet(
+	translationIds: string[]
+): Promise<void> {
 	await deleteRowsByTranslationIds(translationIds);
 }
 
@@ -832,8 +834,8 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 			try {
 				const game = gameMap.get(tr.gameId);
 				if (!game) continue;
-				const translator = tr.translatorId ? translatorMap.get(tr.translatorId) ?? null : null;
-				const proofreader = tr.proofreaderId ? translatorMap.get(tr.proofreaderId) ?? null : null;
+				const translator = tr.translatorId ? (translatorMap.get(tr.translatorId) ?? null) : null;
+				const proofreader = tr.proofreaderId ? (translatorMap.get(tr.proofreaderId) ?? null) : null;
 				const row = buildJeuxRow(jeuxSnap.headersRow, { tr, game, translator, proofreader });
 				const rowNumber = jeuxSnap.rowNumberById.get(tr.id);
 				if (rowNumber) {
@@ -845,7 +847,9 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 					appends.push(row);
 				}
 			} catch (err) {
-				errors.push(`translation ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+				errors.push(
+					`translation ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+				);
 			}
 		}
 		for (let i = 0; i < updates.length; i += 200) {
@@ -891,7 +895,9 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 					appends.push(row);
 				}
 			} catch (err) {
-				errors.push(`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+				errors.push(
+					`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+				);
 			}
 		}
 		for (let i = 0; i < updates.length; i += 200) {
@@ -917,7 +923,9 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 			}
 		}
 	} catch (err) {
-		errors.push(`bulk Traducteurs/Relecteurs: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+		errors.push(
+			`bulk Traducteurs/Relecteurs: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+		);
 	}
 
 	return {

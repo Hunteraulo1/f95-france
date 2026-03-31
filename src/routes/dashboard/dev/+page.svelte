@@ -83,20 +83,20 @@
 		channel: string | null;
 		httpStatus: number | null;
 	};
-type DbSheetSyncResult = {
-	success: boolean;
-	message: string;
-	details:
-		| string
-		| {
-				totalTranslations: number;
-				totalTranslators: number;
-				syncedTranslations: number;
-				syncedTranslators: number;
-				errors: string[];
-		  }
-		| null;
-};
+	type DbSheetSyncResult = {
+		success: boolean;
+		message: string;
+		details:
+			| string
+			| {
+					totalTranslations: number;
+					totalTranslators: number;
+					syncedTranslations: number;
+					syncedTranslators: number;
+					errors: string[];
+			  }
+			| null;
+	};
 	type ClearTranslationNamesResult = {
 		success: boolean;
 		message: string;
@@ -496,9 +496,7 @@ type DbSheetSyncResult = {
 						type="submit"
 						class="btn btn-primary"
 						disabled={webhookTestIsLoading ||
-							(!webhookStatus.updates &&
-								!webhookStatus.translators &&
-								!webhookStatus.proofreaders)}
+							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders)}
 					>
 						{#if webhookTestIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />
@@ -1028,7 +1026,11 @@ type DbSheetSyncResult = {
 					}}
 					class="md:order-3"
 				>
-					<button type="submit" class="btn h-full w-full btn-secondary" disabled={dbSheetSyncIsLoading}>
+					<button
+						type="submit"
+						class="btn h-full w-full btn-secondary"
+						disabled={dbSheetSyncIsLoading}
+					>
 						{#if dbSheetSyncIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />
 							<span>Sync DB -> Spreadsheet...</span>
@@ -1237,8 +1239,8 @@ type DbSheetSyncResult = {
 								<h3 class="font-bold">{dbSheetSyncResult.message}</h3>
 								{#if dbSheetSyncResult.details && typeof dbSheetSyncResult.details === 'object'}
 									<p class="mt-1 text-sm">
-										Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
-											.totalTranslations}
+										Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult
+											.details.totalTranslations}
 										| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
 											.details.totalTranslators}
 									</p>
@@ -1255,13 +1257,16 @@ type DbSheetSyncResult = {
 										<p class="mt-1 text-sm">{dbSheetSyncResult.details}</p>
 									{:else}
 										<p class="mt-1 text-sm">
-											Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
-												.totalTranslations}
-											| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
-												.details.totalTranslators}
+											Traductions: {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult
+												.details.totalTranslations}
+											| Traducteurs: {dbSheetSyncResult.details
+												.syncedTranslators}/{dbSheetSyncResult.details.totalTranslators}
 										</p>
 										{#if dbSheetSyncResult.details.errors.length > 0}
-											<pre class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{dbSheetSyncResult.details.errors.join('\n')}</pre>
+											<pre
+												class="mt-2 max-h-40 overflow-auto text-xs whitespace-pre-wrap">{dbSheetSyncResult.details.errors.join(
+													'\n'
+												)}</pre>
 										{/if}
 									{/if}
 								{/if}
@@ -1320,7 +1325,9 @@ type DbSheetSyncResult = {
 						<div class="alert alert-error">
 							<CircleX class="h-6 w-6" />
 							<div class="flex-1">
-								<h3 class="font-bold">{clearTranslationNamesResult.message || 'Erreur inconnue'}</h3>
+								<h3 class="font-bold">
+									{clearTranslationNamesResult.message || 'Erreur inconnue'}
+								</h3>
 								{#if clearTranslationNamesResult.details}
 									<p class="mt-1 text-sm">
 										{typeof clearTranslationNamesResult.details === 'string'

@@ -1,11 +1,12 @@
 import { getUserById } from '$lib/server/auth';
-import {
-	gameAutoCheckEnabledForWebsite
-} from '$lib/server/game-auto-check';
+import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameSubmission } from '$lib/server/submissions';
-import { syncTranslationToGoogleSheet, syncTranslatorToGoogleSheet } from '$lib/server/google-sheets-sync';
+import {
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -185,7 +186,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tags: tags || null,
 					link: link || null,
 					image,
-						gameAutoCheck: computedGameAutoCheck,
+					gameAutoCheck: computedGameAutoCheck,
 					gameVersion:
 						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
 				},

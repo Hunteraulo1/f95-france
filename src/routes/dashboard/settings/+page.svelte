@@ -21,7 +21,9 @@
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
 			users = (data.devUsers ?? []) as DevUserLite[];
-			targetUserId = users.some((u) => u.id === $user?.id) ? ($user?.id ?? '') : (users[0]?.id ?? '');
+			targetUserId = users.some((u) => u.id === $user?.id)
+				? ($user?.id ?? '')
+				: (users[0]?.id ?? '');
 		}
 		if ($user?.theme) {
 			selectedTheme = $user.theme;

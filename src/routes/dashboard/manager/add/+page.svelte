@@ -528,7 +528,7 @@
 			title: 'Type de Traduction',
 			name: 'ttype',
 			values: ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']
-		},
+		}
 		// Auto-check translation est déterminé automatiquement à l'ajout.
 	];
 </script>

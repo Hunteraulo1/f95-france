@@ -1101,9 +1101,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const raw = formData.get('channel');
 		const channel =
-			raw === 'updates' || raw === 'translators' || raw === 'proofreaders'
-				? raw
-				: null;
+			raw === 'updates' || raw === 'translators' || raw === 'proofreaders' ? raw : null;
 
 		if (!channel) {
 			return {

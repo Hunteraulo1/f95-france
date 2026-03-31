@@ -155,7 +155,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			threadId !== null && threadId !== undefined && threadId !== ''
 				? parseInt(String(threadId), 10)
 				: null;
-		const nextThreadId = parsedThreadId !== null && !Number.isNaN(parsedThreadId) ? parsedThreadId : null;
+		const nextThreadId =
+			parsedThreadId !== null && !Number.isNaN(parsedThreadId) ? parsedThreadId : null;
 		const hasNonVersionChanges =
 			(name ?? '') !== (existingGame.name ?? '') ||
 			(description || null) !== (existingGame.description ?? null) ||
@@ -342,9 +343,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 						adminNotes: rejectionNote,
 						updatedAt: new Date()
 					})
-					.where(
-						and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, gameId))
-					);
+					.where(and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, gameId)));
 			}
 
 			if (translationIds.length > 0) {
