@@ -3,8 +3,8 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 import { eq, inArray, sql } from 'drizzle-orm';
@@ -481,7 +481,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				await db.insert(table.gameTranslation).values({
 					id: crypto.randomUUID(),
 					gameId,
-					translationName: item.tname?.trim() || null,
+					translationName: null,
 					status: mapStatus(item.status),
 					tversion,
 					tlink: item.tlink?.trim() || '',
@@ -500,7 +500,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					.update(table.gameTranslation)
 					.set({
 						gameId,
-						translationName: item.tname?.trim() || null,
+						translationName: null,
 						status: mapStatus(item.status),
 						tversion,
 						tlink: item.tlink?.trim() || '',
@@ -526,6 +526,16 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		createdProofreaders,
 		skipped
 	};
+};
+
+const syncAllDbToSpreadsheet = async (): Promise<{
+	totalTranslations: number;
+	totalTranslators: number;
+	syncedTranslations: number;
+	syncedTranslators: number;
+	errors: string[];
+}> => {
+	return syncDbToSpreadsheetBulk();
 };
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -901,10 +911,17 @@ export const actions: Actions = {
 			}
 
 			const details = await upsertLegacyGames(games);
+			const spreadsheetSync = await syncAllDbToSpreadsheet();
 			return {
-				success: true,
-				message: 'Synchronisation API terminee',
-				details
+				success: spreadsheetSync.errors.length === 0,
+				message:
+					spreadsheetSync.errors.length === 0
+						? 'Synchronisation API terminee'
+						: 'Synchronisation API terminee (avec erreurs Spreadsheet)',
+				details: {
+					legacy: details,
+					spreadsheetSync
+				}
 			};
 		} catch (error: unknown) {
 			return {
@@ -989,6 +1006,7 @@ export const actions: Actions = {
 					.delete(table.gameTranslation)
 					.where(inArray(table.gameTranslation.id, duplicateIds));
 			});
+			await deleteGameTranslationsFromGoogleSheet(duplicateIds);
 
 			const after = (await db.execute(
 				sql`select count(*)::int as count from game_translation`
@@ -1014,6 +1032,36 @@ export const actions: Actions = {
 			};
 		}
 	},
+	clearAllTranslationNames: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return { success: false, message: 'Accès non autorisé', details: null };
+		}
+
+		await request.formData();
+
+		try {
+			const updated = await db
+				.update(table.gameTranslation)
+				.set({
+					translationName: null,
+					updatedAt: new Date()
+				})
+				.where(sql`${table.gameTranslation.translationName} is not null`)
+				.returning({ id: table.gameTranslation.id });
+
+			return {
+				success: true,
+				message: 'Nom de traduction vidé pour toutes les traductions',
+				details: { updated: updated.length }
+			};
+		} catch (error: unknown) {
+			return {
+				success: false,
+				message: 'Erreur pendant la suppression des noms de traduction',
+				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			};
+		}
+	},
 	syncDbToSpreadsheet: async ({ request, locals }) => {
 		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
 			return { success: false, message: 'Accès non autorisé', details: null };
@@ -1022,50 +1070,15 @@ export const actions: Actions = {
 		await request.formData();
 
 		try {
-			const [translations, translators] = await Promise.all([
-				db.select({ id: table.gameTranslation.id }).from(table.gameTranslation),
-				db.select({ id: table.translator.id }).from(table.translator)
-			]);
-
-			let syncedTranslations = 0;
-			let syncedTranslators = 0;
-			const errors: string[] = [];
-
-			for (const row of translations) {
-				try {
-					await syncTranslationToGoogleSheet(row.id);
-					syncedTranslations++;
-				} catch (err) {
-					errors.push(
-						`translation ${row.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
-					);
-				}
-			}
-
-			for (const row of translators) {
-				try {
-					await syncTranslatorToGoogleSheet(row.id);
-					syncedTranslators++;
-				} catch (err) {
-					errors.push(
-						`translator ${row.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
-					);
-				}
-			}
+			const result = await syncAllDbToSpreadsheet();
 
 			return {
-				success: errors.length === 0,
+				success: result.errors.length === 0,
 				message:
-					errors.length === 0
+					result.errors.length === 0
 						? 'Synchronisation DB -> Spreadsheet terminée'
 						: 'Synchronisation terminée avec erreurs',
-				details: {
-					totalTranslations: translations.length,
-					totalTranslators: translators.length,
-					syncedTranslations,
-					syncedTranslators,
-					errors
-				}
+				details: result
 			};
 		} catch (error: unknown) {
 			return {

@@ -97,6 +97,11 @@ type DbSheetSyncResult = {
 		  }
 		| null;
 };
+	type ClearTranslationNamesResult = {
+		success: boolean;
+		message: string;
+		details: string | { updated: number } | null;
+	};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -114,8 +119,10 @@ type DbSheetSyncResult = {
 	let translatorsImportResult = $state<TranslatorsImportResult | null>(null);
 	let webhookTestIsLoading = $state(false);
 	let webhookTestResult = $state<WebhookTestResult | null>(null);
-let dbSheetSyncIsLoading = $state(false);
-let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
+	let dbSheetSyncIsLoading = $state(false);
+	let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
+	let clearTranslationNamesIsLoading = $state(false);
+	let clearTranslationNamesResult = $state<ClearTranslationNamesResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -1086,6 +1093,45 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 						{/if}
 					</button>
 				</form>
+				<form
+					method="POST"
+					action="?/clearAllTranslationNames"
+					use:enhance={() => {
+						clearTranslationNamesIsLoading = true;
+						clearTranslationNamesResult = null;
+						return async function ({ result, update }) {
+							await update();
+							clearTranslationNamesIsLoading = false;
+							if ((result.type === 'success' || result.type === 'failure') && result.data) {
+								const data = result.data as Record<string, unknown>;
+								clearTranslationNamesResult = {
+									success: Boolean(data.success),
+									message: typeof data.message === 'string' ? data.message : '',
+									details:
+										typeof data.details === 'string' ||
+										data.details === null ||
+										(typeof data.details === 'object' && data.details !== null)
+											? (data.details as ClearTranslationNamesResult['details'])
+											: null
+								};
+							}
+						};
+					}}
+					class="md:order-5"
+				>
+					<button
+						type="submit"
+						class="btn h-full w-full btn-error"
+						disabled={clearTranslationNamesIsLoading}
+					>
+						{#if clearTranslationNamesIsLoading}
+							<Loader class="h-5 w-5 animate-spin" />
+							<span>Suppression en cours...</span>
+						{:else}
+							<span>Vider tous les noms de traduction</span>
+						{/if}
+					</button>
+				</form>
 			</div>
 			<div class="mt-6 space-y-3">
 				{#if translatorsImportResult}
@@ -1262,6 +1308,37 @@ let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 										{typeof cleanupResult.details === 'string'
 											? cleanupResult.details
 											: JSON.stringify(cleanupResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+			{#if clearTranslationNamesResult}
+				<div class="mt-3">
+					{#if clearTranslationNamesResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{clearTranslationNamesResult.message}</h3>
+								{#if clearTranslationNamesResult.details && typeof clearTranslationNamesResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Lignes mises à jour: {clearTranslationNamesResult.details.updated}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{clearTranslationNamesResult.message || 'Erreur inconnue'}</h3>
+								{#if clearTranslationNamesResult.details}
+									<p class="mt-1 text-sm">
+										{typeof clearTranslationNamesResult.details === 'string'
+											? clearTranslationNamesResult.details
+											: JSON.stringify(clearTranslationNamesResult.details)}
 									</p>
 								{/if}
 							</div>
