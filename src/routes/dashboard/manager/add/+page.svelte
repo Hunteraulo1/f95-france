@@ -49,6 +49,7 @@
 		// GameTranslation fields
 		gameId: '',
 		translationName: null,
+		version: null,
 		status: 'in_progress',
 		tversion: '',
 		tname: 'no_translation',
@@ -312,6 +313,7 @@
 
 			type TranslationPayload = {
 				translationName: string;
+				version: string | null;
 				tversion: string;
 				status: FormGameType['status'];
 				ttype: FormGameType['ttype'];
@@ -338,6 +340,7 @@
 
 			const hasTranslationData =
 				(game.translationName && game.translationName.trim().length > 0) ||
+				(game.version && game.version.trim().length > 0) ||
 				(game.tversion && game.tversion.trim().length > 0) ||
 				(game.tlink && game.tlink.trim().length > 0) ||
 				(game.translatorId && game.translatorId.trim().length > 0) ||
@@ -354,6 +357,7 @@
 
 				payload.translation = {
 					translationName,
+					version: game.version?.trim() || null,
 					tversion: game.tversion?.trim() || '',
 					status: game.status,
 					ttype: game.ttype,
@@ -480,6 +484,13 @@
 			active: [3, 5],
 			title: 'Nom de la traduction',
 			name: 'translationName',
+			type: 'text'
+		},
+		{
+			Component: Input,
+			active: [3, 5],
+			title: 'Version de référence',
+			name: 'version',
 			type: 'text'
 		},
 		{

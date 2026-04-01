@@ -7,6 +7,7 @@ import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { deleteGameUpdate, touchGameUpdatedToday } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
@@ -57,6 +58,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			.select({
 				id: table.gameTranslation.id,
 				translationName: table.gameTranslation.translationName,
+				version: table.gameTranslation.version,
 				status: table.gameTranslation.status,
 				tversion: table.gameTranslation.tversion,
 				tlink: table.gameTranslation.tlink,
@@ -229,6 +231,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);
 		});
+		await touchGameUpdatedToday(gameId);
 
 		return json({
 			message: 'Jeu modifié avec succès'
@@ -366,6 +369,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] delete game rows failed:', err);
 			});
 		}
+		await deleteGameUpdate(gameId);
 
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {

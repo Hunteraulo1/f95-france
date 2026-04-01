@@ -5,6 +5,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -32,6 +33,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			translationName,
+			version,
 			tversion,
 			status,
 			ttype,
@@ -58,6 +60,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const before = beforeRows[0];
+		const normalizedVersion =
+			typeof version === 'string' ? version.trim() || null : (before.version ?? null);
 
 		const TNAMES = [
 			'no_translation',
@@ -104,6 +108,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -113,6 +118,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				proofreaderId: proofreaderId || null,
 				ac: acValue
 			});
+			// La table update/MAJ doit refléter l'action dès la modification.
+			await touchGameUpdatedToday(gameId);
 
 			return json({
 				message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
@@ -126,6 +133,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.gameTranslation)
 			.set({
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -142,6 +150,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			gameId,
 			translation: {
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -152,6 +161,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
+				version: before.version,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,
@@ -183,6 +193,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] update proofreader failed:', err);
 			});
 		}
+		await touchGameUpdatedToday(gameId);
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
@@ -266,6 +277,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			reason,
 			originalTranslation: {
 				translationName: tr.translationName,
+				version: tr.version,
 				tversion: tr.tversion,
 				status: tr.status,
 				ttype: tr.ttype,
@@ -286,7 +298,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});
-
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression de la traduction:', error);

@@ -44,6 +44,7 @@
 	let showAddTranslationModal = $state(false);
 	let newTranslation = $state({
 		translationName: '',
+		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -60,6 +61,7 @@
 	let editingTranslation = $state({
 		translationName: '',
 		id: '',
+		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -161,6 +163,7 @@
 	const openAddTranslationModal = () => {
 		newTranslation = {
 			translationName: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -177,6 +180,7 @@
 		showAddTranslationModal = false;
 		newTranslation = {
 			translationName: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -319,6 +323,7 @@
 						},
 						body: JSON.stringify({
 							translationName: acTranslation.translationName,
+							version: acTranslation.version ?? null,
 							tversion: acTranslation.tversion,
 							status: acTranslation.status,
 							ttype: acTranslation.ttype,
@@ -403,6 +408,7 @@
 
 			const payload = {
 				translationName: newTranslation.translationName || null,
+				version: newTranslation.version || null,
 				tversion: newTranslation.tversion,
 				status: newTranslation.status,
 				ttype: newTranslation.ttype,
@@ -458,6 +464,7 @@
 		editingTranslation = {
 			translationName: translation.translationName || '',
 			id: translation.id,
+			version: translation.version || '',
 			tversion: translation.tversion,
 			status: normalizeTranslationProgressStatus(translation.status),
 			ttype: translation.ttype,
@@ -476,6 +483,7 @@
 		editingTranslation = {
 			translationName: '',
 			id: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -548,6 +556,7 @@
 
 			const payload = {
 				translationName: editingTranslation.translationName || null,
+				version: editingTranslation.version || null,
 				tversion: editingTranslation.tversion,
 				status: editingTranslation.status,
 				ttype: editingTranslation.ttype,
@@ -927,6 +936,7 @@
 							<thead>
 								<tr>
 									<th>Nom de la traduction</th>
+									<th>Version de référence</th>
 									<th>Version traduction</th>
 									<th>Statut</th>
 									<th>Type</th>
@@ -957,6 +967,7 @@
 												</div>
 											{/if}
 										</td>
+										<td class="font-bold">{translation.version || game.gameVersion || '—'}</td>
 										<td class="font-bold">{translation.tversion}</td>
 										<td>
 											<span class="badge {getStatusColor(translation.status)}">
@@ -1037,6 +1048,19 @@
 						class="w-full input-ghost"
 						bind:value={newTranslation.translationName}
 						required
+					/>
+				</label>
+			</div>
+
+			<div class="form-control mb-4 w-full">
+				<label class="input" for="version">
+					Version de référence
+					<input
+						id="version"
+						type="text"
+						placeholder="Ex: 1.2"
+						class="w-full input-ghost"
+						bind:value={newTranslation.version}
 					/>
 				</label>
 			</div>
@@ -1191,6 +1215,19 @@
 							class="w-full input-ghost"
 							bind:value={editingTranslation.translationName}
 							required
+						/>
+					</label>
+				</div>
+
+				<div class="form-control mb-4 w-full">
+					<label class="input" for="edit-version">
+						Version de référence
+						<input
+							id="edit-version"
+							type="text"
+							placeholder="Ex: 1.2"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.version}
 						/>
 					</label>
 				</div>
