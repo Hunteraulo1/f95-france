@@ -1,4 +1,5 @@
 import { getUserById } from '$lib/server/auth';
+import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import {
 	deleteTranslationFromGoogleSheet,
@@ -41,11 +42,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: tnameBody,
 			directMode,
 			silentMode,
-			ac: _acIgnored,
+			ac,
 			translatorId,
 			proofreaderId
 		} = body;
-		void _acIgnored;
 
 		const beforeRows = await db
 			.select()
@@ -86,9 +86,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		// Règle métier: une modification de traduction ne change jamais l'auto-check.
-		const acValue = before.ac ?? false;
-
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
 		if (!currentUser) {
@@ -98,6 +95,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const acRequested = typeof ac === 'boolean' ? ac : undefined;
+		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
+		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
+		const gameAllowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
+		const acValue = !gameAllowsTranslationAc
+			? false
+			: canManuallyEditTranslationAc && acRequested !== undefined
+				? acRequested
+				: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);

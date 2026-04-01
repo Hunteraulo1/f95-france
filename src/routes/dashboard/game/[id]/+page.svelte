@@ -39,6 +39,7 @@
 	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
+	const canManuallyEditTranslationAc = $derived(canUseSilentMode && game.gameAutoCheck === true);
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -562,6 +563,7 @@
 				ttype: editingTranslation.ttype,
 				tlink: tlinkValue,
 				tname: editingTranslation.tname,
+				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
 				silentMode: canUseSilentMode ? editTranslationSilentMode : false
@@ -1314,9 +1316,28 @@
 
 			<div class="form-control mb-6 w-full">
 				<p class="mt-1 text-xs text-base-content/60">
-					L’auto-check d’une traduction n’est pas modifié depuis cette action.
+					{#if game.gameAutoCheck === false}
+						L’auto-check du jeu est désactivé, l’auto-check de cette traduction sera forcé à false.
+					{:else if canManuallyEditTranslationAc}
+						Vous pouvez modifier l’auto-check de cette traduction.
+					{:else}
+						L’auto-check de cette traduction est conservé lors de cette modification.
+					{/if}
 				</p>
 			</div>
+
+			{#if canManuallyEditTranslationAc}
+				<div class="form-control mb-6 w-full">
+					<label class="label cursor-pointer justify-start gap-3">
+						<input
+							type="checkbox"
+							class="checkbox checkbox-sm"
+							bind:checked={editingTranslation.ac}
+						/>
+						<span class="label-text">Auto-Check traduction</span>
+					</label>
+				</div>
+			{/if}
 
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control">

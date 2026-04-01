@@ -1206,11 +1206,24 @@
 							<div class="flex-1">
 								<h3 class="font-bold">{syncResult.message}</h3>
 								{#if syncResult.details && typeof syncResult.details === 'object'}
+									{@const legacyDetails = ((
+										'legacy' in syncResult.details &&
+										typeof syncResult.details.legacy === 'object' &&
+										syncResult.details.legacy !== null
+											? syncResult.details.legacy
+											: syncResult.details
+									) as {
+										total?: number;
+										insertedGames?: number;
+										updatedGames?: number;
+										insertedTranslations?: number;
+										updatedTranslations?: number;
+									})}
 									<p class="mt-1 text-sm">
-										Total: {syncResult.details.total} | Jeux ajoutes: {syncResult.details
-											.insertedGames} | Jeux mis a jour: {syncResult.details.updatedGames} | Traductions
-										ajoutees: {syncResult.details.insertedTranslations} | Traductions mises a jour:
-										{syncResult.details.updatedTranslations}
+										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
+											0} | Jeux mis a jour: {legacyDetails.updatedGames ?? 0} | Traductions ajoutees:
+										{legacyDetails.insertedTranslations ?? 0} | Traductions mises a jour:
+										{legacyDetails.updatedTranslations ?? 0}
 									</p>
 								{/if}
 							</div>

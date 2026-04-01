@@ -359,6 +359,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 	for (const row of existingTranslations) {
 		translationByKey.set(translationKeyFrom(row.gameName, row.tversion), row.id);
 	}
+	const gameAcStats = new Map<string, { total: number; hasAcTrue: boolean }>();
 
 	for (const item of games) {
 		const threadId =
@@ -391,7 +392,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		if (gameId) {
 			const prev = gamesSnapshot.get(gameId);
 			const nextValues = {
-				name,
+				name: prev?.name ?? name,
 				type: mapType(item.type),
 				tags,
 				image: item.image?.trim() || '',
@@ -473,8 +474,14 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		}
 
 		const tversion = item.tversion?.trim() || 'unknown';
+		const acValue = item.ac === true;
+		const referenceVersion = !acValue ? gameVersion : null;
 		const translationKey = translationKeyFrom(name, tversion);
 		const existingTranslationId = translationByKey.get(translationKey);
+		const stat = gameAcStats.get(gameId) ?? { total: 0, hasAcTrue: false };
+		stat.total += 1;
+		stat.hasAcTrue = stat.hasAcTrue || acValue;
+		gameAcStats.set(gameId, stat);
 
 		if (!existingTranslationId) {
 			if (!dryRun) {
@@ -482,6 +489,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					id: crypto.randomUUID(),
 					gameId,
 					translationName: null,
+					version: referenceVersion,
 					status: mapStatus(item.status),
 					tversion,
 					tlink: item.tlink?.trim() || '',
@@ -489,7 +497,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					translatorId,
 					proofreaderId,
 					ttype: mapTType(item.ttype),
-					ac: Boolean(item.ac)
+					ac: acValue
 				});
 			}
 			translationByKey.set(translationKey, 'created');
@@ -500,7 +508,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					.update(table.gameTranslation)
 					.set({
 						gameId,
-						translationName: null,
+						translationName: sql`${table.gameTranslation.translationName}`,
+						version: referenceVersion,
 						status: mapStatus(item.status),
 						tversion,
 						tlink: item.tlink?.trim() || '',
@@ -508,11 +517,23 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 						translatorId,
 						proofreaderId,
 						ttype: mapTType(item.ttype),
-						ac: Boolean(item.ac)
+						ac: acValue
 					})
 					.where(eq(table.gameTranslation.id, existingTranslationId));
 			}
 			updatedTranslations++;
+		}
+	}
+
+	// Règle legacy: si toutes les traductions d'un jeu ont AC=false, alors gameAutoCheck=false.
+	if (!dryRun) {
+		for (const [gameId, stat] of gameAcStats) {
+			if (stat.total > 0 && !stat.hasAcTrue) {
+				await db
+					.update(table.game)
+					.set({ gameAutoCheck: false, updatedAt: new Date() })
+					.where(eq(table.game.id, gameId));
+			}
 		}
 	}
 
