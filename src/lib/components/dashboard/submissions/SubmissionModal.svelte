@@ -53,17 +53,129 @@
 	let statusError = $state<string | null>(null);
 	let selectedStatus = $state<string>('pending');
 	let adminNotesText = $state<string>('');
+	let submissionEditError = $state<string | null>(null);
+	// Champs "réels" pour modifier la soumission (au lieu d'un JSON visible)
+	let editGameName = $state<string>('');
+	let editGameDescription = $state<string>('');
+	let editGameType = $state<string>('other');
+	let editGameWebsite = $state<string>('f95z');
+	let editGameThreadId = $state<string>('');
+	let editGameTags = $state<string>('');
+	let editGameLink = $state<string>('');
+	let editGameImage = $state<string>('');
+	let editGameGameVersion = $state<string>('');
+	let editGameAutoCheck = $state<boolean>(true);
+
+	let editTranslationTranslationName = $state<string>('');
+	let editTranslationVersion = $state<string>('');
+	let editTranslationTname = $state<string>('translation');
+	let editTranslationTversion = $state<string>('');
+	let editTranslationStatus = $state<string>('in_progress');
+	let editTranslationTtype = $state<string>('manual');
+	let editTranslationTlink = $state<string>('');
+	let editTranslationAc = $state<boolean>(false);
+	let editTranslationTranslatorId = $state<string>('');
+	let editTranslationProofreaderId = $state<string>('');
 
 	$effect(() => {
 		if (submission) {
 			selectedStatus = submission.status;
 			adminNotesText = submission.adminNotes || '';
 			statusError = null;
+			submissionEditError = null;
+
+			// Pré-remplir les champs éditables depuis parsedData (soumissions "pending").
+			const game = submission.parsedData?.game as Game | undefined;
+			const tr = submission.parsedData?.translation as GameTranslation | undefined;
+
+			editGameName = game?.name ?? '';
+			editGameDescription = (game?.description ?? '') as string;
+			editGameType = (game?.type ?? 'other') as string;
+			editGameWebsite = (game?.website ?? 'f95z') as string;
+			editGameThreadId = game?.threadId != null ? String(game.threadId) : '';
+			editGameTags = (game?.tags ?? '') as string;
+			editGameLink = (game?.link ?? '') as string;
+			editGameImage = (game?.image ?? '') as string;
+			editGameGameVersion = (game?.gameVersion ?? '') as string;
+			editGameAutoCheck = typeof game?.gameAutoCheck === 'boolean' ? game?.gameAutoCheck : true;
+
+			editTranslationTranslationName = tr?.translationName ?? '';
+			editTranslationVersion = (tr?.version ?? '') as string;
+			editTranslationTname = (tr?.tname ?? 'translation') as string;
+			editTranslationTversion = (tr?.tversion ?? '') as string;
+			editTranslationStatus = (tr?.status ?? 'in_progress') as string;
+			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
+			editTranslationTlink = (tr?.tlink ?? '') as string;
+			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
+			editTranslationTranslatorId = tr?.translatorId ?? '';
+			editTranslationProofreaderId = tr?.proofreaderId ?? '';
 		}
+	});
+
+	const submissionDataJsonHidden = $derived(() => {
+		if (!submission) return '';
+
+		if (submission.type === 'translation') {
+			return JSON.stringify({
+				translation: {
+					translationName: editTranslationTranslationName.trim() || null,
+					version: editTranslationVersion.trim() || null,
+					tversion: editTranslationTversion,
+					status: editTranslationStatus,
+					ttype: editTranslationTtype,
+					tlink: editTranslationTlink.trim() || null,
+					tname: editTranslationTname,
+					translatorId: editTranslationTranslatorId || null,
+					proofreaderId: editTranslationProofreaderId || null,
+					ac: editTranslationAc
+				}
+			});
+		}
+
+		// game | update
+		const gameObj = {
+			name: editGameName,
+			description: editGameDescription.trim() || null,
+			type: editGameType,
+			website: editGameWebsite,
+			threadId: editGameThreadId.trim() || null,
+			tags: editGameTags.trim() || null,
+			link: editGameLink.trim() || null,
+			image: editGameImage.trim(),
+			gameAutoCheck: editGameAutoCheck,
+			gameVersion: editGameGameVersion.trim() || null
+		};
+
+		const includeTranslation = Boolean(submission.parsedData?.translation);
+		const out: Record<string, unknown> = { game: gameObj };
+
+		if (includeTranslation) {
+			out.translation = {
+				translationName: editTranslationTranslationName.trim() || null,
+				version: editTranslationVersion.trim() || null,
+				tversion: editTranslationTversion,
+				status: editTranslationStatus,
+				ttype: editTranslationTtype,
+				tlink: editTranslationTlink.trim() || null,
+				tname: editTranslationTname,
+				translatorId: editTranslationTranslatorId || null,
+				proofreaderId: editTranslationProofreaderId || null,
+				ac: editTranslationAc
+			};
+		}
+
+		return JSON.stringify(out);
 	});
 
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
+	const canEditSubmissionDataAllowed = $derived(
+		Boolean(
+			!canEditStatus &&
+				submission?.status === 'pending' &&
+				(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+		)
+	);
 
 	const gameFields: FieldConfig<Game>[] = [
 		{ key: 'name', label: 'Nom' },
@@ -81,6 +193,7 @@
 		{ key: 'translationName', label: 'Nom de traduction' },
 		{ key: 'tname', label: 'Status de la traduction', options: { showIfEmpty: true } },
 		{ key: 'tversion', label: 'Version traduction' },
+		{ key: 'version', label: 'Version de référence', options: { showIfEmpty: true } },
 		{ key: 'status', label: 'Statut' },
 		{ key: 'ttype', label: 'Type de traduction' },
 		{ key: 'tlink', label: 'Lien', options: { isUrl: true } },
@@ -493,6 +606,354 @@
 				{/if}
 			</div>
 
+			{#if canEditSubmissionDataAllowed}
+				<div class="mt-6 border-t border-base-300 pt-4">
+					<h4 class="text-md mb-4 font-semibold">Modifier les données de la soumission</h4>
+
+					{#if submissionEditError}
+						<div class="mb-4 alert alert-error">
+							<span>{submissionEditError}</span>
+						</div>
+					{/if}
+
+					<form
+						method="POST"
+						action="?/updateSubmissionData"
+						use:enhance={(e) => {
+							submissionEditError = null;
+							return async function ({ result, update }) {
+								if (result.type === 'success') {
+									await update({ invalidateAll: true });
+									onClose();
+								} else if (result.type === 'failure' && result.data) {
+									const message =
+										typeof result.data === 'object' && 'message' in result.data
+											? String(result.data.message)
+											: 'Erreur lors de la mise à jour';
+									submissionEditError = message;
+								}
+							};
+						}}
+					>
+						<input type="hidden" name="submissionId" value={submission.id} />
+
+						<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
+						<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+
+						{#if submission.type !== 'translation'}
+							<div class="mt-2 space-y-4">
+								<h5 class="text-md font-semibold">Détails du jeu</h5>
+
+								<div class="grid gap-4 md:grid-cols-2">
+									<div class="form-control">
+										<label class="label" for="editGameName">
+											<span class="label-text">Nom</span>
+										</label>
+										<input
+											id="editGameName"
+											name="editGameName"
+											class="input input-bordered w-full"
+											type="text"
+											bind:value={editGameName}
+											required
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editGameType">
+											<span class="label-text">Type</span>
+										</label>
+										<select
+											id="editGameType"
+											name="editGameType"
+											class="select select-bordered w-full"
+											bind:value={editGameType}
+											required
+										>
+											<option value="renpy">RenPy</option>
+											<option value="rpgm">RPGM</option>
+											<option value="unity">Unity</option>
+											<option value="unreal">Unreal</option>
+											<option value="flash">Flash</option>
+											<option value="html">HTML</option>
+											<option value="qsp">QSP</option>
+											<option value="other">Autre</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editGameWebsite">
+											<span class="label-text">Site web</span>
+										</label>
+										<select
+											id="editGameWebsite"
+											name="editGameWebsite"
+											class="select select-bordered w-full"
+											bind:value={editGameWebsite}
+											required
+										>
+											<option value="f95z">F95Zone</option>
+											<option value="lc">LewdCorner</option>
+											<option value="other">Autre</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editGameThreadId">
+											<span class="label-text">Thread ID</span>
+										</label>
+										<input
+											id="editGameThreadId"
+											name="editGameThreadId"
+											class="input input-bordered w-full"
+											type="text"
+											placeholder="(vide)"
+											bind:value={editGameThreadId}
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editGameGameVersion">
+											<span class="label-text">Version jeu (fiche)</span>
+										</label>
+										<input
+											id="editGameGameVersion"
+											name="editGameGameVersion"
+											class="input input-bordered w-full"
+											type="text"
+											bind:value={editGameGameVersion}
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editGameLink">
+											<span class="label-text">Lien</span>
+										</label>
+										<input
+											id="editGameLink"
+											name="editGameLink"
+											class="input input-bordered w-full"
+											type="url"
+											placeholder="https://..."
+											bind:value={editGameLink}
+										/>
+									</div>
+
+									<div class="form-control md:col-span-2">
+										<label class="label" for="editGameImage">
+											<span class="label-text">Image</span>
+										</label>
+										<input
+											id="editGameImage"
+											name="editGameImage"
+											class="input input-bordered w-full"
+											type="url"
+											placeholder="https://..."
+											bind:value={editGameImage}
+											required
+										/>
+									</div>
+
+									<div class="form-control md:col-span-2">
+										<label class="label" for="editGameTags">
+											<span class="label-text">Tags</span>
+										</label>
+										<textarea
+											id="editGameTags"
+											name="editGameTags"
+											class="textarea textarea-bordered w-full"
+											rows="3"
+											bind:value={editGameTags}
+										></textarea>
+									</div>
+
+									<div class="form-control md:col-span-2">
+										<label class="label" for="editGameDescription">
+											<span class="label-text">Description</span>
+										</label>
+										<textarea
+											id="editGameDescription"
+											name="editGameDescription"
+											class="textarea textarea-bordered w-full"
+											rows="3"
+											bind:value={editGameDescription}
+										></textarea>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						{#if submission.type === 'translation' || submission.parsedData?.translation}
+							<div class="mt-6 space-y-4">
+								<h5 class="text-md font-semibold">Détails de la traduction</h5>
+
+								<div class="grid gap-4 md:grid-cols-2">
+									<div class="form-control md:col-span-2">
+										<label class="label" for="editTranslationTranslationName">
+											<span class="label-text">Nom de traduction</span>
+										</label>
+										<input
+											id="editTranslationTranslationName"
+											name="editTranslationTranslationName"
+											class="input input-bordered w-full"
+											type="text"
+											placeholder="(vide)"
+											bind:value={editTranslationTranslationName}
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationVersion">
+											<span class="label-text">Version de référence</span>
+										</label>
+										<input
+											id="editTranslationVersion"
+											name="editTranslationVersion"
+											class="input input-bordered w-full"
+											type="text"
+											bind:value={editTranslationVersion}
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationTversion">
+											<span class="label-text">Version traduction</span>
+										</label>
+										<input
+											id="editTranslationTversion"
+											name="editTranslationTversion"
+											class="input input-bordered w-full"
+											type="text"
+											bind:value={editTranslationTversion}
+											required
+										/>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationTname">
+											<span class="label-text">Statut de traduction</span>
+										</label>
+										<select
+											id="editTranslationTname"
+											name="editTranslationTname"
+											class="select select-bordered w-full"
+											bind:value={editTranslationTname}
+											required
+										>
+											<option value="no_translation">Pas de traduction</option>
+											<option value="integrated">Intégrée</option>
+											<option value="translation">Traduction</option>
+											<option value="translation_with_mods">Traduction avec mods</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationStatus">
+											<span class="label-text">Statut</span>
+										</label>
+										<select
+											id="editTranslationStatus"
+											name="editTranslationStatus"
+											class="select select-bordered w-full"
+											bind:value={editTranslationStatus}
+											required
+										>
+											<option value="in_progress">En cours</option>
+											<option value="completed">Terminé</option>
+											<option value="abandoned">Abandonné</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationTtype">
+											<span class="label-text">Type de traduction</span>
+										</label>
+										<select
+											id="editTranslationTtype"
+											name="editTranslationTtype"
+											class="select select-bordered w-full"
+											bind:value={editTranslationTtype}
+											required
+										>
+											<option value="auto">Auto</option>
+											<option value="vf">VF</option>
+											<option value="manual">Manual</option>
+											<option value="semi-auto">Semi-auto</option>
+											<option value="to_tested">À tester</option>
+											<option value="hs">HS</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationTlink">
+											<span class="label-text">Lien de traduction</span>
+										</label>
+										<input
+											id="editTranslationTlink"
+											name="editTranslationTlink"
+											class="input input-bordered w-full"
+											type="url"
+											placeholder="(vide)"
+											bind:value={editTranslationTlink}
+										/>
+									</div>
+
+									<div class="form-control md:col-span-2">
+										<label class="label cursor-pointer justify-start gap-3">
+											<input
+												type="checkbox"
+												class="checkbox checkbox-sm"
+												bind:checked={editTranslationAc}
+											/>
+											<span class="label-text">Auto-Check</span>
+										</label>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationTranslatorId">
+											<span class="label-text">Traducteur</span>
+										</label>
+										<select
+											id="editTranslationTranslatorId"
+											name="editTranslationTranslatorId"
+											class="select select-bordered w-full"
+											bind:value={editTranslationTranslatorId}
+										>
+											<option value="">(vide)</option>
+											{#each translators as translator (translator.id)}
+												<option value={translator.id}>{translator.name}</option>
+											{/each}
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationProofreaderId">
+											<span class="label-text">Relecteur</span>
+										</label>
+										<select
+											id="editTranslationProofreaderId"
+											name="editTranslationProofreaderId"
+											class="select select-bordered w-full"
+											bind:value={editTranslationProofreaderId}
+										>
+											<option value="">(vide)</option>
+											{#each translators as translator (translator.id)}
+												<option value={translator.id}>{translator.name}</option>
+											{/each}
+										</select>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<div class="modal-action mt-4">
+							<button type="button" class="btn" onclick={onClose}> Annuler </button>
+							<button type="submit" class="btn btn-primary"> Enregistrer </button>
+						</div>
+					</form>
+				</div>
+			{/if}
+
 			<!-- Section de modification du statut -->
 			{#if canEditStatus}
 				<div class="mt-6 border-t border-base-300 pt-4">
@@ -546,6 +1007,7 @@
 								required
 							>
 								<option value="pending">En attente</option>
+								<option value="opened">Ouverte</option>
 								<option value="accepted">Acceptée</option>
 								<option value="rejected">Refusée</option>
 							</select>

@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -18,10 +21,10 @@
 		if (urlParams.get('oauth_success') === 'true') {
 			oauthMessage = { type: 'success', text: 'Autorisation OAuth2 réussie !' };
 			// Nettoyer l'URL
-			window.history.replaceState({}, '', '/dashboard/config');
+			replaceState('/dashboard/config', get(page).state);
 		} else if (urlParams.get('oauth_error')) {
 			oauthMessage = { type: 'error', text: `Erreur OAuth2: ${urlParams.get('oauth_error')}` };
-			window.history.replaceState({}, '', '/dashboard/config');
+			replaceState('/dashboard/config', get(page).state);
 		}
 	});
 </script>

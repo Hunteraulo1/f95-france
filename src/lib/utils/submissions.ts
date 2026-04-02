@@ -6,6 +6,8 @@ export const getStatusBadge = (status: string) => {
 	switch (status) {
 		case 'pending':
 			return { label: 'En attente', class: 'badge-warning', icon: Clock };
+		case 'opened':
+			return { label: 'Ouverte', class: 'badge-info', icon: Clock };
 		case 'accepted':
 			return { label: 'Acceptée', class: 'badge-success', icon: CircleCheck };
 		case 'rejected':
@@ -64,6 +66,7 @@ export const validateStatusChange = (status: string, notes: string): string | nu
 export const getStatusFilterLabel = (status: string): string => {
 	const labels: Record<string, string> = {
 		pending: 'en attente',
+		opened: 'ouverte',
 		accepted: 'acceptée',
 		rejected: 'refusée'
 	};
