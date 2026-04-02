@@ -20,13 +20,15 @@
 
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
-			users = (data.devUsers ?? []) as DevUserLite[];
-			targetUserId = users.some((u) => u.id === $user?.id)
+			const nextUsers = (data.devUsers ?? []) as DevUserLite[];
+			users = nextUsers;
+			targetUserId = nextUsers.some((u) => u.id === $user?.id)
 				? ($user?.id ?? '')
-				: (users[0]?.id ?? '');
+				: (nextUsers[0]?.id ?? '');
 		}
 		if ($user?.theme) {
-			selectedTheme = $user.theme;
+			// Eviter une réaffectation inutile (réduit le risque de rerenders en boucle).
+			if (selectedTheme !== $user.theme) selectedTheme = $user.theme;
 		}
 	});
 
