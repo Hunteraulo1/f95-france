@@ -209,7 +209,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: name
+				gameName: name,
+				gameImage: image
 			});
 
 			return json({

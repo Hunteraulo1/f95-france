@@ -199,7 +199,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: name
+				gameName: name,
+				gameImage: image
 			});
 
 			return json({
@@ -311,7 +312,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				.limit(1);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: gameNameRow[0]?.name ?? gameId
+				gameName: gameNameRow[0]?.name ?? gameId,
+				gameId
 			});
 
 			return json({

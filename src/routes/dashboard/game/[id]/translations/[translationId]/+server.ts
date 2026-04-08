@@ -132,7 +132,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			await touchGameUpdatedToday(gameId);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: translationName || before.translationName || translationId
+				gameId
 			});
 
 			return json({
@@ -279,7 +279,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: tr.translationName || translationId
+				gameId
 			});
 
 			return json({

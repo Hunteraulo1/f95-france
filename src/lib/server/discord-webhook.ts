@@ -29,9 +29,9 @@ type WebhookUrls = {
 let cached: { urls: WebhookUrls; at: number } | null = null;
 const CACHE_MS = 60_000;
 
-async function getWebhookUrls(): Promise<WebhookUrls> {
+async function getWebhookUrls(forceRefresh = false): Promise<WebhookUrls> {
 	const now = Date.now();
-	if (cached && now - cached.at < CACHE_MS) {
+	if (!forceRefresh && cached && now - cached.at < CACHE_MS) {
 		return cached.urls;
 	}
 	const rows = await db
@@ -328,15 +328,47 @@ export async function sendDiscordWebhookProofreadersEmbed(embed: DiscordEmbed): 
 /** Canal admin : alerte lors de la création d'une soumission. */
 export async function sendDiscordWebhookAdminNewSubmission(args: {
 	submitterName: string;
-	targetName: string;
+	gameName?: string | null;
+	gameImage?: string | null;
+	gameId?: string | null;
 }): Promise<void> {
-	const { admin } = await getWebhookUrls();
-	if (!admin) return;
+	// On force le refresh ici pour éviter un cache stale après changement de config.
+	const { admin } = await getWebhookUrls(true);
+	if (!admin) {
+		console.warn('[discord-webhook] webhook admin non configuré (soumission non envoyée)');
+		return;
+	}
 
 	const submitter = args.submitterName.trim() || 'Utilisateur inconnu';
-	const target = args.targetName.trim() || 'Élément inconnu';
+	let gameName = typeof args.gameName === 'string' ? args.gameName.trim() : '';
+	let gameImage = typeof args.gameImage === 'string' ? args.gameImage.trim() : '';
+
+	if ((!gameName || !gameImage) && args.gameId) {
+		const game = await fetchGameNameAndImage(args.gameId);
+		if (game) {
+			if (!gameName) gameName = game.name;
+			if (!gameImage) gameImage = game.image;
+		}
+	}
 
 	await executeDiscordWebhook(admin, {
-		content: `Nouvelle soumission de ${submitter} concernant le jeu/traduction ${target}.`
+		content: undefined,
+		embeds: [
+			{
+				description: 'Nouvelle soumission ajouté',
+				color: 1345469,
+				fields: [
+					{
+						name: 'Nom du jeu',
+						value: gameName || '—'
+					},
+					{
+						name: 'Nom du traducteur',
+						value: submitter
+					}
+				],
+				image: gameImage ? { url: gameImage } : undefined
+			}
+		]
 	});
 }

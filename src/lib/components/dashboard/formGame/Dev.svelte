@@ -3,10 +3,11 @@
 
 	interface Props {
 		game: FormGameType;
+	onDevDataApplied?: () => void;
 		// scrapeData: (args: ScrapeDataArgs) => Promise<void>;
 	}
 
-	let { game = $bindable() }: Props = $props();
+let { game = $bindable(), onDevDataApplied }: Props = $props();
 
 	const handleClick = (): void => {
 		game = {
@@ -32,6 +33,7 @@
 			ac: false,
 			image: 'https://attachments.f95zone.to/2024/04/3572650_Remaster_HD.png'
 		};
+		onDevDataApplied?.();
 	};
 </script>
 

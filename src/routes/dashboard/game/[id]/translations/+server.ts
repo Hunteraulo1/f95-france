@@ -109,7 +109,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			await createGameUpdateRow(gameId, 'adding');
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
-				targetName: translationName || gameId
+				gameId
 			});
 
 			return json(

@@ -718,7 +718,12 @@
 					</button>
 				{/if}
 				{#if checkRole(['superadmin'])}
-					<Dev bind:game />
+					<Dev
+						bind:game
+						onDevDataApplied={() => {
+							step = maxStep;
+						}}
+					/>
 				{/if}
 				{#if game.website === 'lc' || game.website === 'f95z'}
 					<Insert bind:game />
