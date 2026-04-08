@@ -107,8 +107,8 @@
 			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
 			editTranslationTlink = (tr?.tlink ?? '') as string;
 			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
-			editTranslationTranslatorId = tr?.translatorId ?? '';
-			editTranslationProofreaderId = tr?.proofreaderId ?? '';
+			editTranslationTranslatorId = resolveTranslatorSelectValue(tr?.translatorId);
+			editTranslationProofreaderId = resolveTranslatorSelectValue(tr?.proofreaderId);
 		}
 	});
 
@@ -169,6 +169,7 @@
 
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
+	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
 	const canEditSubmissionDataAllowed = $derived(
 		Boolean(
 			!canEditStatus &&
@@ -236,6 +237,14 @@
 	const getTranslator = (translatorId: unknown): Translator | null => {
 		if (typeof translatorId !== 'string' || !translatorId) return null;
 		return translators.find((t) => t.id === translatorId) || null;
+	};
+
+	const resolveTranslatorSelectValue = (value: unknown): string => {
+		if (typeof value !== 'string' || !value) return '';
+		const byId = translators.find((t) => t.id === value);
+		if (byId) return byId.id;
+		const byName = translators.find((t) => t.name === value);
+		return byName?.id ?? '';
 	};
 
 	const handleTranslatorClick = async (translatorId: unknown) => {
@@ -949,6 +958,35 @@
 						<div class="modal-action mt-4">
 							<button type="button" class="btn" onclick={onClose}> Annuler </button>
 							<button type="submit" class="btn btn-primary"> Enregistrer </button>
+						</div>
+					</form>
+				</div>
+			{/if}
+
+			{#if canCancelSubmission}
+				<div class="mt-4 border-t border-base-300 pt-4">
+					<form
+						method="POST"
+						action="?/cancelSubmission"
+						use:enhance={() => {
+							submissionEditError = null;
+							return async function ({ result, update }) {
+								if (result.type === 'success') {
+									await update({ invalidateAll: true });
+									onClose();
+								} else if (result.type === 'failure' && result.data) {
+									const message =
+										typeof result.data === 'object' && 'message' in result.data
+											? String(result.data.message)
+											: "Erreur lors de l'annulation";
+									submissionEditError = message;
+								}
+							};
+						}}
+					>
+						<input type="hidden" name="submissionId" value={submission.id} />
+						<div class="modal-action mt-0">
+							<button type="submit" class="btn btn-error btn-outline">Annuler la soumission</button>
 						</div>
 					</form>
 				</div>

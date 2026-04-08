@@ -178,6 +178,42 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
+	cancelSubmission: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Non authentifié' });
+
+		const formData = await request.formData();
+		const submissionId = formData.get('submissionId');
+		if (typeof submissionId !== 'string' || !submissionId.trim()) {
+			return fail(400, { message: 'ID de soumission requis' });
+		}
+
+		const [sub] = await db
+			.select({
+				id: table.submission.id,
+				userId: table.submission.userId,
+				status: table.submission.status
+			})
+			.from(table.submission)
+			.where(eq(table.submission.id, submissionId))
+			.limit(1);
+
+		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
+		if (sub.status !== 'pending') {
+			return fail(400, { message: "Seules les soumissions en attente peuvent être annulées" });
+		}
+
+		await db
+			.update(table.submission)
+			.set({
+				status: 'rejected',
+				adminNotes: 'Annulée par l’utilisateur',
+				updatedAt: new Date()
+			})
+			.where(eq(table.submission.id, submissionId));
+
+		return { success: true };
+	},
 	updateSubmissionData: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { message: 'Non authentifié' });
 
