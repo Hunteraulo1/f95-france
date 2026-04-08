@@ -104,6 +104,7 @@
 			placeholder={title}
 			id={name}
 			onchange={handleChange}
+			oninput={handleChange}
 			onblur={handleBlur}
 			disabled={(name === 'link' && gameLinkLocked) ||
 				(name === 'tlink' && tlinkLocked) ||
@@ -126,6 +127,20 @@
 					e.preventDefault();
 					const gv = game.gameVersion;
 					if (gv != null && String(gv).trim()) game.tversion = String(gv).trim();
+				}}
+			>
+				<Copy size="1rem" />
+			</button>
+		{:else if name === 'version'}
+			<button
+				class="btn w-min"
+				class:btn-disable={!game.gameVersion}
+				class:btn-primary={!!game.gameVersion}
+				type="button"
+				onclick={(e) => {
+					e.preventDefault();
+					const gv = game.gameVersion;
+					if (gv != null && String(gv).trim()) game.version = String(gv).trim();
 				}}
 			>
 				<Copy size="1rem" />
