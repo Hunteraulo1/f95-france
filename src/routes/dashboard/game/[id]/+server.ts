@@ -3,10 +3,12 @@ import {
 	clearAllTranslationAutoCheckForGame,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
@@ -57,6 +59,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			.select({
 				id: table.gameTranslation.id,
 				translationName: table.gameTranslation.translationName,
+				version: table.gameTranslation.version,
 				status: table.gameTranslation.status,
 				tversion: table.gameTranslation.tversion,
 				tlink: table.gameTranslation.tlink,
@@ -194,6 +197,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				gameAutoCheck: nextGameAutoCheck,
 				gameVersion: typeof gameVersion === 'string' ? gameVersion : null
 			});
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameName: name,
+				gameImage: image
+			});
 
 			return json({
 				message: isSilentMode
@@ -229,6 +237,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);
 		});
+		await touchGameUpdatedToday(gameId);
 
 		return json({
 			message: 'Jeu modifié avec succès'
@@ -296,6 +305,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameDeleteSubmission(currentUser.id, gameId, reason);
+			const gameNameRow = await db
+				.select({ name: table.game.name })
+				.from(table.game)
+				.where(eq(table.game.id, gameId))
+				.limit(1);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameName: gameNameRow[0]?.name ?? gameId,
+				gameId
+			});
 
 			return json({
 				message:
@@ -358,6 +377,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				.set({ gameId: null, updatedAt: new Date() })
 				.where(eq(table.submission.gameId, gameId));
 
+			// Supprimer d'abord les lignes de la table "update" (FK vers game)
+			// pour éviter la violation de contrainte sur la suppression du jeu.
+			await tx.delete(table.update).where(eq(table.update.gameId, gameId));
+
 			await tx.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, gameId));
 			await tx.delete(table.game).where(eq(table.game.id, gameId));
 		});
@@ -366,7 +389,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] delete game rows failed:', err);
 			});
 		}
-
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression du jeu:', error);

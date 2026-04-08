@@ -54,6 +54,7 @@ export const gameTranslation = pgTable('game_translation', {
 		.notNull()
 		.references(() => game.id),
 	translationName: varchar('translation_name', { length: 255 }),
+	version: varchar('version', { length: 100 }),
 	status: varchar('status', { length: 32 }).notNull(),
 	tversion: varchar('tversion', { length: 100 }).notNull(),
 	tlink: text('tlink').notNull(),
@@ -73,6 +74,7 @@ export const update = pgTable('update', {
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => game.id),
+	status: varchar('status', { length: 16 }).notNull().default('update'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
@@ -105,6 +107,7 @@ export const config = pgTable('config', {
 	googleOAuthAccessToken: text('google_oauth_access_token'),
 	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
 	googleOAuthTokenExpiry: timestamp('google_oauth_token_expiry'),
+	maintenanceMode: boolean('maintenance_mode').notNull().default(false),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 

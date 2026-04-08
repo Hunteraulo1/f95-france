@@ -14,8 +14,21 @@
 
 	let selectedSubmission: (typeof data.submissions)[0] | null = $state(null);
 
-	const openSubmissionModal = (submission: (typeof data.submissions)[0]) => {
-		selectedSubmission = submission;
+	const openSubmissionModal = async (submission: (typeof data.submissions)[0]) => {
+		// Passer immédiatement la soumission en "opened" pour bloquer les modifications côté user.
+		try {
+			const formData = new FormData();
+			formData.append('submissionId', submission.id);
+			await fetch('/dashboard/submits?/openSubmission', {
+				method: 'POST',
+				body: formData,
+				credentials: 'include'
+			});
+			selectedSubmission = { ...submission, status: 'opened' };
+		} catch {
+			// En cas d'erreur, on ouvre quand même la modal (le serveur refusera si besoin).
+			selectedSubmission = submission;
+		}
 	};
 
 	const closeSubmissionModal = async () => {
@@ -48,6 +61,7 @@
 	<SubmissionFilters
 		currentFilter={data.statusFilter}
 		pendingCount={data.pendingCount}
+		openedCount={(data as any).openedCount ?? 0}
 		acceptedCount={data.acceptedCount}
 		rejectedCount={data.rejectedCount}
 		onFilterChange={updateFilter}

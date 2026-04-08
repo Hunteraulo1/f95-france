@@ -9,12 +9,13 @@
 	interface Props {
 		currentFilter: string;
 		pendingCount: number;
+		openedCount: number;
 		acceptedCount: number;
 		rejectedCount: number;
 		onFilterChange: (status: string) => void;
 	}
 
-	let { currentFilter, pendingCount, acceptedCount, rejectedCount, onFilterChange }: Props =
+	let { currentFilter, pendingCount, openedCount, acceptedCount, rejectedCount, onFilterChange }: Props =
 		$props();
 
 	const filters = $derived<FilterConfig[]>([
@@ -23,6 +24,12 @@
 			label: 'En attente',
 			count: pendingCount,
 			badgeClass: 'badge-warning'
+		},
+		{
+			value: 'opened',
+			label: 'Ouvertes',
+			count: openedCount,
+			badgeClass: 'badge-info'
 		},
 		{
 			value: 'accepted',

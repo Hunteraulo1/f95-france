@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
@@ -17,6 +18,7 @@
 		getTranslatorFieldErrors
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -49,6 +51,7 @@
 		// GameTranslation fields
 		gameId: '',
 		translationName: null,
+		version: null,
 		status: 'in_progress',
 		tversion: '',
 		tname: 'no_translation',
@@ -80,8 +83,11 @@
 		pendingSubmission: boolean;
 	} | null>(null);
 	let checkingDuplicateThread = $state(false);
+	let pendingQueryThreadIdAutoScrape = $state(false);
+	let prefilledTranslatorApplied = $state(false);
 
 	const isAdmin = checkRole(['admin', 'superadmin']);
+	const maxStep = $derived(isAdmin ? 5 : 3);
 
 	let fieldFormState = $derived(computeGameFormFieldState(game));
 	let translatorFieldErrors = $derived(
@@ -92,6 +98,21 @@
 			formHasTranslatorInputIssue(game, data.translators, data.warnUnknownTranslators)
 	);
 
+	onMount(() => {
+		const threadIdRaw = new URLSearchParams(window.location.search).get('threadId');
+		if (!threadIdRaw) return;
+		const parsed = Number.parseInt(threadIdRaw, 10);
+		if (Number.isNaN(parsed) || parsed <= 0) return;
+		if (game.threadId === null || game.threadId === 0) {
+			game.threadId = parsed;
+		}
+		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
+		// On garde le déclenchement automatique pour plus tard.
+		pendingQueryThreadIdAutoScrape = true;
+		void runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
+		replaceState('/dashboard/manager/add', page.state);
+	});
+
 	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
 		if (v === null || v === undefined) return null;
 		const n = typeof v === 'number' ? v : Number.parseInt(String(v), 10);
@@ -100,8 +121,27 @@
 	};
 
 	$effect(() => {
+		if (prefilledTranslatorApplied) return;
+		const prefilled = data.prefilledTranslatorName;
+		if (typeof prefilled === 'string' && prefilled.trim().length > 0 && !game.translatorId) {
+			game.translatorId = prefilled.trim();
+		}
+		prefilledTranslatorApplied = true;
+	});
+
+	$effect(() => {
 		if (game.tname === 'no_translation') {
 			game.ttype = 'hs';
+		}
+	});
+
+	$effect(() => {
+		// Règle métier: pour le site "other", pas de threadId.
+		if (game.website === 'other' && game.threadId !== null) {
+			game.threadId = null;
+			savedId = null;
+			threadDuplicateCheck = null;
+			pendingQueryThreadIdAutoScrape = false;
 		}
 	});
 
@@ -141,12 +181,19 @@
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
 
-		if (step + amount >= 0 && step + amount <= 5) step += amount;
+		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
 		if (step === 1 && game.website === 'other') step += amount;
 		if (step === 2 && game.website === 'f95z') step += amount;
 
-		if ((step === 4 && game.website === 'other' && isAdmin) || (step === 4 && !isAdmin))
-			step += amount;
+		// Clamp final après sauts conditionnels
+		if (step < 0) step = 0;
+		if (step > maxStep) step = maxStep;
+
+		// Si l'ID vient de ?threadId, on attend l'étape 3 pour lancer le scrape auto.
+		if (pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') {
+			pendingQueryThreadIdAutoScrape = false;
+			await handleThreadIdFieldBlur();
+		}
 	};
 
 	const scrapeData = async ({
@@ -312,6 +359,7 @@
 
 			type TranslationPayload = {
 				translationName: string;
+				version: string | null;
 				tversion: string;
 				status: FormGameType['status'];
 				ttype: FormGameType['ttype'];
@@ -327,7 +375,7 @@
 					description: game.description ?? null,
 					type: game.type,
 					website: game.website,
-					threadId: game.threadId ?? null,
+					threadId: game.website === 'other' ? null : (game.threadId ?? null),
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
 					image: game.image.trim(),
@@ -338,6 +386,7 @@
 
 			const hasTranslationData =
 				(game.translationName && game.translationName.trim().length > 0) ||
+				(game.version && game.version.trim().length > 0) ||
 				(game.tversion && game.tversion.trim().length > 0) ||
 				(game.tlink && game.tlink.trim().length > 0) ||
 				(game.translatorId && game.translatorId.trim().length > 0) ||
@@ -354,6 +403,7 @@
 
 				payload.translation = {
 					translationName,
+					version: game.version?.trim() || null,
 					tversion: game.tversion?.trim() || '',
 					status: game.status,
 					ttype: game.ttype,
@@ -412,6 +462,7 @@
 		active?: number[];
 		name: keyof FormGameType & string;
 		needsTranslators?: boolean;
+		adminOnly?: boolean;
 	};
 
 	const elements: Element[] = [
@@ -450,11 +501,11 @@
 			name: 'tags'
 		},
 		{
-			Component: Input,
+			Component: Select,
 			active: [2, 5],
 			title: 'Type du jeu',
 			name: 'type',
-			type: 'text'
+			values: ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other']
 		},
 		{
 			Component: InputImage,
@@ -480,6 +531,13 @@
 			active: [3, 5],
 			title: 'Nom de la traduction',
 			name: 'translationName',
+			type: 'text'
+		},
+		{
+			Component: Input,
+			active: [3, 5],
+			title: 'Version de référence',
+			name: 'version',
 			type: 'text'
 		},
 		{
@@ -528,8 +586,21 @@
 			title: 'Type de Traduction',
 			name: 'ttype',
 			values: ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']
+		},
+		{
+			Component: Checkbox,
+			active: [4, 5],
+			title: 'Auto-check jeu',
+			name: 'gameAutoCheck',
+			adminOnly: true
+		},
+		{
+			Component: Checkbox,
+			active: [4, 5],
+			title: 'Auto-check traduction',
+			name: 'ac',
+			adminOnly: true
 		}
-		// Auto-check translation est déterminé automatiquement à l'ajout.
 	];
 </script>
 
@@ -579,8 +650,12 @@
 					</label>
 				</div>
 			{/if}
+			<div class="w-full px-8 text-sm text-base-content/70">
+				Étape {step + 1} / {maxStep + 1}
+			</div>
 			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators } (name)}
+				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
+					{#if !adminOnly || isAdmin}
 					{#if needsTranslators && Component === Datalist}
 						<Datalist
 							{step}
@@ -610,10 +685,11 @@
 							onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
 						/>
 					{/if}
+					{/if}
 				{/each}
 			</div>
 			<div class="flex w-full flex-col justify-center gap-4 px-8 sm:flex-row">
-				{#if step < 5}
+				{#if step < maxStep}
 					<button
 						class="btn w-full btn-outline btn-primary sm:w-48"
 						type="button"
@@ -642,7 +718,12 @@
 					</button>
 				{/if}
 				{#if checkRole(['superadmin'])}
-					<Dev bind:game />
+					<Dev
+						bind:game
+						onDevDataApplied={() => {
+							step = maxStep;
+						}}
+					/>
 				{/if}
 				{#if game.website === 'lc' || game.website === 'f95z'}
 					<Insert bind:game />

@@ -3,32 +3,37 @@
 
 	interface Props {
 		game: FormGameType;
+	onDevDataApplied?: () => void;
 		// scrapeData: (args: ScrapeDataArgs) => Promise<void>;
 	}
 
-	let { game = $bindable() }: Props = $props();
+let { game = $bindable(), onDevDataApplied }: Props = $props();
 
 	const handleClick = (): void => {
 		game = {
 			...game,
 			website: 'other',
-			threadId: 666,
+			threadId: null,
 			name: 'TEST GAME FOR DEV',
 			link: 'https://testgame.dev',
-			gameAutoCheck: false,
 			status: 'abandoned',
-			tags: 'TEST, DEV, NE PAS TOUCHER',
+			tags: 'no sexual content',
+      description: 'TEST, DEV, NE PAS TOUCHER',
 			type: 'other',
 			gameVersion: 'v666',
-			tversion: 'n/a',
-			tname: 'no_translation',
-			tlink: '',
+      version: 'v666',
+			tversion: 'v42',
+			tname: 'translation',
+      translationName: 'test translation',
+			tlink: 'https://testgame.dev/translation',
 			translatorId: 'Hunteraulo',
-			proofreaderId: 'Hunteraulo',
+			proofreaderId: 'Rory-Mercury91',
 			ttype: 'hs',
+			gameAutoCheck: false,
 			ac: false,
 			image: 'https://attachments.f95zone.to/2024/04/3572650_Remaster_HD.png'
 		};
+		onDevDataApplied?.();
 	};
 </script>
 

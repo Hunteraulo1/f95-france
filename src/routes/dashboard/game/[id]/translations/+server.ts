@@ -1,9 +1,13 @@
 import { getUserById } from '$lib/server/auth';
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { createGameUpdateRow } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -30,6 +34,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			translationName,
+			version,
 			tversion,
 			status,
 			ttype,
@@ -91,6 +96,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationSubmission(currentUser.id, gameId, {
 				translationName: translationName || null,
+				version: typeof version === 'string' ? version.trim() || null : null,
 				tversion,
 				status,
 				ttype,
@@ -98,6 +104,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
+			});
+			// La table update/MAJ doit refléter l'action dès l'ajout.
+			await createGameUpdateRow(gameId, 'adding');
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameId
 			});
 
 			return json(
@@ -119,6 +131,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			.values({
 				gameId,
 				translationName,
+				version: typeof version === 'string' ? version.trim() || null : null,
 				tversion,
 				status,
 				ttype,
@@ -136,6 +149,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			gameId,
 			translation: {
 				translationName: translationName || null,
+				version: typeof version === 'string' ? version.trim() || null : null,
 				tversion,
 				status,
 				ttype,
@@ -167,6 +181,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] add proofreader failed:', err);
 			});
 		}
+		await createGameUpdateRow(gameId, 'adding');
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {

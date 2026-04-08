@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -18,10 +21,10 @@
 		if (urlParams.get('oauth_success') === 'true') {
 			oauthMessage = { type: 'success', text: 'Autorisation OAuth2 réussie !' };
 			// Nettoyer l'URL
-			window.history.replaceState({}, '', '/dashboard/config');
+			replaceState('/dashboard/config', get(page).state);
 		} else if (urlParams.get('oauth_error')) {
 			oauthMessage = { type: 'error', text: `Erreur OAuth2: ${urlParams.get('oauth_error')}` };
-			window.history.replaceState({}, '', '/dashboard/config');
+			replaceState('/dashboard/config', get(page).state);
 		}
 	});
 </script>
@@ -73,6 +76,23 @@
 						/>
 					</div>
 
+					<div class="divider">Sécurité / Accès</div>
+
+					<div class="form-control w-full">
+						<label for="maintenanceMode" class="label cursor-pointer justify-start gap-3">
+							<input
+								id="maintenanceMode"
+								name="maintenanceMode"
+								type="checkbox"
+								class="checkbox checkbox-sm"
+								checked={Boolean(data.config?.maintenanceMode)}
+							/>
+							<span class="label-text">
+								Mode maintenance (bloque tous les utilisateurs sauf superadmin)
+							</span>
+						</label>
+					</div>
+
 					<div class="divider">Webhooks Discord</div>
 
 					<div class="form-control w-full">
@@ -104,12 +124,12 @@
 					</div>
 
 					<div class="form-control w-full">
-						<label for="discordWebhookProofreaders" class="label">
-							<span class="label-text">Webhook Discord - Proofreaders</span>
+						<label for="discordWebhookAdmin" class="label">
+							<span class="label-text">Webhook Discord - Admin</span>
 						</label>
 						<input
-							id="discordWebhookProofreaders"
-							name="discordWebhookProofreaders"
+							id="discordWebhookAdmin"
+							name="discordWebhookAdmin"
 							type="url"
 							class="input-bordered input w-full"
 							value={data.config?.discordWebhookProofreaders || ''}

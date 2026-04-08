@@ -1,10 +1,11 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
 const SHEET_TAB_TR = 'Traducteurs/Relecteurs';
+const SHEET_TAB_MAJ = 'MAJ';
 
 type SheetsApiResponse = {
 	values?: string[][];
@@ -166,6 +167,18 @@ function formatTranslationType(v: string | null | undefined): string {
 		default:
 			return (v ?? '').trim();
 	}
+}
+
+function getTradVerValue(
+	tr: typeof table.gameTranslation.$inferSelect,
+	game: typeof table.game.$inferSelect
+): string {
+	const translationReferenceVersion =
+		typeof tr.version === 'string' ? tr.version.trim() : (tr.version ?? '');
+	if (tr.ac === false) {
+		return translationReferenceVersion || (game.gameVersion ?? '');
+	}
+	return game.gameVersion ?? '';
 }
 
 function parsePages(pagesRaw: string | null | undefined): Array<{ name?: string; link?: string }> {
@@ -348,6 +361,54 @@ async function getSheetIdByTitle(
 	return typeof id === 'number' ? id : null;
 }
 
+async function sortJeuxSheetByGameName(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string }
+): Promise<void> {
+	const tab = encodeURIComponent(SHEET_TAB_JEUX);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length <= 2) return; // en-tête + au plus 1 ligne
+
+	const headersRow = rows[0] ?? [];
+	const gameNameIdx = findHeaderIndex(headersRow, ['Nom du jeu', 'Jeu']);
+	if (gameNameIdx === -1) return;
+
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_JEUX);
+	if (sheetId == null) return;
+
+	const sortRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			requests: [
+				{
+					sortRange: {
+						range: {
+							sheetId,
+							startRowIndex: 1,
+							endRowIndex: rows.length,
+							startColumnIndex: 0,
+							endColumnIndex: headersRow.length
+						},
+						sortSpecs: [{ dimensionIndex: gameNameIdx, sortOrder: 'ASCENDING' }]
+					}
+				}
+			]
+		})
+	});
+	if (!sortRes.ok) {
+		const err = await sortRes.text().catch(() => '');
+		throw new Error(`Sheets sort Jeux error (${sortRes.status}): ${err.slice(0, 500)}`);
+	}
+}
+
 async function deleteRowsByTranslationIds(translationIds: string[]): Promise<void> {
 	if (!translationIds.length) return;
 	const auth = await getSheetsAuth();
@@ -405,6 +466,7 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 		const err = await delRes.text().catch(() => '');
 		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
 	}
+	await sortJeuxSheetByGameName(auth);
 }
 
 export async function syncTranslationToGoogleSheet(translationId: string): Promise<void> {
@@ -509,7 +571,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 	set('Version', game.gameVersion ?? '');
 	set(
 		['Trad. Ver.', 'Trad Ver', 'Trad. Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
-		tr.tversion ?? ''
+		getTradVerValue(tr, game)
 	);
 	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, tname));
 	set(['Status', 'Statut'], formatStatus(tr.status));
@@ -548,7 +610,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 					'Version traduction'
 				])
 			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
-	if (tradVerIdx !== -1) rowValues[tradVerIdx] = tr.tversion ?? '';
+	if (tradVerIdx !== -1) rowValues[tradVerIdx] = getTradVerValue(tr, game);
 	if (idDbIdx !== -1) rowValues[idDbIdx] = tr.id;
 
 	if (rowNumber !== -1) {
@@ -568,6 +630,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 			const err = await res.text().catch(() => '');
 			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
 		}
+		await sortJeuxSheetByGameName(auth);
 		return;
 	}
 
@@ -587,6 +650,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 		const err = await appendRes.text().catch(() => '');
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 	}
+	await sortJeuxSheetByGameName(auth);
 }
 
 export async function deleteTranslationFromGoogleSheet(translationId: string): Promise<void> {
@@ -739,7 +803,7 @@ function buildJeuxRow(
 	set('Version', game.gameVersion ?? '');
 	set(
 		['Trad. Ver.', 'Trad Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
-		tr.tversion ?? ''
+		getTradVerValue(tr, game)
 	);
 	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, tname));
 	set(['Status', 'Statut'], formatStatus(tr.status));
@@ -774,7 +838,7 @@ function buildJeuxRow(
 					'Version traduction'
 				])
 			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
-	if (tradVerIdx !== -1) rowValues[tradVerIdx] = tr.tversion ?? '';
+	if (tradVerIdx !== -1) rowValues[tradVerIdx] = getTradVerValue(tr, game);
 	const idIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db']);
 	if (idIdx !== -1) rowValues[idIdx] = tr.id;
 	return rowValues;
@@ -874,6 +938,7 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 				}
 			}
 		}
+		await sortJeuxSheetByGameName(auth);
 	} catch (err) {
 		errors.push(`bulk Jeux: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 	}
@@ -935,4 +1000,173 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 		syncedTranslators: translators.length,
 		errors
 	};
+}
+
+export async function syncMajToGoogleSheet(): Promise<void> {
+	const auth = await getSheetsAuth();
+	if (!auth) return;
+
+	let todayRows: Array<{ status: string; gameName: string }>;
+	try {
+		todayRows = await db
+			.select({ status: table.update.status, gameName: table.game.name })
+			.from(table.update)
+			.innerJoin(table.game, eq(table.update.gameId, table.game.id))
+			.where(sql`DATE(${table.update.createdAt}) = CURRENT_DATE`);
+	} catch {
+		// Compat si la colonne `update.status` n'est pas encore migrée:
+		// on considère temporairement tout en "update".
+		const fallback = (await db.execute(sql`
+			SELECT 'update'::varchar AS status, g.name AS game_name
+			FROM "update" u
+			JOIN game g ON g.id = u.game_id
+			WHERE DATE(u.created_at) = CURRENT_DATE
+		`)) as unknown as Array<{ status: string; game_name: string }>;
+		todayRows = fallback.map((r) => ({ status: r.status, gameName: r.game_name }));
+	}
+
+	const byStatus = new Map<string, Set<string>>();
+	for (const row of todayRows) {
+		const key = row.status === 'adding' ? 'AJOUT DE JEU' : 'MISE À JOUR';
+		if (!byStatus.has(key)) byStatus.set(key, new Set());
+		if (row.gameName?.trim()) byStatus.get(key)!.add(row.gameName.trim());
+	}
+
+	const dateLabel = new Date().toLocaleDateString('fr-FR');
+	const targetRows = [
+		{
+			statusLabel: 'AJOUT DE JEU',
+			names: Array.from(byStatus.get('AJOUT DE JEU') ?? [])
+		},
+		{
+			statusLabel: 'MISE À JOUR',
+			names: Array.from(byStatus.get('MISE À JOUR') ?? [])
+		}
+	];
+
+	const tab = encodeURIComponent(SHEET_TAB_MAJ);
+	const res = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!res.ok) return;
+	const body = (await res.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length === 0) return;
+
+	const headers = rows[0] ?? [];
+	const dateIdx =
+		findHeaderIndex(headers, ['Date', 'Jour']) !== -1
+			? findHeaderIndex(headers, ['Date', 'Jour'])
+			: 0;
+	const statusIdx =
+		findHeaderIndex(headers, ['Status', 'Statut']) !== -1
+			? findHeaderIndex(headers, ['Status', 'Statut'])
+			: 1;
+	const namesIdx =
+		findHeaderIndex(headers, ['Nom des jeux', 'Jeux', 'Noms']) !== -1
+			? findHeaderIndex(headers, ['Nom des jeux', 'Jeux', 'Noms'])
+			: 2;
+
+	const lastCol = toColA1(headers.length - 1);
+	const toDeleteRowStarts: number[] = [];
+	const updates: Array<{ range: string; values: string[][] }> = [];
+	const insertsAtTop: string[][] = [];
+
+	for (const target of targetRows) {
+		const matching: number[] = [];
+		for (let r = 1; r < rows.length; r++) {
+			const rowDate = (rows[r]?.[dateIdx] ?? '').trim();
+			const rowStatus = (rows[r]?.[statusIdx] ?? '').trim();
+			if (rowDate === dateLabel && normalizeHeader(rowStatus) === normalizeHeader(target.statusLabel)) {
+				matching.push(r + 1);
+			}
+		}
+
+		const namesText = target.names.join(',  ');
+		if (!namesText) {
+			if (matching.length > 0) {
+				for (const rn of matching) toDeleteRowStarts.push(rn - 1);
+			}
+			continue;
+		}
+
+		const rowValues = new Array(headers.length).fill('');
+		rowValues[dateIdx] = dateLabel;
+		rowValues[statusIdx] = target.statusLabel;
+		rowValues[namesIdx] = namesText;
+
+		if (matching.length > 0) {
+			const keep = matching[0]!;
+			updates.push({
+				range: `'${SHEET_TAB_MAJ}'!A${keep}:${lastCol}${keep}`,
+				values: [rowValues]
+			});
+			for (const extra of matching.slice(1)) toDeleteRowStarts.push(extra - 1);
+		} else {
+			insertsAtTop.push(rowValues);
+		}
+	}
+
+	if (updates.length > 0) {
+		await sheetsBatchUpdate(auth, updates);
+	}
+	if (insertsAtTop.length > 0) {
+		const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_MAJ);
+		if (sheetId == null) {
+			throw new Error(`Feuille "${SHEET_TAB_MAJ}" introuvable.`);
+		}
+		const insertRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				requests: [
+					{
+						insertDimension: {
+							range: {
+								sheetId,
+								dimension: 'ROWS',
+								startIndex: 1,
+								endIndex: 1 + insertsAtTop.length
+							},
+							inheritFromBefore: false
+						}
+					}
+				]
+			})
+		});
+		if (!insertRes.ok) {
+			const err = await insertRes.text().catch(() => '');
+			throw new Error(`Sheets insert MAJ rows error (${insertRes.status}): ${err.slice(0, 500)}`);
+		}
+
+		const insertUpdates = insertsAtTop.map((rowValues, idx) => {
+			const rowNumber = 2 + idx; // juste après l'en-tête
+			return {
+				range: `'${SHEET_TAB_MAJ}'!A${rowNumber}:${lastCol}${rowNumber}`,
+				values: [rowValues]
+			};
+		});
+		await sheetsBatchUpdate(auth, insertUpdates);
+	}
+
+	if (toDeleteRowStarts.length > 0) {
+		const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_MAJ);
+		if (sheetId != null) {
+			const requests = toDeleteRowStarts
+				.sort((a, b) => b - a)
+				.map((start) => ({
+					deleteDimension: {
+						range: { sheetId, dimension: 'ROWS', startIndex: start, endIndex: start + 1 }
+					}
+				}));
+			await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ requests })
+			});
+		}
+	}
 }

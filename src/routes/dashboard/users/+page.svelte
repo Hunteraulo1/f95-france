@@ -70,14 +70,14 @@
 											{/if}
 										</div>
 									</div>
-									<a href={`/dashboard/profile/${user.id}`} class="link font-bold link-hover">
+									<a href={`/dashboard/profile/${user.id}`} class="link font-bold link-hover text-nowrap">
 										{user.username}
 									</a>
 								</div>
 							</td>
 							<td>{user.email}</td>
 							<td>
-								<div class="badge badge-outline">
+								<div class="badge badge-outline text-nowrap">
 									{roles.find((r) => r.value === user.role)?.label || user.role}
 								</div>
 							</td>

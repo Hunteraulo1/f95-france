@@ -143,7 +143,7 @@
 		data.webhookStatus ?? {
 			updates: false,
 			translators: false,
-			proofreaders: false
+			admin: false
 		}
 	);
 	const webhookChannelLabel = (c: string) =>
@@ -151,7 +151,7 @@
 			({
 				updates: 'Mises à jour',
 				translators: 'Traducteurs',
-				proofreaders: 'Relecteurs'
+				admin: 'Admin'
 			}) as Record<string, string>
 		)[c] ?? c;
 </script>
@@ -425,7 +425,7 @@
 				</div>
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Relecteurs</span>
-					{#if webhookStatus.proofreaders}
+					{#if webhookStatus.admin}
 						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
@@ -433,7 +433,7 @@
 				</div>
 			</div>
 
-			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders}
+			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin}
 				<p class="mb-4 text-sm text-warning">
 					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
 					tester.
@@ -485,18 +485,18 @@
 							disabled={webhookTestIsLoading ||
 								(!webhookStatus.updates &&
 									!webhookStatus.translators &&
-									!webhookStatus.proofreaders)}
+									!webhookStatus.admin)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
 							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
-							{#if webhookStatus.proofreaders}<option value="proofreaders">Relecteurs</option>{/if}
+							{#if webhookStatus.admin}<option value="admin">Admin</option>{/if}
 						</select>
 					</div>
 					<button
 						type="submit"
 						class="btn btn-primary"
 						disabled={webhookTestIsLoading ||
-							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders)}
+							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin)}
 					>
 						{#if webhookTestIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />
@@ -1206,11 +1206,24 @@
 							<div class="flex-1">
 								<h3 class="font-bold">{syncResult.message}</h3>
 								{#if syncResult.details && typeof syncResult.details === 'object'}
+									{@const legacyDetails = ((
+										'legacy' in syncResult.details &&
+										typeof syncResult.details.legacy === 'object' &&
+										syncResult.details.legacy !== null
+											? syncResult.details.legacy
+											: syncResult.details
+									) as {
+										total?: number;
+										insertedGames?: number;
+										updatedGames?: number;
+										insertedTranslations?: number;
+										updatedTranslations?: number;
+									})}
 									<p class="mt-1 text-sm">
-										Total: {syncResult.details.total} | Jeux ajoutes: {syncResult.details
-											.insertedGames} | Jeux mis a jour: {syncResult.details.updatedGames} | Traductions
-										ajoutees: {syncResult.details.insertedTranslations} | Traductions mises a jour:
-										{syncResult.details.updatedTranslations}
+										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
+											0} | Jeux mis a jour: {legacyDetails.updatedGames ?? 0} | Traductions ajoutees:
+										{legacyDetails.insertedTranslations ?? 0} | Traductions mises a jour:
+										{legacyDetails.updatedTranslations ?? 0}
 									</p>
 								{/if}
 							</div>

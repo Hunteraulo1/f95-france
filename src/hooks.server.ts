@@ -1,7 +1,10 @@
 import * as auth from '$lib/server/auth';
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
@@ -27,6 +30,41 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.user = null;
 			event.locals.session = null;
 		}
+	}
+
+	// Mode maintenance global: autoriser uniquement les superadmins.
+	// Exceptions: pages auth pour permettre la connexion/déconnexion.
+	try {
+		const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
+		const maintenanceEnabled = cfg?.maintenanceMode === true;
+		if (maintenanceEnabled) {
+			const path = event.url.pathname;
+			const isAuthException =
+				path === '/dashboard/login' || path === '/dashboard/register' || path === '/dashboard/logout';
+			const isSuperAdmin = event.locals.user?.role === 'superadmin';
+
+			if (!isSuperAdmin && !isAuthException) {
+				const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
+				if (acceptsHtml) {
+					return new Response(
+						'<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>',
+						{
+							status: 503,
+							headers: {
+								'content-type': 'text/html; charset=utf-8',
+								'retry-after': '600'
+							}
+						}
+					);
+				}
+				return new Response(JSON.stringify({ error: 'Service en maintenance' }), {
+					status: 503,
+					headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '600' }
+				});
+			}
+		}
+	} catch (error) {
+		console.warn('Maintenance check skipped:', error);
 	}
 
 	let capturedBody: string | null = null;

@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -21,10 +21,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (statusFilter === 'all') {
 			whereCondition = undefined; // Pas de filtre, toutes les soumissions
 		} else {
-			whereCondition = eq(
-				table.submission.status,
-				statusFilter as 'pending' | 'accepted' | 'rejected'
-			);
+			if (statusFilter === 'pending') {
+				// Règle UI: afficher les soumissions ouvertes aussi dans "En attente"
+				whereCondition = or(
+					eq(table.submission.status, 'pending'),
+					eq(table.submission.status, 'opened')
+				);
+			} else {
+				whereCondition = eq(
+					table.submission.status,
+					statusFilter as 'pending' | 'opened' | 'accepted' | 'rejected'
+				);
+			}
 		}
 
 		// Charger les soumissions avec les informations utilisateur
@@ -51,6 +59,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				},
 				translation: {
 					id: table.gameTranslation.id,
+					version: table.gameTranslation.version,
 					tversion: table.gameTranslation.tversion,
 					translationName: table.gameTranslation.translationName
 				}
@@ -122,12 +131,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const pendingCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
-			.where(eq(table.submission.status, 'pending'));
+			.where(
+				or(eq(table.submission.status, 'pending'), eq(table.submission.status, 'opened'))
+			);
 
 		const acceptedCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
 			.where(eq(table.submission.status, 'accepted'));
+
+		const openedCountResult = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(eq(table.submission.status, 'opened'));
 
 		const rejectedCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
@@ -135,6 +151,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.where(eq(table.submission.status, 'rejected'));
 
 		const pendingCount = pendingCountResult[0]?.count || 0;
+		const openedCount = openedCountResult[0]?.count || 0;
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
 		const rejectedCount = rejectedCountResult[0]?.count || 0;
 
@@ -151,6 +168,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			submissions: submissionsWithData,
 			statusFilter,
 			pendingCount,
+			openedCount,
 			acceptedCount,
 			rejectedCount,
 			translators
@@ -162,6 +180,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			submissions: [],
 			statusFilter,
 			pendingCount: 0,
+			openedCount: 0,
 			acceptedCount: 0,
 			rejectedCount: 0,
 			translators: []
@@ -170,6 +189,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
+	openSubmission: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return fail(403, { message: 'Accès non autorisé' });
+		}
+
+		const formData = await request.formData();
+		const submissionId = formData.get('submissionId') as string;
+		if (!submissionId) return fail(400, { message: 'submissionId requis' });
+
+		// Uniquement si la soumission est encore en attente.
+		await db
+			.update(table.submission)
+			.set({ status: 'opened', updatedAt: new Date() })
+			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
+
+		return { success: true };
+	},
 	updateStatus: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
 		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
@@ -186,7 +222,7 @@ export const actions: Actions = {
 		}
 
 		// Vérifier que le statut est valide
-		if (!['pending', 'accepted', 'rejected'].includes(status)) {
+		if (!['pending', 'opened', 'accepted', 'rejected'].includes(status)) {
 			return fail(400, { message: 'Statut invalide' });
 		}
 
@@ -217,11 +253,16 @@ export const actions: Actions = {
 			const submissionUserId = currentSubmission[0].userId;
 			const submissionType = currentSubmission[0].type;
 
+			// Empêcher un retour à "pending" après ouverture
+			if (status === 'pending' && currentStatus !== 'pending') {
+				return fail(400, { message: 'Impossible de repasser en pending après ouverture' });
+			}
+
 			// Mettre à jour le statut
 			await db
 				.update(table.submission)
 				.set({
-					status: status as 'pending' | 'accepted' | 'rejected',
+					status: status as 'pending' | 'opened' | 'accepted' | 'rejected',
 					adminNotes: adminNotes || null
 				})
 				.where(eq(table.submission.id, submissionId));

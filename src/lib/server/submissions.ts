@@ -13,7 +13,11 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import { and, desc, eq } from 'drizzle-orm';
+import {
+	createGameUpdateRow,
+	touchGameUpdatedToday
+} from '$lib/server/game-updates';
+import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
  * Crée une soumission pour un nouveau jeu
@@ -34,6 +38,7 @@ export async function createGameSubmission(
 	},
 	translationData?: {
 		translationName: string;
+		version?: string | null;
 		tversion: string;
 		status: string;
 		ttype: string;
@@ -101,6 +106,7 @@ export async function createTranslationSubmission(
 	gameId: string,
 	translationData: {
 		translationName: string | null;
+		version?: string | null;
 		tversion: string;
 		status: string;
 		ttype: string;
@@ -135,6 +141,7 @@ export async function createTranslationUpdateSubmission(
 	translationId: string,
 	translationData: {
 		translationName: string | null;
+		version?: string | null;
 		tversion: string;
 		status: string;
 		ttype: string;
@@ -252,6 +259,7 @@ export async function applySubmission(submissionId: string) {
 		};
 		translation?: {
 			translationName?: string | null;
+			version?: string | null;
 			tversion: string;
 			status: string;
 			ttype: string;
@@ -344,6 +352,10 @@ export async function applySubmission(submissionId: string) {
 				.values({
 					gameId: gameId!,
 					translationName: translationData.translationName || null,
+					version:
+						typeof translationData.version === 'string'
+							? translationData.version.trim() || null
+							: null,
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: translationData.ttype as
@@ -385,6 +397,7 @@ export async function applySubmission(submissionId: string) {
 				.update(table.submission)
 				.set({ gameId })
 				.where(eq(table.submission.id, submissionId));
+			await createGameUpdateRow(gameId, 'adding');
 		}
 	} else if (sub.type === 'update') {
 		// Mettre à jour un jeu existant
@@ -484,6 +497,7 @@ export async function applySubmission(submissionId: string) {
 		void syncGameTranslationsToGoogleSheet(sub.gameId).catch((err) => {
 			console.warn('[google-sheets-sync] submission game update rows failed:', err);
 		});
+		await touchGameUpdatedToday(sub.gameId);
 	} else if (sub.type === 'translation') {
 		// Créer ou mettre à jour une traduction
 		if (!sub.gameId) {
@@ -515,6 +529,7 @@ export async function applySubmission(submissionId: string) {
 					...parsedData,
 					originalTranslation: {
 						translationName: originalTranslation.translationName,
+						version: originalTranslation.version,
 						tversion: originalTranslation.tversion,
 						status: originalTranslation.status,
 						ttype: originalTranslation.ttype,
@@ -544,6 +559,10 @@ export async function applySubmission(submissionId: string) {
 					.update(table.gameTranslation)
 					.set({
 						translationName: translationData.translationName || null,
+						version:
+							typeof translationData.version === 'string'
+								? translationData.version.trim() || null
+								: null,
 						tversion: translationData.tversion,
 						status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 						ttype: translationData.ttype as
@@ -574,6 +593,10 @@ export async function applySubmission(submissionId: string) {
 					.values({
 						gameId: sub.gameId,
 						translationName: translationData.translationName || null,
+						version:
+							typeof translationData.version === 'string'
+								? translationData.version.trim() || null
+								: null,
 						tversion: translationData.tversion,
 						status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 						ttype: translationData.ttype as
@@ -615,6 +638,10 @@ export async function applySubmission(submissionId: string) {
 				.values({
 					gameId: sub.gameId,
 					translationName: translationData.translationName || null,
+					version:
+						typeof translationData.version === 'string'
+							? translationData.version.trim() || null
+							: null,
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: translationData.ttype as
@@ -674,6 +701,13 @@ export async function applySubmission(submissionId: string) {
 				}
 			})();
 		}
+		if (sub.translationId) {
+			// Soumission de modification de traduction.
+			await touchGameUpdatedToday(sub.gameId);
+		} else {
+			// Soumission d'ajout de traduction.
+			await createGameUpdateRow(sub.gameId, 'adding');
+		}
 	} else if (sub.type === 'delete') {
 		// Supprimer un jeu ou une traduction
 		if (sub.translationId) {
@@ -705,6 +739,7 @@ export async function applySubmission(submissionId: string) {
 				...parsedData,
 				originalTranslation: {
 					translationName: originalTranslation.translationName,
+					version: originalTranslation.version,
 					tversion: originalTranslation.tversion,
 					status: originalTranslation.status,
 					ttype: originalTranslation.ttype,
@@ -764,6 +799,7 @@ export async function applySubmission(submissionId: string) {
 				},
 				originalTranslations: existingTranslations.map((t) => ({
 					translationName: t.translationName,
+					version: t.version,
 					tversion: t.tversion,
 					status: t.status,
 					ttype: t.ttype,
@@ -782,6 +818,49 @@ export async function applySubmission(submissionId: string) {
 				})
 				.where(eq(table.submission.id, submissionId));
 
+			const translationIds = existingTranslations.map((t) => t.id);
+			const rejectionNote = 'Rejet automatique: jeu supprimé via application de soumission.';
+
+			// Détacher les FK de submission avant suppression physique du jeu/traductions
+			// (évite la contrainte submission_game_id_game_id_fk).
+			if (translationIds.length > 0) {
+				await db
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(
+						and(
+							eq(table.submission.status, 'pending'),
+							or(
+								eq(table.submission.gameId, sub.gameId),
+								inArray(table.submission.translationId, translationIds)
+							)
+						)
+					);
+
+				await db
+					.update(table.submission)
+					.set({ translationId: null, updatedAt: new Date() })
+					.where(inArray(table.submission.translationId, translationIds));
+			} else {
+				await db
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId)));
+			}
+
+			await db
+				.update(table.submission)
+				.set({ gameId: null, updatedAt: new Date() })
+				.where(eq(table.submission.gameId, sub.gameId));
+
 			// Supprimer d'abord toutes les traductions associées
 			await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, sub.gameId));
 			void deleteGameTranslationsFromGoogleSheet(existingTranslations.map((t) => t.id)).catch(
@@ -789,6 +868,10 @@ export async function applySubmission(submissionId: string) {
 					console.warn('[google-sheets-sync] submission delete game rows failed:', err);
 				}
 			);
+
+			// Supprimer d'abord les lignes de la table "update" (FK vers game)
+			// avant la suppression du jeu.
+			await db.delete(table.update).where(eq(table.update.gameId, sub.gameId));
 
 			// Supprimer le jeu
 			await db.delete(table.game).where(eq(table.game.id, sub.gameId));
@@ -829,6 +912,7 @@ export async function revertSubmission(submissionId: string) {
 		};
 		translation?: {
 			translationName?: string | null;
+			version?: string | null;
 			tversion: string;
 			status: string;
 			ttype: string;
@@ -850,6 +934,7 @@ export async function revertSubmission(submissionId: string) {
 		};
 		originalTranslation?: {
 			translationName?: string | null;
+			version?: string | null;
 			tversion: string;
 			status: string;
 			ttype: string;
@@ -860,6 +945,7 @@ export async function revertSubmission(submissionId: string) {
 		};
 		originalTranslations?: Array<{
 			translationName?: string | null;
+			version?: string | null;
 			tversion: string;
 			status: string;
 			ttype: string;
@@ -886,6 +972,9 @@ export async function revertSubmission(submissionId: string) {
 
 		// Supprimer d'abord toutes les traductions associées
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, sub.gameId));
+
+		// Supprimer d'abord les lignes de la table "update" (FK vers game)
+		await db.delete(table.update).where(eq(table.update.gameId, sub.gameId));
 
 		// Supprimer le jeu
 		await db.delete(table.game).where(eq(table.game.id, sub.gameId));
@@ -946,6 +1035,10 @@ export async function revertSubmission(submissionId: string) {
 				.update(table.gameTranslation)
 				.set({
 					translationName: originalTranslation.translationName || null,
+					version:
+						typeof originalTranslation.version === 'string'
+							? originalTranslation.version.trim() || null
+							: null,
 					tversion: originalTranslation.tversion,
 					status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: originalTranslation.ttype as
@@ -1021,6 +1114,10 @@ export async function revertSubmission(submissionId: string) {
 				...(sub.translationId ? { id: sub.translationId } : {}),
 				gameId: sub.gameId!,
 				translationName: originalTranslation.translationName || null,
+				version:
+					typeof originalTranslation.version === 'string'
+						? originalTranslation.version.trim() || null
+						: null,
 				tversion: originalTranslation.tversion,
 				status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: originalTranslation.ttype as
@@ -1087,6 +1184,10 @@ export async function revertSubmission(submissionId: string) {
 					await db.insert(table.gameTranslation).values({
 						gameId: sub.gameId!,
 						translationName: originalTranslation.translationName || null,
+						version:
+							typeof originalTranslation.version === 'string'
+								? originalTranslation.version.trim() || null
+								: null,
 						tversion: originalTranslation.tversion,
 						status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 						ttype: originalTranslation.ttype as

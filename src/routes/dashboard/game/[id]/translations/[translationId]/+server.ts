@@ -1,10 +1,15 @@
 import { getUserById } from '$lib/server/auth';
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
+import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -32,6 +37,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			translationName,
+			version,
 			tversion,
 			status,
 			ttype,
@@ -39,11 +45,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: tnameBody,
 			directMode,
 			silentMode,
-			ac: _acIgnored,
+			ac,
 			translatorId,
 			proofreaderId
 		} = body;
-		void _acIgnored;
 
 		const beforeRows = await db
 			.select()
@@ -58,6 +63,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const before = beforeRows[0];
+		const normalizedVersion =
+			typeof version === 'string' ? version.trim() || null : (before.version ?? null);
 
 		const TNAMES = [
 			'no_translation',
@@ -82,9 +89,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		// Règle métier: une modification de traduction ne change jamais l'auto-check.
-		const acValue = before.ac ?? false;
-
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
 		if (!currentUser) {
@@ -94,6 +98,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const acRequested = typeof ac === 'boolean' ? ac : undefined;
+		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
+		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
+		const gameAllowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
+		const acValue = !gameAllowsTranslationAc
+			? false
+			: canManuallyEditTranslationAc && acRequested !== undefined
+				? acRequested
+				: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
@@ -104,6 +118,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -112,6 +127,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
+			});
+			// La table update/MAJ doit refléter l'action dès la modification.
+			await touchGameUpdatedToday(gameId);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameId
 			});
 
 			return json({
@@ -126,6 +147,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.gameTranslation)
 			.set({
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -142,6 +164,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			gameId,
 			translation: {
 				translationName: translationName || null,
+				version: normalizedVersion,
 				tversion,
 				status,
 				ttype,
@@ -152,6 +175,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
+				version: before.version,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,
@@ -183,6 +207,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] update proofreader failed:', err);
 			});
 		}
+		await touchGameUpdatedToday(gameId);
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
@@ -252,6 +277,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameId
+			});
 
 			return json({
 				message:
@@ -266,6 +295,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			reason,
 			originalTranslation: {
 				translationName: tr.translationName,
+				version: tr.version,
 				tversion: tr.tversion,
 				status: tr.status,
 				ttype: tr.ttype,
@@ -286,7 +316,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});
-
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression de la traduction:', error);

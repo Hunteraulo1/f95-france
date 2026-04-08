@@ -1,7 +1,8 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Vérifier que l'utilisateur est authentifié
@@ -20,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		} else {
 			whereCondition = and(
 				eq(table.submission.userId, locals.user.id),
-				eq(table.submission.status, statusFilter as 'pending' | 'accepted' | 'rejected')
+				eq(table.submission.status, statusFilter as 'pending' | 'opened' | 'accepted' | 'rejected')
 			);
 		}
 
@@ -43,6 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				},
 				translation: {
 					id: table.gameTranslation.id,
+					version: table.gameTranslation.version,
 					tversion: table.gameTranslation.tversion,
 					translationName: table.gameTranslation.translationName
 				}
@@ -116,6 +118,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'pending'))
 			);
 
+		const openedCountResult = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(
+				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'opened'))
+			);
+
 		const acceptedCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
@@ -131,6 +140,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			);
 
 		const pendingCount = pendingCountResult[0]?.count || 0;
+		const openedCount = openedCountResult[0]?.count || 0;
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
 		const rejectedCount = rejectedCountResult[0]?.count || 0;
 
@@ -147,6 +157,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			submissions: submissionsWithData,
 			statusFilter,
 			pendingCount,
+			openedCount,
 			acceptedCount,
 			rejectedCount,
 			translators
@@ -158,9 +169,118 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			submissions: [],
 			statusFilter,
 			pendingCount: 0,
+			openedCount: 0,
 			acceptedCount: 0,
 			rejectedCount: 0,
 			translators: []
 		};
+	}
+};
+
+export const actions: Actions = {
+	cancelSubmission: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Non authentifié' });
+
+		const formData = await request.formData();
+		const submissionId = formData.get('submissionId');
+		if (typeof submissionId !== 'string' || !submissionId.trim()) {
+			return fail(400, { message: 'ID de soumission requis' });
+		}
+
+		const [sub] = await db
+			.select({
+				id: table.submission.id,
+				userId: table.submission.userId,
+				status: table.submission.status
+			})
+			.from(table.submission)
+			.where(eq(table.submission.id, submissionId))
+			.limit(1);
+
+		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
+		if (sub.status !== 'pending') {
+			return fail(400, { message: "Seules les soumissions en attente peuvent être annulées" });
+		}
+
+		await db
+			.update(table.submission)
+			.set({
+				status: 'rejected',
+				adminNotes: 'Annulée par l’utilisateur',
+				updatedAt: new Date()
+			})
+			.where(eq(table.submission.id, submissionId));
+
+		return { success: true };
+	},
+	updateSubmissionData: async ({ request, locals }) => {
+		if (!locals.user) return fail(401, { message: 'Non authentifié' });
+
+		const formData = await request.formData();
+		const submissionId = formData.get('submissionId');
+		const submissionDataJson = formData.get('submissionDataJson');
+
+		if (typeof submissionId !== 'string' || !submissionId.trim()) {
+			return fail(400, { message: 'ID de soumission requis' });
+		}
+		if (typeof submissionDataJson !== 'string' || !submissionDataJson.trim()) {
+			return fail(400, { message: 'Données de soumission requises' });
+		}
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(submissionDataJson);
+		} catch {
+			return fail(400, { message: 'JSON invalide' });
+		}
+		if (!parsed || typeof parsed !== 'object') {
+			return fail(400, { message: 'JSON invalide (objet attendu)' });
+		}
+
+		const [sub] = await db
+			.select({
+				id: table.submission.id,
+				status: table.submission.status,
+				adminNotes: table.submission.adminNotes,
+				userId: table.submission.userId,
+				type: table.submission.type
+			})
+			.from(table.submission)
+			.where(eq(table.submission.id, submissionId))
+			.limit(1);
+
+		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
+
+		// Règle: tant que la soumission n'a pas été "ouverte" (proxy adminNotes non vide) et
+		// qu'elle reste en attente, on autorise la modification.
+		if (sub.status !== 'pending') return fail(403, { message: 'Soumission déjà traitée par admin' });
+		if (sub.adminNotes && sub.adminNotes.trim().length > 0) {
+			return fail(403, { message: 'Soumission déjà ouverte par admin' });
+		}
+
+		// Validation minimale de la structure
+		const obj = parsed as Record<string, unknown>;
+		if (sub.type === 'translation') {
+			if (!('translation' in obj) || obj.translation === null) {
+				return fail(400, { message: 'Données invalides: clé `translation` manquante' });
+			}
+		} else {
+			// type: game | update
+			if (!('game' in obj) || obj.game === null) {
+				return fail(400, { message: 'Données invalides: clé `game` manquante' });
+			}
+		}
+
+		await db
+			.update(table.submission)
+			.set({
+				data: JSON.stringify(parsed),
+				updatedAt: new Date()
+			})
+			.where(eq(table.submission.id, submissionId));
+
+		return { success: true };
 	}
 };

@@ -39,11 +39,13 @@
 	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
+	const canManuallyEditTranslationAc = $derived(canUseSilentMode && game.gameAutoCheck === true);
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
 	let newTranslation = $state({
 		translationName: '',
+		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -60,6 +62,7 @@
 	let editingTranslation = $state({
 		translationName: '',
 		id: '',
+		version: '',
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
@@ -161,6 +164,7 @@
 	const openAddTranslationModal = () => {
 		newTranslation = {
 			translationName: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -177,6 +181,7 @@
 		showAddTranslationModal = false;
 		newTranslation = {
 			translationName: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -319,6 +324,7 @@
 						},
 						body: JSON.stringify({
 							translationName: acTranslation.translationName,
+							version: acTranslation.version ?? null,
 							tversion: acTranslation.tversion,
 							status: acTranslation.status,
 							ttype: acTranslation.ttype,
@@ -403,6 +409,7 @@
 
 			const payload = {
 				translationName: newTranslation.translationName || null,
+				version: newTranslation.version || null,
 				tversion: newTranslation.tversion,
 				status: newTranslation.status,
 				ttype: newTranslation.ttype,
@@ -458,6 +465,7 @@
 		editingTranslation = {
 			translationName: translation.translationName || '',
 			id: translation.id,
+			version: translation.version || '',
 			tversion: translation.tversion,
 			status: normalizeTranslationProgressStatus(translation.status),
 			ttype: translation.ttype,
@@ -476,6 +484,7 @@
 		editingTranslation = {
 			translationName: '',
 			id: '',
+			version: '',
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
@@ -548,11 +557,13 @@
 
 			const payload = {
 				translationName: editingTranslation.translationName || null,
+				version: editingTranslation.version || null,
 				tversion: editingTranslation.tversion,
 				status: editingTranslation.status,
 				ttype: editingTranslation.ttype,
 				tlink: tlinkValue,
 				tname: editingTranslation.tname,
+				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
 				silentMode: canUseSilentMode ? editTranslationSilentMode : false
@@ -927,6 +938,7 @@
 							<thead>
 								<tr>
 									<th>Nom de la traduction</th>
+									<th>Version de référence</th>
 									<th>Version traduction</th>
 									<th>Statut</th>
 									<th>Type</th>
@@ -957,6 +969,7 @@
 												</div>
 											{/if}
 										</td>
+										<td class="font-bold">{translation.version || game.gameVersion || '—'}</td>
 										<td class="font-bold">{translation.tversion}</td>
 										<td>
 											<span class="badge {getStatusColor(translation.status)}">
@@ -1037,6 +1050,19 @@
 						class="w-full input-ghost"
 						bind:value={newTranslation.translationName}
 						required
+					/>
+				</label>
+			</div>
+
+			<div class="form-control mb-4 w-full">
+				<label class="input" for="version">
+					Version de référence
+					<input
+						id="version"
+						type="text"
+						placeholder="Ex: 1.2"
+						class="w-full input-ghost"
+						bind:value={newTranslation.version}
 					/>
 				</label>
 			</div>
@@ -1196,6 +1222,19 @@
 				</div>
 
 				<div class="form-control mb-4 w-full">
+					<label class="input" for="edit-version">
+						Version de référence
+						<input
+							id="edit-version"
+							type="text"
+							placeholder="Ex: 1.2"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.version}
+						/>
+					</label>
+				</div>
+
+				<div class="form-control mb-4 w-full">
 					<label class="input" for="edit-tversion">
 						Version de traduction
 						<input
@@ -1277,9 +1316,28 @@
 
 			<div class="form-control mb-6 w-full">
 				<p class="mt-1 text-xs text-base-content/60">
-					L’auto-check d’une traduction n’est pas modifié depuis cette action.
+					{#if game.gameAutoCheck === false}
+						L’auto-check du jeu est désactivé, l’auto-check de cette traduction sera forcé à false.
+					{:else if canManuallyEditTranslationAc}
+						Vous pouvez modifier l’auto-check de cette traduction.
+					{:else}
+						L’auto-check de cette traduction est conservé lors de cette modification.
+					{/if}
 				</p>
 			</div>
+
+			{#if canManuallyEditTranslationAc}
+				<div class="form-control mb-6 w-full">
+					<label class="label cursor-pointer justify-start gap-3">
+						<input
+							type="checkbox"
+							class="checkbox checkbox-sm"
+							bind:checked={editingTranslation.ac}
+						/>
+						<span class="label-text">Auto-Check traduction</span>
+					</label>
+				</div>
+			{/if}
 
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control">

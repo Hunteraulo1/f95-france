@@ -2,6 +2,8 @@ import { getUserById } from '$lib/server/auth';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import { createGameUpdateRow } from '$lib/server/game-updates';
 import { createGameSubmission } from '$lib/server/submissions';
 import {
 	syncTranslationToGoogleSheet,
@@ -193,6 +195,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				translation
 					? {
 							translationName: translation.translationName,
+							version:
+								typeof translation.version === 'string' ? translation.version.trim() || null : null,
 							tversion: translation.tversion,
 							status: translation.status,
 							ttype: translation.ttype,
@@ -203,6 +207,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						}
 					: undefined
 			);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				gameName: name,
+				gameImage: image
+			});
 
 			return json({
 				message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
@@ -238,6 +247,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.limit(1);
 
 		const gameId = createdGame[0]?.id;
+		if (gameId) {
+			await createGameUpdateRow(gameId, 'adding');
+		}
 
 		// Créer la traduction si elle est fournie
 		if (translation && gameId) {
@@ -246,6 +258,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.values({
 					gameId: gameId,
 					translationName: translation.translationName,
+					version:
+						typeof translation.version === 'string' ? translation.version.trim() || null : null,
 					tversion: translation.tversion,
 					status: translation.status,
 					ttype: translation.ttype,
@@ -274,7 +288,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 			}
 		}
-
 		return json({
 			message: translation ? 'Jeu et traduction ajoutés avec succès' : 'Jeu ajouté avec succès',
 			gameId: gameId

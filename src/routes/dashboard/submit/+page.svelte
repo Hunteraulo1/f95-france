@@ -20,6 +20,12 @@
 
 	const closeSubmissionModal = () => {
 		selectedSubmission = null;
+		// Invalider les données pour recharger la soumission après modification
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(`/dashboard/submit?status=${data.statusFilter}`, {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const updateFilter = async (status: string) => {
@@ -42,6 +48,7 @@
 	<SubmissionFilters
 		currentFilter={data.statusFilter}
 		pendingCount={data.pendingCount}
+		openedCount={(data as any).openedCount ?? 0}
 		acceptedCount={data.acceptedCount}
 		rejectedCount={data.rejectedCount}
 		onFilterChange={updateFilter}

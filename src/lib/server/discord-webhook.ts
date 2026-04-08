@@ -23,15 +23,15 @@ export type DiscordEmbed = {
 type WebhookUrls = {
 	updates: string | null;
 	translators: string | null;
-	proofreaders: string | null;
+	admin: string | null;
 };
 
 let cached: { urls: WebhookUrls; at: number } | null = null;
 const CACHE_MS = 60_000;
 
-async function getWebhookUrls(): Promise<WebhookUrls> {
+async function getWebhookUrls(forceRefresh = false): Promise<WebhookUrls> {
 	const now = Date.now();
-	if (cached && now - cached.at < CACHE_MS) {
+	if (!forceRefresh && cached && now - cached.at < CACHE_MS) {
 		return cached.urls;
 	}
 	const rows = await db
@@ -47,7 +47,7 @@ async function getWebhookUrls(): Promise<WebhookUrls> {
 	const urls: WebhookUrls = {
 		updates: r?.discordWebhookUpdates ?? null,
 		translators: r?.discordWebhookTranslators ?? null,
-		proofreaders: r?.discordWebhookProofreaders ?? null
+		admin: r?.discordWebhookProofreaders ?? null
 	};
 	cached = { urls, at: now };
 	return urls;
@@ -321,6 +321,54 @@ export async function sendDiscordWebhookTranslatorsVersionBumps(
 
 /** Canal proofreaders : message libre (ex. alertes relecture). */
 export async function sendDiscordWebhookProofreadersEmbed(embed: DiscordEmbed): Promise<void> {
-	const { proofreaders } = await getWebhookUrls();
-	await executeDiscordWebhook(proofreaders, { embeds: [embed] });
+	const { admin } = await getWebhookUrls();
+	await executeDiscordWebhook(admin, { embeds: [embed] });
+}
+
+/** Canal admin : alerte lors de la création d'une soumission. */
+export async function sendDiscordWebhookAdminNewSubmission(args: {
+	submitterName: string;
+	gameName?: string | null;
+	gameImage?: string | null;
+	gameId?: string | null;
+}): Promise<void> {
+	// On force le refresh ici pour éviter un cache stale après changement de config.
+	const { admin } = await getWebhookUrls(true);
+	if (!admin) {
+		console.warn('[discord-webhook] webhook admin non configuré (soumission non envoyée)');
+		return;
+	}
+
+	const submitter = args.submitterName.trim() || 'Utilisateur inconnu';
+	let gameName = typeof args.gameName === 'string' ? args.gameName.trim() : '';
+	let gameImage = typeof args.gameImage === 'string' ? args.gameImage.trim() : '';
+
+	if ((!gameName || !gameImage) && args.gameId) {
+		const game = await fetchGameNameAndImage(args.gameId);
+		if (game) {
+			if (!gameName) gameName = game.name;
+			if (!gameImage) gameImage = game.image;
+		}
+	}
+
+	await executeDiscordWebhook(admin, {
+		content: undefined,
+		embeds: [
+			{
+				description: 'Nouvelle soumission ajouté',
+				color: 1345469,
+				fields: [
+					{
+						name: 'Nom du jeu',
+						value: gameName || '—'
+					},
+					{
+						name: 'Nom du traducteur',
+						value: submitter
+					}
+				],
+				image: gameImage ? { url: gameImage } : undefined
+			}
+		]
+	});
 }
