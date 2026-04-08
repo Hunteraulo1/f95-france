@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				googleOAuthAccessToken: null,
 				googleOAuthRefreshToken: null,
 				googleOAuthTokenExpiry: null,
+				maintenanceMode: false,
 				updatedAt: new Date()
 			} as Config
 		];
@@ -70,6 +71,7 @@ export const actions: Actions = {
 		const googleApiKey = formData.get('googleApiKey') as string;
 		const googleOAuthClientId = formData.get('googleOAuthClientId') as string;
 		const googleOAuthClientSecret = formData.get('googleOAuthClientSecret') as string;
+		const maintenanceMode = formData.get('maintenanceMode') === 'on';
 
 		if (!appName) {
 			return fail(400, { message: "Le nom de l'application est requis" });
@@ -96,7 +98,8 @@ export const actions: Actions = {
 						googleSpreadsheetId: googleSpreadsheetId || null,
 						googleApiKey: googleApiKey || null,
 						googleOAuthClientId: googleOAuthClientId || null,
-						googleOAuthClientSecret: googleOAuthClientSecret || null
+						googleOAuthClientSecret: googleOAuthClientSecret || null,
+						maintenanceMode
 					})
 					.where(eq(table.config.id, 'main'));
 			} else {
@@ -111,7 +114,8 @@ export const actions: Actions = {
 					googleSpreadsheetId: googleSpreadsheetId || null,
 					googleApiKey: googleApiKey || null,
 					googleOAuthClientId: googleOAuthClientId || null,
-					googleOAuthClientSecret: googleOAuthClientSecret || null
+					googleOAuthClientSecret: googleOAuthClientSecret || null,
+					maintenanceMode
 				});
 			}
 

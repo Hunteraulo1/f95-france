@@ -76,6 +76,23 @@
 						/>
 					</div>
 
+					<div class="divider">Sécurité / Accès</div>
+
+					<div class="form-control w-full">
+						<label for="maintenanceMode" class="label cursor-pointer justify-start gap-3">
+							<input
+								id="maintenanceMode"
+								name="maintenanceMode"
+								type="checkbox"
+								class="checkbox checkbox-sm"
+								checked={Boolean(data.config?.maintenanceMode)}
+							/>
+							<span class="label-text">
+								Mode maintenance (bloque tous les utilisateurs sauf superadmin)
+							</span>
+						</label>
+					</div>
+
 					<div class="divider">Webhooks Discord</div>
 
 					<div class="form-control w-full">

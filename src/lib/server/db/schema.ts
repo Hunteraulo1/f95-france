@@ -107,6 +107,7 @@ export const config = pgTable('config', {
 	googleOAuthAccessToken: text('google_oauth_access_token'),
 	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
 	googleOAuthTokenExpiry: timestamp('google_oauth_token_expiry'),
+	maintenanceMode: boolean('maintenance_mode').notNull().default(false),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
