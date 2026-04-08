@@ -15,10 +15,9 @@ import {
 } from '$lib/server/google-sheets-sync';
 import {
 	createGameUpdateRow,
-	deleteGameUpdate,
 	touchGameUpdatedToday
 } from '$lib/server/game-updates';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
  * Crée une soumission pour un nouveau jeu
@@ -819,6 +818,49 @@ export async function applySubmission(submissionId: string) {
 				})
 				.where(eq(table.submission.id, submissionId));
 
+			const translationIds = existingTranslations.map((t) => t.id);
+			const rejectionNote = 'Rejet automatique: jeu supprimé via application de soumission.';
+
+			// Détacher les FK de submission avant suppression physique du jeu/traductions
+			// (évite la contrainte submission_game_id_game_id_fk).
+			if (translationIds.length > 0) {
+				await db
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(
+						and(
+							eq(table.submission.status, 'pending'),
+							or(
+								eq(table.submission.gameId, sub.gameId),
+								inArray(table.submission.translationId, translationIds)
+							)
+						)
+					);
+
+				await db
+					.update(table.submission)
+					.set({ translationId: null, updatedAt: new Date() })
+					.where(inArray(table.submission.translationId, translationIds));
+			} else {
+				await db
+					.update(table.submission)
+					.set({
+						status: 'rejected',
+						adminNotes: rejectionNote,
+						updatedAt: new Date()
+					})
+					.where(and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId)));
+			}
+
+			await db
+				.update(table.submission)
+				.set({ gameId: null, updatedAt: new Date() })
+				.where(eq(table.submission.gameId, sub.gameId));
+
 			// Supprimer d'abord toutes les traductions associées
 			await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, sub.gameId));
 			void deleteGameTranslationsFromGoogleSheet(existingTranslations.map((t) => t.id)).catch(
@@ -827,9 +869,12 @@ export async function applySubmission(submissionId: string) {
 				}
 			);
 
+			// Supprimer d'abord les lignes de la table "update" (FK vers game)
+			// avant la suppression du jeu.
+			await db.delete(table.update).where(eq(table.update.gameId, sub.gameId));
+
 			// Supprimer le jeu
 			await db.delete(table.game).where(eq(table.game.id, sub.gameId));
-			await deleteGameUpdate(sub.gameId);
 		} else {
 			throw new Error('ID de jeu ou de traduction manquant pour la suppression');
 		}
@@ -927,6 +972,9 @@ export async function revertSubmission(submissionId: string) {
 
 		// Supprimer d'abord toutes les traductions associées
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.gameId, sub.gameId));
+
+		// Supprimer d'abord les lignes de la table "update" (FK vers game)
+		await db.delete(table.update).where(eq(table.update.gameId, sub.gameId));
 
 		// Supprimer le jeu
 		await db.delete(table.game).where(eq(table.game.id, sub.gameId));
