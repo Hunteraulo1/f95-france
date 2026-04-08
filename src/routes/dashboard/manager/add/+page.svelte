@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
@@ -17,6 +18,7 @@
 		getTranslatorFieldErrors
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -93,6 +95,20 @@
 			formHasTranslatorInputIssue(game, data.translators, data.warnUnknownTranslators)
 	);
 
+	onMount(() => {
+		const threadIdRaw = new URLSearchParams(window.location.search).get('threadId');
+		if (!threadIdRaw) return;
+		const parsed = Number.parseInt(threadIdRaw, 10);
+		if (Number.isNaN(parsed) || parsed <= 0) return;
+		if (game.threadId === null || game.threadId === 0) {
+			game.threadId = parsed;
+		}
+		// Déclencher automatiquement le même flux que le blur manuel:
+		// vérif doublon + scraping éventuel.
+		void handleThreadIdFieldBlur();
+		replaceState('/dashboard/manager/add', page.state);
+	});
+
 	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
 		if (v === null || v === undefined) return null;
 		const n = typeof v === 'number' ? v : Number.parseInt(String(v), 10);
@@ -103,6 +119,15 @@
 	$effect(() => {
 		if (game.tname === 'no_translation') {
 			game.ttype = 'hs';
+		}
+	});
+
+	$effect(() => {
+		// Règle métier: pour le site "other", pas de threadId.
+		if (game.website === 'other' && game.threadId !== null) {
+			game.threadId = null;
+			savedId = null;
+			threadDuplicateCheck = null;
 		}
 	});
 
@@ -329,7 +354,7 @@
 					description: game.description ?? null,
 					type: game.type,
 					website: game.website,
-					threadId: game.threadId ?? null,
+					threadId: game.website === 'other' ? null : (game.threadId ?? null),
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
 					image: game.image.trim(),

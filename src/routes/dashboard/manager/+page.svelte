@@ -62,6 +62,16 @@
 		searchQuery = target.value;
 		debouncedSearch(searchQuery);
 	};
+
+	const getAddGameHref = () => {
+		const q = searchQuery.trim();
+		const maybeThreadId = Number.parseInt(q, 10);
+		const isNumericId = q.length > 0 && !Number.isNaN(maybeThreadId) && maybeThreadId > 0;
+		if (isNumericId) {
+			return `/dashboard/manager/add?threadId=${encodeURIComponent(String(maybeThreadId))}`;
+		}
+		return '/dashboard/manager/add';
+	};
 </script>
 
 <section>
@@ -130,7 +140,7 @@
 					</div>
 				{/if}
 			</div>
-			<a href="/dashboard/manager/add" class="btn btn-primary">
+			<a href={getAddGameHref()} class="btn btn-primary">
 				<Plus size={16} />
 				AJOUTER UN JEU
 			</a>
