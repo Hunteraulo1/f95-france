@@ -84,6 +84,7 @@
 	} | null>(null);
 	let checkingDuplicateThread = $state(false);
 	let pendingQueryThreadIdAutoScrape = $state(false);
+	let prefilledTranslatorApplied = $state(false);
 
 	const isAdmin = checkRole(['admin', 'superadmin']);
 	const maxStep = $derived(isAdmin ? 5 : 3);
@@ -118,6 +119,15 @@
 		if (Number.isNaN(n) || n <= 0) return null;
 		return n;
 	};
+
+	$effect(() => {
+		if (prefilledTranslatorApplied) return;
+		const prefilled = data.prefilledTranslatorName;
+		if (typeof prefilled === 'string' && prefilled.trim().length > 0 && !game.translatorId) {
+			game.translatorId = prefilled.trim();
+		}
+		prefilledTranslatorApplied = true;
+	});
 
 	$effect(() => {
 		if (game.tname === 'no_translation') {
@@ -491,11 +501,11 @@
 			name: 'tags'
 		},
 		{
-			Component: Input,
+			Component: Select,
 			active: [2, 5],
 			title: 'Type du jeu',
 			name: 'type',
-			type: 'text'
+			values: ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other']
 		},
 		{
 			Component: InputImage,

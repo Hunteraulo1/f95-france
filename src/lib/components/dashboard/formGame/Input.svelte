@@ -109,7 +109,7 @@
 			disabled={(name === 'link' && gameLinkLocked) ||
 				(name === 'tlink' && tlinkLocked) ||
 				(name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)) ||
-				(name === 'id' && game.website === 'other') ||
+				(name === 'threadId' && game.website === 'other') ||
 				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}
 			{type}
