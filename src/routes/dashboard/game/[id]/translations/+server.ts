@@ -1,5 +1,8 @@
 import { getUserById } from '$lib/server/auth';
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
@@ -104,6 +107,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 			// La table update/MAJ doit refléter l'action dès l'ajout.
 			await createGameUpdateRow(gameId, 'adding');
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: translationName || gameId
+			});
 
 			return json(
 				{

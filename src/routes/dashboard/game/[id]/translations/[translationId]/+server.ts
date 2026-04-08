@@ -1,6 +1,9 @@
 import { getUserById } from '$lib/server/auth';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
@@ -127,6 +130,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 			// La table update/MAJ doit refléter l'action dès la modification.
 			await touchGameUpdatedToday(gameId);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: translationName || before.translationName || translationId
+			});
 
 			return json({
 				message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',
@@ -270,6 +277,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: tr.translationName || translationId
+			});
 
 			return json({
 				message:

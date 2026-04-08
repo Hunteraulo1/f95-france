@@ -143,7 +143,7 @@
 		data.webhookStatus ?? {
 			updates: false,
 			translators: false,
-			proofreaders: false
+			admin: false
 		}
 	);
 	const webhookChannelLabel = (c: string) =>
@@ -151,7 +151,7 @@
 			({
 				updates: 'Mises à jour',
 				translators: 'Traducteurs',
-				proofreaders: 'Relecteurs'
+				admin: 'Admin'
 			}) as Record<string, string>
 		)[c] ?? c;
 </script>
@@ -425,7 +425,7 @@
 				</div>
 				<div class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2">
 					<span>Relecteurs</span>
-					{#if webhookStatus.proofreaders}
+					{#if webhookStatus.admin}
 						<span class="badge badge-sm badge-success">configuré</span>
 					{:else}
 						<span class="badge badge-ghost badge-sm">vide</span>
@@ -433,7 +433,7 @@
 				</div>
 			</div>
 
-			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders}
+			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin}
 				<p class="mb-4 text-sm text-warning">
 					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
 					tester.
@@ -485,18 +485,18 @@
 							disabled={webhookTestIsLoading ||
 								(!webhookStatus.updates &&
 									!webhookStatus.translators &&
-									!webhookStatus.proofreaders)}
+									!webhookStatus.admin)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
 							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
-							{#if webhookStatus.proofreaders}<option value="proofreaders">Relecteurs</option>{/if}
+							{#if webhookStatus.admin}<option value="admin">Admin</option>{/if}
 						</select>
 					</div>
 					<button
 						type="submit"
 						class="btn btn-primary"
 						disabled={webhookTestIsLoading ||
-							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.proofreaders)}
+							(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin)}
 					>
 						{#if webhookTestIsLoading}
 							<Loader class="h-5 w-5 animate-spin" />

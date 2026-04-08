@@ -3,6 +3,7 @@ import {
 	clearAllTranslationAutoCheckForGame,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet
@@ -196,6 +197,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				gameAutoCheck: nextGameAutoCheck,
 				gameVersion: typeof gameVersion === 'string' ? gameVersion : null
 			});
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: name
+			});
 
 			return json({
 				message: isSilentMode
@@ -299,6 +304,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameDeleteSubmission(currentUser.id, gameId, reason);
+			const gameNameRow = await db
+				.select({ name: table.game.name })
+				.from(table.game)
+				.where(eq(table.game.id, gameId))
+				.limit(1);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: gameNameRow[0]?.name ?? gameId
+			});
 
 			return json({
 				message:

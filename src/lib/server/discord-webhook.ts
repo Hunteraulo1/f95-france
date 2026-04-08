@@ -23,7 +23,7 @@ export type DiscordEmbed = {
 type WebhookUrls = {
 	updates: string | null;
 	translators: string | null;
-	proofreaders: string | null;
+	admin: string | null;
 };
 
 let cached: { urls: WebhookUrls; at: number } | null = null;
@@ -47,7 +47,7 @@ async function getWebhookUrls(): Promise<WebhookUrls> {
 	const urls: WebhookUrls = {
 		updates: r?.discordWebhookUpdates ?? null,
 		translators: r?.discordWebhookTranslators ?? null,
-		proofreaders: r?.discordWebhookProofreaders ?? null
+		admin: r?.discordWebhookProofreaders ?? null
 	};
 	cached = { urls, at: now };
 	return urls;
@@ -321,6 +321,22 @@ export async function sendDiscordWebhookTranslatorsVersionBumps(
 
 /** Canal proofreaders : message libre (ex. alertes relecture). */
 export async function sendDiscordWebhookProofreadersEmbed(embed: DiscordEmbed): Promise<void> {
-	const { proofreaders } = await getWebhookUrls();
-	await executeDiscordWebhook(proofreaders, { embeds: [embed] });
+	const { admin } = await getWebhookUrls();
+	await executeDiscordWebhook(admin, { embeds: [embed] });
+}
+
+/** Canal admin : alerte lors de la création d'une soumission. */
+export async function sendDiscordWebhookAdminNewSubmission(args: {
+	submitterName: string;
+	targetName: string;
+}): Promise<void> {
+	const { admin } = await getWebhookUrls();
+	if (!admin) return;
+
+	const submitter = args.submitterName.trim() || 'Utilisateur inconnu';
+	const target = args.targetName.trim() || 'Élément inconnu';
+
+	await executeDiscordWebhook(admin, {
+		content: `Nouvelle soumission de ${submitter} concernant le jeu/traduction ${target}.`
+	});
 }

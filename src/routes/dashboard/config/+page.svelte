@@ -124,12 +124,12 @@
 					</div>
 
 					<div class="form-control w-full">
-						<label for="discordWebhookProofreaders" class="label">
-							<span class="label-text">Webhook Discord - Proofreaders</span>
+						<label for="discordWebhookAdmin" class="label">
+							<span class="label-text">Webhook Discord - Admin</span>
 						</label>
 						<input
-							id="discordWebhookProofreaders"
-							name="discordWebhookProofreaders"
+							id="discordWebhookAdmin"
+							name="discordWebhookAdmin"
 							type="url"
 							class="input-bordered input w-full"
 							value={data.config?.discordWebhookProofreaders || ''}

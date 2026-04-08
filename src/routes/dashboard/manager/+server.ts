@@ -2,6 +2,7 @@ import { getUserById } from '$lib/server/auth';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import { createGameSubmission } from '$lib/server/submissions';
 import {
@@ -206,6 +207,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						}
 					: undefined
 			);
+			void sendDiscordWebhookAdminNewSubmission({
+				submitterName: currentUser.username,
+				targetName: name
+			});
 
 			return json({
 				message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.',

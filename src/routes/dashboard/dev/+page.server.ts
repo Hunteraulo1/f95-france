@@ -584,7 +584,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const webhookStatus = {
 		updates: Boolean(c?.discordWebhookUpdates?.trim()),
 		translators: Boolean(c?.discordWebhookTranslators?.trim()),
-		proofreaders: Boolean(c?.discordWebhookProofreaders?.trim())
+		admin: Boolean(c?.discordWebhookProofreaders?.trim())
 	};
 
 	return {
@@ -1121,8 +1121,7 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const raw = formData.get('channel');
-		const channel =
-			raw === 'updates' || raw === 'translators' || raw === 'proofreaders' ? raw : null;
+		const channel = raw === 'updates' || raw === 'translators' || raw === 'admin' ? raw : null;
 
 		if (!channel) {
 			return {
@@ -1148,7 +1147,7 @@ export const actions: Actions = {
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
 			translators: cfg?.discordWebhookTranslators,
-			proofreaders: cfg?.discordWebhookProofreaders
+			admin: cfg?.discordWebhookProofreaders
 		} as const;
 
 		const url = urlByChannel[channel]?.trim();
@@ -1165,7 +1164,7 @@ export const actions: Actions = {
 		const labels: Record<typeof channel, string> = {
 			updates: 'Mises à jour',
 			translators: 'Traducteurs',
-			proofreaders: 'Relecteurs'
+			admin: 'Admin'
 		};
 
 		const payload = {

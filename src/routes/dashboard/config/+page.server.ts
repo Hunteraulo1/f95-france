@@ -66,7 +66,7 @@ export const actions: Actions = {
 		const appName = formData.get('appName') as string;
 		const discordWebhookUpdates = formData.get('discordWebhookUpdates') as string;
 		const discordWebhookTranslators = formData.get('discordWebhookTranslators') as string;
-		const discordWebhookProofreaders = formData.get('discordWebhookProofreaders') as string;
+		const discordWebhookAdmin = formData.get('discordWebhookAdmin') as string;
 		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
 		const googleApiKey = formData.get('googleApiKey') as string;
 		const googleOAuthClientId = formData.get('googleOAuthClientId') as string;
@@ -94,7 +94,7 @@ export const actions: Actions = {
 						discordWebhookUpdates: discordWebhookUpdates || null,
 						discordWebhookLogs: null,
 						discordWebhookTranslators: discordWebhookTranslators || null,
-						discordWebhookProofreaders: discordWebhookProofreaders || null,
+						discordWebhookProofreaders: discordWebhookAdmin || null,
 						googleSpreadsheetId: googleSpreadsheetId || null,
 						googleApiKey: googleApiKey || null,
 						googleOAuthClientId: googleOAuthClientId || null,
@@ -110,7 +110,7 @@ export const actions: Actions = {
 					discordWebhookUpdates: discordWebhookUpdates || null,
 					discordWebhookLogs: null,
 					discordWebhookTranslators: discordWebhookTranslators || null,
-					discordWebhookProofreaders: discordWebhookProofreaders || null,
+					discordWebhookProofreaders: discordWebhookAdmin || null,
 					googleSpreadsheetId: googleSpreadsheetId || null,
 					googleApiKey: googleApiKey || null,
 					googleOAuthClientId: googleOAuthClientId || null,
