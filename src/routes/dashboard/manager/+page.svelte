@@ -78,7 +78,7 @@
 	<h2 class="mb-4 text-lg font-semibold text-base-content">Ajouter/Modifier un jeu sur la liste</h2>
 
 	<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
-		<div class="flex w-full items-center justify-between gap-4">
+		<div class="flex w-full flex-col-reverse justify-between gap-4 md:items-center lg:flex-row">
 			<div class="relative w-full">
 				<label class="input w-full">
 					<Search size={20} class="min-w-5" />

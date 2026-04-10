@@ -121,7 +121,7 @@
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Préférences utilisateur</h2>
 
-		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-4 shadow-sm">
 			{#if themeError}
 				<div class="mb-4 alert alert-error">
 					<span>{themeError}</span>
@@ -129,6 +129,7 @@
 			{/if}
 
 			<form
+        class="w-full"
 				method="POST"
 				action="?/updateTheme"
 				use:enhance={() => {
@@ -149,13 +150,13 @@
 					};
 				}}
 			>
-				<div class="flex w-full min-w-80 flex-col items-center justify-between gap-4 md:flex-row">
+				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row px-4">
 					<label class="input box-content flex w-full">
 						Thème
 						<select
 							data-choose-theme
 							name="theme"
-							class="select h-[calc(100%-2px)] grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
+							class="select grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
 							bind:value={selectedTheme}
 							required
 							onchange={(e) => {

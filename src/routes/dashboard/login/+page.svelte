@@ -9,7 +9,7 @@
 	use:enhance
 	class="flex flex-col items-center justify-center gap-2"
 >
-	<div class="flex w-80 flex-col gap-2">
+	<div class="flex flex-col gap-2">
 		<label class="w-full">
 			Nom d'utilisateur
 			<input name="username" class="input-bordered input" />

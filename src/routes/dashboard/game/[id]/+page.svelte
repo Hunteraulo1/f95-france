@@ -1,6 +1,6 @@
 <script lang="ts">
+	import type { ScrapedF95Game } from '$lib/server/scrape/f95';
 	import { newToast } from '$lib/stores';
-	import type { FormGameType } from '$lib/types';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -260,14 +260,7 @@
 				throw new Error(payload.error ?? 'Erreur lors du rafraîchissement');
 			}
 
-			const data = payload.data as {
-				name: string | null;
-				version: string | null;
-				status: string | null;
-				tags: string | null;
-				type: FormGameType['type'] | null;
-				image: string | null;
-			};
+			const data = payload.data as ScrapedF95Game;
 
 			if (!data.version) {
 				newToast({
@@ -284,15 +277,15 @@
 				},
 				body: JSON.stringify({
 					name: data.name ?? game.name,
-					description: game.description ?? '',
+					description: data.description ?? game.description ?? '',
 					type: data.type ?? game.type,
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
 					tags: data.tags ?? game.tags ?? '',
 					link: game.link ?? '',
-					image: data.image ?? game.image,
+					image: data.image ?? game.image ?? '',
 					gameAutoCheck: game.gameAutoCheck ?? true,
-					gameVersion: data.version,
+					gameVersion: data.version ?? game.gameVersion ?? '',
 					directMode: true
 				})
 			});

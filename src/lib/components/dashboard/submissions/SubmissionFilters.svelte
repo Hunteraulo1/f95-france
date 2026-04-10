@@ -52,7 +52,7 @@
 	]);
 </script>
 
-<div class="flex gap-2">
+<div class="flex gap-2 flex-wrap">
 	{#each filters as filter (filter.value)}
 		<button
 			class="btn btn-sm"

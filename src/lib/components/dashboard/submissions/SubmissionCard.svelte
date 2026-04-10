@@ -51,9 +51,9 @@
 
 <div class="card bg-base-100 shadow-sm">
 	<div class="card-body">
-		<div class="flex items-start justify-between gap-4">
+		<div class="flex items-start justify-between gap-4 flex-wrap">
 			<div class="flex-1">
-				<div class="mb-2 flex items-center gap-3">
+				<div class="mb-2 flex items-center gap-3 flex-wrap">
 					{#if submission.user}
 						<div class="mb-2 flex items-center justify-center gap-2">
 							<div class="avatar">
@@ -82,7 +82,7 @@
 							</button>
 						</div>
 					{/if}
-					<div class="mb-2 flex items-center gap-3">
+					<div class="mb-2 flex items-center gap-3 text-nowrap flex-wrap">
 						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
 							{getTypeLabel(submission.type)}
 						</div>
@@ -96,7 +96,7 @@
 						{/if}
 						{#if $user?.role === 'superadmin'}
 							<button
-								class="badge overflow-hidden badge-outline badge-sm hover:bg-base-200"
+								class="badge overflow-hidden badge-outline badge-sm hover:bg-base-200 max-w-52 sm:max-w-none"
 								onclick={() => {
 									navigator.clipboard.writeText(submission.id);
 									newToast({

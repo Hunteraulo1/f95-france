@@ -102,100 +102,99 @@
 		</div>
 	</div>
 
-	<form method="GET" class="grid gap-4 rounded-lg border border-base-300 p-4 md:grid-cols-6">
-		<label class="form-control">
-			<span class="label-text">Méthode</span>
-			<select class="select-bordered select" name="method" bind:value={methodFilter}>
-				<option value="">Toutes</option>
-				{#each methodOptions as option (option)}
-					<option value={option}>{option}</option>
-				{/each}
-			</select>
-		</label>
+	<form method="GET" class="flex flex-col flex-wrap gap-4 rounded-lg border border-base-300 py-4 px-6">
+		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4 xs:grid-cols-2">
+      <label class="form-control flex flex-col">
+        <span class="label-text">Méthode</span>
+        <select class="select-bordered select" name="method" bind:value={methodFilter}>
+          <option value="">Toutes</option>
+          {#each methodOptions as option (option)}
+            <option value={option}>{option}</option>
+          {/each}
+        </select>
+      </label>
+      <label class="form-control flex flex-col">
+        <span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
+        <input
+          type="text"
+          name="q"
+          class="input-bordered input"
+          placeholder="/api/..."
+          bind:value={search}
+        />
+      </label>
+      <label class="form-control flex flex-col">
+        <span class="label-text">Utilisateur</span>
+        <input
+          type="text"
+          name="user"
+          class="input-bordered input"
+          placeholder="Nom d'utilisateur..."
+          bind:value={userSearch}
+        />
+      </label>
+      <label class="form-control flex flex-col">
+        <span class="label-text">Filtres de statut</span>
+        <div class="space-y-2 flex flex-col m-2 mb-0">
+          <label class="label cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-info"
+              checked={redirectsOnly}
+              onchange={(e) => {
+                redirectsOnly = e.currentTarget.checked;
+                if (redirectsOnly) {
+                  errorsOnly = false;
+                  warningsOnly = false;
+                }
+              }}
+            />
+            <span class="label-text">Redirections (3xx)</span>
+          </label>
+          <label class="label cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-warning"
+              checked={warningsOnly}
+              onchange={(e) => {
+                warningsOnly = e.currentTarget.checked;
+                if (warningsOnly) {
+                  errorsOnly = false;
+                  redirectsOnly = false;
+                }
+              }}
+            />
+            <span class="label-text">Warnings (4xx)</span>
+          </label>
+          <label class="label cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-error"
+              checked={errorsOnly}
+              onchange={(e) => {
+                errorsOnly = e.currentTarget.checked;
+                if (errorsOnly) {
+                  warningsOnly = false;
+                  redirectsOnly = false;
+                }
+              }}
+            />
+            <span class="label-text">Erreurs (5xx)</span>
+          </label>
+        </div>
+        {#if redirectsOnly}
+          <input type="hidden" name="redirects" value="true" />
+        {/if}
+        {#if warningsOnly}
+          <input type="hidden" name="warnings" value="true" />
+        {/if}
+        {#if errorsOnly}
+          <input type="hidden" name="errors" value="true" />
+        {/if}
+      </label>
+    </div>
 
-		<label class="form-control">
-			<span class="label-text">Recherche (route ou payload)</span>
-			<input
-				type="text"
-				name="q"
-				class="input-bordered input"
-				placeholder="/api/..."
-				bind:value={search}
-			/>
-		</label>
-
-		<label class="form-control">
-			<span class="label-text">Utilisateur</span>
-			<input
-				type="text"
-				name="user"
-				class="input-bordered input"
-				placeholder="Nom d'utilisateur..."
-				bind:value={userSearch}
-			/>
-		</label>
-
-		<label class="form-control">
-			<span class="label-text">Filtres de statut</span>
-			<div class="space-y-2">
-				<label class="label cursor-pointer">
-					<input
-						type="checkbox"
-						class="checkbox checkbox-info"
-						checked={redirectsOnly}
-						onchange={(e) => {
-							redirectsOnly = e.currentTarget.checked;
-							if (redirectsOnly) {
-								errorsOnly = false;
-								warningsOnly = false;
-							}
-						}}
-					/>
-					<span class="label-text">Redirections (3xx)</span>
-				</label>
-				<label class="label cursor-pointer">
-					<input
-						type="checkbox"
-						class="checkbox checkbox-warning"
-						checked={warningsOnly}
-						onchange={(e) => {
-							warningsOnly = e.currentTarget.checked;
-							if (warningsOnly) {
-								errorsOnly = false;
-								redirectsOnly = false;
-							}
-						}}
-					/>
-					<span class="label-text">Warnings (4xx)</span>
-				</label>
-				<label class="label cursor-pointer">
-					<input
-						type="checkbox"
-						class="checkbox checkbox-error"
-						checked={errorsOnly}
-						onchange={(e) => {
-							errorsOnly = e.currentTarget.checked;
-							if (errorsOnly) {
-								warningsOnly = false;
-								redirectsOnly = false;
-							}
-						}}
-					/>
-					<span class="label-text">Erreurs (5xx)</span>
-				</label>
-			</div>
-			{#if redirectsOnly}
-				<input type="hidden" name="redirects" value="true" />
-			{/if}
-			{#if warningsOnly}
-				<input type="hidden" name="warnings" value="true" />
-			{/if}
-			{#if errorsOnly}
-				<input type="hidden" name="errors" value="true" />
-			{/if}
-		</label>
-
-		<label class="form-control">
+		<label class="form-control flex flex-col">
 			<span class="label-text">Limite</span>
 			<select class="select-bordered select" name="limit" bind:value={limit}>
 				{#each [25, 50, 100, 200, 500] as option (option)}

@@ -146,17 +146,15 @@
 			admin: false
 		}
 	);
-	const webhookChannelLabel = (c: string) =>
-		(
-			({
-				updates: 'Mises à jour',
-				translators: 'Traducteurs',
-				admin: 'Admin'
-			}) as Record<string, string>
-		)[c] ?? c;
+	const webhookChannelLabels: Record<string, string> = {
+		updates: 'Mises à jour',
+		translators: 'Traducteurs',
+		admin: 'Admin'
+	};
+	const webhookChannelLabel = (c: string) => webhookChannelLabels[c] ?? c;
 </script>
 
-<div class="container mx-auto max-w-4xl p-6">
+<div class="container mx-auto max-w-4xl p-2 md:p-6">
 	<h1 class="mb-6 text-3xl font-bold text-base-content">Page de développement</h1>
 
 	<!-- Test de connexion Google Sheets -->
@@ -276,7 +274,7 @@
 						{/if}
 					</div>
 					<div class="label">
-						<span class="label-text-alt text-base-content/50">
+						<span class="label-text-alt text-wrap text-base-content/50">
 							{#if config?.googleSpreadsheetId}
 								Utilise l'ID configuré dans les paramètres
 							{:else}
@@ -483,9 +481,7 @@
 							name="channel"
 							class="select-bordered select w-full max-w-md"
 							disabled={webhookTestIsLoading ||
-								(!webhookStatus.updates &&
-									!webhookStatus.translators &&
-									!webhookStatus.admin)}
+								(!webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin)}
 						>
 							{#if webhookStatus.updates}<option value="updates">Mises à jour</option>{/if}
 							{#if webhookStatus.translators}<option value="translators">Traducteurs</option>{/if}
@@ -908,7 +904,7 @@
 								<Loader class="h-5 w-5 animate-spin" />
 								<span>Import en cours...</span>
 							{:else}
-								<span>Ajouter/Synchroniser les traducteurs/relecteurs</span>
+								<span>Synchroniser les traducteurs</span>
 							{/if}
 						</button>
 					</div>
@@ -996,7 +992,7 @@
 							<Loader class="h-5 w-5 animate-spin" />
 							<span>Ajout global en cours...</span>
 						{:else}
-							<span>Ajouter/Synchroniser les jeux/traductions</span>
+							<span>Synchroniser les jeux/traductions</span>
 						{/if}
 					</button>
 				</form>
@@ -1206,7 +1202,7 @@
 							<div class="flex-1">
 								<h3 class="font-bold">{syncResult.message}</h3>
 								{#if syncResult.details && typeof syncResult.details === 'object'}
-									{@const legacyDetails = ((
+									{@const legacyDetails = (
 										'legacy' in syncResult.details &&
 										typeof syncResult.details.legacy === 'object' &&
 										syncResult.details.legacy !== null
@@ -1218,7 +1214,7 @@
 										updatedGames?: number;
 										insertedTranslations?: number;
 										updatedTranslations?: number;
-									})}
+									}}
 									<p class="mt-1 text-sm">
 										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
 											0} | Jeux mis a jour: {legacyDetails.updatedGames ?? 0} | Traductions ajoutees:

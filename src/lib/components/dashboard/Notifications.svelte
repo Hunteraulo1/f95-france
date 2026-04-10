@@ -1,10 +1,10 @@
 <script>
+	import { goto } from '$app/navigation';
 	import { user } from '$lib/stores';
 	import Bell from '@lucide/svelte/icons/bell';
 	import Check from '@lucide/svelte/icons/check';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 
 	/** @typedef {{ id: string; type: string; title: string; message: string; read: boolean; link: string | null; createdAt: Date | string; metadata: Record<string, unknown> | null }} Notification */
 
@@ -13,18 +13,29 @@
 	let unreadCount = $state(0);
 	let isDrawerOpen = $state(false);
 	let isLoading = $state(false);
+	let isUnauthorized = $state(false);
 
 	const fetchNotifications = async () => {
-		if (!$user) return;
+		if (!$user || isUnauthorized) return;
 
 		try {
 			isLoading = true;
 			const response = await fetch('/api/notifications');
-			if (response.ok) {
-				const data = await response.json();
-				notifications = data.notifications || [];
-				unreadCount = data.unreadCount || 0;
+			if (response.status === 401) {
+				// Session expirée ou utilisateur non authentifié:
+				// stopper les appels automatiques pour éviter le spam de 401.
+				isUnauthorized = true;
+				user.set(null);
+				notifications = [];
+				unreadCount = 0;
+				return;
 			}
+			if (!response.ok) {
+				return;
+			}
+			const data = await response.json();
+			notifications = data.notifications || [];
+			unreadCount = data.unreadCount || 0;
 		} catch (error) {
 			console.error('Erreur lors de la récupération des notifications:', error);
 		} finally {
@@ -47,6 +58,9 @@
 					n.id === notificationId ? { ...n, read: true } : n
 				);
 				unreadCount = Math.max(0, unreadCount - 1);
+			} else if (response.status === 401) {
+				isUnauthorized = true;
+				user.set(null);
 			}
 		} catch (error) {
 			console.error('Erreur lors du marquage de la notification:', error);
@@ -64,6 +78,9 @@
 			if (response.ok) {
 				notifications = notifications.map((n) => ({ ...n, read: true }));
 				unreadCount = 0;
+			} else if (response.status === 401) {
+				isUnauthorized = true;
+				user.set(null);
 			}
 		} catch (error) {
 			console.error('Erreur lors du marquage de toutes les notifications:', error);
@@ -107,6 +124,13 @@
 	});
 
 	$effect(() => {
+		// Si l'utilisateur change (reconnexion), autoriser à nouveau les requêtes.
+		if ($user) {
+			isUnauthorized = false;
+		}
+	});
+
+	$effect(() => {
 		if (isDrawerOpen) {
 			fetchNotifications();
 		}
@@ -125,7 +149,7 @@
 		{/if}
 	</button>
 	<div
-		class="dropdown-content menu z-1 mt-2 w-96 rounded-box border border-base-300 bg-base-100 shadow-lg"
+		class="dropdown-content menu z-1 mt-2 w-full xs:w-96 xs:rounded-box border border-base-300 bg-base-100 shadow-lg fixed xs:absolute"
 	>
 		<div class="flex items-center justify-between border-b border-base-300 p-4">
 			<h3 class="text-lg font-semibold">Notifications</h3>
