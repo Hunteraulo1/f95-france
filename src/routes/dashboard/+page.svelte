@@ -22,9 +22,9 @@
 		<!-- Statistiques personnelles -->
 		<div class="mb-8">
 			<h2 class="mb-4 text-xl font-semibold text-base-content">Mes statistiques</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<!-- Mes soumissions -->
-				<div class="card bg-base-200 shadow-xl">
+				<div class="card bg-base-200 shadow-xl col-span-1">
 					<div class="card-body">
 						<div class="flex items-center justify-between">
 							<div>
@@ -85,7 +85,7 @@
 			<h2 class="mb-4 text-xl font-semibold text-base-content">Statistiques générales</h2>
 
 			<!-- Cartes principales -->
-			<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
 				<!-- Total jeux -->
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body">
@@ -140,7 +140,7 @@
 			</div>
 
 			<!-- Détails des traductions -->
-			<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body">
 						<div class="flex items-center justify-between">
@@ -176,10 +176,7 @@
 						</div>
 					</div>
 				</div>
-			</div>
 
-			<!-- Détails des soumissions -->
-			<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body">
 						<div class="flex items-center justify-between">
@@ -223,7 +220,7 @@
 					<TrendingUp class="h-5 w-5" />
 					Activité récente (7 derniers jours)
 				</h3>
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 					<div class="card bg-base-200 shadow-xl">
 						<div class="card-body">
 							<div class="flex items-center justify-between">

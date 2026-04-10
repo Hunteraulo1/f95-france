@@ -296,7 +296,7 @@
 							Détails du nouveau jeu
 						{/if}
 					</h3>
-					<div class="mt-2 flex items-center gap-2">
+					<div class="mt-2 flex items-center gap-2 flex-wrap">
 						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
 							{getTypeLabel(submission.type)}
 						</div>
@@ -309,7 +309,7 @@
 							</div>
 						{/if}
 						{#if $user?.role === 'superadmin'}
-							<div class="badge badge-outline badge-sm">
+							<div class="badge badge-outline badge-sm text-nowrap max-w-52 overflow-hidden sm:max-w-none">
 								ID: {submission.id}
 							</div>
 						{/if}

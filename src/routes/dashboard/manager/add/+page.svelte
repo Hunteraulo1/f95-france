@@ -688,7 +688,7 @@
 					{/if}
 				{/each}
 			</div>
-			<div class="flex w-full flex-col justify-center gap-4 px-8 sm:flex-row">
+			<div class="flex w-full justify-center gap-4 px-8 flex-row flex-wrap">
 				{#if step < maxStep}
 					<button
 						class="btn w-full btn-outline btn-primary sm:w-48"

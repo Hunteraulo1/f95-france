@@ -11,6 +11,7 @@ type GameTypeEnum = FormGameType['type'];
 export interface ScrapedF95Game {
 	name: string | null;
 	version: string | null;
+  description: string | null;
 	status: string | null;
 	tags: string | null;
 	type: GameTypeEnum | null;
@@ -135,6 +136,8 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 	const title = document.title ?? '';
 	const titleMatch = title.match(/([\w\\']+)(?=\s-)/gi) ?? undefined;
 	const { status, type } = titleMatch ? scrapeGetTitle(titleMatch) : { status: null, type: null };
+  
+  const description = document.querySelector('.message-body > .bbWrapper > div')?.textContent?.replace('Overview:', '').trim() ?? null;
 
 	const titleNode = document.querySelector('.p-title-value')?.cloneNode(true) as HTMLElement | null;
 
@@ -164,6 +167,7 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 	return {
 		name,
 		version,
+		description,
 		status,
 		tags,
 		type,

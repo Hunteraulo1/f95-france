@@ -63,7 +63,7 @@
 				<div class="flex flex-col gap-4">
 					<div class="form-control w-full">
 						<label for="appName" class="label">
-							<span class="label-text">Nom de l'application</span>
+							<span class="label-text text-wrap">Nom de l'application</span>
 						</label>
 						<input
 							id="appName"
@@ -87,7 +87,7 @@
 								class="checkbox checkbox-sm"
 								checked={Boolean(data.config?.maintenanceMode)}
 							/>
-							<span class="label-text">
+							<span class="label-text text-wrap">
 								Mode maintenance (bloque tous les utilisateurs sauf superadmin)
 							</span>
 						</label>
@@ -97,7 +97,7 @@
 
 					<div class="form-control w-full">
 						<label for="discordWebhookUpdates" class="label">
-							<span class="label-text">Webhook Discord - Updates</span>
+							<span class="label-text text-wrap">Webhook Discord - Updates</span>
 						</label>
 						<input
 							id="discordWebhookUpdates"
@@ -111,7 +111,7 @@
 
 					<div class="form-control w-full">
 						<label for="discordWebhookTranslators" class="label">
-							<span class="label-text">Webhook Discord - Translators</span>
+							<span class="label-text text-wrap">Webhook Discord - Translators</span>
 						</label>
 						<input
 							id="discordWebhookTranslators"
@@ -125,7 +125,7 @@
 
 					<div class="form-control w-full">
 						<label for="discordWebhookAdmin" class="label">
-							<span class="label-text">Webhook Discord - Admin</span>
+							<span class="label-text text-wrap">Webhook Discord - Admin</span>
 						</label>
 						<input
 							id="discordWebhookAdmin"
@@ -141,7 +141,7 @@
 
 					<div class="form-control w-full">
 						<label for="googleSpreadsheetId" class="label">
-							<span class="label-text">ID du Spreadsheet Google</span>
+							<span class="label-text text-wrap">ID du Spreadsheet Google</span>
 						</label>
 						<input
 							id="googleSpreadsheetId"
@@ -155,7 +155,7 @@
 
 					<div class="form-control w-full">
 						<label for="googleApiKey" class="label">
-							<span class="label-text">Clé API Google (optionnel si OAuth2 est configuré)</span>
+							<span class="label-text text-wrap">Clé API Google (optionnel si OAuth2 est configuré)</span>
 						</label>
 						<input
 							id="googleApiKey"
@@ -166,7 +166,7 @@
 							placeholder="AIzaSy..."
 						/>
 						<label class="label" for="googleApiKey">
-							<span class="label-text-alt text-base-content/50">
+							<span class="label-text text-wrap-alt text-base-content/50 text-wrap">
 								Requis pour accéder aux spreadsheets via l'API.
 								<a
 									href="https://console.cloud.google.com/apis/credentials"
@@ -182,7 +182,7 @@
 
 					<div class="form-control w-full">
 						<label for="googleOAuthClientId" class="label">
-							<span class="label-text">Client ID OAuth2</span>
+							<span class="label-text text-wrap">Client ID OAuth2</span>
 						</label>
 						<input
 							id="googleOAuthClientId"
@@ -196,7 +196,7 @@
 
 					<div class="form-control w-full">
 						<label for="googleOAuthClientSecret" class="label">
-							<span class="label-text">Client Secret OAuth2</span>
+							<span class="label-text text-wrap">Client Secret OAuth2</span>
 						</label>
 						<input
 							id="googleOAuthClientSecret"
@@ -210,7 +210,7 @@
 
 					{#if data.config?.googleOAuthClientId && data.config?.googleOAuthClientSecret}
 						<div class="mb-4 rounded-lg bg-base-200 p-4">
-							<p class="mb-2 text-sm font-semibold">
+							<p class="mb-2 text-sm font-semibold text-wrap">
 								URI de redirection à configurer dans Google Cloud Console :
 							</p>
 							<code class="rounded bg-base-300 px-2 py-1 text-xs break-all">
@@ -218,7 +218,7 @@
 									? `${window.location.origin}/api/google-oauth/callback`
 									: 'Chargement...'}
 							</code>
-							<p class="mt-2 text-xs text-base-content/70">
+							<p class="mt-2 text-xs text-base-content/70 text-wrap">
 								⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants
 								OAuth 2.0 → URI de redirection autorisées
 							</p>
@@ -229,7 +229,7 @@
 								Autoriser avec Google
 							</a>
 							<div class="label">
-								<span class="label-text-alt text-base-content/50">
+								<span class="label-text-alt text-base-content/50 text-wrap">
 									{#if data.config?.googleOAuthAccessToken}
 										<span class="text-success">✓ Authentifié</span>
 									{:else}

@@ -5,3 +5,7 @@
 		light --default,
 		dark --prefersdark;
 }
+
+@theme {
+  --breakpoint-xs: 30rem;
+}

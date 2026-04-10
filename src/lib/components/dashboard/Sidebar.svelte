@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
 	import Box from '@lucide/svelte/icons/box';
@@ -20,6 +21,32 @@
 	}
 
 	let { pendingSubmissionsCount = 0 }: Pick<Props, 'pendingSubmissionsCount'> = $props();
+	let isDrawerOpen = $state(true);
+
+	const isDesktop = () => window.matchMedia('(min-width: 640px)').matches;
+
+	onMount(() => {
+		const desktopMediaQuery = window.matchMedia('(min-width: 640px)');
+
+		isDrawerOpen = desktopMediaQuery.matches;
+
+		const handleBreakpointChange = (event: MediaQueryListEvent) => {
+			// Keep burger closed by default when entering mobile viewport.
+			isDrawerOpen = event.matches;
+		};
+
+		desktopMediaQuery.addEventListener('change', handleBreakpointChange);
+
+		return () => {
+			desktopMediaQuery.removeEventListener('change', handleBreakpointChange);
+		};
+	});
+
+	function closeDrawerOnMobile() {
+		if (!isDesktop()) {
+			isDrawerOpen = false;
+		}
+	}
 
 	interface NavItem {
 		label: string;
@@ -120,12 +147,12 @@
 	];
 </script>
 
-<input id="my-drawer-4" type="checkbox" class="drawer-toggle" checked={true} />
+<input id="my-drawer-4" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
 
 <aside class="drawer-side is-drawer-close:overflow-visible">
 	<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 	<div
-		class="flex min-h-full flex-col items-start bg-base-100 is-drawer-close:w-14 is-drawer-open:w-64"
+		class="flex min-h-full flex-col items-start bg-base-100 is-drawer-close:w-14 is-drawer-open:w-64 max-sm:w-64"
 	>
 		<!-- Sidebar content here -->
 		<ul class="menu w-full grow">
@@ -142,6 +169,7 @@
 								class:text-red-400={item.href === '/dashboard/logout'}
 								data-tip="Homepage"
 								href={item.href}
+								onclick={closeDrawerOnMobile}
 							>
 								<IconComponent size={16} />
 								<span class="text-nowrap is-drawer-close:hidden">
