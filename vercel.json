@@ -2,7 +2,7 @@
 	"crons": [
 		{
 			"path": "/api/cron/check-version",
-			"schedule": "*/15 * * * *"
+			"schedule": "0 3 * * *"
 		}
 	]
 }
