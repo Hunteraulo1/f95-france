@@ -2,7 +2,10 @@
 	import { user } from '$lib/stores';
 	import Menu from '@lucide/svelte/icons/menu';
 	import User from '@lucide/svelte/icons/user';
+	import pkg from '../../../../package.json';
 	import Notifications from './Notifications.svelte';
+
+	const VERSION = pkg.version;
 </script>
 
 <div class="navbar h-4 bg-base-100 shadow-sm">
@@ -12,7 +15,10 @@
 		</label>
 	</div>
 	<div class="flex-1">
-		<a class="btn text-xl btn-ghost" href="/">F95 France</a>
+		<a class="btn xs:text-xl text-sm leading-none btn-ghost flex flex-col xs:inline" href="/">F95 France
+      <span class="text-xs font-bold xs:bg-slate-700 leading-none xs:text-slate-100 text-slate-500 px-2 rounded-full">v{VERSION}</span>
+    </a>
+    
 	</div>
 	<div class="flex gap-2">
 		<!-- <button class="btn btn-soft btn-primary">Retour au compte { user.username }</button> TODO: Implement user switcher -->
