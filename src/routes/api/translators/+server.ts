@@ -5,7 +5,17 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
 	try {
-		const translators = await db.select().from(translator);
+		// Projection explicite: ne jamais exposer de liaison interne userId.
+		const translators = await db.select({
+			id: translator.id,
+			name: translator.name,
+			discordId: translator.discordId,
+			pages: translator.pages,
+			tradCount: translator.tradCount,
+			readCount: translator.readCount,
+			createdAt: translator.createdAt,
+			updatedAt: translator.updatedAt
+		}).from(translator);
 		return json(translators);
 	} catch (error) {
 		console.error('Error fetching translators:', error);

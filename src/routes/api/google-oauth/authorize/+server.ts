@@ -6,9 +6,12 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
+	// Endpoint sensible: superadmin uniquement
+	if (!locals.user) {
+		throw redirect(302, '/dashboard/login');
+	}
+	if (locals.user.role !== 'superadmin') {
+		throw new Error('Accès non autorisé (superadmin requis)');
 	}
 
 	// Charger la configuration

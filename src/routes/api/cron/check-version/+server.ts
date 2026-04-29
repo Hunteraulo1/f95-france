@@ -8,14 +8,10 @@ import type { RequestHandler } from './$types';
 
 function hasCronAuth(request: Request): boolean {
 	const secret = env.CRON_SECRET?.trim();
+	if (!secret) return false;
 	const authHeader = request.headers.get('authorization')?.trim();
 	const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-	const vercelCron = request.headers.get('x-vercel-cron');
-
-	// Si CRON_SECRET est défini, il est obligatoire.
-	if (secret) return bearer === secret;
-	// Fallback pratique en environnement Vercel sans secret configuré.
-	return Boolean(vercelCron);
+	return bearer === secret;
 }
 
 function parseReferenceMinutes(reference: string | null | undefined): number {
