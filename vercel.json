@@ -1,0 +1,8 @@
+{
+	"crons": [
+		{
+			"path": "/api/cron/check-version",
+			"schedule": "*/15 * * * *"
+		}
+	]
+}

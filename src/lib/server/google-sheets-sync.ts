@@ -257,6 +257,29 @@ async function sheetsFetch(
 	const base = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
 	const sep = path.includes('?') ? '&' : '?';
 	const url = apiKey ? `${base}${path}${sep}key=${encodeURIComponent(apiKey)}` : `${base}${path}`;
+	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+	const maxAttempts = 4;
+
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const res = await fetch(url, {
+			...init,
+			headers: {
+				...headers,
+				...(init.headers ?? {})
+			}
+		});
+
+		const shouldRetry = res.status === 429 || res.status >= 500;
+		if (!shouldRetry || attempt === maxAttempts) return res;
+
+		const retryAfter = Number.parseInt(res.headers.get('retry-after') ?? '', 10);
+		const backoffMs = Number.isFinite(retryAfter)
+			? Math.max(1000, retryAfter * 1000)
+			: 1200 * 2 ** (attempt - 1);
+		await sleep(backoffMs);
+	}
+
+	// Inatteignable, garde-fou TypeScript.
 	return fetch(url, {
 		...init,
 		headers: {
