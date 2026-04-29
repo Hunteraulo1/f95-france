@@ -6,9 +6,6 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const limitRaw = url.searchParams.get('limit');
-		const parsedLimit = limitRaw ? Number.parseInt(limitRaw, 10) : 50;
-		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 200) : 50;
 		const gameId = url.searchParams.get('gameId')?.trim();
 
 		const baseQuery = db.select().from(gameTranslation);
@@ -16,8 +13,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			? await baseQuery
 					.where(eq(gameTranslation.gameId, gameId))
 					.orderBy(desc(gameTranslation.updatedAt))
-					.limit(limit)
-			: await baseQuery.orderBy(desc(gameTranslation.updatedAt)).limit(limit);
+			: await baseQuery.orderBy(desc(gameTranslation.updatedAt));
 
 		return json(rows);
 	} catch (error) {
