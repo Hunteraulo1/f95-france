@@ -1,0 +1,42 @@
+import { db } from '$lib/server/db';
+import { gameTranslation } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+
+const corsHeaders = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
+export const OPTIONS: RequestHandler = async () =>
+	new Response(null, {
+		status: 204,
+		headers: corsHeaders
+	});
+
+export const GET: RequestHandler = async ({ params }) => {
+	const translationId = params.id;
+
+	if (!translationId) {
+		return json({ error: 'Translation ID is required' }, { status: 400, headers: corsHeaders });
+	}
+
+	try {
+		const rows = await db
+			.select()
+			.from(gameTranslation)
+			.where(eq(gameTranslation.id, translationId))
+			.limit(1);
+
+		if (rows.length === 0) {
+			return json({ error: 'Translation not found' }, { status: 404, headers: corsHeaders });
+		}
+
+		return json(rows[0], { headers: corsHeaders });
+	} catch (error) {
+		console.error('Error fetching translation:', error);
+		return json({ error: 'Failed to fetch translation' }, { status: 500, headers: corsHeaders });
+	}
+};
