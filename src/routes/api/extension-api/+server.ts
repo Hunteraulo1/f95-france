@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
-import { game, gameTranslation } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { game, gameTranslation, update as updateTable } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
+import { desc, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
@@ -80,9 +80,36 @@ export const GET: RequestHandler = async ({ url }) => {
 			existing.translations.push(row.translation);
 		}
 
+		const updates = await db
+			.select({
+				updateId: updateTable.id,
+				updateStatus: updateTable.status,
+				updateCreatedAt: updateTable.createdAt,
+				updateUpdatedAt: updateTable.updatedAt,
+				game: {
+					id: game.id,
+					name: game.name,
+					description: game.description,
+					website: game.website,
+					threadId: game.threadId,
+					link: game.link,
+					tags: game.tags,
+					type: game.type,
+					image: game.image,
+					gameAutoCheck: game.gameAutoCheck,
+					gameVersion: game.gameVersion,
+					createdAt: game.createdAt,
+					updatedAt: game.updatedAt
+				}
+			})
+			.from(updateTable)
+			.innerJoin(game, eq(updateTable.gameId, game.id))
+			.orderBy(desc(updateTable.createdAt));
+
 		return json(
 			{
-				updates: Array.from(byGame.values())
+				games: Array.from(byGame.values()),
+				updates
 			},
 			{
 				headers: corsHeaders
