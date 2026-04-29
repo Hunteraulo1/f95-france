@@ -319,6 +319,40 @@ export async function sendDiscordWebhookTranslatorsVersionBumps(
 	});
 }
 
+/** Canal updates : annonce d'une montée de version détectée par l'auto-check. */
+export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
+	gameName: string;
+	translationName?: string | null;
+	oldVersion?: string | null;
+	newVersion: string;
+}): Promise<void> {
+	const { updates } = await getWebhookUrls();
+	if (!updates) return;
+
+	const trLabel = args.translationName?.trim() ? ` - ${args.translationName.trim()}` : '';
+	await executeDiscordWebhook(updates, {
+		embeds: [
+			{
+				title: 'Traduction mise à jour',
+				color: 0x58b9ff,
+				fields: [
+					{
+						name: 'Jeu',
+						value: `${trimFieldValue(args.gameName, 200)}${trimFieldValue(trLabel, 200)}`,
+						inline: false
+					},
+					{
+						name: 'Version',
+						value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
+						inline: false
+					}
+				],
+				footer: { text: 'Auto-Check · F95 France' }
+			}
+		]
+	});
+}
+
 /** Canal proofreaders : message libre (ex. alertes relecture). */
 export async function sendDiscordWebhookProofreadersEmbed(embed: DiscordEmbed): Promise<void> {
 	const { admin } = await getWebhookUrls();

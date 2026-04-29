@@ -93,6 +93,49 @@
 						</label>
 					</div>
 
+					<div class="divider">Auto-check F95</div>
+
+					<div class="form-control w-full">
+						<label for="autoCheckIntervalMinutes" class="label">
+							<span class="label-text text-wrap">Délai entre 2 vérifications (minutes)</span>
+						</label>
+						<input
+							id="autoCheckIntervalMinutes"
+							name="autoCheckIntervalMinutes"
+							type="number"
+							min="5"
+							max="1440"
+							step="1"
+							class="input-bordered input w-full"
+							value={String(data.config?.autoCheckIntervalMinutes ?? 360)}
+						/>
+						<label class="label" for="autoCheckIntervalMinutes">
+							<span class="label-text-alt text-base-content/60">
+								Entre 5 min et 24h. Le cron passe régulièrement, mais n'exécute l'auto-check que
+								si ce délai est écoulé.
+							</span>
+						</label>
+					</div>
+					<div class="form-control w-full">
+						<label for="autoCheckReferenceTime" class="label">
+							<span class="label-text text-wrap">Heure de référence (HH:mm)</span>
+						</label>
+						<input
+							id="autoCheckReferenceTime"
+							name="autoCheckReferenceTime"
+							type="time"
+							step="60"
+							class="input-bordered input w-full"
+							value={data.config?.autoCheckReferenceTime || '00:00'}
+						/>
+						<label class="label" for="autoCheckReferenceTime">
+							<span class="label-text-alt text-base-content/60">
+								L'intervalle démarre à partir de cette heure (ex: 03:00 avec 360 min =>
+								03:00, 09:00, 15:00, 21:00).
+							</span>
+						</label>
+					</div>
+
 					<div class="divider">Webhooks Discord</div>
 
 					<div class="form-control w-full">
@@ -253,6 +296,7 @@
 					</div>
 				</div>
 			</form>
+
 		</div>
 	</div>
 </section>

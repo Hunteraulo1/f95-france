@@ -107,6 +107,11 @@ export const config = pgTable('config', {
 	googleOAuthAccessToken: text('google_oauth_access_token'),
 	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
 	googleOAuthTokenExpiry: timestamp('google_oauth_token_expiry'),
+	autoCheckIntervalMinutes: integer('auto_check_interval_minutes').notNull().default(360),
+	autoCheckReferenceTime: varchar('auto_check_reference_time', { length: 5 })
+		.notNull()
+		.default('00:00'),
+	autoCheckLastRunAt: timestamp('auto_check_last_run_at'),
 	maintenanceMode: boolean('maintenance_mode').notNull().default(false),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });

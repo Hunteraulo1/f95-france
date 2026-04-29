@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
+import { runAutoCheckVersions } from '$lib/server/check-version';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
@@ -594,6 +595,34 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
+	triggerAutoCheck: async ({ locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return { success: false, message: 'Accès non autorisé', details: null };
+		}
+
+		try {
+			const result = await runAutoCheckVersions();
+			await db
+				.update(table.config)
+				.set({
+					autoCheckLastRunAt: new Date(),
+					updatedAt: new Date()
+				})
+				.where(eq(table.config.id, 'main'));
+
+			return {
+				success: true,
+				message: `Auto-check lancé: ${result.updatedGames} jeu(x) mis à jour`,
+				details: result
+			};
+		} catch (error: unknown) {
+			return {
+				success: false,
+				message: "Erreur lors de l'exécution de l'auto-check",
+				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			};
+		}
+	},
 	testGoogleSheets: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
 		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {

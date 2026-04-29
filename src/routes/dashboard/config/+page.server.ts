@@ -44,6 +44,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 				googleOAuthAccessToken: null,
 				googleOAuthRefreshToken: null,
 				googleOAuthTokenExpiry: null,
+				autoCheckIntervalMinutes: 360,
+				autoCheckReferenceTime: '00:00',
+				autoCheckLastRunAt: null,
 				maintenanceMode: false,
 				updatedAt: new Date()
 			} as Config
@@ -71,10 +74,22 @@ export const actions: Actions = {
 		const googleApiKey = formData.get('googleApiKey') as string;
 		const googleOAuthClientId = formData.get('googleOAuthClientId') as string;
 		const googleOAuthClientSecret = formData.get('googleOAuthClientSecret') as string;
+		const autoCheckIntervalMinutesRaw = formData.get('autoCheckIntervalMinutes') as string;
+		const autoCheckReferenceTimeRaw = (formData.get('autoCheckReferenceTime') as string) ?? '00:00';
 		const maintenanceMode = formData.get('maintenanceMode') === 'on';
 
 		if (!appName) {
 			return fail(400, { message: "Le nom de l'application est requis" });
+		}
+		const parsedInterval = Number.parseInt((autoCheckIntervalMinutesRaw ?? '').trim(), 10);
+		if (!Number.isFinite(parsedInterval) || parsedInterval < 5 || parsedInterval > 1440) {
+			return fail(400, {
+				message: "L'intervalle d'auto-check doit être un nombre entre 5 et 1440 minutes"
+			});
+		}
+		const referenceTime = autoCheckReferenceTimeRaw.trim();
+		if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(referenceTime)) {
+			return fail(400, { message: "L'heure de référence doit être au format HH:mm" });
 		}
 
 		try {
@@ -85,20 +100,46 @@ export const actions: Actions = {
 				.where(eq(table.config.id, 'main'))
 				.limit(1);
 
+			const currentConfig = existingConfig[0];
+			const keepCurrentIfEmpty = (value: string, currentValue: string | null) => {
+				const trimmed = value?.trim() ?? '';
+				return trimmed === '' ? currentValue : trimmed;
+			};
+
 			if (existingConfig.length > 0) {
 				// Mettre à jour la configuration existante
 				await db
 					.update(table.config)
 					.set({
 						appName,
-						discordWebhookUpdates: discordWebhookUpdates || null,
+						discordWebhookUpdates: keepCurrentIfEmpty(
+							discordWebhookUpdates,
+							currentConfig.discordWebhookUpdates
+						),
 						discordWebhookLogs: null,
-						discordWebhookTranslators: discordWebhookTranslators || null,
-						discordWebhookProofreaders: discordWebhookAdmin || null,
-						googleSpreadsheetId: googleSpreadsheetId || null,
-						googleApiKey: googleApiKey || null,
-						googleOAuthClientId: googleOAuthClientId || null,
-						googleOAuthClientSecret: googleOAuthClientSecret || null,
+						discordWebhookTranslators: keepCurrentIfEmpty(
+							discordWebhookTranslators,
+							currentConfig.discordWebhookTranslators
+						),
+						discordWebhookProofreaders: keepCurrentIfEmpty(
+							discordWebhookAdmin,
+							currentConfig.discordWebhookProofreaders
+						),
+						googleSpreadsheetId: keepCurrentIfEmpty(
+							googleSpreadsheetId,
+							currentConfig.googleSpreadsheetId
+						),
+						googleApiKey: keepCurrentIfEmpty(googleApiKey, currentConfig.googleApiKey),
+						googleOAuthClientId: keepCurrentIfEmpty(
+							googleOAuthClientId,
+							currentConfig.googleOAuthClientId
+						),
+						googleOAuthClientSecret: keepCurrentIfEmpty(
+							googleOAuthClientSecret,
+							currentConfig.googleOAuthClientSecret
+						),
+						autoCheckIntervalMinutes: parsedInterval,
+						autoCheckReferenceTime: referenceTime,
 						maintenanceMode
 					})
 					.where(eq(table.config.id, 'main'));
@@ -115,6 +156,8 @@ export const actions: Actions = {
 					googleApiKey: googleApiKey || null,
 					googleOAuthClientId: googleOAuthClientId || null,
 					googleOAuthClientSecret: googleOAuthClientSecret || null,
+					autoCheckIntervalMinutes: parsedInterval,
+					autoCheckReferenceTime: referenceTime,
 					maintenanceMode
 				});
 			}

@@ -102,6 +102,18 @@
 		message: string;
 		details: string | { updated: number } | null;
 	};
+type AutoCheckManualResult = {
+	success: boolean;
+	message: string;
+	details:
+		| string
+		| {
+				scannedGames: number;
+				updatedGames: number;
+				updatedTranslations: number;
+		  }
+		| null;
+};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -123,6 +135,8 @@
 	let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 	let clearTranslationNamesIsLoading = $state(false);
 	let clearTranslationNamesResult = $state<ClearTranslationNamesResult | null>(null);
+let autoCheckManualIsLoading = $state(false);
+let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -156,6 +170,87 @@
 
 <div class="container mx-auto max-w-4xl p-2 md:p-6">
 	<h1 class="mb-6 text-3xl font-bold text-base-content">Page de développement</h1>
+
+	<div class="card mb-6 bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h2 class="mb-4 card-title text-2xl">Exécution manuelle Auto-check</h2>
+			<p class="mb-2 text-sm text-base-content/70">
+				Dernier auto-check :
+				{config?.autoCheckLastRunAt
+					? new Date(config.autoCheckLastRunAt).toLocaleString('fr-FR')
+					: 'jamais'}
+			</p>
+			<form
+				method="POST"
+				action="?/triggerAutoCheck"
+				use:enhance={() => {
+					autoCheckManualIsLoading = true;
+					autoCheckManualResult = null;
+					return async function ({ result, update }) {
+						await update();
+						autoCheckManualIsLoading = false;
+						if ((result.type === 'success' || result.type === 'failure') && result.data) {
+							const d = result.data as Record<string, unknown>;
+							autoCheckManualResult = {
+								success: Boolean(d.success),
+								message: typeof d.message === 'string' ? d.message : '',
+								details:
+									typeof d.details === 'string' ||
+									d.details === null ||
+									(typeof d.details === 'object' && d.details !== null)
+										? (d.details as AutoCheckManualResult['details'])
+										: null
+							};
+						}
+					};
+				}}
+			>
+				<button type="submit" class="btn btn-outline" disabled={autoCheckManualIsLoading}>
+					{#if autoCheckManualIsLoading}
+						<Loader class="h-5 w-5 animate-spin" />
+						<span>Exécution...</span>
+					{:else}
+						<span>Lancer un auto-check maintenant</span>
+					{/if}
+				</button>
+			</form>
+			{#if autoCheckManualResult}
+				<div class="mt-4">
+					{#if autoCheckManualResult.success}
+						<div class="alert alert-success">
+							<CircleCheck class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{autoCheckManualResult.message}</h3>
+								{#if autoCheckManualResult.details && typeof autoCheckManualResult.details === 'object'}
+									<p class="mt-1 text-sm">
+										Jeux scannés: {autoCheckManualResult.details.scannedGames} | Jeux mis à jour:
+										{autoCheckManualResult.details.updatedGames} | Traductions impactées:
+										{autoCheckManualResult.details.updatedTranslations}
+									</p>
+								{:else if typeof autoCheckManualResult.details === 'string'}
+									<p class="mt-1 text-sm">{autoCheckManualResult.details}</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="alert alert-error">
+							<CircleX class="h-6 w-6" />
+							<div class="flex-1">
+								<h3 class="font-bold">{autoCheckManualResult.message || 'Erreur inconnue'}</h3>
+								{#if autoCheckManualResult.details}
+									<p class="mt-1 text-sm">
+										{typeof autoCheckManualResult.details === 'string'
+											? autoCheckManualResult.details
+											: JSON.stringify(autoCheckManualResult.details)}
+									</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</div>
 
 	<!-- Test de connexion Google Sheets -->
 	<div class="card mb-6 bg-base-100 shadow-xl">
