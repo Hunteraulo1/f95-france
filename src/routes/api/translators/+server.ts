@@ -3,6 +3,18 @@ import { translator } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
+const corsHeaders = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
+export const OPTIONS: RequestHandler = async () =>
+	new Response(null, {
+		status: 204,
+		headers: corsHeaders
+	});
+
 export const GET: RequestHandler = async () => {
 	try {
 		// Projection explicite: ne jamais exposer de liaison interne userId.
@@ -16,10 +28,10 @@ export const GET: RequestHandler = async () => {
 			createdAt: translator.createdAt,
 			updatedAt: translator.updatedAt
 		}).from(translator);
-		return json(translators);
+		return json(translators, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translators:', error);
-		return json({ error: 'Failed to fetch translators' }, { status: 500 });
+		return json({ error: 'Failed to fetch translators' }, { status: 500, headers: corsHeaders });
 	}
 };
 
@@ -28,7 +40,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { name } = body;
 
 	if (!name || typeof name !== 'string') {
-		return json({ error: 'Name is required' }, { status: 400 });
+		return json({ error: 'Name is required' }, { status: 400, headers: corsHeaders });
 	}
 
 	const trimmedName = name.trim();
@@ -41,7 +53,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			readCount: 0
 		});
 
-		return json({ success: true, name: trimmedName }, { status: 201 });
+		return json({ success: true, name: trimmedName }, { status: 201, headers: corsHeaders });
 	} catch (error: unknown) {
 		console.error('Error creating translator:', error);
 
@@ -55,15 +67,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
 				return json(
 					{ error: `Un traducteur avec le nom "${trimmedName}" existe déjà` },
-					{ status: 409 }
+					{ status: 409, headers: corsHeaders }
 				);
 			}
 			if (mysqlError.sqlMessage?.includes('discord_id')) {
-				return json({ error: 'Un traducteur avec cet ID Discord existe déjà' }, { status: 409 });
+				return json(
+					{ error: 'Un traducteur avec cet ID Discord existe déjà' },
+					{ status: 409, headers: corsHeaders }
+				);
 			}
-			return json({ error: 'Ce traducteur existe déjà' }, { status: 409 });
+			return json({ error: 'Ce traducteur existe déjà' }, { status: 409, headers: corsHeaders });
 		}
 
-		return json({ error: 'Failed to create translator' }, { status: 500 });
+		return json({ error: 'Failed to create translator' }, { status: 500, headers: corsHeaders });
 	}
 };

@@ -4,6 +4,18 @@ import { desc, eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
+const corsHeaders = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
+export const OPTIONS: RequestHandler = async () =>
+	new Response(null, {
+		status: 204,
+		headers: corsHeaders
+	});
+
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const limitRaw = url.searchParams.get('limit');
@@ -33,9 +45,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			.orderBy(desc(updateTable.createdAt))
 			.limit(limit);
 
-		return json(rows);
+		return json(rows, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching updates:', error);
-		return json({ error: 'Failed to fetch updates' }, { status: 500 });
+		return json({ error: 'Failed to fetch updates' }, { status: 500, headers: corsHeaders });
 	}
 };
