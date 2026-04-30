@@ -255,6 +255,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				version: row.game.gameVersion ?? '',
 				tversion: row.translation.tversion,
 				tname: mapTName(row.translation.tname),
+        description: row.game.description ?? null,
 				status: mapStatus(row.translation.status),
 				tags: splitTags(row.game.tags),
 				type: mapType(row.game.type),
