@@ -290,15 +290,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			return {
 				date: u.date,
 				type: mapUpdateType(u.type),
-				games: updateGames,
-				// Compat extension legacy: certains consumers lisent updateData.names
 				names: updateGames.map((g) => g.name)
 			};
 		});
-
-		const legacyUpdateNames = Array.from(
-			new Set(mappedUpdates.flatMap((u) => u.names).filter((name) => name.trim().length > 0))
-		);
 
 		const traductorsRows = await db
 			.select({
@@ -325,15 +319,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				data: {
 					games: gamesWithDbId.map((g) => g.payload),
 					updates: mappedUpdates,
-					traductors,
-					// Compat extension legacy
-					updateData: {
-						names: legacyUpdateNames
-					}
-				},
-				// Compat extension legacy (au cas où le consumer lit hors de data)
-				updateData: {
-					names: legacyUpdateNames
+					traductors
 				}
 			},
 			{
