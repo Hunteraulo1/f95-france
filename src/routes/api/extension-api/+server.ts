@@ -288,17 +288,15 @@ export const GET: RequestHandler = async ({ url }) => {
 			.from(updateTable)
 			.orderBy(desc(updateTable.createdAt));
 
-		const mappedUpdates = updates.map((u) => {
-			const updateGames = gamesByDbId.get(u.gameId) ?? [];
-			return {
+		const mappedUpdates = updates.map((u) => ({
 				date: u.date,
 				type: mapUpdateType(u.type),
-				names: updateGames.map((g) => g.name)
-			};
-		});
+				names: u.gameId
+		}));
 
 		const traductorsRows = await db
 			.select({
+        id: translator.id,
 				name: translator.name,
 				pages: translator.pages,
 				discordId: translator.discordId,
@@ -309,6 +307,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			.orderBy(translator.name);
 
 		const traductors = traductorsRows.map((t) => ({
+      id: t.id,
 			name: t.name,
 			pages: parsePages(t.pages),
 			discordId: t.discordId ? Number.parseInt(t.discordId, 10) || null : null,
