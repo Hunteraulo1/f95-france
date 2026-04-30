@@ -291,7 +291,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const mappedUpdates = updates.map((u) => ({
 				date: u.date,
 				type: mapUpdateType(u.type),
-				names: u.gameId
+				gameId: u.gameId
 		}));
 
 		const traductorsRows = await db
