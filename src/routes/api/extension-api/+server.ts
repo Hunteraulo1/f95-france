@@ -246,7 +246,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			const tr = row.translation.translatorId ? translatorById.get(row.translation.translatorId) : null;
 			const pr = row.translation.proofreaderId ? translatorById.get(row.translation.proofreaderId) : null;
 			const payload = {
-				id: row.game.threadId ?? null,
+        id: row.translation.id,
+        gameId: row.game.id,
+				threadId: row.game.threadId ?? null,
 				domain: mapDomain(row.game.website),
 				hostname: mapHostname(row.game.website),
 				name: row.game.name,
