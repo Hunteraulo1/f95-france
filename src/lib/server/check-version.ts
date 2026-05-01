@@ -59,6 +59,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			translationId: table.gameTranslation.id,
 			translationName: table.gameTranslation.translationName,
 			tname: table.gameTranslation.tname,
+			ac: table.gameTranslation.ac,
 			translatorId: table.gameTranslation.translatorId
 		})
 		.from(table.gameTranslation)
@@ -168,7 +169,13 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			});
 		}
 
-		await touchGameUpdatedToday(game.gameId);
+		// Table `update` : seulement si une traduction intégrée avec auto-check actif suit cette version
+		const hasIntegratedAc = impactedTranslations.some(
+			(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
+		);
+		if (hasIntegratedAc) {
+			await touchGameUpdatedToday(game.gameId);
+		}
 	}
 
 	// Une seule synchro bulk évite les lectures répétées (et les 429 quota/minute).

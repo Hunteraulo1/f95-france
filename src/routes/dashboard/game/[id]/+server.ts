@@ -237,7 +237,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);
 		});
-		await touchGameUpdatedToday(gameId);
+		if (!isSilentMode) {
+			await touchGameUpdatedToday(gameId);
+		}
 
 		return json({
 			message: 'Jeu modifié avec succès'
