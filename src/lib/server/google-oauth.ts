@@ -1,3 +1,4 @@
+import { getEffectiveConfigFromRow, oauthTokenFieldsForDb } from '$lib/server/app-config';
 import { db } from './db';
 import * as table from './db/schema';
 import { eq } from 'drizzle-orm';
@@ -105,14 +106,17 @@ export const getValidAccessToken = async (): Promise<string | null> => {
 		.where(eq(table.config.id, 'main'))
 		.limit(1);
 
-	const config = configResult[0];
-	if (!config?.googleOAuthClientId || !config?.googleOAuthClientSecret) {
+	const raw = configResult[0];
+	if (!raw) return null;
+
+	const config = getEffectiveConfigFromRow(raw);
+	if (!config.googleOAuthClientId || !config.googleOAuthClientSecret) {
 		return null;
 	}
 
 	// Si on a un access token valide, le retourner
-	if (config.googleOAuthAccessToken && config.googleOAuthTokenExpiry) {
-		const expiry = new Date(config.googleOAuthTokenExpiry);
+	if (config.googleOAuthAccessToken && raw.googleOAuthTokenExpiry) {
+		const expiry = new Date(raw.googleOAuthTokenExpiry);
 		// Vérifier si le token expire dans moins de 5 minutes
 		if (expiry > new Date(Date.now() + 5 * 60 * 1000)) {
 			return config.googleOAuthAccessToken;
@@ -129,15 +133,13 @@ export const getValidAccessToken = async (): Promise<string | null> => {
 			);
 
 			const expiryDate = new Date(Date.now() + tokenResponse.expires_in * 1000);
+			const nextRefresh = tokenResponse.refresh_token || config.googleOAuthRefreshToken;
 
-			// Mettre à jour le token dans la base de données
 			await db
 				.update(table.config)
 				.set({
-					googleOAuthAccessToken: tokenResponse.access_token,
-					googleOAuthTokenExpiry: expiryDate,
-					// Le refresh_token peut être renvoyé, le mettre à jour si présent
-					googleOAuthRefreshToken: tokenResponse.refresh_token || config.googleOAuthRefreshToken
+					...oauthTokenFieldsForDb(tokenResponse.access_token, nextRefresh),
+					googleOAuthTokenExpiry: expiryDate
 				})
 				.where(eq(table.config.id, 'main'));
 
@@ -164,8 +166,7 @@ export const saveOAuthTokens = async (
 	await db
 		.update(table.config)
 		.set({
-			googleOAuthAccessToken: accessToken,
-			googleOAuthRefreshToken: refreshToken || null,
+			...oauthTokenFieldsForDb(accessToken, refreshToken ?? null),
 			googleOAuthTokenExpiry: expiryDate
 		})
 		.where(eq(table.config.id, 'main'));

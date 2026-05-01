@@ -1,3 +1,4 @@
+import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -26,30 +27,30 @@ type WebhookUrls = {
 	admin: string | null;
 };
 
-let cached: { urls: WebhookUrls; at: number } | null = null;
+let cached: { urls: WebhookUrls; at: number; envSig: string } | null = null;
 const CACHE_MS = 60_000;
+
+function webhookEnvSignature(): string {
+	return [
+		process.env.DISCORD_WEBHOOK_UPDATES,
+		process.env.DISCORD_WEBHOOK_TRANSLATORS,
+		process.env.DISCORD_WEBHOOK_PROOFREADERS
+	].join('\0');
+}
 
 async function getWebhookUrls(forceRefresh = false): Promise<WebhookUrls> {
 	const now = Date.now();
-	if (!forceRefresh && cached && now - cached.at < CACHE_MS) {
+	const envSig = webhookEnvSignature();
+	if (!forceRefresh && cached && now - cached.at < CACHE_MS && cached.envSig === envSig) {
 		return cached.urls;
 	}
-	const rows = await db
-		.select({
-			discordWebhookUpdates: table.config.discordWebhookUpdates,
-			discordWebhookTranslators: table.config.discordWebhookTranslators,
-			discordWebhookProofreaders: table.config.discordWebhookProofreaders
-		})
-		.from(table.config)
-		.where(eq(table.config.id, 'main'))
-		.limit(1);
-	const r = rows[0];
+	const cfg = await getEffectiveConfig();
 	const urls: WebhookUrls = {
-		updates: r?.discordWebhookUpdates ?? null,
-		translators: r?.discordWebhookTranslators ?? null,
-		admin: r?.discordWebhookProofreaders ?? null
+		updates: cfg?.discordWebhookUpdates ?? null,
+		translators: cfg?.discordWebhookTranslators ?? null,
+		admin: cfg?.discordWebhookProofreaders ?? null
 	};
-	cached = { urls, at: now };
+	cached = { urls, at: now, envSig };
 	return urls;
 }
 

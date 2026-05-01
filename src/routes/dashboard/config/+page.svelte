@@ -136,48 +136,48 @@
 						</label>
 					</div>
 
-					<div class="divider">Webhooks Discord</div>
+					<div class="divider">Secrets (variables d’environnement)</div>
 
-					<div class="form-control w-full">
-						<label for="discordWebhookUpdates" class="label">
-							<span class="label-text text-wrap">Webhook Discord - Updates</span>
-						</label>
-						<input
-							id="discordWebhookUpdates"
-							name="discordWebhookUpdates"
-							type="url"
-							class="input-bordered input w-full"
-							value={data.config?.discordWebhookUpdates || ''}
-							placeholder="https://discord.com/api/webhooks/..."
-						/>
-					</div>
-
-					<div class="form-control w-full">
-						<label for="discordWebhookTranslators" class="label">
-							<span class="label-text text-wrap">Webhook Discord - Translators</span>
-						</label>
-						<input
-							id="discordWebhookTranslators"
-							name="discordWebhookTranslators"
-							type="url"
-							class="input-bordered input w-full"
-							value={data.config?.discordWebhookTranslators || ''}
-							placeholder="https://discord.com/api/webhooks/..."
-						/>
-					</div>
-
-					<div class="form-control w-full">
-						<label for="discordWebhookAdmin" class="label">
-							<span class="label-text text-wrap">Webhook Discord - Admin</span>
-						</label>
-						<input
-							id="discordWebhookAdmin"
-							name="discordWebhookAdmin"
-							type="url"
-							class="input-bordered input w-full"
-							value={data.config?.discordWebhookProofreaders || ''}
-							placeholder="https://discord.com/api/webhooks/..."
-						/>
+					<div class="alert alert-info text-sm">
+						<div class="flex flex-col gap-2 text-wrap">
+							<p>
+								Les webhooks Discord, la clé API Google et les identifiants OAuth2 ne sont plus
+								enregistrés dans la base : définissez-les sur le serveur (Vercel → Settings →
+								Environment Variables) ou dans un fichier <code class="text-xs">.env</code> local.
+							</p>
+							<ul class="list-inside list-disc text-xs opacity-90">
+								<li><code>DISCORD_WEBHOOK_UPDATES</code></li>
+								<li><code>DISCORD_WEBHOOK_TRANSLATORS</code></li>
+								<li><code>DISCORD_WEBHOOK_PROOFREADERS</code> (canal admin)</li>
+								<li><code>DISCORD_WEBHOOK_LOGS</code> (optionnel)</li>
+								<li><code>GOOGLE_API_KEY</code> (si pas uniquement OAuth)</li>
+								<li><code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code></li>
+								<li>
+									<code>GOOGLE_SPREADSHEET_ID</code> (optionnel ; sinon l’ID ci-dessous en base)
+								</li>
+								<li>
+									<code>CONFIG_TOKEN_ENCRYPTION_KEY</code> — base64 de 32 octets ; chiffre les jetons
+									OAuth stockés en base
+								</li>
+							</ul>
+							<p class="text-xs opacity-80">
+								Source actuelle (indicatif) — Updates :
+								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordUpdates}</span>
+								· Translators :
+								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordTranslators}</span>
+								· Admin :
+								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordProofreaders}</span>
+								· Clé API :
+								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleApiKey}</span>
+								· OAuth client :
+								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleOAuthClient}</span>
+								{#if data.config?.tokenEncryptionActive}
+									· Jetons OAuth : <span class="badge badge-sm badge-success">chiffrement actif</span>
+								{:else}
+									· Jetons OAuth : <span class="badge badge-sm badge-warning">non chiffrés (définir la clé)</span>
+								{/if}
+							</p>
+						</div>
 					</div>
 
 					<div class="divider">Google Sheets</div>
@@ -196,62 +196,7 @@
 						/>
 					</div>
 
-					<div class="form-control w-full">
-						<label for="googleApiKey" class="label">
-							<span class="label-text text-wrap">Clé API Google (optionnel si OAuth2 est configuré)</span>
-						</label>
-						<input
-							id="googleApiKey"
-							name="googleApiKey"
-							type="password"
-							class="input-bordered input w-full"
-							value={data.config?.googleApiKey || ''}
-							placeholder="AIzaSy..."
-						/>
-						<label class="label" for="googleApiKey">
-							<span class="label-text text-wrap-alt text-base-content/50 text-wrap">
-								Requis pour accéder aux spreadsheets via l'API.
-								<a
-									href="https://console.cloud.google.com/apis/credentials"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="link link-primary"
-								>
-									Créer une clé API
-								</a>
-							</span>
-						</label>
-					</div>
-
-					<div class="form-control w-full">
-						<label for="googleOAuthClientId" class="label">
-							<span class="label-text text-wrap">Client ID OAuth2</span>
-						</label>
-						<input
-							id="googleOAuthClientId"
-							name="googleOAuthClientId"
-							type="text"
-							class="input-bordered input w-full"
-							value={data.config?.googleOAuthClientId || ''}
-							placeholder="xxxxx.apps.googleusercontent.com"
-						/>
-					</div>
-
-					<div class="form-control w-full">
-						<label for="googleOAuthClientSecret" class="label">
-							<span class="label-text text-wrap">Client Secret OAuth2</span>
-						</label>
-						<input
-							id="googleOAuthClientSecret"
-							name="googleOAuthClientSecret"
-							type="password"
-							class="input-bordered input w-full"
-							value={data.config?.googleOAuthClientSecret || ''}
-							placeholder="GOCSPX-..."
-						/>
-					</div>
-
-					{#if data.config?.googleOAuthClientId && data.config?.googleOAuthClientSecret}
+					{#if data.config?.canUseGoogleOAuth}
 						<div class="mb-4 rounded-lg bg-base-200 p-4">
 							<p class="mb-2 text-sm font-semibold text-wrap">
 								URI de redirection à configurer dans Google Cloud Console :
@@ -273,8 +218,8 @@
 							</a>
 							<div class="label">
 								<span class="label-text-alt text-base-content/50 text-wrap">
-									{#if data.config?.googleOAuthAccessToken}
-										<span class="text-success">✓ Authentifié</span>
+									{#if data.config?.hasGoogleOAuthToken}
+										<span class="text-success">✓ Jetons OAuth présents (voir serveur / base)</span>
 									{:else}
 										Cliquez pour autoriser l'accès à Google Sheets
 									{/if}

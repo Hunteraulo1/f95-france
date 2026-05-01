@@ -1,7 +1,5 @@
+import { getEffectiveConfig } from '$lib/server/app-config';
 import { getGoogleAuthUrl } from '$lib/server/google-oauth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -14,14 +12,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		throw new Error('Accès non autorisé (superadmin requis)');
 	}
 
-	// Charger la configuration
-	const configResult = await db
-		.select()
-		.from(table.config)
-		.where(eq(table.config.id, 'main'))
-		.limit(1);
-
-	const config = configResult[0];
+	const config = await getEffectiveConfig();
 	if (!config?.googleOAuthClientId) {
 		throw new Error('Client ID OAuth2 non configuré');
 	}

@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { getEffectiveConfig, getEffectiveConfigFromRow, toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import * as table from '$lib/server/db/schema';
@@ -566,8 +567,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw new Error('Accès non autorisé');
 	}
 
-	// Charger la configuration
-	let config;
+	let configRow;
 	try {
 		const configResult = await db
 			.select()
@@ -575,17 +575,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.where(eq(table.config.id, 'main'))
 			.limit(1);
 
-		config = configResult[0] || null;
+		configRow = configResult[0] || null;
 	} catch (error: unknown) {
 		console.warn('Erreur lors du chargement de la configuration:', error);
-		config = null;
+		configRow = null;
 	}
 
-	const c = config;
+	const effective = configRow ? getEffectiveConfigFromRow(configRow) : await getEffectiveConfig();
+	const config = configRow ? toConfigClientSafe(configRow) : null;
 	const webhookStatus = {
-		updates: Boolean(c?.discordWebhookUpdates?.trim()),
-		translators: Boolean(c?.discordWebhookTranslators?.trim()),
-		admin: Boolean(c?.discordWebhookProofreaders?.trim())
+		updates: Boolean(effective?.discordWebhookUpdates?.trim()),
+		translators: Boolean(effective?.discordWebhookTranslators?.trim()),
+		admin: Boolean(effective?.discordWebhookProofreaders?.trim())
 	};
 
 	return {
@@ -645,15 +646,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Charger la configuration pour obtenir la clé API ou le token OAuth2
-			const configResult = await db
-				.select()
-				.from(table.config)
-				.where(eq(table.config.id, 'main'))
-				.limit(1);
-
-			const config = configResult[0];
-			const apiKey = config?.googleApiKey;
+			const merged = await getEffectiveConfig();
+			const apiKey = merged?.googleApiKey;
 
 			// Essayer d'obtenir un token OAuth2 valide
 			const oauthToken = await getValidAccessToken();
@@ -1162,17 +1156,7 @@ export const actions: Actions = {
 			};
 		}
 
-		const configResult = await db
-			.select({
-				discordWebhookUpdates: table.config.discordWebhookUpdates,
-				discordWebhookTranslators: table.config.discordWebhookTranslators,
-				discordWebhookProofreaders: table.config.discordWebhookProofreaders
-			})
-			.from(table.config)
-			.where(eq(table.config.id, 'main'))
-			.limit(1);
-
-		const cfg = configResult[0];
+		const cfg = await getEffectiveConfig();
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
 			translators: cfg?.discordWebhookTranslators,

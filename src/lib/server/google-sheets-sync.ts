@@ -1,3 +1,4 @@
+import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
@@ -231,7 +232,7 @@ async function getSheetsAuth(): Promise<{
 	headers: HeadersInit;
 	apiKey?: string;
 } | null> {
-	const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
+	const cfg = await getEffectiveConfig();
 	const spreadsheetId = cfg?.googleSpreadsheetId?.trim();
 	if (!spreadsheetId) return null;
 

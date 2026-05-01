@@ -1,3 +1,4 @@
+import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
@@ -35,6 +36,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				id: 'main',
 				appName: 'F95 France',
 				discordWebhookUpdates: null,
+				discordWebhookLogs: null,
 				discordWebhookTranslators: null,
 				discordWebhookProofreaders: null,
 				googleSpreadsheetId: null,
@@ -54,7 +56,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		config: config[0]
+		config: toConfigClientSafe(config[0])
 	};
 };
 
@@ -67,13 +69,7 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const appName = formData.get('appName') as string;
-		const discordWebhookUpdates = formData.get('discordWebhookUpdates') as string;
-		const discordWebhookTranslators = formData.get('discordWebhookTranslators') as string;
-		const discordWebhookAdmin = formData.get('discordWebhookAdmin') as string;
 		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
-		const googleApiKey = formData.get('googleApiKey') as string;
-		const googleOAuthClientId = formData.get('googleOAuthClientId') as string;
-		const googleOAuthClientSecret = formData.get('googleOAuthClientSecret') as string;
 		const autoCheckIntervalMinutesRaw = formData.get('autoCheckIntervalMinutes') as string;
 		const autoCheckReferenceTimeRaw = (formData.get('autoCheckReferenceTime') as string) ?? '00:00';
 		const maintenanceMode = formData.get('maintenanceMode') === 'on';
@@ -107,36 +103,13 @@ export const actions: Actions = {
 			};
 
 			if (existingConfig.length > 0) {
-				// Mettre à jour la configuration existante
 				await db
 					.update(table.config)
 					.set({
 						appName,
-						discordWebhookUpdates: keepCurrentIfEmpty(
-							discordWebhookUpdates,
-							currentConfig.discordWebhookUpdates
-						),
-						discordWebhookLogs: null,
-						discordWebhookTranslators: keepCurrentIfEmpty(
-							discordWebhookTranslators,
-							currentConfig.discordWebhookTranslators
-						),
-						discordWebhookProofreaders: keepCurrentIfEmpty(
-							discordWebhookAdmin,
-							currentConfig.discordWebhookProofreaders
-						),
 						googleSpreadsheetId: keepCurrentIfEmpty(
 							googleSpreadsheetId,
 							currentConfig.googleSpreadsheetId
-						),
-						googleApiKey: keepCurrentIfEmpty(googleApiKey, currentConfig.googleApiKey),
-						googleOAuthClientId: keepCurrentIfEmpty(
-							googleOAuthClientId,
-							currentConfig.googleOAuthClientId
-						),
-						googleOAuthClientSecret: keepCurrentIfEmpty(
-							googleOAuthClientSecret,
-							currentConfig.googleOAuthClientSecret
 						),
 						autoCheckIntervalMinutes: parsedInterval,
 						autoCheckReferenceTime: referenceTime,
@@ -144,18 +117,10 @@ export const actions: Actions = {
 					})
 					.where(eq(table.config.id, 'main'));
 			} else {
-				// Créer la configuration si elle n'existe pas
 				await db.insert(table.config).values({
 					id: 'main',
 					appName,
-					discordWebhookUpdates: discordWebhookUpdates || null,
-					discordWebhookLogs: null,
-					discordWebhookTranslators: discordWebhookTranslators || null,
-					discordWebhookProofreaders: discordWebhookAdmin || null,
 					googleSpreadsheetId: googleSpreadsheetId || null,
-					googleApiKey: googleApiKey || null,
-					googleOAuthClientId: googleOAuthClientId || null,
-					googleOAuthClientSecret: googleOAuthClientSecret || null,
 					autoCheckIntervalMinutes: parsedInterval,
 					autoCheckReferenceTime: referenceTime,
 					maintenanceMode

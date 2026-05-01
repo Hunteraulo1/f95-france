@@ -1,7 +1,5 @@
+import { getEffectiveConfig } from '$lib/server/app-config';
 import { exchangeCodeForToken, saveOAuthTokens } from '$lib/server/google-oauth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -26,14 +24,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	try {
-		// Charger la configuration
-		const configResult = await db
-			.select()
-			.from(table.config)
-			.where(eq(table.config.id, 'main'))
-			.limit(1);
-
-		const config = configResult[0];
+		const config = await getEffectiveConfig();
 		if (!config?.googleOAuthClientId || !config?.googleOAuthClientSecret) {
 			throw new Error('OAuth2 non configuré');
 		}

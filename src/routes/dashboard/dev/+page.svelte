@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { Config } from '$lib/server/db/schema';
+	import type { ConfigClientSafe } from '$lib/server/app-config';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -10,7 +10,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const config = $derived(data.config as Config | null | undefined);
+	const config = $derived(data.config as ConfigClientSafe | null | undefined);
 
 	let isLoading = $state(false);
 	type SheetsDetails = { title?: string; spreadsheetId?: string; sheets?: string[] };
