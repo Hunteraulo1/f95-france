@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -16,16 +16,22 @@
 	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
 	onMount(() => {
-		// Vérifier les paramètres d'URL pour les messages OAuth2
 		const urlParams = new URLSearchParams(window.location.search);
+		const oauthErr = urlParams.get('oauth_error');
 		if (urlParams.get('oauth_success') === 'true') {
 			oauthMessage = { type: 'success', text: 'Autorisation OAuth2 réussie !' };
-			// Nettoyer l'URL
-			replaceState('/dashboard/config', get(page).state);
-		} else if (urlParams.get('oauth_error')) {
-			oauthMessage = { type: 'error', text: `Erreur OAuth2: ${urlParams.get('oauth_error')}` };
-			replaceState('/dashboard/config', get(page).state);
+		} else if (oauthErr) {
+			oauthMessage = { type: 'error', text: `Erreur OAuth2: ${oauthErr}` };
+		} else {
+			return;
 		}
+
+		// replaceState trop tôt pendant l’hydratation lève « router is not initialized » — différer.
+		void tick().then(() => {
+			setTimeout(() => {
+				replaceState('/dashboard/config', get(page).state);
+			}, 0);
+		});
 	});
 </script>
 
