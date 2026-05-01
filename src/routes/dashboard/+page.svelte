@@ -25,7 +25,7 @@
 			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<!-- Mes soumissions -->
 				<div class="card bg-base-200 shadow-xl col-span-1">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-base-content">Mes soumissions</h3>
@@ -52,7 +52,7 @@
 
 				<!-- Jeux ajoutés -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-base-content">Jeux ajoutés</h3>
@@ -65,7 +65,7 @@
 
 				<!-- Jeux modifiés -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-base-content">Jeux modifiés</h3>
@@ -88,7 +88,7 @@
 			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
 				<!-- Total jeux -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Total jeux</h3>
@@ -101,7 +101,7 @@
 
 				<!-- Total traductions -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Total traductions</h3>
@@ -114,7 +114,7 @@
 
 				<!-- Total utilisateurs -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Total utilisateurs</h3>
@@ -127,7 +127,7 @@
 
 				<!-- Total traducteurs -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traducteurs</h3>
@@ -142,7 +142,7 @@
 			<!-- Détails des traductions -->
 			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions en cours</h3>
@@ -154,7 +154,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions complétées</h3>
@@ -166,7 +166,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions abandonnées</h3>
@@ -178,7 +178,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions en attente</h3>
@@ -190,7 +190,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions acceptées</h3>
@@ -202,7 +202,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body">
+					<div class="card-body bg-base-100 rounded-lg">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions rejetées</h3>
@@ -222,7 +222,7 @@
 				</h3>
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 					<div class="card bg-base-200 shadow-xl">
-						<div class="card-body">
+						<div class="card-body bg-base-100 rounded-lg">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Nouveaux jeux</h3>
@@ -234,7 +234,7 @@
 					</div>
 
 					<div class="card bg-base-200 shadow-xl">
-						<div class="card-body">
+						<div class="card-body bg-base-100 rounded-lg">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Traductions mises à jour</h3>
@@ -246,7 +246,7 @@
 					</div>
 
 					<div class="card bg-base-200 shadow-xl">
-						<div class="card-body">
+						<div class="card-body bg-base-100 rounded-lg">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Nouveaux utilisateurs</h3>

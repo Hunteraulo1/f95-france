@@ -84,10 +84,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
+	const isSensitiveSettingsAction =
+		pathname === '/dashboard/settings' &&
+		(event.url.search.includes('/changePassword') || event.url.search.includes('/disable2FA'));
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
-		pathname === '/dashboard/logout';
+		pathname === '/dashboard/logout' ||
+		isSensitiveSettingsAction;
 	const shouldLog =
 		!isStaticAsset &&
 		!isNotificationsApiRoute &&
