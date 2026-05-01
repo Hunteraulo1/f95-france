@@ -18,6 +18,17 @@
 			Mot de passe
 			<input type="password" name="password" class="input-bordered input" />
 		</label>
+		<label class="w-full">
+			Code 2FA (si activée)
+			<input
+				name="twoFactorCode"
+				class="input-bordered input"
+				inputmode="numeric"
+				maxlength="6"
+				pattern="[0-9]{6}"
+				placeholder="123456"
+			/>
+		</label>
 	</div>
 	<div class="mt-4 flex w-full justify-center gap-2">
 		<button class="btn btn-primary"> Se connecter </button>

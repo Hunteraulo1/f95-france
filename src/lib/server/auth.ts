@@ -153,6 +153,8 @@ export async function createUser(username: string, email: string, password: stri
 		username,
 		avatar: '', // Default avatar
 		passwordHash: hashedPassword,
+		twoFactorEnabled: false,
+		twoFactorSecret: null,
 		role: 'user',
 		theme: 'system',
 		directMode: true,

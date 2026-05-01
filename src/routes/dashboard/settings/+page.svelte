@@ -15,6 +15,13 @@
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
 	let returnUserError = $state<string | null>(null);
+	let twoFactorError = $state<string | null>(null);
+	let twoFactorInfo = $state<string | null>(null);
+	let qrCodeDataUrl = $state<string | null>(null);
+	let manualEntryKey = $state<string | null>(null);
+	let verificationCode = $state('');
+	let disableCode = $state('');
+	let disablePassword = $state('');
 	let selectedTheme = $state($user?.theme || 'system');
 	let targetUserId = $state('');
 
@@ -29,6 +36,15 @@
 		if ($user?.theme) {
 			// Eviter une réaffectation inutile (réduit le risque de rerenders en boucle).
 			if (selectedTheme !== $user.theme) selectedTheme = $user.theme;
+		}
+	});
+
+	$effect(() => {
+		// Nettoyer les données de setup si la 2FA est active
+		if ($user?.twoFactorEnabled) {
+			qrCodeDataUrl = null;
+			manualEntryKey = null;
+			verificationCode = '';
 		}
 	});
 
@@ -178,6 +194,156 @@
 					</label>
 				</div>
 			</form>
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-4">
+		<h2 class="text-lg font-semibold text-base-content">Sécurité (2FA)</h2>
+
+		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+			{#if twoFactorError}
+				<div class="mb-4 alert alert-error w-full">
+					<span>{twoFactorError}</span>
+				</div>
+			{/if}
+			{#if twoFactorInfo}
+				<div class="mb-4 alert alert-success w-full">
+					<span>{twoFactorInfo}</span>
+				</div>
+			{/if}
+
+			<div class="w-full opacity-80">
+				Statut: <strong>{$user?.twoFactorEnabled ? 'Activée' : 'Désactivée'}</strong>
+			</div>
+
+			{#if !$user?.twoFactorEnabled}
+				<form
+					method="POST"
+					action="?/start2FASetup"
+					class="w-full"
+					use:enhance={() => {
+						twoFactorError = null;
+						twoFactorInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								const dataResult = result.data as {
+									message?: string;
+									qrCodeDataUrl?: string;
+									manualEntryKey?: string;
+								};
+								qrCodeDataUrl = dataResult.qrCodeDataUrl ?? null;
+								manualEntryKey = dataResult.manualEntryKey ?? null;
+								twoFactorInfo = dataResult.message ?? null;
+							} else if (result.type === 'failure') {
+								const dataResult = result.data as { message?: string };
+								twoFactorError = dataResult.message ?? "Erreur lors de l'activation de la 2FA";
+							}
+						};
+					}}
+				>
+					<button class="btn btn-primary" type="submit">Configurer la 2FA</button>
+				</form>
+
+				{#if qrCodeDataUrl && manualEntryKey}
+					<div class="w-full rounded-box border border-base-300 p-4">
+						<p class="mb-2 text-sm opacity-80">
+							Scanne ce QR code dans ton application d'authentification (Google Authenticator, Aegis,
+							Authy...) puis valide avec un code.
+						</p>
+						<img src={qrCodeDataUrl} alt="QR code 2FA" class="mb-3 h-48 w-48 rounded-box" />
+						<p class="mb-3 text-sm">
+							Clé manuelle: <code>{manualEntryKey}</code>
+						</p>
+
+						<form
+							method="POST"
+							action="?/confirm2FASetup"
+							class="flex w-full items-end gap-2"
+							use:enhance={() => {
+								twoFactorError = null;
+								twoFactorInfo = null;
+								return async ({ result, update }) => {
+									if (result.type === 'success') {
+										await update();
+										await loadUserData();
+										qrCodeDataUrl = null;
+										manualEntryKey = null;
+										verificationCode = '';
+										const dataResult = result.data as { message?: string };
+										twoFactorInfo = dataResult.message ?? '2FA activée';
+									} else if (result.type === 'failure') {
+										const dataResult = result.data as { message?: string };
+										twoFactorError = dataResult.message ?? 'Code 2FA invalide';
+									}
+								};
+							}}
+						>
+							<label class="form-control grow">
+								<span class="label-text mb-1">Code 2FA (6 chiffres)</span>
+								<input
+									name="code"
+									class="input input-bordered"
+									inputmode="numeric"
+									maxlength="6"
+									pattern="[0-9]{6}"
+									bind:value={verificationCode}
+									required
+								/>
+							</label>
+							<button class="btn btn-success" type="submit">Activer</button>
+						</form>
+					</div>
+				{/if}
+			{:else}
+				<form
+					method="POST"
+					action="?/disable2FA"
+					class="w-full rounded-box border border-base-300 p-4"
+					use:enhance={() => {
+						twoFactorError = null;
+						twoFactorInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								await loadUserData();
+								disableCode = '';
+								disablePassword = '';
+								const dataResult = result.data as { message?: string };
+								twoFactorInfo = dataResult.message ?? '2FA désactivée';
+							} else if (result.type === 'failure') {
+								const dataResult = result.data as { message?: string };
+								twoFactorError = dataResult.message ?? 'Impossible de désactiver la 2FA';
+							}
+						};
+					}}
+				>
+					<div class="mb-2 opacity-80">
+						Pour désactiver la 2FA, confirme ton mot de passe et un code 2FA valide.
+					</div>
+					<div class="flex flex-col gap-2 md:flex-row">
+						<input
+							type="password"
+							name="password"
+							placeholder="Mot de passe"
+							class="input input-bordered w-full"
+							bind:value={disablePassword}
+							required
+						/>
+						<input
+							name="code"
+							placeholder="Code 2FA"
+							class="input input-bordered w-full md:w-48"
+							inputmode="numeric"
+							maxlength="6"
+							pattern="[0-9]{6}"
+							bind:value={disableCode}
+							required
+						/>
+						<button class="btn btn-error" type="submit">Désactiver</button>
+					</div>
+				</form>
+			{/if}
 		</div>
 	</div>
 

@@ -9,6 +9,8 @@ export const user = pgTable('user', {
 	username: varchar('username', { length: 32 }).notNull().unique(),
 	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+	twoFactorSecret: text('two_factor_secret'),
 	role: varchar('role', { length: 255 }).notNull().default('user'),
 	theme: themeEnum('theme').default('system'),
 	directMode: boolean('direct_mode').notNull().default(true),
