@@ -35,6 +35,7 @@
 					updatedGames: number;
 					insertedTranslations: number;
 					updatedTranslations: number;
+					deletedTranslations: number;
 					createdTranslators: number;
 					createdProofreaders: number;
 					skipped: number;
@@ -53,6 +54,7 @@
 						updatedGames: number;
 						insertedTranslations: number;
 						updatedTranslations: number;
+						deletedTranslations: number;
 						createdTranslators: number;
 						createdProofreaders: number;
 						skipped: number;
@@ -93,6 +95,7 @@
 					totalTranslators: number;
 					syncedTranslations: number;
 					syncedTranslators: number;
+					prunedJeuxRows?: number;
 					errors: string[];
 			  }
 			| null;
@@ -923,7 +926,8 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										Total: {importResult.details.total} | Jeux ajoutes: {importResult.details
 											.insertedGames} | Jeux mis a jour: {importResult.details.updatedGames} | Traductions
 										ajoutees: {importResult.details.insertedTranslations} | Traductions mises a jour:
-										{importResult.details.updatedTranslations} | Traducteurs crees: {importResult
+										{importResult.details.updatedTranslations} | Traductions supprimees (hors legacy):
+										{importResult.details.deletedTranslations} | Traducteurs crees: {importResult
 											.details.createdTranslators} | Relecteurs crees: {importResult.details
 											.createdProofreaders} | Ignores: {importResult.details.skipped}
 									</p>
@@ -1266,8 +1270,9 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										total {compareResult.details.games.total}, jeux créés {compareResult.details
 											.games.insertedGames}, jeux MAJ {compareResult.details.games.updatedGames},
 										traductions créées {compareResult.details.games.insertedTranslations},
-										traductions MAJ {compareResult.details.games.updatedTranslations}, traducteurs
-										créés {compareResult.details.games.createdTranslators}, relecteurs créés {compareResult
+										traductions MAJ {compareResult.details.games.updatedTranslations},
+										traductions supprimées (aperçu) {compareResult.details.games.deletedTranslations},
+										traducteurs créés {compareResult.details.games.createdTranslators}, relecteurs créés {compareResult
 											.details.games.createdProofreaders}, ignorés {compareResult.details.games
 											.skipped}
 									</p>
@@ -1309,12 +1314,25 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										updatedGames?: number;
 										insertedTranslations?: number;
 										updatedTranslations?: number;
+										deletedTranslations?: number;
 									}}
+									{@const sheetPruned =
+										'spreadsheetSync' in syncResult.details &&
+										syncResult.details.spreadsheetSync &&
+										typeof syncResult.details.spreadsheetSync === 'object' &&
+										'prunedJeuxRows' in syncResult.details.spreadsheetSync
+											? (syncResult.details.spreadsheetSync as { prunedJeuxRows?: number })
+													.prunedJeuxRows ?? 0
+											: null}
 									<p class="mt-1 text-sm">
 										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
 											0} | Jeux mis a jour: {legacyDetails.updatedGames ?? 0} | Traductions ajoutees:
 										{legacyDetails.insertedTranslations ?? 0} | Traductions mises a jour:
-										{legacyDetails.updatedTranslations ?? 0}
+										{legacyDetails.updatedTranslations ?? 0} | Traductions supprimees (hors legacy):
+										{legacyDetails.deletedTranslations ?? 0}
+										{#if sheetPruned !== null}
+											| Lignes Jeux supprimees sur le sheet (hors DB): {sheetPruned}
+										{/if}
 									</p>
 								{/if}
 							</div>
@@ -1347,6 +1365,8 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 											.details.totalTranslations}
 										| Traducteurs: {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
 											.details.totalTranslators}
+										| Lignes Jeux supprimees (absentes de la DB): {dbSheetSyncResult.details
+											.prunedJeuxRows ?? 0}
 									</p>
 								{/if}
 							</div>
@@ -1365,6 +1385,7 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 												.details.totalTranslations}
 											| Traducteurs: {dbSheetSyncResult.details
 												.syncedTranslators}/{dbSheetSyncResult.details.totalTranslators}
+											| Lignes Jeux supprimees: {dbSheetSyncResult.details.prunedJeuxRows ?? 0}
 										</p>
 										{#if dbSheetSyncResult.details.errors.length > 0}
 											<pre

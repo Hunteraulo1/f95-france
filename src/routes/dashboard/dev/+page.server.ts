@@ -46,8 +46,15 @@ type LegacyTranslator = {
 	readCount?: number | string | null;
 };
 
+const normalizeLegacyText = (value: string | null | undefined): string =>
+	(value ?? '')
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.toLowerCase()
+		.trim();
+
 const mapType = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('renpy')) return 'renpy';
 	if (normalized.includes('rpg')) return 'rpgm';
 	if (normalized.includes('unity')) return 'unity';
@@ -59,35 +66,58 @@ const mapType = (value: string | null | undefined): string => {
 };
 
 const mapStatus = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('aband')) return 'abandoned';
 	if (normalized.includes('termin') || normalized.includes('complete')) return 'completed';
 	return 'in_progress';
 };
 
 const mapTName = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('integr')) return 'integrated';
 	if (normalized.includes('mod')) return 'translation_with_mods';
 	if (normalized.includes('trad')) return 'translation';
 	return 'no_translation';
 };
 
-const mapTType = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+const mapTType = (value: string | null | undefined): string | null => {
+	const normalized = normalizeLegacyText(value);
+	if (!normalized) return null;
 	if (normalized.includes('semi')) return 'semi-auto';
-	if (normalized.includes('manuel') || normalized.includes('manual')) return 'manual';
-	if (normalized.includes('vf')) return 'vf';
+	if (normalized.includes('vf') || normalized.includes('francais') || normalized.includes('francaise'))
+		return 'vf';
+	if (
+		normalized.includes('humaine') ||
+		normalized.includes('humain') ||
+		normalized.includes('human') ||
+		normalized.includes('manuel') ||
+		normalized.includes('manuelle') ||
+		normalized.includes('manual')
+	)
+		return 'manual';
 	if (normalized.includes('test')) return 'to_tested';
-	if (normalized.includes('hs')) return 'hs';
-	return 'auto';
+	if (normalized.includes(' hs') || normalized.startsWith('hs') || normalized.includes('hors service'))
+		return 'hs';
+	if (normalized.includes('auto')) return 'auto';
+	return null;
 };
 
 const mapWebsite = (value: string | null | undefined): 'f95z' | 'lc' | 'other' => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('f95')) return 'f95z';
 	if (normalized.includes('lewd') || normalized === 'lc') return 'lc';
 	return 'other';
+};
+
+const parseLegacyBoolean = (value: unknown): boolean => {
+	if (value === true) return true;
+	if (value === false || value == null) return false;
+	if (typeof value === 'number') return value === 1;
+	if (typeof value === 'string') {
+		const n = normalizeLegacyText(value);
+		return n === 'true' || n === '1' || n === 'oui' || n === 'yes' || n === 'y';
+	}
+	return false;
 };
 
 const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
@@ -302,10 +332,47 @@ const normalizeKeyPart = (value: string | null | undefined): string =>
 		.trim()
 		.replace(/\s+/g, ' ');
 
-const translationKeyFrom = (
-	name: string | null | undefined,
+const translationStrictKeyFromLegacy = (
+	gameId: string,
+	tversionKey: string | null | undefined,
+	tlinkKey: string | null | undefined
+): string => `${gameId}:${normalizeKeyPart(tversionKey)}:${normalizeKeyPart(tlinkKey)}`;
+
+const translationVersionKeyFromLegacy = (
+	gameId: string,
 	tversionKey: string | null | undefined
-): string => `${normalizeKeyPart(name)}:${normalizeKeyPart(tversionKey)}`;
+): string => `${gameId}:${normalizeKeyPart(tversionKey)}`;
+
+const chooseCanonicalGameName = (currentName: string, incomingName: string): string => {
+	const curr = currentName.trim();
+	const inc = incomingName.trim();
+	if (!curr) return inc;
+	if (!inc) return curr;
+	const currNorm = normalizeKeyPart(curr);
+	const incNorm = normalizeKeyPart(inc);
+	if (!currNorm || !incNorm) return curr;
+	if (currNorm === incNorm) return curr;
+	// Si l'un est un préfixe normalisé de l'autre, on garde le nom le plus court (nom "racine" du jeu).
+	if (currNorm.startsWith(`${incNorm} `)) return inc;
+	if (incNorm.startsWith(`${currNorm} `)) return curr;
+	return curr;
+};
+
+const extractLegacyTranslationName = (
+	gameName: string,
+	legacyItemName: string | null | undefined
+): string | null => {
+	const base = (gameName ?? '').trim();
+	const raw = (legacyItemName ?? '').trim();
+	if (!base || !raw) return null;
+	const baseNorm = normalizeKeyPart(base);
+	const rawNorm = normalizeKeyPart(raw);
+	if (!baseNorm || !rawNorm || rawNorm === baseNorm) return null;
+	if (!rawNorm.startsWith(`${baseNorm} `)) return null;
+	let suffix = raw.slice(base.length).trim();
+	suffix = suffix.replace(/^[\s\-–—:|]+/, '').trim();
+	return suffix || null;
+};
 
 const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolean } = {}) => {
 	const dryRun = options.dryRun === true;
@@ -313,6 +380,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 	let updatedGames = 0;
 	let insertedTranslations = 0;
 	let updatedTranslations = 0;
+	let deletedTranslations = 0;
 	let createdTranslators = 0;
 	let createdProofreaders = 0;
 	let skipped = 0;
@@ -352,16 +420,24 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 	const existingTranslations = await db
 		.select({
 			id: table.gameTranslation.id,
+			gameId: table.gameTranslation.gameId,
 			tversion: table.gameTranslation.tversion,
-			gameName: table.game.name
+			tlink: table.gameTranslation.tlink
 		})
-		.from(table.gameTranslation)
-		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId));
-	const translationByKey = new Map<string, string>();
+		.from(table.gameTranslation);
+	const translationByStrictKey = new Map<string, string>();
+	const translationByVersionKey = new Map<string, string>();
 	for (const row of existingTranslations) {
-		translationByKey.set(translationKeyFrom(row.gameName, row.tversion), row.id);
+		translationByStrictKey.set(
+			translationStrictKeyFromLegacy(row.gameId, row.tversion, row.tlink),
+			row.id
+		);
+		const vKey = translationVersionKeyFromLegacy(row.gameId, row.tversion);
+		if (!translationByVersionKey.has(vKey)) translationByVersionKey.set(vKey, row.id);
 	}
 	const gameAcStats = new Map<string, { total: number; hasAcTrue: boolean }>();
+	/** Clés strictes présentes dans le payload legacy (aligné sur upsert : tversion + tlink). */
+	const legacyStrictKeys = new Set<string>();
 
 	for (const item of games) {
 		const threadId =
@@ -394,7 +470,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		if (gameId) {
 			const prev = gamesSnapshot.get(gameId);
 			const nextValues = {
-				name: prev?.name ?? name,
+				name: prev?.name ? chooseCanonicalGameName(prev.name, name) : name,
 				type: mapType(item.type),
 				tags,
 				image: item.image?.trim() || '',
@@ -476,10 +552,19 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		}
 
 		const tversion = item.tversion?.trim() || 'unknown';
-		const acValue = item.ac === true;
-		const referenceVersion = !acValue ? gameVersion : null;
-		const translationKey = translationKeyFrom(name, tversion);
-		const existingTranslationId = translationByKey.get(translationKey);
+		const acValue = parseLegacyBoolean(item.ac);
+		// Version du jeu pour cette ligne (colonne VERSION du sheet) : toujours stockée par traduction,
+		// y compris si AC=true, pour que la sync affiche la bonne version quand il y a plusieurs traductions.
+		const translationGameVersion = gameVersion;
+		const canonicalGameName = gamesSnapshot.get(gameId)?.name ?? name;
+		const translationName = extractLegacyTranslationName(canonicalGameName, name);
+		const tlinkValue = item.tlink?.trim() || '';
+		const strictKey = translationStrictKeyFromLegacy(gameId, tversion, tlinkValue);
+		legacyStrictKeys.add(strictKey);
+		const versionKey = translationVersionKeyFromLegacy(gameId, tversion);
+		const existingTranslationId =
+			translationByStrictKey.get(strictKey) ?? translationByVersionKey.get(versionKey);
+		const mappedTType = mapTType(item.ttype);
 		const stat = gameAcStats.get(gameId) ?? { total: 0, hasAcTrue: false };
 		stat.total += 1;
 		stat.hasAcTrue = stat.hasAcTrue || acValue;
@@ -490,19 +575,20 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				await db.insert(table.gameTranslation).values({
 					id: crypto.randomUUID(),
 					gameId,
-					translationName: null,
-					version: referenceVersion,
+					translationName,
+					version: translationGameVersion,
 					status: mapStatus(item.status),
 					tversion,
 					tlink: item.tlink?.trim() || '',
 					tname: mapTName(item.tname),
 					translatorId,
 					proofreaderId,
-					ttype: mapTType(item.ttype),
+					ttype: mappedTType ?? 'manual',
 					ac: acValue
 				});
 			}
-			translationByKey.set(translationKey, 'created');
+			translationByStrictKey.set(strictKey, 'created');
+			if (!translationByVersionKey.has(versionKey)) translationByVersionKey.set(versionKey, 'created');
 			insertedTranslations++;
 		} else {
 			if (!dryRun) {
@@ -510,20 +596,49 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 					.update(table.gameTranslation)
 					.set({
 						gameId,
-						translationName: sql`${table.gameTranslation.translationName}`,
-						version: referenceVersion,
+						translationName,
+						version: translationGameVersion,
 						status: mapStatus(item.status),
 						tversion,
 						tlink: item.tlink?.trim() || '',
 						tname: mapTName(item.tname),
 						translatorId,
 						proofreaderId,
-						ttype: mapTType(item.ttype),
+						ttype: mappedTType ?? sql`${table.gameTranslation.ttype}`,
 						ac: acValue
 					})
 					.where(eq(table.gameTranslation.id, existingTranslationId));
 			}
 			updatedTranslations++;
+		}
+	}
+
+	// Legacy = référence : pour chaque jeu concerné par ce flux, supprimer les traductions absentes du payload.
+	for (const gid of gameAcStats.keys()) {
+		const rows = await db
+			.select({
+				id: table.gameTranslation.id,
+				tversion: table.gameTranslation.tversion,
+				tlink: table.gameTranslation.tlink
+			})
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gid));
+
+		const idsToDelete = rows
+			.filter((r) => {
+				const tlinkNorm = typeof r.tlink === 'string' ? r.tlink.trim() : (r.tlink ?? '');
+				return !legacyStrictKeys.has(translationStrictKeyFromLegacy(gid, r.tversion, tlinkNorm));
+			})
+			.map((r) => r.id);
+
+		if (idsToDelete.length === 0) continue;
+		deletedTranslations += idsToDelete.length;
+		if (!dryRun) {
+			await db
+				.update(table.submission)
+				.set({ translationId: null })
+				.where(inArray(table.submission.translationId, idsToDelete));
+			await db.delete(table.gameTranslation).where(inArray(table.gameTranslation.id, idsToDelete));
 		}
 	}
 
@@ -545,6 +660,7 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		updatedGames,
 		insertedTranslations,
 		updatedTranslations,
+		deletedTranslations,
 		createdTranslators,
 		createdProofreaders,
 		skipped
@@ -556,6 +672,7 @@ const syncAllDbToSpreadsheet = async (): Promise<{
 	totalTranslators: number;
 	syncedTranslations: number;
 	syncedTranslators: number;
+	prunedJeuxRows: number;
 	errors: string[];
 }> => {
 	return syncDbToSpreadsheetBulk();
@@ -912,6 +1029,7 @@ export const actions: Actions = {
 							updatedGames: 0,
 							insertedTranslations: 0,
 							updatedTranslations: 0,
+							deletedTranslations: 0,
 							createdTranslators: 0,
 							createdProofreaders: 0,
 							skipped: 0

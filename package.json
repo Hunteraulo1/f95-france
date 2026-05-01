@@ -21,7 +21,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/lib/server/db/migrate.ts",
     "db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.5",

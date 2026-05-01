@@ -87,8 +87,24 @@ function asHyperlink(url: string | null | undefined, label: string): string {
 	const safeLabel = escapeFormulaText(label);
 	if (!url || !url.trim()) return safeLabel;
 	const safeUrl = escapeFormulaText(url.trim());
-	// Feuille FR => séparateur ';'
+	// Séparateur ';' : cohérent avec un classeur Google en locale FR (comme saisie utilisateur).
 	return `=HYPERLINK("${safeUrl}"; "${safeLabel}")`;
+}
+
+/** URL du fil du jeu : champ `link`, ou dérivée de `threadId` + site (comme dans le formulaire dashboard). */
+function gameSpreadsheetLink(game: typeof table.game.$inferSelect): string | null {
+	const direct = (game.link ?? '').trim();
+	if (direct) return direct;
+	const tid = game.threadId;
+	if (tid == null || tid === 0) return null;
+	switch ((game.website ?? '').trim().toLowerCase()) {
+		case 'f95z':
+			return `https://f95zone.to/threads/${tid}`;
+		case 'lc':
+			return `https://lewcorner.com/threads/${tid}`;
+		default:
+			return null;
+	}
 }
 
 function formatWebsite(v: string | null | undefined): string {
@@ -151,6 +167,112 @@ function formatTranslationKind(v: string | null | undefined): string {
 	}
 }
 
+/** Libellé du lien « Lien Trad » : évite le texte générique « Traduction » partout (exports CSV / unicité). */
+function lienTradDisplayLabel(
+	game: typeof table.game.$inferSelect,
+	tr: typeof table.gameTranslation.$inferSelect
+): string {
+	void game;
+	return formatTranslationKind(tr.tname);
+}
+
+/**
+ * Libellé « Nom du jeu » dans la feuille : **nom du jeu**, **tiret** (`-`), **nom de traduction**
+ * (édition spéciale, DLC, etc.). Espaces autour du tiret pour la lisibilité en tableur.
+ */
+function formatJeuxNomAffiche(gameName: string, translationName: string | null | undefined): string {
+	const g = (gameName ?? '').trim();
+	let t = (translationName ?? '').trim();
+	t = t.replace(/^[\s\-–—:]+/, '');
+	if (!t) return g;
+	if (!g) return t;
+	return `${g} - ${t}`;
+}
+
+type JeuxRowInput = {
+	tr: typeof table.gameTranslation.$inferSelect;
+	game: typeof table.game.$inferSelect;
+	translator: typeof table.translator.$inferSelect | null;
+	proofreader: typeof table.translator.$inferSelect | null;
+};
+
+/** Remplit une ligne « Jeux » selon les en-têtes du spreadsheet (sync unitaire + bulk). */
+function populateJeuxRowValues(headersRow: string[], rowValues: string[], input: JeuxRowInput): void {
+	const { tr, game, translator, proofreader } = input;
+	const set = (headers: string | string[], value: string) => {
+		const i = findHeaderIndex(headersRow, Array.isArray(headers) ? headers : [headers]);
+		if (i !== -1) rowValues[i] = value;
+	};
+
+	const nomAffiche = formatJeuxNomAffiche(game.name ?? '', tr.translationName);
+	const lienLabel = lienTradDisplayLabel(game, tr);
+
+	set('Site', formatWebsite(game.website));
+	set(['Nom du jeu', 'Jeu'], asHyperlink(gameSpreadsheetLink(game), nomAffiche));
+	set('Version', sheetLiteralVersionText(getJeuxGameVersionValue(tr, game)));
+	set(
+		['Trad. Ver.', 'Trad Ver', 'Trad. Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
+		sheetLiteralVersionText(getTradVerValue(tr, game))
+	);
+	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, lienLabel));
+	set(['Status', 'Statut'], formatStatus(tr.status));
+	set('Tags', game.tags ?? '');
+	set('Type', formatGameType(game.type));
+	const translatorLabel = translator?.name ?? '';
+	set(
+		['Traducteur', 'Traducteurs', 'TRADUCTEUR', 'TRADUCTEURS'],
+		translatorLabel ? asHyperlink(firstPageLink(translator?.pages), translatorLabel) : ''
+	);
+	const proofreaderLabel = proofreader?.name ?? '';
+	set(
+		['Relecteur', 'Relecteurs', 'RELECTEUR', 'RELECTEURS'],
+		proofreaderLabel ? asHyperlink(firstPageLink(proofreader?.pages), proofreaderLabel) : ''
+	);
+	set(['Type de traduction', 'Type traduction'], formatTranslationType(tr.ttype));
+	set(['AC', 'Auto-Check', 'Auto check', 'AUTO CHECK'], tr.ac ? 'Oui' : 'Non');
+	set(['IMAGE', 'Image', 'Image URL', 'Image url'], game.image ?? '');
+	const tid = game.threadId;
+	set(
+		[
+			'THREAD',
+			'THREAD ID',
+			'Thread ID',
+			'ID THREAD',
+			'FIL',
+			'Id fil',
+			'ID fil',
+			'N° fil',
+			'ID FIL'
+		],
+		tid != null && tid !== 0 ? String(tid) : ''
+	);
+	set(['ID DB', 'Id Db'], tr.id);
+
+	const tradVerIdx =
+		findHeaderIndex(headersRow, [
+			'Trad. Ver.',
+			'TRAD. VER.',
+			'Trad Ver',
+			'Version trad',
+			'Version traduction'
+		]) !== -1
+			? findHeaderIndex(headersRow, [
+					'Trad. Ver.',
+					'TRAD. VER.',
+					'Trad Ver',
+					'Version trad',
+					'Version traduction'
+				])
+			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
+	if (tradVerIdx !== -1) rowValues[tradVerIdx] = sheetLiteralVersionText(getTradVerValue(tr, game));
+
+	const idDbIdx =
+		findHeaderIndex(headersRow, ['ID DB', 'Id Db']) !== -1
+			? findHeaderIndex(headersRow, ['ID DB', 'Id Db'])
+			: findHeaderIndexByTokens(headersRow, ['id'], ['db']);
+	if (idDbIdx !== -1) rowValues[idDbIdx] = tr.id;
+}
+
 function formatTranslationType(v: string | null | undefined): string {
 	switch ((v ?? '').trim().toLowerCase()) {
 		case 'vf':
@@ -170,16 +292,33 @@ function formatTranslationType(v: string | null | undefined): string {
 	}
 }
 
+/** Version du jeu affichée sur la ligne « Jeux » : par traduction si renseignée, sinon version courante du jeu. */
+function getJeuxGameVersionValue(
+	tr: typeof table.gameTranslation.$inferSelect,
+	game: typeof table.game.$inferSelect
+): string {
+	const rowVersion = typeof tr.version === 'string' ? tr.version.trim() : (tr.version ?? '');
+	return rowVersion || (game.gameVersion ?? '');
+}
+
 function getTradVerValue(
 	tr: typeof table.gameTranslation.$inferSelect,
 	game: typeof table.game.$inferSelect
 ): string {
-	const translationReferenceVersion =
-		typeof tr.version === 'string' ? tr.version.trim() : (tr.version ?? '');
-	if (tr.ac === false) {
-		return translationReferenceVersion || (game.gameVersion ?? '');
-	}
-	return game.gameVersion ?? '';
+	const translationVersion = typeof tr.tversion === 'string' ? tr.tversion.trim() : (tr.tversion ?? '');
+	return translationVersion || (game.gameVersion ?? '');
+}
+
+/**
+ * Avec `USER_ENTERED`, Sheets peut interpréter une version (ex. `1.0`, `12-1`, `3/10`) comme nombre ou date.
+ * Le préfixe `'` force le texte (comportement identique à une saisie manuelle ; l’apostrophe ne s’affiche pas).
+ */
+function sheetLiteralVersionText(value: string): string {
+	const v = (value ?? '').trim();
+	if (!v) return '';
+	if (v.startsWith("'")) return v;
+	if (v.startsWith('=')) return v;
+	return `'${v}`;
 }
 
 function parsePages(pagesRaw: string | null | undefined): Array<{ name?: string; link?: string }> {
@@ -451,7 +590,8 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 	if (rows.length < 2) return;
 
 	const headersRow = rows[0] ?? [];
-	const idDbIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db', 'ID']);
+	let idDbIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db']);
+	if (idDbIdx === -1) idDbIdx = findHeaderIndexByTokens(headersRow, ['id'], ['db']);
 	if (idDbIdx === -1) return;
 
 	const ids = new Set(translationIds);
@@ -576,66 +716,8 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 		}
 	}
 
-	const gameName = game.name ?? '';
-	const trName = tr.translationName?.trim() || '';
-	const nomAffiche = trName ? `${gameName} - ${trName}` : gameName;
-	const tname = formatTranslationKind(tr.tname);
-
 	const rowValues = new Array(headersRow.length).fill('');
-	const set = (headers: string | string[], value: string) => {
-		const list = Array.isArray(headers) ? headers : [headers];
-		const i = findHeaderIndex(headersRow, list);
-		if (i !== -1) {
-			rowValues[i] = value;
-		}
-	};
-
-	set('Site', formatWebsite(game.website));
-	set(['Nom du jeu', 'Jeu'], asHyperlink(game.link, nomAffiche));
-	set('Version', game.gameVersion ?? '');
-	set(
-		['Trad. Ver.', 'Trad Ver', 'Trad. Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
-		getTradVerValue(tr, game)
-	);
-	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, tname));
-	set(['Status', 'Statut'], formatStatus(tr.status));
-	set('Tags', game.tags ?? '');
-	set('Type', formatGameType(game.type));
-	const translatorLabel = translator?.name ?? '';
-	const translatorFirstLink = firstPageLink(translator?.pages);
-	set(
-		['Traducteur', 'Traducteurs', 'TRADUCTEUR', 'TRADUCTEURS'],
-		translatorLabel ? asHyperlink(translatorFirstLink, translatorLabel) : ''
-	);
-
-	const proofreaderLabel = proofreader?.name ?? '';
-	const proofreaderFirstLink = firstPageLink(proofreader?.pages);
-	set(
-		['Relecteur', 'Relecteurs', 'RELECTEUR', 'RELECTEURS'],
-		proofreaderLabel ? asHyperlink(proofreaderFirstLink, proofreaderLabel) : ''
-	);
-	set(['Type de traduction', 'Type traduction'], formatTranslationType(tr.ttype));
-	set(['ID DB', 'Id Db'], tr.id);
-
-	// Filet de sécurité pour des en-têtes atypiques/non standard
-	const tradVerIdx =
-		findHeaderIndex(headersRow, [
-			'Trad. Ver.',
-			'TRAD. VER.',
-			'Trad Ver',
-			'Version trad',
-			'Version traduction'
-		]) !== -1
-			? findHeaderIndex(headersRow, [
-					'Trad. Ver.',
-					'TRAD. VER.',
-					'Trad Ver',
-					'Version trad',
-					'Version traduction'
-				])
-			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
-	if (tradVerIdx !== -1) rowValues[tradVerIdx] = getTradVerValue(tr, game);
-	if (idDbIdx !== -1) rowValues[idDbIdx] = tr.id;
+	populateJeuxRowValues(headersRow, rowValues, { tr, game, translator, proofreader });
 
 	if (rowNumber !== -1) {
 		const range = `${tab}!A${rowNumber}:${lastCol}${rowNumber}`;
@@ -810,61 +892,8 @@ function buildJeuxRow(
 		proofreader: typeof table.translator.$inferSelect | null;
 	}
 ): string[] {
-	const { tr, game, translator, proofreader } = input;
 	const rowValues = new Array(headersRow.length).fill('');
-	const set = (headers: string | string[], value: string) => {
-		const i = findHeaderIndex(headersRow, Array.isArray(headers) ? headers : [headers]);
-		if (i !== -1) rowValues[i] = value;
-	};
-
-	const gameName = game.name ?? '';
-	const trName = tr.translationName?.trim() || '';
-	const nomAffiche = trName ? `${gameName} - ${trName}` : gameName;
-	const tname = formatTranslationKind(tr.tname);
-
-	set('Site', formatWebsite(game.website));
-	set(['Nom du jeu', 'Jeu'], asHyperlink(game.link, nomAffiche));
-	set('Version', game.gameVersion ?? '');
-	set(
-		['Trad. Ver.', 'Trad Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
-		getTradVerValue(tr, game)
-	);
-	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, tname));
-	set(['Status', 'Statut'], formatStatus(tr.status));
-	set('Tags', game.tags ?? '');
-	set('Type', formatGameType(game.type));
-	const translatorLabel = translator?.name ?? '';
-	set(
-		['Traducteur', 'Traducteurs', 'TRADUCTEUR', 'TRADUCTEURS'],
-		translatorLabel ? asHyperlink(firstPageLink(translator?.pages), translatorLabel) : ''
-	);
-	const proofreaderLabel = proofreader?.name ?? '';
-	set(
-		['Relecteur', 'Relecteurs', 'RELECTEUR', 'RELECTEURS'],
-		proofreaderLabel ? asHyperlink(firstPageLink(proofreader?.pages), proofreaderLabel) : ''
-	);
-	set(['Type de traduction', 'Type traduction'], formatTranslationType(tr.ttype));
-	set(['ID DB', 'Id Db'], tr.id);
-
-	const tradVerIdx =
-		findHeaderIndex(headersRow, [
-			'Trad. Ver.',
-			'TRAD. VER.',
-			'Trad Ver',
-			'Version trad',
-			'Version traduction'
-		]) !== -1
-			? findHeaderIndex(headersRow, [
-					'Trad. Ver.',
-					'TRAD. VER.',
-					'Trad Ver',
-					'Version trad',
-					'Version traduction'
-				])
-			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
-	if (tradVerIdx !== -1) rowValues[tradVerIdx] = getTradVerValue(tr, game);
-	const idIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db']);
-	if (idIdx !== -1) rowValues[idIdx] = tr.id;
+	populateJeuxRowValues(headersRow, rowValues, input);
 	return rowValues;
 }
 
@@ -891,6 +920,8 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 	totalTranslators: number;
 	syncedTranslations: number;
 	syncedTranslators: number;
+	/** Lignes Jeux supprimées du spreadsheet (ID DB absent de la base). */
+	prunedJeuxRows: number;
 	errors: string[];
 }> {
 	const auth = await getSheetsAuth();
@@ -900,6 +931,7 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 			totalTranslators: 0,
 			syncedTranslations: 0,
 			syncedTranslators: 0,
+			prunedJeuxRows: 0,
 			errors: ['Configuration Google Sheets absente (OAuth/API key/spreadsheet ID).']
 		};
 	}
@@ -909,6 +941,7 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 		db.select().from(table.translator)
 	]);
 	const errors: string[] = [];
+	let prunedJeuxRows = 0;
 
 	try {
 		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
@@ -963,6 +996,14 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 			}
 		}
 		await sortJeuxSheetByGameName(auth);
+
+		const dbTranslationIds = new Set(translations.map((t) => t.id));
+		const snapAfter = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
+		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter((id) => !dbTranslationIds.has(id));
+		if (orphanJeuxIds.length > 0) {
+			await deleteRowsByTranslationIds(orphanJeuxIds);
+			prunedJeuxRows = orphanJeuxIds.length;
+		}
 	} catch (err) {
 		errors.push(`bulk Jeux: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 	}
@@ -1022,6 +1063,7 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 		totalTranslators: translators.length,
 		syncedTranslations: translations.length,
 		syncedTranslators: translators.length,
+		prunedJeuxRows,
 		errors
 	};
 }
