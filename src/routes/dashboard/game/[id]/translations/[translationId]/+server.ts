@@ -128,8 +128,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				proofreaderId: proofreaderId || null,
 				ac: acValue
 			});
-			// La table update/MAJ doit refléter l'action dès la modification.
-			await touchGameUpdatedToday(gameId);
+			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
+			if (!isSilentMode) {
+				await touchGameUpdatedToday(gameId);
+			}
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameId
@@ -207,7 +209,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] update proofreader failed:', err);
 			});
 		}
-		await touchGameUpdatedToday(gameId);
+		if (!isSilentMode) {
+			await touchGameUpdatedToday(gameId);
+		}
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {

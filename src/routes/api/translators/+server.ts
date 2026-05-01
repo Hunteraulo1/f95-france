@@ -35,50 +35,6 @@ export const GET: RequestHandler = async () => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request }) => {
-	const body = await request.json();
-	const { name } = body;
-
-	if (!name || typeof name !== 'string') {
-		return json({ error: 'Name is required' }, { status: 400, headers: corsHeaders });
-	}
-
-	const trimmedName = name.trim();
-
-	try {
-		await db.insert(translator).values({
-			name: trimmedName,
-			pages: '',
-			tradCount: 0,
-			readCount: 0
-		});
-
-		return json({ success: true, name: trimmedName }, { status: 201, headers: corsHeaders });
-	} catch (error: unknown) {
-		console.error('Error creating translator:', error);
-
-		// Vérifier si c'est une erreur de duplication
-		const mysqlError =
-			error && typeof error === 'object' && 'cause' in error
-				? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
-				: null;
-
-		if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
-			if (mysqlError.sqlMessage?.includes('translator_name_unique')) {
-				return json(
-					{ error: `Un traducteur avec le nom "${trimmedName}" existe déjà` },
-					{ status: 409, headers: corsHeaders }
-				);
-			}
-			if (mysqlError.sqlMessage?.includes('discord_id')) {
-				return json(
-					{ error: 'Un traducteur avec cet ID Discord existe déjà' },
-					{ status: 409, headers: corsHeaders }
-				);
-			}
-			return json({ error: 'Ce traducteur existe déjà' }, { status: 409, headers: corsHeaders });
-		}
-
-		return json({ error: 'Failed to create translator' }, { status: 500, headers: corsHeaders });
-	}
-};
+/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+export const POST: RequestHandler = async () =>
+	json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });

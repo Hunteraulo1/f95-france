@@ -83,8 +83,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
+	const isSensitiveBodyRoute =
+		pathname === '/dashboard/login' ||
+		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/logout';
 	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
-	const shouldCaptureBody = shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+	const shouldCaptureBody =
+		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
 
 	if (shouldCaptureBody) {
 		try {

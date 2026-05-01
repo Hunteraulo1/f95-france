@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
-import { game, gameTranslation, update as updateTable } from '$lib/server/db/schema';
+import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
@@ -15,6 +15,161 @@ export const OPTIONS: RequestHandler = async () =>
 		status: 204,
 		headers: corsHeaders
 	});
+
+const mapDomain = (website: string | null | undefined): 'F95z' | 'LewdCorner' | 'Autre' | 'Unknown' => {
+	switch ((website ?? '').trim().toLowerCase()) {
+		case 'f95z':
+			return 'F95z';
+		case 'lc':
+			return 'LewdCorner';
+		case 'other':
+			return 'Autre';
+		default:
+			return 'Unknown';
+	}
+};
+
+const mapHostname = (website: string | null | undefined): 'f95zone.to' | 'lewdcorner.com' | null => {
+	switch ((website ?? '').trim().toLowerCase()) {
+		case 'f95z':
+			return 'f95zone.to';
+		case 'lc':
+			return 'lewdcorner.com';
+		default:
+			return null;
+	}
+};
+
+const mapTName = (
+	v: string | null | undefined
+): 'Traduction' | 'Traduction (mod inclus)' | 'Intégrée' | 'Pas de traduction' => {
+	switch ((v ?? '').trim().toLowerCase()) {
+		case 'translation_with_mods':
+			return 'Traduction (mod inclus)';
+		case 'integrated':
+			return 'Intégrée';
+		case 'no_translation':
+			return 'Pas de traduction';
+		case 'translation':
+		default:
+			return 'Traduction';
+	}
+};
+
+const mapStatus = (v: string | null | undefined): 'EN COURS' | 'TERMINÉ' | 'ABANDONNÉ' => {
+	switch ((v ?? '').trim().toLowerCase()) {
+		case 'completed':
+			return 'TERMINÉ';
+		case 'abandoned':
+			return 'ABANDONNÉ';
+		case 'in_progress':
+		default:
+			return 'EN COURS';
+	}
+};
+
+const mapType = (
+	v: string | null | undefined
+):
+	| 'RenPy'
+	| 'RPGM'
+	| 'Unity'
+	| 'Unreal'
+	| 'Flash'
+	| 'HTLM'
+	| 'QSP'
+	| 'Autre'
+	| 'RenPy/RPGM'
+	| 'RenPy/Unity' => {
+	switch ((v ?? '').trim().toLowerCase()) {
+		case 'renpy':
+			return 'RenPy';
+		case 'rpgm':
+			return 'RPGM';
+		case 'unity':
+			return 'Unity';
+		case 'unreal':
+			return 'Unreal';
+		case 'flash':
+			return 'Flash';
+		case 'html':
+			return 'HTLM';
+		case 'qsp':
+			return 'QSP';
+		case 'renpy/rpgm':
+			return 'RenPy/RPGM';
+		case 'renpy/unity':
+			return 'RenPy/Unity';
+		default:
+			return 'Autre';
+	}
+};
+
+const mapTType = (
+	v: string | null | undefined
+):
+	| 'Traduction Humaine'
+	| 'Traduction Automatique'
+	| 'Traduction Semi-Automatique'
+	| 'VO Française'
+	| 'À tester'
+	| 'Lien Trad HS' => {
+	switch ((v ?? '').trim().toLowerCase()) {
+		case 'manual':
+			return 'Traduction Humaine';
+		case 'auto':
+			return 'Traduction Automatique';
+		case 'semi-auto':
+			return 'Traduction Semi-Automatique';
+		case 'vf':
+			return 'VO Française';
+		case 'to_tested':
+			return 'À tester';
+		case 'hs':
+		default:
+			return 'Lien Trad HS';
+	}
+};
+
+const splitTags = (raw: string | null | undefined): string[] =>
+	(raw ?? '')
+		.split(',')
+		.map((t) => t.trim())
+		.filter(Boolean);
+
+type ParsedPage = { title: string; link: string };
+
+const parsePages = (raw: string | null | undefined): ParsedPage[] => {
+	if (!raw || !raw.trim()) return [];
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (!Array.isArray(parsed)) return [];
+		return parsed
+			.map((p) => {
+				if (!p || typeof p !== 'object') return null;
+				const obj = p as Record<string, unknown>;
+				const title =
+					(typeof obj.title === 'string' && obj.title.trim()) ||
+					(typeof obj.name === 'string' && obj.name.trim()) ||
+					(typeof obj.label === 'string' && obj.label.trim()) ||
+					'';
+				const link = (typeof obj.link === 'string' && obj.link.trim()) || '';
+				if (!title && !link) return null;
+				return { title: title || link, link };
+			})
+			.filter((v): v is ParsedPage => v !== null);
+	} catch {
+		return [];
+	}
+};
+
+const firstPageLink = (raw: string | null | undefined): string | null => {
+	const first = parsePages(raw)[0];
+	return first?.link?.trim() ? first.link.trim() : null;
+};
+
+const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À JOUR' =>
+	(v ?? '').trim().toLowerCase() === 'adding' ? 'AJOUT DE JEU' : 'MISE À JOUR';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -63,53 +218,111 @@ export const GET: RequestHandler = async ({ url }) => {
 					.orderBy(desc(gameTranslation.updatedAt))
 			: await baseQuery.orderBy(desc(gameTranslation.updatedAt));
 
-		const byGame = new Map<
-			string,
-			(typeof rows)[number]['game'] & { translations: Array<(typeof rows)[number]['translation']> }
-		>();
+		const translatorIds = Array.from(
+			new Set(
+				rows.flatMap((row) =>
+					[row.translation.translatorId, row.translation.proofreaderId].filter(
+						(id): id is string => Boolean(id)
+					)
+				)
+			)
+		);
 
-		for (const row of rows) {
-			const existing = byGame.get(row.game.id);
-			if (!existing) {
-				byGame.set(row.game.id, {
-					...row.game,
-					translations: [row.translation]
-				});
-				continue;
-			}
-			existing.translations.push(row.translation);
+		const translatorRows =
+			translatorIds.length > 0
+				? await db
+						.select({
+							id: translator.id,
+							name: translator.name,
+							pages: translator.pages
+						})
+						.from(translator)
+						.where(inArray(translator.id, translatorIds))
+				: [];
+
+		const translatorById = new Map(translatorRows.map((tr) => [tr.id, tr]));
+
+		const gamesWithDbId = rows.map((row) => {
+			const tr = row.translation.translatorId ? translatorById.get(row.translation.translatorId) : null;
+			const pr = row.translation.proofreaderId ? translatorById.get(row.translation.proofreaderId) : null;
+			const payload = {
+        id: row.translation.id,
+        gameId: row.game.id,
+				threadId: row.game.threadId ?? null,
+				domain: mapDomain(row.game.website),
+				hostname: mapHostname(row.game.website),
+				name: row.game.name,
+				version: row.game.gameVersion ?? '',
+				tversion: row.translation.tversion,
+				tname: mapTName(row.translation.tname),
+        description: row.game.description ?? null,
+				status: mapStatus(row.translation.status),
+				tags: splitTags(row.game.tags),
+				type: mapType(row.game.type),
+				traductor: tr?.name ?? null,
+				proofreader: pr?.name ?? null,
+				ttype: mapTType(row.translation.ttype),
+				ac: Boolean(row.translation.ac),
+				link: row.game.link,
+				tlink: row.translation.tlink?.trim() ? row.translation.tlink : null,
+				trlink: firstPageLink(tr?.pages),
+				prlink: firstPageLink(pr?.pages),
+				image: row.game.image?.trim() ? row.game.image : null
+			};
+			return { gameDbId: row.game.id, payload };
+		});
+
+		const gamesByDbId = new Map<string, Array<(typeof gamesWithDbId)[number]['payload']>>();
+		for (const g of gamesWithDbId) {
+			const current = gamesByDbId.get(g.gameDbId) ?? [];
+			current.push(g.payload);
+			gamesByDbId.set(g.gameDbId, current);
 		}
 
 		const updates = await db
 			.select({
-				updateId: updateTable.id,
-				updateStatus: updateTable.status,
-				updateCreatedAt: updateTable.createdAt,
-				updateUpdatedAt: updateTable.updatedAt,
-				game: {
-					id: game.id,
-					name: game.name,
-					description: game.description,
-					website: game.website,
-					threadId: game.threadId,
-					link: game.link,
-					tags: game.tags,
-					type: game.type,
-					image: game.image,
-					gameAutoCheck: game.gameAutoCheck,
-					gameVersion: game.gameVersion,
-					createdAt: game.createdAt,
-					updatedAt: game.updatedAt
-				}
+				date: updateTable.createdAt,
+				type: updateTable.status,
+				gameId: updateTable.gameId
 			})
 			.from(updateTable)
-			.innerJoin(game, eq(updateTable.gameId, game.id))
 			.orderBy(desc(updateTable.createdAt));
+
+		const mappedUpdates = updates.map((u) => ({
+				date: u.date,
+				type: mapUpdateType(u.type),
+				gameId: u.gameId
+		}));
+
+		const traductorsRows = await db
+			.select({
+        id: translator.id,
+				name: translator.name,
+				pages: translator.pages,
+				discordId: translator.discordId,
+				tradCount: translator.tradCount,
+				readCount: translator.readCount
+			})
+			.from(translator)
+			.orderBy(translator.name);
+
+		const traductors = traductorsRows.map((t) => ({
+      id: t.id,
+			name: t.name,
+			pages: parsePages(t.pages),
+			discordId: t.discordId ? Number.parseInt(t.discordId, 10) || null : null,
+			tradCount: t.tradCount ?? 0,
+			readCount: t.readCount ?? 0,
+			score: (t.tradCount ?? 0) + (t.readCount ?? 0)
+		}));
 
 		return json(
 			{
-				games: Array.from(byGame.values()),
-				updates
+				data: {
+					games: gamesWithDbId.map((g) => g.payload),
+					updates: mappedUpdates,
+					traductors
+				}
 			},
 			{
 				headers: corsHeaders

@@ -35,36 +35,6 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ params, request }) => {
-	const gameId = params.id;
-
-	try {
-		const { name, tags, image, description, website, threadId, link } = await request.json();
-
-		if (!gameId) {
-			return json({ error: 'Game ID is required' }, { status: 400, headers: corsHeaders });
-		}
-
-		if (!name || typeof name !== 'string') {
-			return json({ error: 'Name is required' }, { status: 400, headers: corsHeaders });
-		}
-
-		await db
-			.update(game)
-			.set({
-				name: name.trim(),
-				tags: tags.trim(),
-				image: image.trim(),
-				description: description.trim(),
-				website: website.trim(),
-				threadId: threadId ? parseInt(threadId) : null,
-				link: link.trim()
-			})
-			.where(eq(game.id, gameId));
-
-		return json({ success: true, name: name.trim() }, { status: 201, headers: corsHeaders });
-	} catch (error) {
-		console.error('Error updating game:', error);
-		return json({ error: 'Failed to update game' }, { status: 500, headers: corsHeaders });
-	}
-};
+/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+export const PUT: RequestHandler = async () =>
+	json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
