@@ -19,45 +19,36 @@ export const POST: RequestHandler = async (event) => {
 	const { request } = event;
 	const body = (await request.json()) as { username?: string; response?: AuthenticationResponseJSON };
 	const username = body.username?.trim();
-	if (!username) {
-		return json({ error: "Le nom d'utilisateur est requis." }, { status: 400 });
-	}
 	if (!body.response) {
 		return json({ error: 'Réponse WebAuthn manquante.' }, { status: 400 });
-	}
-
-	const [user] = await db
-		.select({
-			id: table.user.id,
-			username: table.user.username
-		})
-		.from(table.user)
-		.where(eq(table.user.username, username))
-		.limit(1);
-	if (!user) {
-		return json({ error: 'Utilisateur introuvable.' }, { status: 404 });
-	}
-
-	const expectedChallenge = await consumePasskeyChallenge({
-		userId: user.id,
-		type: 'login'
-	});
-	if (!expectedChallenge) {
-		return json({ error: 'Challenge expiré, recommencez la connexion.' }, { status: 400 });
 	}
 
 	const [stored] = await db
 		.select({
 			id: table.passkey.id,
+			userId: table.passkey.userId,
 			credentialId: table.passkey.credentialId,
 			publicKey: table.passkey.publicKey,
-			counter: table.passkey.counter
+			counter: table.passkey.counter,
+			username: table.user.username
 		})
 		.from(table.passkey)
-		.where(and(eq(table.passkey.userId, user.id), eq(table.passkey.credentialId, body.response.id)))
+		.innerJoin(table.user, eq(table.passkey.userId, table.user.id))
+		.where(eq(table.passkey.credentialId, body.response.id))
 		.limit(1);
 	if (!stored) {
-		return json({ error: "Cette clé d'accès n'est pas enregistrée pour ce compte." }, { status: 400 });
+		return json({ error: "Cette clé d'accès n'est pas enregistrée." }, { status: 400 });
+	}
+	if (username && stored.username !== username) {
+		return json({ error: "Cette clé d'accès n'appartient pas à cet utilisateur." }, { status: 400 });
+	}
+
+	const expectedChallenge = await consumePasskeyChallenge({
+		userId: username ? stored.userId : null,
+		type: 'login'
+	});
+	if (!expectedChallenge) {
+		return json({ error: 'Challenge expiré, recommencez la connexion.' }, { status: 400 });
 	}
 
 	const verification = await verifyAuthenticationResponse({
@@ -86,7 +77,7 @@ export const POST: RequestHandler = async (event) => {
 		.where(eq(table.passkey.id, stored.id));
 
 	const sessionToken = auth.generateSessionToken();
-	const session = await auth.createSession(sessionToken, user.id);
+	const session = await auth.createSession(sessionToken, stored.userId);
 	auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 
 	return json({ success: true });

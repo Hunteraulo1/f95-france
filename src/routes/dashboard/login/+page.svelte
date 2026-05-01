@@ -3,24 +3,22 @@
 	import { startAuthentication } from '@simplewebauthn/browser';
 
 	let { form } = $props();
-	let passkeyUsername = $state('');
+	let username = $state('');
 	let passkeyError = $state('');
 	let passkeyLoading = $state(false);
 
 	const loginWithPasskey = async () => {
 		passkeyError = '';
-		const username = passkeyUsername.trim();
-		if (!username) {
-			passkeyError = "Renseigne d'abord ton nom d'utilisateur.";
-			return;
-		}
+		const normalizedUsername = username.trim();
 
 		passkeyLoading = true;
 		try {
 			const optionsRes = await fetch('/api/passkeys/login/options', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username })
+				body: JSON.stringify({
+					username: normalizedUsername.length > 0 ? normalizedUsername : undefined
+				})
 			});
 			const optionsJson = (await optionsRes.json()) as { options?: unknown; error?: string };
 			if (!optionsRes.ok || !optionsJson.options) {
@@ -33,7 +31,10 @@
 			const verifyRes = await fetch('/api/passkeys/login/verify', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, response })
+				body: JSON.stringify({
+					username: normalizedUsername.length > 0 ? normalizedUsername : undefined,
+					response
+				})
 			});
 			const verifyJson = (await verifyRes.json()) as { success?: boolean; error?: string };
 			if (!verifyRes.ok || !verifyJson.success) {
@@ -58,7 +59,7 @@
 	<div class="flex flex-col gap-2">
 		<label class="w-full">
 			Nom d'utilisateur
-			<input name="username" class="input-bordered input" autocomplete="username" />
+			<input name="username" class="input-bordered input" autocomplete="username webauthn" bind:value={username} />
 		</label>
 		<label class="w-full">
 			Mot de passe
@@ -77,19 +78,12 @@
 	</div>
 	<div class="mt-4 flex w-full justify-center gap-2">
 		<button class="btn btn-primary"> Se connecter </button>
+		<button class="btn btn-secondary" type="button" onclick={loginWithPasskey} disabled={passkeyLoading}>
+			{passkeyLoading ? 'Connexion...' : "Connexion avec clé d'accès"}
+		</button>
 		<a href="/dashboard/register" class="btn btn-primary"> Créer un compte </a>
 	</div>
 </form>
-
-<div class="mt-3 flex w-full max-w-md flex-col gap-2">
-	<label class="w-full">
-		Nom d'utilisateur (clé d'accès)
-		<input class="input-bordered input" bind:value={passkeyUsername} autocomplete="username webauthn" />
-	</label>
-	<button class="btn btn-secondary" type="button" onclick={loginWithPasskey} disabled={passkeyLoading}>
-		{passkeyLoading ? 'Connexion...' : "Se connecter avec une clé d'accès"}
-	</button>
-</div>
 
 {#if form?.message}
 	<p style="color: red">{form.message}</p>
