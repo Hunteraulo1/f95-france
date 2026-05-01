@@ -286,7 +286,7 @@
 									class="input input-bordered"
 									inputmode="numeric"
 									maxlength="6"
-									pattern="[0-9]{6}"
+									autocomplete="one-time-code"
 									bind:value={verificationCode}
 									required
 								/>
@@ -336,7 +336,7 @@
 							class="input input-bordered w-full md:w-48"
 							inputmode="numeric"
 							maxlength="6"
-							pattern="[0-9]{6}"
+							autocomplete="one-time-code"
 							bind:value={disableCode}
 							required
 						/>
