@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import * as auth from '$lib/server/auth';
 import { fail } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
@@ -124,6 +124,70 @@ export const actions: Actions = {
 			console.error('Erreur lors de la mise à jour du thème:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du thème' });
 		}
+	},
+
+	changePassword: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const currentPassword = String(formData.get('currentPassword') ?? '');
+		const newPassword = String(formData.get('newPassword') ?? '');
+		const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+		if (!currentPassword || !newPassword || !confirmPassword) {
+			return fail(400, { message: 'Tous les champs mot de passe sont requis.' });
+		}
+
+		if (newPassword.length < 8) {
+			return fail(400, { message: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' });
+		}
+
+		if (newPassword !== confirmPassword) {
+			return fail(400, { message: 'La confirmation ne correspond pas au nouveau mot de passe.' });
+		}
+
+		const [dbUser] = await db
+			.select({
+				id: table.user.id,
+				passwordHash: table.user.passwordHash
+			})
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
+
+		if (!dbUser) {
+			return fail(404, { message: 'Utilisateur introuvable.' });
+		}
+
+		const validCurrentPassword = auth.verifyPassword(currentPassword, dbUser.passwordHash);
+		if (!validCurrentPassword) {
+			return fail(400, { message: 'Le mot de passe actuel est incorrect.' });
+		}
+
+		const reusingSamePassword = auth.verifyPassword(newPassword, dbUser.passwordHash);
+		if (reusingSamePassword) {
+			return fail(400, { message: 'Le nouveau mot de passe doit être différent de l’actuel.' });
+		}
+
+		const nextHash = auth.hashPassword(newPassword);
+		await db
+			.update(table.user)
+			.set({
+				passwordHash: nextHash,
+				updatedAt: new Date()
+			})
+			.where(eq(table.user.id, dbUser.id));
+
+		// Bonnes pratiques: invalider les autres sessions actives du compte.
+		if (locals.session?.id) {
+			await db
+				.delete(table.session)
+				.where(and(eq(table.session.userId, dbUser.id), ne(table.session.id, locals.session.id)));
+		}
+
+		return { success: true, message: 'Mot de passe mis à jour avec succès.' };
 	},
 
 	updateDirectMode: async ({ request, locals }) => {

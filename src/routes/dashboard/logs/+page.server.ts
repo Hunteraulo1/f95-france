@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { and, desc, eq, gte, like, lt, or } from 'drizzle-orm';
+import { and, desc, eq, gte, like, lt, notLike, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -20,6 +20,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const redirectsOnly = url.searchParams.get('redirects') === 'true';
 
 		const conditions = [];
+		// Exclure de l'affichage des logs dashboard, les appels à l'api par l'extension.
+		conditions.push(notLike(apiLog.route, '/api/extension-api%'));
+
 		if (methodFilter) {
 			conditions.push(eq(apiLog.method, methodFilter));
 		}

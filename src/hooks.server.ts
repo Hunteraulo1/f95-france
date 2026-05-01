@@ -79,6 +79,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
+	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
@@ -87,7 +88,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
 		pathname === '/dashboard/logout';
-	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
+	const shouldLog =
+		!isStaticAsset &&
+		!isNotificationsApiRoute &&
+		(isApiRequest || isDashboardAction || isSubmissionRoute);
 	const shouldCaptureBody =
 		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
 
@@ -161,11 +165,15 @@ export const handleError = async ({
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
+	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
-	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
+	const shouldLog =
+		!isStaticAsset &&
+		!isNotificationsApiRoute &&
+		(isApiRequest || isDashboardAction || isSubmissionRoute);
 
 	if (shouldLog && status >= 500) {
 		const route = `${event.url.pathname}${event.url.search}`;

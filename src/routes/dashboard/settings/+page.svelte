@@ -16,6 +16,8 @@
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
 	let returnUserError = $state<string | null>(null);
+	let passwordError = $state<string | null>(null);
+	let passwordInfo = $state<string | null>(null);
 	let twoFactorError = $state<string | null>(null);
 	let twoFactorInfo = $state<string | null>(null);
 	let qrCodeDataUrl = $state<string | null>(null);
@@ -232,6 +234,79 @@
 							{/each}
 						</select>
 					</label>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-4">
+		<h2 class="text-lg font-semibold text-base-content">Changer le mot de passe</h2>
+
+		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+			{#if passwordError}
+				<div class="mb-4 alert alert-error w-full">
+					<span>{passwordError}</span>
+				</div>
+			{/if}
+			{#if passwordInfo}
+				<div class="mb-4 alert alert-success w-full">
+					<span>{passwordInfo}</span>
+				</div>
+			{/if}
+
+			<form
+				method="POST"
+				action="?/changePassword"
+				class="w-full"
+				use:enhance={() => {
+					passwordError = null;
+					passwordInfo = null;
+					return async ({ result, update, formElement }) => {
+						if (result.type === 'success') {
+							await update();
+							passwordInfo = 'Mot de passe mis à jour avec succès.';
+							if (formElement) formElement.reset();
+						} else if (result.type === 'failure' && result.data) {
+							const message =
+								typeof result.data === 'object' && 'message' in result.data
+									? String(result.data.message)
+									: 'Erreur lors de la mise à jour du mot de passe';
+							passwordError = message;
+						}
+					};
+				}}
+			>
+				<div class="flex w-full flex-col gap-3">
+					<input
+						type="password"
+						name="currentPassword"
+						placeholder="Mot de passe actuel"
+						class="input input-bordered w-full"
+						autocomplete="current-password"
+						required
+					/>
+					<input
+						type="password"
+						name="newPassword"
+						placeholder="Nouveau mot de passe (min. 8 caractères)"
+						class="input input-bordered w-full"
+						autocomplete="new-password"
+						minlength="8"
+						required
+					/>
+					<input
+						type="password"
+						name="confirmPassword"
+						placeholder="Confirmer le nouveau mot de passe"
+						class="input input-bordered w-full"
+						autocomplete="new-password"
+						minlength="8"
+						required
+					/>
+				</div>
+
+				<div class="mt-4 flex justify-end">
+					<button type="submit" class="btn btn-primary">Mettre à jour</button>
 				</div>
 			</form>
 		</div>
