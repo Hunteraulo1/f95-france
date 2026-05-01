@@ -54,8 +54,8 @@ export const POST: RequestHandler = async (event) => {
 	const verification = await verifyAuthenticationResponse({
 		response: body.response,
 		expectedChallenge,
-		expectedOrigin: getExpectedOrigin(),
-		expectedRPID: getRpID(),
+		expectedOrigin: getExpectedOrigin(request.url),
+		expectedRPID: getRpID(request.url),
 		requireUserVerification: true,
 		credential: {
 			id: stored.credentialId,

@@ -9,7 +9,7 @@ import {
 } from '@simplewebauthn/server';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ locals }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
 	}
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 
 	const options: PublicKeyCredentialCreationOptionsJSON = await generateRegistrationOptions({
 		rpName: getRpName(),
-		rpID: getRpID(),
+		rpID: getRpID(request.url),
 		userName: locals.user.username,
 		userID: new TextEncoder().encode(locals.user.id),
 		attestationType: 'none',

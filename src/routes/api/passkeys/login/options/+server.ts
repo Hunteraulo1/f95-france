@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
-			rpID: getRpID(),
+			rpID: getRpID(request.url),
 			userVerification: 'preferred',
 			allowCredentials: passkeys.map((p) => ({
 				id: p.credentialId
@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	// Username optionnel: support des passkeys discoverable (resident credentials).
 	const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
-		rpID: getRpID(),
+		rpID: getRpID(request.url),
 		userVerification: 'preferred'
 	});
 	await savePasskeyChallenge({

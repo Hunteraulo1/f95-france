@@ -35,8 +35,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const verification = await verifyRegistrationResponse({
 		response: body.response,
 		expectedChallenge,
-		expectedOrigin: getExpectedOrigin(),
-		expectedRPID: getRpID(),
+		expectedOrigin: getExpectedOrigin(request.url),
+		expectedRPID: getRpID(request.url),
 		requireUserVerification: true
 	});
 
