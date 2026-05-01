@@ -12,11 +12,11 @@
 	<div class="flex flex-col gap-2">
 		<label class="w-full">
 			Nom d'utilisateur
-			<input name="username" class="input-bordered input" />
+			<input name="username" class="input-bordered input" autocomplete="username" />
 		</label>
 		<label class="w-full">
 			Mot de passe
-			<input type="password" name="password" class="input-bordered input" />
+			<input type="password" name="password" class="input-bordered input" autocomplete="current-password" />
 		</label>
 		<label class="w-full">
 			Code 2FA (si activée)
@@ -25,8 +25,7 @@
 				class="input-bordered input"
 				inputmode="numeric"
 				maxlength="6"
-				pattern="[0-9]{6}"
-				placeholder="123456"
+				autocomplete="one-time-code"
 			/>
 		</label>
 	</div>
