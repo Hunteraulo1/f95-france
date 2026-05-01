@@ -336,7 +336,6 @@
 							class="input input-bordered w-full md:w-48"
 							inputmode="numeric"
 							maxlength="6"
-							autocomplete="one-time-code"
 							bind:value={disableCode}
 							required
 						/>
