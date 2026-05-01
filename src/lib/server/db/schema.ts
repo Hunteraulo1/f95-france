@@ -29,6 +29,35 @@ export const session = pgTable('session', {
 	expiresAt: timestamp('expires_at').notNull()
 });
 
+export const passkey = pgTable('passkey', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	credentialId: text('credential_id').notNull().unique(),
+	publicKey: text('public_key').notNull(),
+	counter: integer('counter').notNull().default(0),
+	transports: text('transports'),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	lastUsedAt: timestamp('last_used_at')
+});
+
+export const passkeyChallenge = pgTable('passkey_challenge', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'cascade',
+		onUpdate: 'cascade'
+	}),
+	type: varchar('type', { length: 32 }).notNull(), // register | login
+	challenge: text('challenge').notNull(),
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 export const game = pgTable('game', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()
@@ -173,6 +202,8 @@ export const notification = pgTable('notification', {
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
+export type Passkey = typeof passkey.$inferSelect;
+export type PasskeyChallenge = typeof passkeyChallenge.$inferSelect;
 export type Game = typeof game.$inferSelect;
 export type GameTranslation = typeof gameTranslation.$inferSelect;
 export type Update = typeof update.$inferSelect;

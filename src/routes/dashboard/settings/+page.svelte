@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { startRegistration } from '@simplewebauthn/browser';
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
@@ -22,6 +23,9 @@
 	let verificationCode = $state('');
 	let disableCode = $state('');
 	let disablePassword = $state('');
+	let passkeyError = $state<string | null>(null);
+	let passkeyInfo = $state<string | null>(null);
+	let passkeyBusy = $state(false);
 	let selectedTheme = $state($user?.theme || 'system');
 	let targetUserId = $state('');
 
@@ -64,6 +68,42 @@
 			document.documentElement.setAttribute('data-theme', theme);
 			localStorage.setItem('theme', theme);
 			themeChange(false);
+		}
+	};
+
+	const registerPasskey = async () => {
+		passkeyError = null;
+		passkeyInfo = null;
+		passkeyBusy = true;
+
+		try {
+			const optionsRes = await fetch('/api/passkeys/register/options', { method: 'POST' });
+			const optionsJson = (await optionsRes.json()) as {
+				options?: Parameters<typeof startRegistration>[0];
+				error?: string;
+			};
+			if (!optionsRes.ok || !optionsJson.options) {
+				throw new Error(optionsJson.error || "Impossible de démarrer l'enregistrement de la clé d'accès.");
+			}
+
+			const response = await startRegistration(optionsJson.options);
+			const verifyRes = await fetch('/api/passkeys/register/verify', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ response })
+			});
+			const verifyJson = (await verifyRes.json()) as { success?: boolean; message?: string; error?: string };
+			if (!verifyRes.ok || !verifyJson.success) {
+				throw new Error(verifyJson.error || verifyJson.message || "Impossible d'enregistrer la clé d'accès.");
+			}
+
+			passkeyInfo = verifyJson.message ?? "Clé d'accès enregistrée.";
+			window.location.reload();
+		} catch (error: unknown) {
+			passkeyError =
+				error instanceof Error ? error.message : "Erreur lors de l'enregistrement de la clé d'accès.";
+		} finally {
+			passkeyBusy = false;
 		}
 	};
 </script>
@@ -342,6 +382,78 @@
 						<button class="btn btn-error" type="submit">Désactiver</button>
 					</div>
 				</form>
+			{/if}
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-4">
+		<h2 class="text-lg font-semibold text-base-content">Clés d'accès (Passkeys)</h2>
+		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+			{#if passkeyError}
+				<div class="mb-4 alert alert-error w-full">
+					<span>{passkeyError}</span>
+				</div>
+			{/if}
+			{#if passkeyInfo}
+				<div class="mb-4 alert alert-success w-full">
+					<span>{passkeyInfo}</span>
+				</div>
+			{/if}
+
+			<div class="w-full opacity-80">
+				Clés enregistrées: <strong>{data.passkeys?.length ?? 0}</strong>
+			</div>
+
+			<div class="w-full">
+				<button class="btn btn-primary" type="button" onclick={registerPasskey} disabled={passkeyBusy}>
+					{passkeyBusy ? "Enregistrement en cours..." : "Ajouter une clé d'accès"}
+				</button>
+			</div>
+
+			{#if (data.passkeys?.length ?? 0) > 0}
+				<div class="w-full overflow-x-auto">
+					<table class="table table-zebra">
+						<thead>
+							<tr>
+								<th>Créée le</th>
+								<th>Dernière utilisation</th>
+								<th class="text-right">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.passkeys ?? [] as pk (pk.id)}
+								<tr>
+									<td>{new Date(pk.createdAt).toLocaleString('fr-FR')}</td>
+									<td>{pk.lastUsedAt ? new Date(pk.lastUsedAt).toLocaleString('fr-FR') : 'Jamais'}</td>
+									<td class="text-right">
+										<form
+											method="POST"
+											action="?/removePasskey"
+											use:enhance={() => {
+												passkeyError = null;
+												passkeyInfo = null;
+												return async ({ result, update }) => {
+													if (result.type === 'success') {
+														await update();
+														passkeyInfo = "Clé d'accès supprimée.";
+														window.location.reload();
+													} else if (result.type === 'failure') {
+														const dataResult = result.data as { message?: string };
+														passkeyError =
+															dataResult.message ?? "Impossible de supprimer la clé d'accès.";
+													}
+												};
+											}}
+										>
+											<input type="hidden" name="passkeyId" value={pk.id} />
+											<button class="btn btn-sm btn-error" type="submit">Supprimer</button>
+										</form>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
 			{/if}
 		</div>
 	</div>

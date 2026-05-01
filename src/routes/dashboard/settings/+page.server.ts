@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import * as auth from '$lib/server/auth';
 import { fail } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
@@ -36,10 +36,19 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 					.where(eq(table.user.id, devOriginUserId))
 					.limit(1)
 			: [];
+	const passkeys = await db
+		.select({
+			id: table.passkey.id,
+			createdAt: table.passkey.createdAt,
+			lastUsedAt: table.passkey.lastUsedAt
+		})
+		.from(table.passkey)
+		.where(eq(table.passkey.userId, locals.user.id));
 
 	return {
 		user: locals.user,
 		devUsers,
+		passkeys,
 		canReturnToOwnAccount: Boolean(canReturnToOwnAccount && devOriginUser),
 		devOriginUsername: devOriginUser?.username ?? null
 	};
@@ -287,6 +296,23 @@ export const actions: Actions = {
 			.where(eq(table.user.id, locals.user.id));
 
 		return { success: true, message: '2FA désactivée avec succès.', twoFactorSetupPending: false };
+	},
+
+	removePasskey: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+		const formData = await request.formData();
+		const passkeyId = String(formData.get('passkeyId') ?? '').trim();
+		if (!passkeyId) {
+			return fail(400, { message: "Clé d'accès invalide." });
+		}
+
+		await db
+			.delete(table.passkey)
+			.where(and(eq(table.passkey.id, passkeyId), eq(table.passkey.userId, locals.user.id)));
+
+		return { success: true, message: "Clé d'accès supprimée." };
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
