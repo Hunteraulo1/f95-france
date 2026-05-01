@@ -1,6 +1,7 @@
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { privateEnv } from '$lib/server/private-env';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -32,9 +33,9 @@ const CACHE_MS = 60_000;
 
 function webhookEnvSignature(): string {
 	return [
-		process.env.DISCORD_WEBHOOK_UPDATES,
-		process.env.DISCORD_WEBHOOK_TRANSLATORS,
-		process.env.DISCORD_WEBHOOK_PROOFREADERS
+		privateEnv('DISCORD_WEBHOOK_UPDATES'),
+		privateEnv('DISCORD_WEBHOOK_TRANSLATORS'),
+		privateEnv('DISCORD_WEBHOOK_PROOFREADERS')
 	].join('\0');
 }
 

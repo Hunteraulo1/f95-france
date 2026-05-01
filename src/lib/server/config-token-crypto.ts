@@ -1,9 +1,10 @@
+import { privateEnv } from '$lib/server/private-env';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const PREFIX = 'enc:v1:';
 
 function getKey(): Buffer | null {
-	const b64 = process.env.CONFIG_TOKEN_ENCRYPTION_KEY?.trim();
+	const b64 = privateEnv('CONFIG_TOKEN_ENCRYPTION_KEY');
 	if (!b64) return null;
 	const buf = Buffer.from(b64, 'base64');
 	if (buf.length !== 32) {

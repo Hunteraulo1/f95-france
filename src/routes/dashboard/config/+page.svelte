@@ -171,10 +171,20 @@
 								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleApiKey}</span>
 								· OAuth client :
 								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleOAuthClient}</span>
-								{#if data.config?.tokenEncryptionActive}
-									· Jetons OAuth : <span class="badge badge-sm badge-success">chiffrement actif</span>
+							</p>
+							<p class="text-xs opacity-90">
+								<span class="font-medium">Google OAuth (session)</span> —
+								{#if data.config?.hasGoogleOAuthToken}
+									<span class="badge badge-sm badge-success">jetons enregistrés</span>
 								{:else}
-									· Jetons OAuth : <span class="badge badge-sm badge-warning">non chiffrés (définir la clé)</span>
+									<span class="badge badge-sm badge-ghost">pas encore d’autorisation</span>
+								{/if}
+								<span class="mx-1 opacity-50">·</span>
+								<span class="font-medium">Stockage en base</span> —
+								{#if data.config?.tokenEncryptionActive}
+									<span class="badge badge-sm badge-success">chiffré (CONFIG_TOKEN_ENCRYPTION_KEY)</span>
+								{:else}
+									<span class="badge badge-sm badge-ghost">en clair — optionnel : définir la clé ci-dessus</span>
 								{/if}
 							</p>
 						</div>
@@ -225,6 +235,15 @@
 									{/if}
 								</span>
 							</div>
+						</div>
+					{:else}
+						<div class="alert alert-warning text-sm text-wrap">
+							<span>
+								Le bouton OAuth n’apparaît que si <code class="text-xs">GOOGLE_OAUTH_CLIENT_ID</code> et
+								<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis (variables
+								d’environnement sur Vercel ou valeurs encore présentes en base). Redéploie après les
+								avoir ajoutées.
+							</span>
 						</div>
 					{/if}
 

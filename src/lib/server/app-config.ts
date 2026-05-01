@@ -1,17 +1,18 @@
+import { openOAuthToken, sealOAuthToken } from '$lib/server/config-token-crypto';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
+import { privateEnv } from '$lib/server/private-env';
 import { eq } from 'drizzle-orm';
-import { openOAuthToken, sealOAuthToken } from '$lib/server/config-token-crypto';
 
 function envFirst(name: string, dbVal: string | null | undefined): string | null {
-	const v = process.env[name]?.trim();
+	const v = privateEnv(name);
 	if (v) return v;
 	return dbVal ?? null;
 }
 
 function secretSource(envName: string, dbVal: string | null | undefined): 'env' | 'database' | 'none' {
-	if (process.env[envName]?.trim()) return 'env';
+	if (privateEnv(envName)) return 'env';
 	if (dbVal?.trim()) return 'database';
 	return 'none';
 }
@@ -103,7 +104,7 @@ export function toConfigClientSafe(row: Config): ConfigClientSafe {
 		canUseGoogleOAuth:
 			Boolean(envFirst('GOOGLE_OAUTH_CLIENT_ID', row.googleOAuthClientId)?.trim()) &&
 			Boolean(envFirst('GOOGLE_OAUTH_CLIENT_SECRET', row.googleOAuthClientSecret)?.trim()),
-		tokenEncryptionActive: Boolean(process.env.CONFIG_TOKEN_ENCRYPTION_KEY?.trim())
+		tokenEncryptionActive: Boolean(privateEnv('CONFIG_TOKEN_ENCRYPTION_KEY'))
 	};
 }
 
