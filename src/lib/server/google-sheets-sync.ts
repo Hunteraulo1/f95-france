@@ -1,8 +1,9 @@
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { getValidAccessToken } from '$lib/server/google-oauth';
-import { eq, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
 const SHEET_TAB_TR = 'Traducteurs/Relecteurs';
@@ -462,11 +463,137 @@ type SheetSnapshot = {
 	idDbIdx: number;
 	lastCol: string;
 	rowNumberById: Map<string, number>;
+	/** Présent si `includeDataRows` a été demandé à la lecture (lignes brutes API, y compris l’en-tête). */
+	dataRows?: string[][];
 };
+
+const TRANSLATION_ID_DB_RE =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Interprète la cellule AC exportée / saisie (Oui/Non, bool Sheets, etc.). `null` = laisser la base inchangée. */
+function parseJeuxSheetAcCell(raw: unknown): boolean | null {
+	if (raw === true || raw === 1) return true;
+	if (raw === false || raw === 0) return false;
+	if (raw == null) return null;
+	const s = String(raw).trim();
+	if (!s) return null;
+	const lower = s.toLowerCase();
+	if (['oui', 'yes', 'true', '1', 'vrai', 'o', 'y'].includes(lower)) return true;
+	if (['non', 'no', 'false', '0', 'faux', 'n'].includes(lower)) return false;
+	return null;
+}
+
+/**
+ * Applique la colonne AC de l’onglet Jeux vers la base (avant l’écriture DB→Sheets).
+ * Met à jour `game_translation.ac` et recalcule `game.game_auto_check` pour les jeux concernés.
+ */
+async function applyAcColumnFromJeuxSheetToDb(
+	headersRow: string[],
+	dataRows: string[][],
+	onProgress?: (message: string) => void
+): Promise<void> {
+	const idDbIdx =
+		findHeaderIndex(headersRow, ['ID DB', 'Id Db']) !== -1
+			? findHeaderIndex(headersRow, ['ID DB', 'Id Db'])
+			: findHeaderIndexByTokens(headersRow, ['id'], ['db']);
+	if (idDbIdx === -1) return;
+
+	const acIdx = findHeaderIndex(headersRow, ['AC', 'Auto-Check', 'Auto check', 'AUTO CHECK']);
+	if (acIdx === -1) {
+		onProgress?.('Sheets Jeux : colonne AC introuvable — pas de synchro feuille→base pour AC');
+		return;
+	}
+
+	const acByTranslationId = new Map<string, boolean>();
+	for (let i = 1; i < dataRows.length; i++) {
+		const row = dataRows[i] ?? [];
+		const idVal = String(row[idDbIdx] ?? '').trim();
+		if (!idVal || !TRANSLATION_ID_DB_RE.test(idVal)) continue;
+		const acParsed = parseJeuxSheetAcCell(row[acIdx]);
+		if (acParsed === null) continue;
+		acByTranslationId.set(idVal, acParsed);
+	}
+	if (acByTranslationId.size === 0) return;
+
+	const ids = [...acByTranslationId.keys()];
+	const existing = await db
+		.select({
+			id: table.gameTranslation.id,
+			gameId: table.gameTranslation.gameId,
+			ac: table.gameTranslation.ac
+		})
+		.from(table.gameTranslation)
+		.where(inArray(table.gameTranslation.id, ids));
+
+	const existingById = new Map(existing.map((e) => [e.id, e]));
+	const gameIdsToReconcile = new Set<string>();
+	for (const id of acByTranslationId.keys()) {
+		const row = existingById.get(id);
+		if (row) gameIdsToReconcile.add(row.gameId);
+	}
+	if (gameIdsToReconcile.size === 0) return;
+
+	const finalUpdates: Array<{ id: string; ac: boolean; gameId: string }> = [];
+	for (const [id, ac] of acByTranslationId) {
+		const row = existingById.get(id);
+		if (!row || row.ac === ac) continue;
+		finalUpdates.push({ id, ac, gameId: row.gameId });
+	}
+
+	if (finalUpdates.length > 0) {
+		onProgress?.(`Sheets Jeux : AC feuille→base (${finalUpdates.length} traduction(s))…`);
+		const UPD_CONCURRENCY = 40;
+		for (let i = 0; i < finalUpdates.length; i += UPD_CONCURRENCY) {
+			const chunk = finalUpdates.slice(i, i + UPD_CONCURRENCY);
+			await Promise.all(
+				chunk.map((u) =>
+					db
+						.update(table.gameTranslation)
+						.set({ ac: u.ac, updatedAt: new Date() })
+						.where(eq(table.gameTranslation.id, u.id))
+				)
+			);
+		}
+	} else {
+		onProgress?.(
+			'Sheets Jeux : traductions AC déjà alignées — recalcul gameAutoCheck pour les jeux concernés…'
+		);
+	}
+
+	const UPD_CONCURRENCY = 40;
+	const gameIds = [...gameIdsToReconcile];
+	for (let i = 0; i < gameIds.length; i += UPD_CONCURRENCY) {
+		const chunk = gameIds.slice(i, i + UPD_CONCURRENCY);
+		await Promise.all(
+			chunk.map(async (gameId) => {
+				const [g] = await db
+					.select({ website: table.game.website })
+					.from(table.game)
+					.where(eq(table.game.id, gameId))
+					.limit(1);
+				if (!g) return;
+				const [row] = await db
+					.select({ n: count() })
+					.from(table.gameTranslation)
+					.where(
+						and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true))
+					);
+				const hasAc = (row?.n ?? 0) > 0;
+				const gameAutoCheck =
+					gameAutoCheckEnabledForWebsite(g.website ?? '') && hasAc;
+				await db
+					.update(table.game)
+					.set({ gameAutoCheck, updatedAt: new Date() })
+					.where(eq(table.game.id, gameId));
+			})
+		);
+	}
+}
 
 async function getSheetSnapshot(
 	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
-	tabName: string
+	tabName: string,
+	options?: { includeDataRows?: boolean }
 ): Promise<SheetSnapshot> {
 	const tabEncoded = encodeURIComponent(tabName);
 	const getAllRes = await sheetsFetch(
@@ -504,7 +631,8 @@ async function getSheetSnapshot(
 		headersRow,
 		idDbIdx,
 		lastCol: toColA1(headersRow.length - 1),
-		rowNumberById
+		rowNumberById,
+		...(options?.includeDataRows ? { dataRows: rows } : {})
 	};
 }
 
@@ -958,10 +1086,11 @@ export async function syncDbToSpreadsheetBulk(
 	}
 
 	onProgress?.('Sheets : lecture base (traductions + traducteurs)…');
-	const [translations, translators] = await Promise.all([
+	const [translationsInitial, translators] = await Promise.all([
 		db.select().from(table.gameTranslation),
 		db.select().from(table.translator)
 	]);
+	let translations = translationsInitial;
 	const errors: string[] = [];
 	let prunedJeuxRows = 0;
 	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
@@ -972,6 +1101,13 @@ export async function syncDbToSpreadsheetBulk(
 		const jeuxFilter =
 			onlyJeuxTranslationIds && onlyJeuxTranslationIds.size > 0 ? onlyJeuxTranslationIds : null;
 
+		onProgress?.('Sheets Jeux : lecture feuille (AC feuille→base + index des lignes)…');
+		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX, { includeDataRows: true });
+		if (jeuxSnap.dataRows) {
+			await applyAcColumnFromJeuxSheetToDb(jeuxSnap.headersRow, jeuxSnap.dataRows, onProgress);
+			translations = await db.select().from(table.gameTranslation);
+		}
+
 		if (skipJeuxRowWrites) {
 			onProgress?.(
 				`Sheets Jeux : pas d’écriture (inchangé), purge orphelins seulement (${translations.length} trad. en DB)…`
@@ -980,13 +1116,12 @@ export async function syncDbToSpreadsheetBulk(
 		} else {
 			if (jeuxFilter) {
 				onProgress?.(
-					`Sheets Jeux : snapshot + sync partielle (${jeuxFilter.size} trad. ciblée(s) / ${translations.length} en DB)…`
+					`Sheets Jeux : sync partielle (${jeuxFilter.size} trad. ciblée(s) / ${translations.length} en DB)…`
 				);
 				jeuxPartial = true;
 			} else {
-				onProgress?.(`Sheets Jeux : snapshot onglet (${translations.length} traductions en DB)…`);
+				onProgress?.(`Sheets Jeux : écriture depuis la base (${translations.length} traductions)…`);
 			}
-			const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 			const allGames = await db.select().from(table.game);
 			const gameMap = new Map(allGames.map((g) => [g.id, g]));
 			const translatorMap = new Map(translators.map((t) => [t.id, t]));
@@ -1055,7 +1190,9 @@ export async function syncDbToSpreadsheetBulk(
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
-		const snapAfter = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
+		const snapAfter = skipJeuxRowWrites
+			? jeuxSnap
+			: await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter((id) => !dbTranslationIds.has(id));
 		if (orphanJeuxIds.length > 0) {
 			onProgress?.(`Sheets Jeux : suppression ${orphanJeuxIds.length} ligne(s) orpheline(s)…`);
