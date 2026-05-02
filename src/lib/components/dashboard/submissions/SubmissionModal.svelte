@@ -3,6 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { Game, GameTranslation } from '$lib/server/db/schema';
+
+	/** Jeu tel qu’il apparaît dans le JSON des soumissions (champ moteur `type`). */
+	type GameSubmissionJson = Game & { type?: string };
 	import { user } from '$lib/stores';
 	import {
 		getStatusBadge,
@@ -11,7 +14,7 @@
 		validateStatusChange
 	} from '$lib/utils/submissions';
 
-	interface FieldConfig<T extends GameTranslation | Game = GameTranslation | Game> {
+	interface FieldConfig<T extends GameTranslation | GameSubmissionJson = GameTranslation | GameSubmissionJson> {
 		key: keyof T;
 		label: string;
 		options?: {
@@ -28,10 +31,10 @@
 		translationId?: string | null;
 		adminNotes?: string | null;
 		parsedData?: {
-			game?: Game;
+			game?: GameSubmissionJson;
 			translation?: GameTranslation;
 		} | null;
-		currentGame?: Game | null;
+		currentGame?: GameSubmissionJson | null;
 		currentTranslation?: GameTranslation | null;
 	}
 
@@ -72,6 +75,7 @@
 	let editTranslationTversion = $state<string>('');
 	let editTranslationStatus = $state<string>('in_progress');
 	let editTranslationTtype = $state<string>('manual');
+	let editTranslationGameType = $state<string>('other');
 	let editTranslationTlink = $state<string>('');
 	let editTranslationAc = $state<boolean>(false);
 	let editTranslationTranslatorId = $state<string>('');
@@ -85,7 +89,7 @@
 			submissionEditError = null;
 
 			// Pré-remplir les champs éditables depuis parsedData (soumissions "pending").
-			const game = submission.parsedData?.game as Game | undefined;
+			const game = submission.parsedData?.game;
 			const tr = submission.parsedData?.translation as GameTranslation | undefined;
 
 			editGameName = game?.name ?? '';
@@ -105,6 +109,7 @@
 			editTranslationTversion = (tr?.tversion ?? '') as string;
 			editTranslationStatus = (tr?.status ?? 'in_progress') as string;
 			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
+			editTranslationGameType = (tr?.gameType ?? 'other') as string;
 			editTranslationTlink = (tr?.tlink ?? '') as string;
 			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
 			editTranslationTranslatorId = resolveTranslatorSelectValue(tr?.translatorId);
@@ -123,6 +128,7 @@
 					tversion: editTranslationTversion,
 					status: editTranslationStatus,
 					ttype: editTranslationTtype,
+					gameType: editTranslationGameType,
 					tlink: editTranslationTlink.trim() || null,
 					tname: editTranslationTname,
 					translatorId: editTranslationTranslatorId || null,
@@ -156,6 +162,7 @@
 				tversion: editTranslationTversion,
 				status: editTranslationStatus,
 				ttype: editTranslationTtype,
+				gameType: editTranslationGameType,
 				tlink: editTranslationTlink.trim() || null,
 				tname: editTranslationTname,
 				translatorId: editTranslationTranslatorId || null,
@@ -178,10 +185,10 @@
 		)
 	);
 
-	const gameFields: FieldConfig<Game>[] = [
+	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
 		{ key: 'description', label: 'Description', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'type', label: 'Type' },
+		{ key: 'type', label: 'Moteur (toutes les lignes si renseigné)' },
 		{ key: 'website', label: 'Site web' },
 		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
@@ -196,6 +203,7 @@
 		{ key: 'tversion', label: 'Version traduction' },
 		{ key: 'version', label: 'Version de référence', options: { showIfEmpty: true } },
 		{ key: 'status', label: 'Statut' },
+		{ key: 'gameType', label: 'Moteur (ligne)' },
 		{ key: 'ttype', label: 'Type de traduction' },
 		{ key: 'tlink', label: 'Lien', options: { isUrl: true } },
 		{ key: 'ac', label: 'Auto-Check' },
@@ -267,6 +275,20 @@
 		if (key === 'translatorId' || key === 'proofreaderId') {
 			const translatorName = getTranslatorName(value);
 			return translatorName || String(value);
+		}
+
+		if (key === 'gameType' && typeof value === 'string') {
+			const labels: Record<string, string> = {
+				renpy: "Ren'Py",
+				rpgm: 'RPGM',
+				unity: 'Unity',
+				unreal: 'Unreal',
+				flash: 'Flash',
+				html: 'HTML',
+				qsp: 'QSP',
+				other: 'Autre'
+			};
+			return labels[value] ?? value;
 		}
 
 		if (typeof value === 'boolean') {
@@ -668,9 +690,9 @@
 										/>
 									</div>
 
-									<div class="form-control">
+									<div class="form-control md:col-span-2">
 										<label class="label" for="editGameType">
-											<span class="label-text">Type</span>
+											<span class="label-text">Moteur — appliqué à toutes les lignes (fiche jeu)</span>
 										</label>
 										<select
 											id="editGameType"
@@ -679,7 +701,7 @@
 											bind:value={editGameType}
 											required
 										>
-											<option value="renpy">RenPy</option>
+											<option value="renpy">Ren'Py</option>
 											<option value="rpgm">RPGM</option>
 											<option value="unity">Unity</option>
 											<option value="unreal">Unreal</option>
@@ -870,6 +892,28 @@
 											<option value="in_progress">En cours</option>
 											<option value="completed">Terminé</option>
 											<option value="abandoned">Abandonné</option>
+										</select>
+									</div>
+
+									<div class="form-control">
+										<label class="label" for="editTranslationGameType">
+											<span class="label-text">Moteur (cette ligne)</span>
+										</label>
+										<select
+											id="editTranslationGameType"
+											name="editTranslationGameType"
+											class="select select-bordered w-full"
+											bind:value={editTranslationGameType}
+											required
+										>
+											<option value="renpy">Ren'Py</option>
+											<option value="rpgm">RPGM</option>
+											<option value="unity">Unity</option>
+											<option value="unreal">Unreal</option>
+											<option value="flash">Flash</option>
+											<option value="html">HTML</option>
+											<option value="qsp">QSP</option>
+											<option value="other">Autre</option>
 										</select>
 									</div>
 

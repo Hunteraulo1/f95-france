@@ -76,7 +76,7 @@ const mapType = (
 	| 'Unity'
 	| 'Unreal'
 	| 'Flash'
-	| 'HTLM'
+	| 'HTML'
 	| 'QSP'
 	| 'Autre'
 	| 'RenPy/RPGM'
@@ -93,7 +93,7 @@ const mapType = (
 		case 'flash':
 			return 'Flash';
 		case 'html':
-			return 'HTLM';
+			return 'HTML';
 		case 'qsp':
 			return 'QSP';
 		case 'renpy/rpgm':
@@ -185,7 +185,6 @@ export const GET: RequestHandler = async ({ url }) => {
 					threadId: game.threadId,
 					link: game.link,
 					tags: game.tags,
-					type: game.type,
 					image: game.image,
 					gameAutoCheck: game.gameAutoCheck,
 					gameVersion: game.gameVersion,
@@ -204,6 +203,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					translatorId: gameTranslation.translatorId,
 					proofreaderId: gameTranslation.proofreaderId,
 					ttype: gameTranslation.ttype,
+					gameType: gameTranslation.gameType,
 					ac: gameTranslation.ac,
 					createdAt: gameTranslation.createdAt,
 					updatedAt: gameTranslation.updatedAt
@@ -258,7 +258,7 @@ export const GET: RequestHandler = async ({ url }) => {
         description: row.game.description ?? null,
 				status: mapStatus(row.translation.status),
 				tags: splitTags(row.game.tags),
-				type: mapType(row.game.type),
+				type: mapType(row.translation.gameType),
 				traductor: tr?.name ?? null,
 				proofreader: pr?.name ?? null,
 				ttype: mapTType(row.translation.ttype),

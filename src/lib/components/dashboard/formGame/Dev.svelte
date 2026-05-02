@@ -19,7 +19,7 @@ let { game = $bindable(), onDevDataApplied }: Props = $props();
 			status: 'abandoned',
 			tags: 'no sexual content',
       description: 'TEST, DEV, NE PAS TOUCHER',
-			type: 'other',
+			gameType: 'other',
 			gameVersion: 'v666',
       version: 'v666',
 			tversion: 'v42',

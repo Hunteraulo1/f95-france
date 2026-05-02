@@ -144,6 +144,7 @@ function formatGameType(v: string | null | undefined): string {
 		case 'flash':
 			return 'Flash';
 		case 'html':
+		case 'htlm':
 			return 'HTML';
 		case 'qsp':
 			return 'QSP';
@@ -217,7 +218,7 @@ function populateJeuxRowValues(headersRow: string[], rowValues: string[], input:
 	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, lienLabel));
 	set(['Status', 'Statut'], formatStatus(tr.status));
 	set('Tags', game.tags ?? '');
-	set('Type', formatGameType(game.type));
+	set('Type', formatGameType(tr.gameType));
 	const translatorLabel = translator?.name ?? '';
 	set(
 		['Traducteur', 'Traducteurs', 'TRADUCTEUR', 'TRADUCTEURS'],
@@ -915,7 +916,24 @@ function buildTranslatorRow(
 	return rowValues;
 }
 
-export async function syncDbToSpreadsheetBulk(): Promise<{
+export type SyncDbToSpreadsheetBulkOptions = {
+	/**
+	 * Ne met à jour / append que ces IDs de traduction sur l’onglet Jeux.
+	 * La purge des lignes orphelines reste toujours exécutée.
+	 */
+	onlyJeuxTranslationIds?: Set<string>;
+	/**
+	 * N’écrit aucune ligne Jeux (ni update ni append), uniquement purge orphelins + onglet TR.
+	 */
+	skipJeuxRowWrites?: boolean;
+	/** Ne pas resynchroniser l’onglet Traducteurs/Relecteurs (gain de temps si inchangé). */
+	skipTranslatorTab?: boolean;
+};
+
+export async function syncDbToSpreadsheetBulk(
+	onProgress?: (message: string) => void,
+	options: SyncDbToSpreadsheetBulkOptions = {}
+): Promise<{
 	totalTranslations: number;
 	totalTranslators: number;
 	syncedTranslations: number;
@@ -923,7 +941,10 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 	/** Lignes Jeux supprimées du spreadsheet (ID DB absent de la base). */
 	prunedJeuxRows: number;
 	errors: string[];
+	/** Un sous-ensemble de lignes Jeux a été synchronisé (hors purge). */
+	jeuxPartial?: boolean;
 }> {
+	onProgress?.('Sheets : vérification auth / configuration…');
 	const auth = await getSheetsAuth();
 	if (!auth) {
 		return {
@@ -936,119 +957,170 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 		};
 	}
 
+	onProgress?.('Sheets : lecture base (traductions + traducteurs)…');
 	const [translations, translators] = await Promise.all([
 		db.select().from(table.gameTranslation),
 		db.select().from(table.translator)
 	]);
 	const errors: string[] = [];
 	let prunedJeuxRows = 0;
+	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
+	let jeuxPartial = false;
+	let jeuxRowsWritten = 0;
 
 	try {
-		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
-		const allGames = await db.select().from(table.game);
-		const gameMap = new Map(allGames.map((g) => [g.id, g]));
-		const translatorMap = new Map(translators.map((t) => [t.id, t]));
+		const jeuxFilter =
+			onlyJeuxTranslationIds && onlyJeuxTranslationIds.size > 0 ? onlyJeuxTranslationIds : null;
 
-		const updates: Array<{ range: string; values: string[][] }> = [];
-		const appends: string[][] = [];
-		for (const tr of translations) {
-			try {
-				const game = gameMap.get(tr.gameId);
-				if (!game) continue;
-				const translator = tr.translatorId ? (translatorMap.get(tr.translatorId) ?? null) : null;
-				const proofreader = tr.proofreaderId ? (translatorMap.get(tr.proofreaderId) ?? null) : null;
-				const row = buildJeuxRow(jeuxSnap.headersRow, { tr, game, translator, proofreader });
-				const rowNumber = jeuxSnap.rowNumberById.get(tr.id);
-				if (rowNumber) {
-					updates.push({
-						range: `${jeuxSnap.tabA1}!A${rowNumber}:${jeuxSnap.lastCol}${rowNumber}`,
-						values: [row]
-					});
-				} else {
-					appends.push(row);
-				}
-			} catch (err) {
-				errors.push(
-					`translation ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+		if (skipJeuxRowWrites) {
+			onProgress?.(
+				`Sheets Jeux : pas d’écriture (inchangé), purge orphelins seulement (${translations.length} trad. en DB)…`
+			);
+			jeuxPartial = true;
+		} else {
+			if (jeuxFilter) {
+				onProgress?.(
+					`Sheets Jeux : snapshot + sync partielle (${jeuxFilter.size} trad. ciblée(s) / ${translations.length} en DB)…`
 				);
+				jeuxPartial = true;
+			} else {
+				onProgress?.(`Sheets Jeux : snapshot onglet (${translations.length} traductions en DB)…`);
 			}
-		}
-		for (let i = 0; i < updates.length; i += 200) {
-			await sheetsBatchUpdate(auth, updates.slice(i, i + 200));
-		}
-		if (appends.length > 0) {
-			for (let i = 0; i < appends.length; i += 500) {
-				const res = await sheetsFetch(
-					auth.spreadsheetId,
-					auth.headers,
-					`/values/${jeuxSnap.tabEncoded}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-					auth.apiKey,
-					{
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ values: appends.slice(i, i + 500) })
+			const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
+			const allGames = await db.select().from(table.game);
+			const gameMap = new Map(allGames.map((g) => [g.id, g]));
+			const translatorMap = new Map(translators.map((t) => [t.id, t]));
+
+			const updates: Array<{ range: string; values: string[][] }> = [];
+			const appends: string[][] = [];
+			for (const tr of translations) {
+				if (jeuxFilter && !jeuxFilter.has(tr.id)) continue;
+				try {
+					const game = gameMap.get(tr.gameId);
+					if (!game) continue;
+					const translator = tr.translatorId ? (translatorMap.get(tr.translatorId) ?? null) : null;
+					const proofreader = tr.proofreaderId ? (translatorMap.get(tr.proofreaderId) ?? null) : null;
+					const row = buildJeuxRow(jeuxSnap.headersRow, { tr, game, translator, proofreader });
+					const rowNumber = jeuxSnap.rowNumberById.get(tr.id);
+					if (rowNumber) {
+						updates.push({
+							range: `${jeuxSnap.tabA1}!A${rowNumber}:${jeuxSnap.lastCol}${rowNumber}`,
+							values: [row]
+						});
+					} else {
+						appends.push(row);
 					}
-				);
-				if (!res.ok) {
-					const err = await res.text().catch(() => '');
-					throw new Error(`Sheets append Jeux error (${res.status}): ${err.slice(0, 500)}`);
+					jeuxRowsWritten++;
+				} catch (err) {
+					errors.push(
+						`translation ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
 				}
 			}
+			onProgress?.(
+				`Sheets Jeux : ${updates.length} mise(s) à jour, ${appends.length} ligne(s) à ajouter…`
+			);
+			for (let i = 0; i < updates.length; i += 200) {
+				const end = Math.min(i + 200, updates.length);
+				onProgress?.(`Sheets Jeux : envoi batch mises à jour ${i + 1}–${end}/${updates.length}…`);
+				await sheetsBatchUpdate(auth, updates.slice(i, i + 200));
+			}
+			if (appends.length > 0) {
+				for (let i = 0; i < appends.length; i += 500) {
+					const end = Math.min(i + 500, appends.length);
+					onProgress?.(`Sheets Jeux : append lignes ${i + 1}–${end}/${appends.length}…`);
+					const res = await sheetsFetch(
+						auth.spreadsheetId,
+						auth.headers,
+						`/values/${jeuxSnap.tabEncoded}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+						auth.apiKey,
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ values: appends.slice(i, i + 500) })
+						}
+					);
+					if (!res.ok) {
+						const err = await res.text().catch(() => '');
+						throw new Error(`Sheets append Jeux error (${res.status}): ${err.slice(0, 500)}`);
+					}
+				}
+			}
+			if (appends.length > 0 || !jeuxPartial) {
+				onProgress?.('Sheets Jeux : tri par nom de jeu…');
+				await sortJeuxSheetByGameName(auth);
+			} else {
+				onProgress?.('Sheets Jeux : pas de tri (mises à jour in-place seulement)');
+			}
 		}
-		await sortJeuxSheetByGameName(auth);
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
 		const snapAfter = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter((id) => !dbTranslationIds.has(id));
 		if (orphanJeuxIds.length > 0) {
+			onProgress?.(`Sheets Jeux : suppression ${orphanJeuxIds.length} ligne(s) orpheline(s)…`);
 			await deleteRowsByTranslationIds(orphanJeuxIds);
 			prunedJeuxRows = orphanJeuxIds.length;
+		} else {
+			onProgress?.('Sheets Jeux : aucune ligne orpheline à supprimer');
 		}
 	} catch (err) {
 		errors.push(`bulk Jeux: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 	}
 
 	try {
-		const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
-		const updates: Array<{ range: string; values: string[][] }> = [];
-		const appends: string[][] = [];
-		for (const tr of translators) {
-			try {
-				const row = buildTranslatorRow(trSnap.headersRow, tr);
-				const rowNumber = trSnap.rowNumberById.get(tr.id);
-				if (rowNumber) {
-					updates.push({
-						range: `${trSnap.tabA1}!A${rowNumber}:${trSnap.lastCol}${rowNumber}`,
-						values: [row]
-					});
-				} else {
-					appends.push(row);
-				}
-			} catch (err) {
-				errors.push(
-					`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
-				);
-			}
-		}
-		for (let i = 0; i < updates.length; i += 200) {
-			await sheetsBatchUpdate(auth, updates.slice(i, i + 200));
-		}
-		if (appends.length > 0) {
-			for (let i = 0; i < appends.length; i += 500) {
-				const res = await sheetsFetch(
-					auth.spreadsheetId,
-					auth.headers,
-					`/values/${trSnap.tabEncoded}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-					auth.apiKey,
-					{
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ values: appends.slice(i, i + 500) })
+		if (skipTranslatorTab) {
+			onProgress?.('Sheets TR : ignoré (aucun nouveau traducteur / relecteur dans ce flux)');
+		} else {
+			onProgress?.(`Sheets TR : snapshot + sync (${translators.length} traducteur(s))…`);
+			const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
+			const updates: Array<{ range: string; values: string[][] }> = [];
+			const appends: string[][] = [];
+			for (const tr of translators) {
+				try {
+					const row = buildTranslatorRow(trSnap.headersRow, tr);
+					const rowNumber = trSnap.rowNumberById.get(tr.id);
+					if (rowNumber) {
+						updates.push({
+							range: `${trSnap.tabA1}!A${rowNumber}:${trSnap.lastCol}${rowNumber}`,
+							values: [row]
+						});
+					} else {
+						appends.push(row);
 					}
-				);
-				if (!res.ok) {
-					const err = await res.text().catch(() => '');
-					throw new Error(`Sheets append TR error (${res.status}): ${err.slice(0, 500)}`);
+				} catch (err) {
+					errors.push(
+						`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
+				}
+			}
+			onProgress?.(
+				`Sheets TR : ${updates.length} mise(s) à jour, ${appends.length} ajout(s)…`
+			);
+			for (let i = 0; i < updates.length; i += 200) {
+				const end = Math.min(i + 200, updates.length);
+				onProgress?.(`Sheets TR : batch mises à jour ${i + 1}–${end}/${updates.length}…`);
+				await sheetsBatchUpdate(auth, updates.slice(i, i + 200));
+			}
+			if (appends.length > 0) {
+				for (let i = 0; i < appends.length; i += 500) {
+					const end = Math.min(i + 500, appends.length);
+					onProgress?.(`Sheets TR : append ${i + 1}–${end}/${appends.length}…`);
+					const res = await sheetsFetch(
+						auth.spreadsheetId,
+						auth.headers,
+						`/values/${trSnap.tabEncoded}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+						auth.apiKey,
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ values: appends.slice(i, i + 500) })
+						}
+					);
+					if (!res.ok) {
+						const err = await res.text().catch(() => '');
+						throw new Error(`Sheets append TR error (${res.status}): ${err.slice(0, 500)}`);
+					}
 				}
 			}
 		}
@@ -1058,13 +1130,15 @@ export async function syncDbToSpreadsheetBulk(): Promise<{
 		);
 	}
 
+	onProgress?.('Sheets : synchronisation bulk terminée');
 	return {
 		totalTranslations: translations.length,
 		totalTranslators: translators.length,
-		syncedTranslations: translations.length,
-		syncedTranslators: translators.length,
+		syncedTranslations: skipJeuxRowWrites ? 0 : jeuxPartial ? jeuxRowsWritten : translations.length,
+		syncedTranslators: skipTranslatorTab ? 0 : translators.length,
 		prunedJeuxRows,
-		errors
+		errors,
+		jeuxPartial: jeuxPartial || undefined
 	};
 }
 

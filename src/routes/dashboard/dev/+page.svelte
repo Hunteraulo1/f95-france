@@ -24,23 +24,46 @@
 	};
 	type TestResult = { success: boolean; message: string; details: string | SheetsDetails | null };
 	type ScrapeResult = { success: boolean; message: string; details: string | ScrapeDetails | null };
+	type SyncMilestone = { atMs: number; message: string };
+	type LegacyImportStatsDetails = {
+		total: number;
+		insertedGames: number;
+		updatedGames: number;
+		insertedTranslations: number;
+		updatedTranslations: number;
+		deletedTranslations: number;
+		dedupedTranslations?: number;
+		createdTranslators: number;
+		createdProofreaders: number;
+		skipped: number;
+	};
 	type ImportResult = {
 		success: boolean;
 		message: string;
-		details:
-			| string
-			| {
-					total: number;
-					insertedGames: number;
-					updatedGames: number;
-					insertedTranslations: number;
-					updatedTranslations: number;
-					deletedTranslations: number;
-					createdTranslators: number;
-					createdProofreaders: number;
-					skipped: number;
-			  }
-			| null;
+		details: string | LegacyImportStatsDetails | null;
+	};
+	type SpreadsheetSyncSummary = {
+		totalTranslations: number;
+		totalTranslators: number;
+		syncedTranslations: number;
+		syncedTranslators: number;
+		prunedJeuxRows?: number;
+		errors: string[];
+	};
+	type SyncLegacyApiDetails =
+		| {
+				legacy: LegacyImportStatsDetails;
+				milestones: SyncMilestone[];
+				spreadsheetSync: SpreadsheetSyncSummary;
+		  }
+		| {
+				milestones: SyncMilestone[];
+				error?: string;
+		  };
+	type SyncLegacyApiResult = {
+		success: boolean;
+		message: string;
+		details: string | SyncLegacyApiDetails | null;
 	};
 	type CompareResult = {
 		success: boolean;
@@ -55,6 +78,7 @@
 						insertedTranslations: number;
 						updatedTranslations: number;
 						deletedTranslations: number;
+						dedupedTranslations?: number;
 						createdTranslators: number;
 						createdProofreaders: number;
 						skipped: number;
@@ -127,7 +151,7 @@ type AutoCheckManualResult = {
 	let compareIsLoading = $state(false);
 	let compareResult = $state<CompareResult | null>(null);
 	let syncIsLoading = $state(false);
-	let syncResult = $state<ImportResult | null>(null);
+	let syncResult = $state<SyncLegacyApiResult | null>(null);
 	let cleanupIsLoading = $state(false);
 	let cleanupResult = $state<CleanupResult | null>(null);
 	let translatorsImportIsLoading = $state(false);
@@ -146,6 +170,8 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 	const isScrapeDetailsObject = (value: unknown): value is ScrapeDetails =>
 		typeof value === 'object' && value !== null;
 	const isImportDetailsObject = (value: unknown): value is ImportResult['details'] =>
+		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
+	const isSyncLegacyApiDetailsObject = (value: unknown): value is SyncLegacyApiResult['details'] =>
 		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
 	const isCompareDetailsObject = (value: unknown): value is CompareResult['details'] =>
 		typeof value === 'string' || value === null || (typeof value === 'object' && value !== null);
@@ -927,7 +953,8 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 											.insertedGames} | Jeux mis a jour: {importResult.details.updatedGames} | Traductions
 										ajoutees: {importResult.details.insertedTranslations} | Traductions mises a jour:
 										{importResult.details.updatedTranslations} | Traductions supprimees (hors legacy):
-										{importResult.details.deletedTranslations} | Traducteurs crees: {importResult
+										{importResult.details.deletedTranslations} | Doublons stricts retires:
+										{importResult.details.dedupedTranslations ?? 0} | Traducteurs crees: {importResult
 											.details.createdTranslators} | Relecteurs crees: {importResult.details
 											.createdProofreaders} | Ignores: {importResult.details.skipped}
 									</p>
@@ -1077,7 +1104,7 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										typeof data === 'object' &&
 										data &&
 										'details' in data &&
-										isImportDetailsObject(data.details)
+										isSyncLegacyApiDetailsObject(data.details)
 											? data.details
 											: null
 								};
@@ -1272,6 +1299,7 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										traductions créées {compareResult.details.games.insertedTranslations},
 										traductions MAJ {compareResult.details.games.updatedTranslations},
 										traductions supprimées (aperçu) {compareResult.details.games.deletedTranslations},
+										dédoublonnage (aperçu) {compareResult.details.games.dedupedTranslations ?? 0},
 										traducteurs créés {compareResult.details.games.createdTranslators}, relecteurs créés {compareResult
 											.details.games.createdProofreaders}, ignorés {compareResult.details.games
 											.skipped}
@@ -1301,39 +1329,45 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 							<CircleCheck class="h-6 w-6" />
 							<div class="flex-1">
 								<h3 class="font-bold">{syncResult.message}</h3>
-								{#if syncResult.details && typeof syncResult.details === 'object'}
-									{@const legacyDetails = (
-										'legacy' in syncResult.details &&
-										typeof syncResult.details.legacy === 'object' &&
-										syncResult.details.legacy !== null
-											? syncResult.details.legacy
-											: syncResult.details
-									) as {
-										total?: number;
-										insertedGames?: number;
-										updatedGames?: number;
-										insertedTranslations?: number;
-										updatedTranslations?: number;
-										deletedTranslations?: number;
-									}}
+								{#if syncResult.details && typeof syncResult.details === 'object' && 'legacy' in syncResult.details}
+									{@const legacyDetails = syncResult.details.legacy}
 									{@const sheetPruned =
 										'spreadsheetSync' in syncResult.details &&
 										syncResult.details.spreadsheetSync &&
 										typeof syncResult.details.spreadsheetSync === 'object' &&
 										'prunedJeuxRows' in syncResult.details.spreadsheetSync
-											? (syncResult.details.spreadsheetSync as { prunedJeuxRows?: number })
-													.prunedJeuxRows ?? 0
+											? syncResult.details.spreadsheetSync.prunedJeuxRows ?? 0
 											: null}
 									<p class="mt-1 text-sm">
 										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
 											0} | Jeux mis a jour: {legacyDetails.updatedGames ?? 0} | Traductions ajoutees:
 										{legacyDetails.insertedTranslations ?? 0} | Traductions mises a jour:
 										{legacyDetails.updatedTranslations ?? 0} | Traductions supprimees (hors legacy):
-										{legacyDetails.deletedTranslations ?? 0}
+										{legacyDetails.deletedTranslations ?? 0} | Doublons stricts retires:
+										{legacyDetails.dedupedTranslations ?? 0}
 										{#if sheetPruned !== null}
 											| Lignes Jeux supprimees sur le sheet (hors DB): {sheetPruned}
 										{/if}
 									</p>
+									{#if 'milestones' in syncResult.details && Array.isArray(syncResult.details.milestones) && syncResult.details.milestones.length > 0}
+										<div class="collapse-arrow collapse mt-3 bg-base-200">
+											<input type="checkbox" />
+											<div class="collapse-title text-sm font-medium">
+												Journal d’avancement ({syncResult.details.milestones.length} lignes, temps
+												depuis le début)
+											</div>
+											<div class="collapse-content text-xs">
+												<pre
+													class="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-base-300 p-3 font-mono">{syncResult.details.milestones
+														.map((m) => `+${m.atMs}ms\t${m.message}`)
+														.join('\n')}</pre>
+												<p class="mt-2 opacity-80">
+													La même chronologie est écrite dans les logs serveur sous le préfixe
+													<code class="text-xs">[legacy-sync]</code>.
+												</p>
+											</div>
+										</div>
+									{/if}
 								{/if}
 							</div>
 						</div>
@@ -1343,10 +1377,32 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 							<div class="flex-1">
 								<h3 class="font-bold">{syncResult.message || 'Erreur inconnue'}</h3>
 								{#if syncResult.details}
+									{#if typeof syncResult.details === 'object' && syncResult.details !== null && 'milestones' in syncResult.details && Array.isArray(syncResult.details.milestones) && syncResult.details.milestones.length > 0}
+										<div class="collapse-arrow collapse mt-2 bg-base-200">
+											<input type="checkbox" />
+											<div class="collapse-title text-sm font-medium">
+												Journal avant l’erreur ({syncResult.details.milestones.length} lignes)
+											</div>
+											<div class="collapse-content text-xs">
+												<pre
+													class="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-base-300 p-3 font-mono">{syncResult.details.milestones
+														.map((m) => `+${m.atMs}ms\t${m.message}`)
+														.join('\n')}</pre>
+											</div>
+										</div>
+									{/if}
 									<p class="mt-1 text-sm">
-										{typeof syncResult.details === 'string'
-											? syncResult.details
-											: JSON.stringify(syncResult.details)}
+										{#if typeof syncResult.details === 'string'}
+											{syncResult.details}
+										{:else if 'error' in syncResult.details && typeof syncResult.details.error === 'string'}
+											{syncResult.details.error}
+										{:else}
+											{JSON.stringify(
+												Object.fromEntries(
+													Object.entries(syncResult.details).filter(([k]) => k !== 'milestones')
+												)
+											)}
+										{/if}
 									</p>
 								{/if}
 							</div>

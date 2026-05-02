@@ -1,5 +1,6 @@
 import { getUserById } from '$lib/server/auth';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
+import { representativeGameTypeSql } from '$lib/server/db/representative-game-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
@@ -9,6 +10,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -69,7 +71,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const whereClause = Number.isNaN(threadIdQuery)
 			? ilike(table.game.name, `%${query}%`)
 			: or(ilike(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
-		const games = await db
+		const rawGames = await db
 			.select({
 				id: table.game.id,
 				name: table.game.name,
@@ -78,7 +80,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				threadId: table.game.threadId,
 				link: table.game.link,
 				tags: table.game.tags,
-				type: table.game.type,
+				type: representativeGameTypeSql,
 				image: table.game.image,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
@@ -87,6 +89,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			.where(whereClause)
 			.orderBy(table.game.name)
 			.limit(20);
+
+		const games = rawGames.map((g) => ({
+			...g,
+			type: g.type ?? 'other'
+		}));
 
 		return json({ games });
 	} catch (error) {
@@ -224,7 +231,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await db.insert(table.game).values({
 			name,
 			description: description || null,
-			type,
 			website,
 			threadId: validThreadId,
 			tags: tags || null,
@@ -263,6 +269,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tversion: translation.tversion,
 					status: translation.status,
 					ttype: translation.ttype,
+					gameType: coerceGameEngineType(type),
 					tlink: translation.tlink || '',
 					translatorId: translation.translatorId || null,
 					proofreaderId: translation.proofreaderId || null,

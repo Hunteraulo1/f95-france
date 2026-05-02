@@ -1,3 +1,4 @@
+import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -84,7 +85,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						.limit(1);
 
 					if (currentGameResult.length > 0) {
-						currentGame = currentGameResult[0];
+						const row = currentGameResult[0];
+						const repType = await defaultGameTypeForGame(row.id);
+						currentGame = { ...row, type: repType };
 					}
 				}
 

@@ -10,7 +10,7 @@
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
 	import { newToast } from '$lib/stores';
-	import type { FormGameType } from '$lib/types';
+	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
 	import { computeGameFormFieldState } from '$lib/utils/game-form-validation';
 	import {
@@ -37,7 +37,7 @@
 		id: '',
 		name: '',
 		tags: '',
-		type: 'other',
+		gameType: 'other',
 		image: '',
 		website: 'f95z',
 		threadId: null,
@@ -70,7 +70,7 @@
 	type ScrapeBaseline = {
 		name: string;
 		tags: string;
-		type: string;
+		gameType: string;
 		image: string;
 		gameVersion: string;
 	};
@@ -158,7 +158,7 @@
 		if (
 			normScrapeField(game.name) !== b.name ||
 			normScrapeField(game.tags) !== b.tags ||
-			normScrapeField(game.type) !== b.type ||
+			normScrapeField(game.gameType) !== b.gameType ||
 			normScrapeField(game.image) !== b.image ||
 			normScrapeField(game.gameVersion) !== b.gameVersion
 		) {
@@ -172,7 +172,7 @@
 		return (
 			normScrapeField(game.name) === b.name &&
 			normScrapeField(game.tags) === b.tags &&
-			normScrapeField(game.type) === b.type &&
+			normScrapeField(game.gameType) === b.gameType &&
 			normScrapeField(game.image) === b.image &&
 			normScrapeField(game.gameVersion) === b.gameVersion
 		);
@@ -226,7 +226,7 @@
 				version: string | null;
 				status: string | null;
 				tags: string | null;
-				type: FormGameType['type'] | null;
+				gameType: GameEngineType | null;
 				image: string | null;
 			};
 
@@ -234,7 +234,7 @@
 				...game,
 				name: data.name ?? game.name,
 				tags: data.tags ?? game.tags,
-				type: data.type ?? game.type,
+				gameType: data.gameType ?? game.gameType,
 				image: data.image ?? game.image,
 				gameVersion: data.version ?? game.gameVersion
 			};
@@ -242,7 +242,7 @@
 			scrapeBaseline = {
 				name: normScrapeField(game.name),
 				tags: normScrapeField(game.tags),
-				type: normScrapeField(game.type),
+				gameType: normScrapeField(game.gameType),
 				image: normScrapeField(game.image),
 				gameVersion: normScrapeField(game.gameVersion)
 			};
@@ -347,7 +347,7 @@
 			type GamePayload = {
 				name: string;
 				description: string | null;
-				type: FormGameType['type'];
+				type: GameEngineType;
 				website: FormGameType['website'];
 				threadId: number | null;
 				tags: string | null;
@@ -373,7 +373,7 @@
 				game: {
 					name: game.name.trim(),
 					description: game.description ?? null,
-					type: game.type,
+					type: game.gameType,
 					website: game.website,
 					threadId: game.website === 'other' ? null : (game.threadId ?? null),
 					tags: game.tags?.trim() || null,
@@ -504,7 +504,7 @@
 			Component: Select,
 			active: [2, 5],
 			title: 'Type du jeu',
-			name: 'type',
+			name: 'gameType',
 			values: ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other']
 		},
 		{

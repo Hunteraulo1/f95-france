@@ -7,6 +7,7 @@ import {
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
+import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 type CheckerResponse = {
@@ -134,11 +135,17 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				.update(table.game)
 				.set({
 					tags: scraped.tags ?? undefined,
-					type: scraped.type ?? undefined,
 					image: scraped.image ?? undefined,
 					updatedAt: new Date()
 				})
 				.where(eq(table.game.id, game.gameId));
+			if (scraped.gameType) {
+				const gt = coerceGameEngineType(scraped.gameType);
+				await db
+					.update(table.gameTranslation)
+					.set({ gameType: gt, updatedAt: new Date() })
+					.where(eq(table.gameTranslation.gameId, game.gameId));
+			}
 		} catch (error) {
 			console.warn('[auto-check] scrape non bloquant échoué:', error);
 		}

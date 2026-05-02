@@ -1,3 +1,4 @@
+import { representativeGameTypeSql } from '$lib/server/db/representative-game-type';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
 import { desc, eq } from 'drizzle-orm';
@@ -22,28 +23,44 @@ export const GET: RequestHandler = async ({ url }) => {
 		const parsedLimit = limitRaw ? Number.parseInt(limitRaw, 10) : 50;
 		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 200) : 50;
 
-		const rows = await db
+		const flat = await db
 			.select({
 				updateId: updateTable.id,
 				updateStatus: updateTable.status,
 				updateCreatedAt: updateTable.createdAt,
 				updateUpdatedAt: updateTable.updatedAt,
-				game: {
-					id: game.id,
-					name: game.name,
-					image: game.image,
-					link: game.link,
-					website: game.website,
-					threadId: game.threadId,
-					gameVersion: game.gameVersion,
-					type: game.type,
-					tags: game.tags
-				}
+				gameId: game.id,
+				gameName: game.name,
+				gameImage: game.image,
+				gameLink: game.link,
+				gameWebsite: game.website,
+				gameThreadId: game.threadId,
+				gameGameVersion: game.gameVersion,
+				gameType: representativeGameTypeSql,
+				gameTags: game.tags
 			})
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
 			.orderBy(desc(updateTable.createdAt))
 			.limit(limit);
+
+		const rows = flat.map((r) => ({
+			updateId: r.updateId,
+			updateStatus: r.updateStatus,
+			updateCreatedAt: r.updateCreatedAt,
+			updateUpdatedAt: r.updateUpdatedAt,
+			game: {
+				id: r.gameId,
+				name: r.gameName,
+				image: r.gameImage,
+				link: r.gameLink,
+				website: r.gameWebsite,
+				threadId: r.gameThreadId,
+				gameVersion: r.gameGameVersion,
+				type: r.gameType ?? 'other',
+				tags: r.gameTags
+			}
+		}));
 
 		return json(rows, { headers: corsHeaders });
 	} catch (error) {

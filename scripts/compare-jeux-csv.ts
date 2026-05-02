@@ -316,6 +316,27 @@ function rowsToCsv(rows: string[][]): string {
 	return rows.map((row) => row.map((c) => escapeCsvField(c ?? '')).join(',')).join('\n');
 }
 
+/**
+ * Aligné sur `formatGameType` (google-sheets-sync) : faute « HTLM » = HTML.
+ * Comparaison insensible à la casse pour les libellés exportés (RenPy, etc.).
+ */
+function normalizeGameTypeCellForCompare(raw: string): string {
+	let v = raw.trim().toLowerCase();
+	if (v === 'htlm') v = 'html';
+	return v;
+}
+
+/** Deux cellules sont considérées égales pour le diff (évite le bruit métier). */
+function cellsEquivalent(columnNorm: string, va: string, vb: string): boolean {
+	const a = va.trim();
+	const b = vb.trim();
+	if (a === b) return true;
+	if (columnNorm === 'type') {
+		return normalizeGameTypeCellForCompare(a) === normalizeGameTypeCellForCompare(b);
+	}
+	return false;
+}
+
 function buildHeaderMaps(headers: string[]) {
 	const indexByNorm = new Map<string, number>();
 	const labelByNorm = new Map<string, string>();
@@ -436,7 +457,7 @@ function main() {
 			const ni = N.indexByNorm.get(norm)!;
 			const va = (a[li] ?? '').trim();
 			const vb = (b[ni] ?? '').trim();
-			if (va !== vb) {
+			if (!cellsEquivalent(norm, va, vb)) {
 				const label = L.labelByNorm.get(norm) ?? norm;
 				if (cellDiffs.length < MAX_LINES) {
 					const k = formatKeyForDisplay(id);
@@ -589,7 +610,7 @@ function main() {
 					const ni = N.indexByNorm.get(norm)!;
 					const va = (a[li] ?? '').trim();
 					const vb = (b[ni] ?? '').trim();
-					if (va !== vb) {
+					if (!cellsEquivalent(norm, va, vb)) {
 						const label = L.labelByNorm.get(norm) ?? norm;
 						rowDiffs.push(
 							`- ${label}\n  - legacy: ${va || '(vide)'}\n  - nouveau: ${vb || '(vide)'}`
@@ -649,7 +670,7 @@ function countCellDiffs(
 		for (const norm of commonNorms) {
 			const li = L.indexByNorm.get(norm)!;
 			const ni = N.indexByNorm.get(norm)!;
-			if ((a[li] ?? '').trim() !== (b[ni] ?? '').trim()) n++;
+			if (!cellsEquivalent(norm, (a[li] ?? '').trim(), (b[ni] ?? '').trim())) n++;
 		}
 	}
 	return n;
@@ -671,7 +692,7 @@ function countIdsWithDiffs(
 		for (const norm of commonNorms) {
 			const li = L.indexByNorm.get(norm)!;
 			const ni = N.indexByNorm.get(norm)!;
-			if ((a[li] ?? '').trim() !== (b[ni] ?? '').trim()) {
+			if (!cellsEquivalent(norm, (a[li] ?? '').trim(), (b[ni] ?? '').trim())) {
 				diff = true;
 				break;
 			}

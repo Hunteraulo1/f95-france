@@ -8,6 +8,7 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameUpdateRow } from '$lib/server/game-updates';
+import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -40,6 +41,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			ttype,
 			tlink,
 			tname,
+			gameType: gameTypeBody,
 			directMode,
 			translatorId,
 			proofreaderId
@@ -101,6 +103,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				status,
 				ttype,
 				tlink,
+				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
+					? { gameType: gameTypeBody.trim() }
+					: {}),
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
@@ -126,6 +131,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Pour les traductions intégrées ou "pas de traduction", le lien doit être une chaîne vide
 		// (le champ est NOT NULL dans le schéma, donc on utilise '' au lieu de null)
 		const tlinkStored = linkNotRequired || tlink === null ? '' : tlink || '';
+		const engineTr =
+			typeof gameTypeBody === 'string' && gameTypeBody.trim()
+				? coerceGameEngineType(gameTypeBody)
+				: await defaultGameTypeForGame(gameId);
 		const [created] = await db
 			.insert(table.gameTranslation)
 			.values({
@@ -135,6 +144,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				tversion,
 				status,
 				ttype,
+				gameType: engineTr,
 				tlink: tlinkStored,
 				tname:
 					(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||

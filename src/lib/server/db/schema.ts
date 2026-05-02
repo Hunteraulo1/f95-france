@@ -64,7 +64,6 @@ export const game = pgTable('game', {
 		.default(sql`gen_random_uuid()`),
 	name: varchar('name', { length: 255 }).notNull(),
 	tags: text('tags').notNull(),
-	type: varchar('type', { length: 32 }).notNull().default('other'),
 	image: varchar('image', { length: 500 }).notNull(),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -93,6 +92,8 @@ export const gameTranslation = pgTable('game_translation', {
 	translatorId: varchar('traductor_id', { length: 255 }),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
 	ttype: varchar('ttype', { length: 32 }).notNull(),
+	/** Moteur / technologie du jeu (RenPy, Unity, HTML, etc.) — par traduction. */
+	gameType: varchar('game_type', { length: 32 }).notNull().default('other'),
 	ac: boolean('ac').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

@@ -20,6 +20,7 @@
 
 	const game = $derived(data.game);
 	const translations = $derived(data.translations);
+	const uniqueGameEngines = $derived([...new Set(translations.map((t) => t.gameType))]);
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
 	const canUseSilentMode = $derived(
@@ -49,6 +50,7 @@
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
+		gameType: 'other' as string,
 		tlink: '',
 		tname: 'translation',
 		ac: false,
@@ -66,6 +68,7 @@
 		tversion: '',
 		status: 'in_progress',
 		ttype: 'manual',
+		gameType: 'other' as string,
 		tlink: '',
 		tname: 'translation' as
 			| 'no_translation'
@@ -93,7 +96,6 @@
 	let editingGame = $state({
 		name: '',
 		description: '',
-		type: '',
 		website: '',
 		threadId: '',
 		tags: '',
@@ -148,6 +150,40 @@
 		}
 	};
 
+	const getGameEngineLabel = (gt: string) => {
+		switch (gt) {
+			case 'renpy':
+				return "Ren'Py";
+			case 'rpgm':
+				return 'RPGM';
+			case 'unity':
+				return 'Unity';
+			case 'unreal':
+				return 'Unreal';
+			case 'flash':
+				return 'Flash';
+			case 'html':
+				return 'HTML';
+			case 'qsp':
+				return 'QSP';
+			case 'other':
+				return 'Autre';
+			default:
+				return gt;
+		}
+	};
+
+	const gameEngineSelectValues = [
+		'renpy',
+		'rpgm',
+		'unity',
+		'unreal',
+		'flash',
+		'html',
+		'qsp',
+		'other'
+	] as const;
+
 	const getTranslatorNameById = (id: string | null | undefined) => {
 		if (!id) return null;
 		const translator = translators.find((t) => t.id === id);
@@ -168,6 +204,7 @@
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
+			gameType: translations[0]?.gameType ?? 'other',
 			tlink: '',
 			tname: 'translation',
 			ac: false,
@@ -185,6 +222,7 @@
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
+			gameType: 'other',
 			tlink: '',
 			tname: 'translation',
 			ac: false,
@@ -278,7 +316,10 @@
 				body: JSON.stringify({
 					name: data.name ?? game.name,
 					description: data.description ?? game.description ?? '',
-					type: data.type ?? game.type,
+					type:
+						data.gameType ??
+						(translations[0]?.gameType as string | undefined) ??
+						'other',
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
 					tags: data.tags ?? game.tags ?? '',
@@ -302,7 +343,6 @@
 				...editingGame,
 				name: data.name ?? game.name,
 				tags: data.tags ?? game.tags,
-				type: data.type ?? game.type,
 				image: data.image ?? game.image,
 				gameVersion: data.version
 			};
@@ -321,6 +361,7 @@
 							tversion: acTranslation.tversion,
 							status: acTranslation.status,
 							ttype: acTranslation.ttype,
+							gameType: data.gameType ?? acTranslation.gameType,
 							tlink: acTranslation.tlink ?? '',
 							ac: acTranslation.ac ?? false,
 							directMode: true
@@ -406,6 +447,7 @@
 				tversion: newTranslation.tversion,
 				status: newTranslation.status,
 				ttype: newTranslation.ttype,
+				gameType: newTranslation.gameType,
 				tlink: tlinkValue,
 				tname: newTranslation.tname,
 				translatorId: translatorIdValue,
@@ -462,6 +504,7 @@
 			tversion: translation.tversion,
 			status: normalizeTranslationProgressStatus(translation.status),
 			ttype: translation.ttype,
+			gameType: translation.gameType,
 			tlink: translation.tlink,
 			tname: translation.tname as (typeof editingTranslation)['tname'],
 			translatorId: translation.translatorId || '',
@@ -481,6 +524,7 @@
 			tversion: '',
 			status: 'in_progress',
 			ttype: 'manual',
+			gameType: 'other',
 			tlink: '',
 			tname: 'translation',
 			ac: false,
@@ -554,6 +598,7 @@
 				tversion: editingTranslation.tversion,
 				status: editingTranslation.status,
 				ttype: editingTranslation.ttype,
+				gameType: editingTranslation.gameType,
 				tlink: tlinkValue,
 				tname: editingTranslation.tname,
 				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
@@ -744,7 +789,6 @@
 		editingGame = {
 			name: game.name,
 			description: game.description || '',
-			type: game.type,
 			website: game.website,
 			threadId: game.threadId ? String(game.threadId) : '',
 			tags: game.tags || '',
@@ -762,7 +806,6 @@
 		editingGame = {
 			name: '',
 			description: '',
-			type: '',
 			website: '',
 			threadId: '',
 			tags: '',
@@ -861,7 +904,14 @@
 						{/if}
 
 						<div class="mb-4 flex flex-wrap gap-2">
-							<span class="badge badge-lg badge-primary">{game.type}</span>
+							{#if uniqueGameEngines.length > 0}
+								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
+								{#each uniqueGameEngines as eng (eng)}
+									<span class="badge badge-lg badge-primary">{getGameEngineLabel(eng)}</span>
+								{/each}
+							{:else}
+								<span class="badge badge-ghost badge-lg">Aucune traduction (moteur non renseigné)</span>
+							{/if}
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
 							{#if game.threadId}
 								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
@@ -934,7 +984,8 @@
 									<th>Version de référence</th>
 									<th>Version traduction</th>
 									<th>Statut</th>
-									<th>Type</th>
+									<th>Moteur</th>
+									<th>Type de traduction</th>
 									<th>Lien de traduction</th>
 									<th>Auto-Check</th>
 									<th>Actions</th>
@@ -968,6 +1019,9 @@
 											<span class="badge {getStatusColor(translation.status)}">
 												{getStatusText(translation.status)}
 											</span>
+										</td>
+										<td>
+											<span class="badge badge-neutral">{getGameEngineLabel(translation.gameType)}</span>
 										</td>
 										<td>
 											<span class="badge badge-info">
@@ -1098,6 +1152,22 @@
 						<option value="integrated">Intégrée</option>
 						<option value="translation">Traduction</option>
 						<option value="translation_with_mods">Traduction avec mods</option>
+					</select>
+				</label>
+			</div>
+
+			<div class="form-control mb-4 w-full">
+				<label class="input pr-0" for="new-game-type">
+					Moteur du jeu (cette ligne)
+					<select
+						id="new-game-type"
+						class="w-full select-ghost"
+						bind:value={newTranslation.gameType}
+						required
+					>
+						{#each gameEngineSelectValues as v (v)}
+							<option value={v}>{getGameEngineLabel(v)}</option>
+						{/each}
 					</select>
 				</label>
 			</div>
@@ -1273,6 +1343,21 @@
 				</div>
 
 				<div class="form-control mb-4 w-full">
+					<label class="label" for="edit-game-type">
+						<span class="label-text">Moteur du jeu (cette ligne)</span>
+					</label>
+					<select
+						id="edit-game-type"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.gameType}
+					>
+						{#each gameEngineSelectValues as v (v)}
+							<option value={v}>{getGameEngineLabel(v)}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="form-control mb-4 w-full">
 					<label class="label" for="edit-ttype">
 						<span class="label-text">Type de traduction</span>
 					</label>
@@ -1411,18 +1496,11 @@
 						/>
 					</label>
 				</div>
-				<div class="form-control w-full">
-					<label class="input" for="edit-game-type">
-						Type
-						<input
-							id="edit-game-type"
-							type="text"
-							placeholder="Ex: Visual Novel"
-							class="w-full input-ghost"
-							bind:value={editingGame.type}
-							required
-						/>
-					</label>
+				<div class="form-control col-span-2 w-full">
+					<p class="text-sm text-base-content/70">
+						Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini <strong>par ligne de traduction</strong>
+						: modifiez une traduction ou ajoutez-en une pour le renseigner.
+					</p>
 				</div>
 				<div class="form-control w-full">
 					<label class="input" for="edit-game-website">

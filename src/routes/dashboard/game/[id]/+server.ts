@@ -13,7 +13,8 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -39,7 +40,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				threadId: table.game.threadId,
 				link: table.game.link,
 				tags: table.game.tags,
-				type: table.game.type,
 				image: table.game.image,
 				gameAutoCheck: table.game.gameAutoCheck,
 				gameVersion: table.game.gameVersion,
@@ -66,12 +66,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				translatorId: table.gameTranslation.translatorId,
 				proofreaderId: table.gameTranslation.proofreaderId,
 				ttype: table.gameTranslation.ttype,
+				tname: table.gameTranslation.tname,
+				gameType: table.gameTranslation.gameType,
 				ac: table.gameTranslation.ac,
 				createdAt: table.gameTranslation.createdAt,
 				updatedAt: table.gameTranslation.updatedAt
 			})
 			.from(table.gameTranslation)
-			.where(eq(table.gameTranslation.gameId, gameId));
+			.where(eq(table.gameTranslation.gameId, gameId))
+			.orderBy(asc(table.gameTranslation.createdAt));
 
 		return json({
 			game: game[0],
@@ -112,9 +115,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			gameVersion
 		} = body;
 
-		// Valider les données requises
-		if (!name || !type || !website || !image) {
-			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
+		// Valider les données requises (le moteur est par traduction ; `type` optionnel = appliquer à toutes les lignes si fourni, ex. refresh F95)
+		if (!name || !website || !image) {
+			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
 		}
 
 		// Vérifier que le jeu existe
@@ -123,7 +126,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				id: table.game.id,
 				name: table.game.name,
 				description: table.game.description,
-				type: table.game.type,
 				website: table.game.website,
 				threadId: table.game.threadId,
 				tags: table.game.tags,
@@ -141,6 +143,21 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const existingGame = existingGameRows[0];
+
+		const translationRows = await db
+			.select({ gameType: table.gameTranslation.gameType })
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gameId))
+			.orderBy(asc(table.gameTranslation.createdAt));
+
+		const typeProvided =
+			type !== undefined && type !== null && String(type).trim() !== '';
+		const nextEngine = typeProvided ? coerceGameEngineType(type) : null;
+		const typeChanged = typeProvided
+			? translationRows.length === 0
+				? nextEngine !== 'other'
+				: translationRows.some((r) => coerceGameEngineType(r.gameType) !== nextEngine!)
+			: false;
 		const prevGameAutoCheck = existingGame.gameAutoCheck;
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -163,7 +180,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const hasNonVersionChanges =
 			(name ?? '') !== (existingGame.name ?? '') ||
 			(description || null) !== (existingGame.description ?? null) ||
-			(type ?? '') !== (existingGame.type ?? '') ||
+			typeChanged ||
 			(website ?? '') !== (existingGame.website ?? '') ||
 			nextThreadId !== (existingGame.threadId ?? null) ||
 			(tags || null) !== (existingGame.tags ?? null) ||
@@ -188,7 +205,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			await createGameUpdateSubmission(currentUser.id, gameId, {
 				name,
 				description: description || null,
-				type,
+				...(typeProvided ? { type: String(type).trim() } : {}),
 				website,
 				threadId: nextThreadId,
 				tags: tags || null,
@@ -218,7 +235,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.set({
 				name,
 				description: description || null,
-				type,
 				website,
 				threadId: threadId ? parseInt(threadId) : null,
 				tags: tags || null,
@@ -230,6 +246,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
+
+		if (typeProvided && nextEngine !== null) {
+			await db
+				.update(table.gameTranslation)
+				.set({ gameType: nextEngine, updatedAt: new Date() })
+				.where(eq(table.gameTranslation.gameId, gameId));
+		}
 
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(gameId);
