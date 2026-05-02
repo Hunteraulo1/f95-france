@@ -6,7 +6,7 @@ import {
 } from '$lib/server/discord-webhook';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
-import { scrapeF95Thread } from '$lib/server/scrape/f95';
+import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -50,6 +50,19 @@ type AutoCheckResult = {
 	updatedTranslations: number;
 };
 
+/**
+ * Champs `game` que l’auto-check peut écraser après un scrape F95.
+ * `name` et `description` sont exclus : le titre du fil peut changer sans refléter la fiche locale.
+ */
+function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
+	return {
+		tags: scraped.tags ?? undefined,
+		image: scraped.image ?? undefined,
+		updatedAt: new Date()
+	};
+}
+
+/** Cron / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
 export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	const rows = await db
 		.select({
@@ -133,11 +146,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			const scraped = await scrapeF95Thread(game.threadId);
 			await db
 				.update(table.game)
-				.set({
-					tags: scraped.tags ?? undefined,
-					image: scraped.image ?? undefined,
-					updatedAt: new Date()
-				})
+				.set(autoCheckGamePatchFromScrape(scraped))
 				.where(eq(table.game.id, game.gameId));
 			if (scraped.gameType) {
 				const gt = coerceGameEngineType(scraped.gameType);
