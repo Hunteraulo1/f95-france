@@ -102,7 +102,7 @@ function gameSpreadsheetLink(game: typeof table.game.$inferSelect): string | nul
 		case 'f95z':
 			return `https://f95zone.to/threads/${tid}`;
 		case 'lc':
-			return `https://lewcorner.com/threads/${tid}`;
+			return `https://lewdcorner.com/threads/${tid}`;
 		default:
 			return null;
 	}
