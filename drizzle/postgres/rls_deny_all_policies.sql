@@ -47,6 +47,24 @@ TO anon, authenticated
 USING (false)
 WITH CHECK (false);
 
+-- passkey
+DROP POLICY IF EXISTS deny_all_passkey ON public.passkey;
+CREATE POLICY deny_all_passkey
+ON public.passkey
+FOR ALL
+TO anon, authenticated
+USING (false)
+WITH CHECK (false);
+
+-- passkey_challenge
+DROP POLICY IF EXISTS deny_all_passkey_challenge ON public.passkey_challenge;
+CREATE POLICY deny_all_passkey_challenge
+ON public.passkey_challenge
+FOR ALL
+TO anon, authenticated
+USING (false)
+WITH CHECK (false);
+
 -- session
 DROP POLICY IF EXISTS deny_all_session ON public.session;
 CREATE POLICY deny_all_session
