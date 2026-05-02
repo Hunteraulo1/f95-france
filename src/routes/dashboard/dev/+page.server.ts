@@ -14,11 +14,11 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Sync legacy + Sheets peut dépasser 5 min (Apps Script froid, gros JSON).
- * Sur Vercel, sans ça la fonction est souvent coupée vers 300s → « fetch failed ».
+ * Sync legacy + Sheets peut être long (Apps Script froid, gros JSON).
+ * Vercel Hobby : maxDuration plafonné à 300s (plan Pro permet jusqu’à 900s sur certaines régions).
  */
 export const config: Config = {
-	maxDuration: 900,
+	maxDuration: 300,
 	split: true
 };
 
