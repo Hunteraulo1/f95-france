@@ -1,5 +1,8 @@
+import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { privateEnv } from '$lib/server/private-env';
+import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -26,36 +29,51 @@ type WebhookUrls = {
 	admin: string | null;
 };
 
-let cached: { urls: WebhookUrls; at: number } | null = null;
+let cached: { urls: WebhookUrls; at: number; envSig: string } | null = null;
 const CACHE_MS = 60_000;
+
+function webhookEnvSignature(): string {
+	return [
+		privateEnv('DISCORD_WEBHOOK_UPDATES'),
+		privateEnv('DISCORD_WEBHOOK_TRANSLATORS'),
+		privateEnv('DISCORD_WEBHOOK_PROOFREADERS')
+	].join('\0');
+}
 
 async function getWebhookUrls(forceRefresh = false): Promise<WebhookUrls> {
 	const now = Date.now();
-	if (!forceRefresh && cached && now - cached.at < CACHE_MS) {
+	const envSig = webhookEnvSignature();
+	if (!forceRefresh && cached && now - cached.at < CACHE_MS && cached.envSig === envSig) {
 		return cached.urls;
 	}
-	const rows = await db
-		.select({
-			discordWebhookUpdates: table.config.discordWebhookUpdates,
-			discordWebhookTranslators: table.config.discordWebhookTranslators,
-			discordWebhookProofreaders: table.config.discordWebhookProofreaders
-		})
-		.from(table.config)
-		.where(eq(table.config.id, 'main'))
-		.limit(1);
-	const r = rows[0];
+	const cfg = await getEffectiveConfig();
 	const urls: WebhookUrls = {
-		updates: r?.discordWebhookUpdates ?? null,
-		translators: r?.discordWebhookTranslators ?? null,
-		admin: r?.discordWebhookProofreaders ?? null
+		updates: cfg?.discordWebhookUpdates ?? null,
+		translators: cfg?.discordWebhookTranslators ?? null,
+		admin: cfg?.discordWebhookProofreaders ?? null
 	};
-	cached = { urls, at: now };
+	cached = { urls, at: now, envSig };
 	return urls;
 }
 
 function trimFieldValue(s: string, max = 1000): string {
 	const t = s.trim();
 	return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+}
+
+/**
+ * Webhook canal « updates » : pour une modification de traduction déjà en base,
+ * n’envoyer que si la version de traduction change, ou si la version jeu (ligne) change
+ * pour une entrée intégrée / Trad. Ver. « Intégrée ».
+ */
+function shouldNotifyTranslationModificationForUpdatesChannel(
+	next: Record<string, unknown>,
+	prev: Record<string, unknown>
+): boolean {
+	const tversionChanged = strTrim(next.tversion) !== strTrim(prev.tversion);
+	const versionChanged = strTrim(next.version) !== strTrim(prev.version);
+	const integratedTradVer = tradVerIndicatesIntegrated(next.tversion, next.tname);
+	return tversionChanged || (versionChanged && integratedTradVer);
 }
 
 /** Discord n’accepte que des URLs absolues pour les images d’embed. */
@@ -114,7 +132,10 @@ export async function executeDiscordWebhook(
 	}
 }
 
-/** Soumission acceptée et appliquée (canal « updates ») : embed détaillé selon le type d’opération. */
+/**
+ * Soumission acceptée et appliquée (canal « updates ») : embed selon le type d’opération.
+ * Les modifications de jeu (`submissionType === 'update'`) ne sont pas envoyées sur ce webhook.
+ */
 export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	submissionId: string;
 	submissionType: string;
@@ -127,6 +148,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 }): Promise<void> {
 	const { updates } = await getWebhookUrls();
 	if (!updates) return;
+	if (args.submissionType === 'update') return;
 
 	let data: Record<string, unknown>;
 	try {
@@ -227,17 +249,6 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			});
 		}
 		embed = { ...embed, title, color };
-	} else if (st === 'update') {
-		title = 'Modification de jeu';
-		color = 0x3498db;
-		if (originalGame && game) {
-			const nameLine =
-				originalGame.name !== game.name ? `${originalGame.name} → ${game.name}` : game.name;
-			fields[0] = { name: 'Nom du jeu', value: trimFieldValue(nameLine), inline: false };
-			const updateCover = embedImageUrl(game.image) ?? coverUrl;
-			if (updateCover) embed.image = { url: updateCover };
-		}
-		embed = { ...embed, title, color };
 	} else if (st === 'delete') {
 		title =
 			originalTranslation && !originalGame ? 'Suppression de traduction' : 'Suppression de jeu';
@@ -290,33 +301,83 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		embed = { ...embed, title, color };
 	}
 
+	if (
+		st === 'translation' &&
+		args.translationWasUpdate === true &&
+		translation &&
+		originalTranslation
+	) {
+		if (
+			!shouldNotifyTranslationModificationForUpdatesChannel(
+				translation as Record<string, unknown>,
+				originalTranslation as Record<string, unknown>
+			)
+		) {
+			return;
+		}
+	}
+
 	await executeDiscordWebhook(updates, { embeds: [embed] });
 }
 
-/** Auto-check / rappels traducteurs : liste de lignes « jeu → version » (comme sendTraductorWebhook). */
-export async function sendDiscordWebhookTranslatorsVersionBumps(
-	lines: { label: string; discordMention?: string }[]
+export type TranslatorVersionBumpLine = {
+	gameName: string;
+	translationName?: string | null;
+	oldVersion: string;
+	newVersion: string;
+	discordMention?: string;
+};
+
+function buildAutoCheckVersionBumpFields(
+	lines: TranslatorVersionBumpLine[]
+): DiscordEmbed['fields'] {
+	return lines.slice(0, 20).map((l) => {
+		const tr = l.translationName?.trim();
+		const name = trimFieldValue(tr ? `${l.gameName} — ${tr}` : l.gameName, 256);
+		const ver = `${trimFieldValue(l.oldVersion || '—', 400)} → ${trimFieldValue(l.newVersion, 400)}`;
+		const value = l.discordMention ? `${ver}\n${l.discordMention}` : ver;
+		return {
+			name,
+			value: trimFieldValue(value, 1024),
+			inline: false
+		};
+	});
+}
+
+async function sendAutoCheckVersionBumpEmbed(
+	webhookUrl: string | null | undefined,
+	lines: TranslatorVersionBumpLine[],
+	footerText: string
 ): Promise<void> {
-	const { translators } = await getWebhookUrls();
-	if (!translators || lines.length === 0) return;
-
-	const fields = lines.slice(0, 20).map((l) => ({
-		name: trimFieldValue(l.label, 200),
-		value: l.discordMention ? trimFieldValue(l.discordMention, 500) : '—',
-		inline: false
-	}));
-
-	await executeDiscordWebhook(translators, {
+	if (!webhookUrl || lines.length === 0) return;
+	const fields = buildAutoCheckVersionBumpFields(lines);
+	await executeDiscordWebhook(webhookUrl, {
 		embeds: [
 			{
 				title: 'Jeux mis à jour (Auto-Check)',
 				color: 0x3498db,
 				fields,
 				author: { name: 'Auto-Check' },
-				footer: { text: 'F95 France' }
+				footer: { text: footerText }
 			}
 		]
 	});
+}
+
+/** Auto-check : canal traducteurs (`DISCORD_WEBHOOK_TRANSLATORS`). */
+export async function sendDiscordWebhookTranslatorsVersionBumps(
+	lines: TranslatorVersionBumpLine[]
+): Promise<void> {
+	const { translators } = await getWebhookUrls();
+	await sendAutoCheckVersionBumpEmbed(translators, lines, 'F95 France');
+}
+
+/** Auto-check : même embed que les traducteurs, canal relecteurs (`DISCORD_WEBHOOK_PROOFREADERS`). */
+export async function sendDiscordWebhookProofreadersVersionBumps(
+	lines: TranslatorVersionBumpLine[]
+): Promise<void> {
+	const { admin } = await getWebhookUrls();
+	await sendAutoCheckVersionBumpEmbed(admin, lines, 'F95 France · Relecteurs');
 }
 
 /** Canal updates : annonce d'une montée de version détectée par l'auto-check. */

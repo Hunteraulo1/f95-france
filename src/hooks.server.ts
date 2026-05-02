@@ -40,7 +40,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (maintenanceEnabled) {
 			const path = event.url.pathname;
 			const isAuthException =
-				path === '/dashboard/login' || path === '/dashboard/register' || path === '/dashboard/logout';
+				path === '/dashboard/login' ||
+				path === '/dashboard/register' ||
+				path === '/dashboard/logout';
 			const isSuperAdmin = event.locals.user?.role === 'superadmin';
 
 			if (!isSuperAdmin && !isAuthException) {
@@ -79,15 +81,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
+	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
+	const isSensitiveSettingsAction =
+		pathname === '/dashboard/settings' &&
+		(event.url.search.includes('/changePassword') || event.url.search.includes('/disable2FA'));
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
-		pathname === '/dashboard/logout';
-	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
+		pathname === '/dashboard/logout' ||
+		isSensitiveSettingsAction;
+	const shouldLog =
+		!isStaticAsset &&
+		!isNotificationsApiRoute &&
+		(isApiRequest || isDashboardAction || isSubmissionRoute);
 	const shouldCaptureBody =
 		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
 
@@ -161,11 +171,15 @@ export const handleError = async ({
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
+	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
 	const isDashboardAction =
 		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 	const isSubmissionRoute =
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
-	const shouldLog = !isStaticAsset && (isApiRequest || isDashboardAction || isSubmissionRoute);
+	const shouldLog =
+		!isStaticAsset &&
+		!isNotificationsApiRoute &&
+		(isApiRequest || isDashboardAction || isSubmissionRoute);
 
 	if (shouldLog && status >= 500) {
 		const route = `${event.url.pathname}${event.url.search}`;

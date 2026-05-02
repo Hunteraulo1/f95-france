@@ -1,4 +1,9 @@
 import { env } from '$env/dynamic/private';
+import {
+	getEffectiveConfig,
+	getEffectiveConfigFromRow,
+	toConfigClientSafe
+} from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import * as table from '$lib/server/db/schema';
@@ -8,12 +13,89 @@ import {
 	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
+import type { Config } from '@sveltejs/adapter-vercel';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
+
+/**
+ * Sync legacy + Sheets peut être long (Apps Script froid, gros JSON).
+ * Vercel Hobby : maxDuration plafonné à 300s (plan Pro permet jusqu’à 900s sur certaines régions).
+ */
+export const config: Config = {
+	maxDuration: 300,
+	split: true
+};
 
 const LEGACY_API_URL =
 	env.LEGACY_API_URL ||
 	'https://script.google.com/macros/s/AKfycbybvrFy6B2L7rkLWJnrwRHhP0F6Sv0uk6V9zUTZibwEzUjKXf-abOK_N6jUhqFPs9US/exec';
+
+const parsePositiveInt = (raw: string | undefined, fallback: number): number => {
+	if (raw == null || raw === '') return fallback;
+	const n = Number.parseInt(raw, 10);
+	return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+/** Timeout par tentative vers LEGACY_API_URL (ms). */
+const LEGACY_FETCH_TIMEOUT_MS = parsePositiveInt(env.LEGACY_API_FETCH_TIMEOUT_MS, 420_000);
+/** Nombre de nouvelles tentatives après un échec (ex. 2 → 3 essais au total). */
+const LEGACY_FETCH_RETRIES = Math.min(
+	Math.max(parsePositiveInt(env.LEGACY_API_FETCH_RETRIES, 2), 0),
+	5
+);
+
+function describeLegacyFetchError(err: unknown, timeoutMs: number): string {
+	if (
+		(typeof DOMException !== 'undefined' &&
+			err instanceof DOMException &&
+			err.name === 'TimeoutError') ||
+		(err instanceof Error && err.name === 'TimeoutError')
+	) {
+		return `Timeout après ${timeoutMs / 1000}s vers l’API legacy (LEGACY_API_FETCH_TIMEOUT_MS).`;
+	}
+	if (err instanceof TypeError && err.message === 'fetch failed') {
+		const c = err.cause;
+		if (c instanceof Error) return `fetch failed — ${c.name}: ${c.message}`;
+		if (typeof c === 'object' && c !== null && 'code' in c)
+			return `fetch failed — code ${String((c as { code: unknown }).code)}`;
+		return 'fetch failed — cause inconnue (réseau, DNS, TLS ou fonction hébergée coupée ~300s).';
+	}
+	if (err instanceof Error) return err.message;
+	return String(err);
+}
+
+/**
+ * GET vers l’Apps Script legacy : timeout long, retries. Ne pas utiliser fetch() nu.
+ */
+async function fetchLegacyApiGet(progress?: (message: string) => void): Promise<Response> {
+	const attempts = 1 + LEGACY_FETCH_RETRIES;
+	let lastErr: unknown;
+	for (let i = 0; i < attempts; i++) {
+		if (i > 0) {
+			const delay = Math.min(3000 * (1 << (i - 1)), 25_000);
+			progress?.(
+				`Échec réseau / timeout, nouvelle tentative dans ${delay / 1000}s (${i + 1}/${attempts})…`
+			);
+			await new Promise((r) => setTimeout(r, delay));
+		}
+		try {
+			if (i > 0) {
+				progress?.(
+					`Requête HTTP GET (tentative ${i + 1}/${attempts}), timeout ${LEGACY_FETCH_TIMEOUT_MS / 1000}s…`
+				);
+			}
+			return await fetch(LEGACY_API_URL, {
+				signal: AbortSignal.timeout(LEGACY_FETCH_TIMEOUT_MS),
+				headers: { Accept: 'application/json' }
+			});
+		} catch (e) {
+			lastErr = e;
+		}
+	}
+	throw new Error(
+		`${describeLegacyFetchError(lastErr, LEGACY_FETCH_TIMEOUT_MS)} — Indice : sur Vercel Pro, max 900s pour cette route ; l’API Google Apps Script peut mettre plusieurs minutes au premier appel.`
+	);
+}
 
 type LegacyGame = {
 	id?: number | string;
@@ -45,48 +127,96 @@ type LegacyTranslator = {
 	readCount?: number | string | null;
 };
 
+const normalizeLegacyText = (value: string | null | undefined): string =>
+	(value ?? '')
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.toLowerCase()
+		.trim();
+
 const mapType = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('renpy')) return 'renpy';
 	if (normalized.includes('rpg')) return 'rpgm';
 	if (normalized.includes('unity')) return 'unity';
 	if (normalized.includes('unreal')) return 'unreal';
 	if (normalized.includes('flash')) return 'flash';
-	if (normalized.includes('html')) return 'html';
+	// Ancien sheet / typo « HTLM » : traiter comme HTML (substring « html » ne matche pas « htlm »).
+	if (normalized.includes('html') || normalized.includes('htlm')) return 'html';
 	if (normalized.includes('qsp')) return 'qsp';
 	return 'other';
 };
 
 const mapStatus = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('aband')) return 'abandoned';
 	if (normalized.includes('termin') || normalized.includes('complete')) return 'completed';
 	return 'in_progress';
 };
 
 const mapTName = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('integr')) return 'integrated';
 	if (normalized.includes('mod')) return 'translation_with_mods';
 	if (normalized.includes('trad')) return 'translation';
 	return 'no_translation';
 };
 
-const mapTType = (value: string | null | undefined): string => {
-	const normalized = (value ?? '').toLowerCase();
+const mapTType = (value: string | null | undefined): string | null => {
+	const normalized = normalizeLegacyText(value);
+	if (!normalized) return null;
 	if (normalized.includes('semi')) return 'semi-auto';
-	if (normalized.includes('manuel') || normalized.includes('manual')) return 'manual';
-	if (normalized.includes('vf')) return 'vf';
+	if (
+		normalized.includes('vf') ||
+		normalized.includes('francais') ||
+		normalized.includes('francaise')
+	)
+		return 'vf';
+	if (
+		normalized.includes('humaine') ||
+		normalized.includes('humain') ||
+		normalized.includes('human') ||
+		normalized.includes('manuel') ||
+		normalized.includes('manuelle') ||
+		normalized.includes('manual')
+	)
+		return 'manual';
 	if (normalized.includes('test')) return 'to_tested';
-	if (normalized.includes('hs')) return 'hs';
-	return 'auto';
+	if (
+		normalized.includes(' hs') ||
+		normalized.startsWith('hs') ||
+		normalized.includes('hors service')
+	)
+		return 'hs';
+	if (normalized.includes('auto')) return 'auto';
+	return null;
+};
+
+/** Si `tname` est absent côté API mais qu’il y a un lien / un type de trad, ce n’est pas « pas de traduction ». */
+const inferLegacyTName = (item: LegacyGame): string => {
+	const fromField = mapTName(item.tname);
+	if (fromField !== 'no_translation') return fromField;
+	if (item.tlink?.trim()) return 'translation';
+	if (mapTType(item.ttype) != null) return 'translation';
+	return 'no_translation';
 };
 
 const mapWebsite = (value: string | null | undefined): 'f95z' | 'lc' | 'other' => {
-	const normalized = (value ?? '').toLowerCase();
+	const normalized = normalizeLegacyText(value);
 	if (normalized.includes('f95')) return 'f95z';
 	if (normalized.includes('lewd') || normalized === 'lc') return 'lc';
 	return 'other';
+};
+
+const parseLegacyBoolean = (value: unknown): boolean => {
+	if (value === true) return true;
+	if (value === false || value == null) return false;
+	if (typeof value === 'number') return value === 1;
+	if (typeof value === 'string') {
+		const n = normalizeLegacyText(value);
+		return n === 'true' || n === '1' || n === 'oui' || n === 'yes' || n === 'y';
+	}
+	return false;
 };
 
 const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
@@ -301,20 +431,144 @@ const normalizeKeyPart = (value: string | null | undefined): string =>
 		.trim()
 		.replace(/\s+/g, ' ');
 
-const translationKeyFrom = (
-	name: string | null | undefined,
-	tversionKey: string | null | undefined
-): string => `${normalizeKeyPart(name)}:${normalizeKeyPart(tversionKey)}`;
+const translationStrictKeyFromLegacy = (
+	gameId: string,
+	tversionKey: string | null | undefined,
+	tlinkKey: string | null | undefined
+): string => `${gameId}:${normalizeKeyPart(tversionKey)}:${normalizeKeyPart(tlinkKey)}`;
 
-const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolean } = {}) => {
+type TranslationRowForDedupe = {
+	id: string;
+	gameId: string;
+	tversion: string;
+	tlink: string;
+	updatedAt: Date;
+	createdAt: Date;
+};
+
+/**
+ * Supprime les traductions en double : même jeu + même clé stricte (tversion + tlink normalisés)
+ * que l’import legacy. Conserve la ligne la plus récemment mise à jour ; réassigne les soumissions.
+ */
+async function dedupeStrictDuplicateTranslations(
+	options: {
+		dryRun?: boolean;
+	} = {}
+): Promise<{ removed: number; duplicateIds: string[] }> {
 	const dryRun = options.dryRun === true;
+	const rows = await db
+		.select({
+			id: table.gameTranslation.id,
+			gameId: table.gameTranslation.gameId,
+			tversion: table.gameTranslation.tversion,
+			tlink: table.gameTranslation.tlink,
+			updatedAt: table.gameTranslation.updatedAt,
+			createdAt: table.gameTranslation.createdAt
+		})
+		.from(table.gameTranslation);
+
+	const byKey = new Map<string, TranslationRowForDedupe[]>();
+	for (const r of rows) {
+		const tlinkNorm = typeof r.tlink === 'string' ? r.tlink.trim() : (r.tlink ?? '');
+		const k = translationStrictKeyFromLegacy(r.gameId, r.tversion, tlinkNorm);
+		const list = byKey.get(k) ?? [];
+		list.push({
+			id: r.id,
+			gameId: r.gameId,
+			tversion: r.tversion,
+			tlink: tlinkNorm,
+			updatedAt: r.updatedAt,
+			createdAt: r.createdAt
+		});
+		byKey.set(k, list);
+	}
+
+	const duplicateIds: string[] = [];
+	const remap: Array<{ dropId: string; keepId: string }> = [];
+
+	for (const [, list] of byKey) {
+		if (list.length <= 1) continue;
+		list.sort((a, b) => {
+			const u = b.updatedAt.getTime() - a.updatedAt.getTime();
+			if (u !== 0) return u;
+			const c = b.createdAt.getTime() - a.createdAt.getTime();
+			if (c !== 0) return c;
+			return b.id.localeCompare(a.id);
+		});
+		const keeper = list[0]!;
+		for (let i = 1; i < list.length; i++) {
+			const drop = list[i]!;
+			duplicateIds.push(drop.id);
+			remap.push({ dropId: drop.id, keepId: keeper.id });
+		}
+	}
+
+	if (duplicateIds.length === 0 || dryRun) {
+		return { removed: duplicateIds.length, duplicateIds };
+	}
+
+	await db.transaction(async (tx) => {
+		for (const { dropId, keepId } of remap) {
+			await tx
+				.update(table.submission)
+				.set({ translationId: keepId })
+				.where(eq(table.submission.translationId, dropId));
+		}
+		await tx.delete(table.gameTranslation).where(inArray(table.gameTranslation.id, duplicateIds));
+	});
+
+	return { removed: duplicateIds.length, duplicateIds };
+}
+
+const chooseCanonicalGameName = (currentName: string, incomingName: string): string => {
+	const curr = currentName.trim();
+	const inc = incomingName.trim();
+	if (!curr) return inc;
+	if (!inc) return curr;
+	const currNorm = normalizeKeyPart(curr);
+	const incNorm = normalizeKeyPart(inc);
+	if (!currNorm || !incNorm) return curr;
+	if (currNorm === incNorm) return curr;
+	// Si l'un est un préfixe normalisé de l'autre, on garde le nom le plus court (nom "racine" du jeu).
+	if (currNorm.startsWith(`${incNorm} `)) return inc;
+	if (incNorm.startsWith(`${currNorm} `)) return curr;
+	return curr;
+};
+
+const extractLegacyTranslationName = (
+	gameName: string,
+	legacyItemName: string | null | undefined
+): string | null => {
+	const base = (gameName ?? '').trim();
+	const raw = (legacyItemName ?? '').trim();
+	if (!base || !raw) return null;
+	const baseNorm = normalizeKeyPart(base);
+	const rawNorm = normalizeKeyPart(raw);
+	if (!baseNorm || !rawNorm || rawNorm === baseNorm) return null;
+	if (!rawNorm.startsWith(`${baseNorm} `)) return null;
+	let suffix = raw.slice(base.length).trim();
+	suffix = suffix.replace(/^[\s\-–—:|]+/, '').trim();
+	return suffix || null;
+};
+
+const upsertLegacyGames = async (
+	games: LegacyGame[],
+	options: { dryRun?: boolean; progress?: (message: string) => void } = {}
+) => {
+	const dryRun = options.dryRun === true;
+	const { progress } = options;
 	let insertedGames = 0;
 	let updatedGames = 0;
 	let insertedTranslations = 0;
 	let updatedTranslations = 0;
+	let deletedTranslations = 0;
+	let dedupedTranslations = 0;
 	let createdTranslators = 0;
 	let createdProofreaders = 0;
 	let skipped = 0;
+
+	progress?.(`Import DB : ${games.length} ligne(s) legacy à traiter`);
+	progress?.('Chargement jeux / traducteurs / traductions existants…');
 
 	const existingGames = await db
 		.select({
@@ -323,7 +577,6 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			website: table.game.website,
 			link: table.game.link,
 			name: table.game.name,
-			type: table.game.type,
 			tags: table.game.tags,
 			image: table.game.image,
 			gameVersion: table.game.gameVersion
@@ -351,18 +604,91 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 	const existingTranslations = await db
 		.select({
 			id: table.gameTranslation.id,
+			gameId: table.gameTranslation.gameId,
 			tversion: table.gameTranslation.tversion,
-			gameName: table.game.name
+			tlink: table.gameTranslation.tlink
 		})
-		.from(table.gameTranslation)
-		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId));
-	const translationByKey = new Map<string, string>();
+		.from(table.gameTranslation);
+	const translationByStrictKey = new Map<string, string>();
 	for (const row of existingTranslations) {
-		translationByKey.set(translationKeyFrom(row.gameName, row.tversion), row.id);
+		translationByStrictKey.set(
+			translationStrictKeyFromLegacy(row.gameId, row.tversion, row.tlink),
+			row.id
+		);
 	}
 	const gameAcStats = new Map<string, { total: number; hasAcTrue: boolean }>();
+	/** Clés strictes présentes dans le payload legacy (aligné sur upsert : tversion + tlink). */
+	const legacyStrictKeys = new Set<string>();
 
+	/** Pour sync Sheets partielle : traductions dont la ligne Jeux peut avoir changé. */
+	const jeuxSheetTouchIds = new Set<string>();
+	const translationIdsByGameId = new Map<string, string[]>();
+	for (const row of existingTranslations) {
+		const arr = translationIdsByGameId.get(row.gameId) ?? [];
+		arr.push(row.id);
+		translationIdsByGameId.set(row.gameId, arr);
+	}
+
+	const GAME_INS_BATCH = 80;
+	const TR_INS_BATCH = 60;
+	const TRANS_INS_BATCH = 80;
+	const UPD_CONCURRENCY = 40;
+
+	const bufGameIns: (typeof table.game.$inferInsert)[] = [];
+	const bufTrIns: (typeof table.translator.$inferInsert)[] = [];
+	const bufTransIns: (typeof table.gameTranslation.$inferInsert)[] = [];
+	const qGameUpd: Array<{ id: string; values: Partial<typeof table.game.$inferInsert> }> = [];
+	const pendingTransUpdates: Promise<unknown>[] = [];
+
+	const flushGameInserts = async () => {
+		if (dryRun || bufGameIns.length === 0) return;
+		await db.insert(table.game).values(bufGameIns);
+		bufGameIns.length = 0;
+	};
+	const flushTrInserts = async () => {
+		if (dryRun || bufTrIns.length === 0) return;
+		await db.insert(table.translator).values(bufTrIns);
+		bufTrIns.length = 0;
+	};
+	const flushTransInserts = async () => {
+		if (dryRun || bufTransIns.length === 0) return;
+		await db.insert(table.gameTranslation).values(bufTransIns);
+		bufTransIns.length = 0;
+	};
+	const flushBeforeTranslationWrite = async () => {
+		await flushGameInserts();
+		await flushTrInserts();
+	};
+	const drainGameUpdates = async () => {
+		if (dryRun) {
+			qGameUpd.length = 0;
+			return;
+		}
+		while (qGameUpd.length > 0) {
+			const chunk = qGameUpd.splice(0, UPD_CONCURRENCY);
+			await Promise.all(
+				chunk.map(({ id, values }) =>
+					db.update(table.game).set(values).where(eq(table.game.id, id))
+				)
+			);
+		}
+	};
+	const flushTransUpdates = async () => {
+		if (dryRun || pendingTransUpdates.length === 0) return;
+		await Promise.all(pendingTransUpdates);
+		pendingTransUpdates.length = 0;
+	};
+
+	progress?.(
+		`Cache chargé : ${existingGames.length} jeu(x), ${existingTranslators.length} personne(s), ${existingTranslations.length} traduction(s)`
+	);
+
+	let legacyRow = 0;
 	for (const item of games) {
+		legacyRow++;
+		if (legacyRow === 1 || legacyRow % 500 === 0 || legacyRow === games.length) {
+			progress?.(`Traitement legacy ${legacyRow}/${games.length}`);
+		}
 		const threadId =
 			typeof item.id === 'number'
 				? item.id
@@ -390,11 +716,12 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		const gameVersion =
 			typeof item.version === 'string' && item.version.trim() ? item.version.trim() : null;
 
+		const rowGameType = mapType(item.type);
+
 		if (gameId) {
 			const prev = gamesSnapshot.get(gameId);
 			const nextValues = {
-				name: prev?.name ?? name,
-				type: mapType(item.type),
+				name: prev?.name ? chooseCanonicalGameName(prev.name, name) : name,
 				tags,
 				image: item.image?.trim() || '',
 				website,
@@ -405,7 +732,6 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			if (
 				!prev ||
 				prev.name !== nextValues.name ||
-				prev.type !== nextValues.type ||
 				prev.tags !== nextValues.tags ||
 				prev.image !== nextValues.image ||
 				prev.website !== nextValues.website ||
@@ -414,7 +740,11 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				(prev.gameVersion ?? null) !== (nextValues.gameVersion ?? null)
 			) {
 				if (!dryRun) {
-					await db.update(table.game).set(nextValues).where(eq(table.game.id, gameId));
+					qGameUpd.push({ id: gameId, values: nextValues });
+					if (qGameUpd.length >= UPD_CONCURRENCY) await drainGameUpdates();
+				}
+				for (const tid of translationIdsByGameId.get(gameId) ?? []) {
+					jeuxSheetTouchIds.add(tid);
 				}
 				gamesSnapshot.set(gameId, { ...(prev ?? { id: gameId }), ...nextValues });
 				updatedGames++;
@@ -424,7 +754,6 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			const row = {
 				id: gameId,
 				name,
-				type: mapType(item.type),
 				tags,
 				image: item.image?.trim() || '',
 				website,
@@ -434,7 +763,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 				gameVersion
 			};
 			if (!dryRun) {
-				await db.insert(table.game).values(row);
+				bufGameIns.push(row);
+				if (bufGameIns.length >= GAME_INS_BATCH) await flushGameInserts();
 			}
 			gamesSnapshot.set(gameId, row);
 			if (row.threadId !== null) gamesByThread.set(`${row.website}:${row.threadId}`, gameId);
@@ -449,9 +779,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			if (!translatorId) {
 				translatorId = dryRun ? `dry-tr-${translatorName.toLowerCase()}` : crypto.randomUUID();
 				if (!dryRun) {
-					await db
-						.insert(table.translator)
-						.values({ id: translatorId, name: translatorName, pages: '[]' });
+					bufTrIns.push({ id: translatorId, name: translatorName, pages: '[]' });
+					if (bufTrIns.length >= TR_INS_BATCH) await flushTrInserts();
 				}
 				translatorByName.set(translatorName.toLowerCase(), translatorId);
 				createdTranslators++;
@@ -465,9 +794,8 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 			if (!proofreaderId) {
 				proofreaderId = dryRun ? `dry-pr-${proofreaderName.toLowerCase()}` : crypto.randomUUID();
 				if (!dryRun) {
-					await db
-						.insert(table.translator)
-						.values({ id: proofreaderId, name: proofreaderName, pages: '[]' });
+					bufTrIns.push({ id: proofreaderId, name: proofreaderName, pages: '[]' });
+					if (bufTrIns.length >= TR_INS_BATCH) await flushTrInserts();
 				}
 				translatorByName.set(proofreaderName.toLowerCase(), proofreaderId);
 				createdProofreaders++;
@@ -475,68 +803,195 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		}
 
 		const tversion = item.tversion?.trim() || 'unknown';
-		const acValue = item.ac === true;
-		const referenceVersion = !acValue ? gameVersion : null;
-		const translationKey = translationKeyFrom(name, tversion);
-		const existingTranslationId = translationByKey.get(translationKey);
+		const acValue = parseLegacyBoolean(item.ac);
+		// Version du jeu pour cette ligne (colonne VERSION du sheet) : toujours stockée par traduction,
+		// y compris si AC=true, pour que la sync affiche la bonne version quand il y a plusieurs traductions.
+		const translationGameVersion = gameVersion;
+		const canonicalGameName = gamesSnapshot.get(gameId)?.name ?? name;
+		const translationName = extractLegacyTranslationName(canonicalGameName, name);
+		const tlinkValue = item.tlink?.trim() || '';
+		const strictKey = translationStrictKeyFromLegacy(gameId, tversion, tlinkValue);
+		legacyStrictKeys.add(strictKey);
+		// Ne pas matcher par (gameId + tversion) seul : plusieurs traductions peuvent partager la même version (auto vs manuelle, etc.).
+		const existingTranslationId = translationByStrictKey.get(strictKey);
+		const mappedTType = mapTType(item.ttype);
 		const stat = gameAcStats.get(gameId) ?? { total: 0, hasAcTrue: false };
 		stat.total += 1;
 		stat.hasAcTrue = stat.hasAcTrue || acValue;
 		gameAcStats.set(gameId, stat);
 
 		if (!existingTranslationId) {
+			const newTranslationId = dryRun ? `dry-tr-${strictKey.slice(0, 24)}` : crypto.randomUUID();
 			if (!dryRun) {
-				await db.insert(table.gameTranslation).values({
-					id: crypto.randomUUID(),
+				await flushBeforeTranslationWrite();
+				bufTransIns.push({
+					id: newTranslationId,
 					gameId,
-					translationName: null,
-					version: referenceVersion,
+					translationName,
+					version: translationGameVersion,
 					status: mapStatus(item.status),
 					tversion,
 					tlink: item.tlink?.trim() || '',
-					tname: mapTName(item.tname),
+					tname: inferLegacyTName(item),
 					translatorId,
 					proofreaderId,
-					ttype: mapTType(item.ttype),
+					ttype: mappedTType ?? 'manual',
+					gameType: rowGameType,
 					ac: acValue
 				});
+				if (bufTransIns.length >= TRANS_INS_BATCH) await flushTransInserts();
+				const arr = translationIdsByGameId.get(gameId) ?? [];
+				arr.push(newTranslationId);
+				translationIdsByGameId.set(gameId, arr);
 			}
-			translationByKey.set(translationKey, 'created');
+			translationByStrictKey.set(strictKey, newTranslationId);
 			insertedTranslations++;
+			jeuxSheetTouchIds.add(newTranslationId);
 		} else {
 			if (!dryRun) {
-				await db
-					.update(table.gameTranslation)
-					.set({
-						gameId,
-						translationName: sql`${table.gameTranslation.translationName}`,
-						version: referenceVersion,
-						status: mapStatus(item.status),
-						tversion,
-						tlink: item.tlink?.trim() || '',
-						tname: mapTName(item.tname),
-						translatorId,
-						proofreaderId,
-						ttype: mapTType(item.ttype),
-						ac: acValue
-					})
-					.where(eq(table.gameTranslation.id, existingTranslationId));
+				await flushBeforeTranslationWrite();
+				pendingTransUpdates.push(
+					db
+						.update(table.gameTranslation)
+						.set({
+							gameId,
+							translationName,
+							version: translationGameVersion,
+							status: item.status?.trim()
+								? mapStatus(item.status)
+								: sql`${table.gameTranslation.status}`,
+							tversion,
+							tlink: item.tlink?.trim() || '',
+							tname: inferLegacyTName(item),
+							translatorId,
+							proofreaderId,
+							ttype: mappedTType ?? sql`${table.gameTranslation.ttype}`,
+							gameType: rowGameType,
+							ac: acValue
+						})
+						.where(eq(table.gameTranslation.id, existingTranslationId))
+				);
+				if (pendingTransUpdates.length >= UPD_CONCURRENCY) await flushTransUpdates();
 			}
 			updatedTranslations++;
+			jeuxSheetTouchIds.add(existingTranslationId);
+		}
+	}
+
+	if (!dryRun) {
+		await flushGameInserts();
+		await flushTrInserts();
+		await flushTransInserts();
+		await drainGameUpdates();
+		await flushTransUpdates();
+	}
+
+	progress?.(
+		`Boucle legacy terminée : ${skipped} ignorée(s), purge sur ${gameAcStats.size} jeu(x) touché(s)`
+	);
+
+	// Legacy = référence : pour chaque jeu concerné par ce flux, supprimer les traductions absentes du payload.
+	const purgeGameIds = [...gameAcStats.keys()];
+	if (purgeGameIds.length > 0) {
+		const allPurgeRows = await db
+			.select({
+				id: table.gameTranslation.id,
+				gameId: table.gameTranslation.gameId,
+				tversion: table.gameTranslation.tversion,
+				tlink: table.gameTranslation.tlink
+			})
+			.from(table.gameTranslation)
+			.where(inArray(table.gameTranslation.gameId, purgeGameIds));
+
+		const byGame = new Map<string, typeof allPurgeRows>();
+		for (const r of allPurgeRows) {
+			const list = byGame.get(r.gameId) ?? [];
+			list.push(r);
+			byGame.set(r.gameId, list);
+		}
+
+		for (const gid of purgeGameIds) {
+			const rows = byGame.get(gid) ?? [];
+			const idsToDelete = rows
+				.filter((r) => {
+					const tlinkNorm = typeof r.tlink === 'string' ? r.tlink.trim() : (r.tlink ?? '');
+					return !legacyStrictKeys.has(translationStrictKeyFromLegacy(gid, r.tversion, tlinkNorm));
+				})
+				.map((r) => r.id);
+
+			if (idsToDelete.length === 0) continue;
+			deletedTranslations += idsToDelete.length;
+			if (!dryRun) {
+				await db
+					.update(table.submission)
+					.set({ translationId: null })
+					.where(inArray(table.submission.translationId, idsToDelete));
+				await db
+					.delete(table.gameTranslation)
+					.where(inArray(table.gameTranslation.id, idsToDelete));
+			}
+		}
+	}
+
+	if (deletedTranslations > 0) {
+		progress?.(
+			`Purge payload : ${deletedTranslations} traduction(s) retirée(s) (absentes du legacy)`
+		);
+	} else {
+		progress?.('Purge payload : aucune traduction à retirer');
+	}
+
+	// Même clé stricte que l’import : supprime les doublons restants en base (ex. imports anciens).
+	if (!dryRun) {
+		progress?.('Déduplication stricte en base + nettoyage lignes Sheet…');
+		const { removed, duplicateIds } = await dedupeStrictDuplicateTranslations();
+		dedupedTranslations = removed;
+		if (duplicateIds.length > 0) {
+			try {
+				await deleteGameTranslationsFromGoogleSheet(duplicateIds);
+			} catch (err) {
+				console.warn('Dédup traductions : suppression Google Sheet ignorée', err);
+			}
+		}
+		if (dedupedTranslations > 0) {
+			progress?.(`Dédup : ${dedupedTranslations} ligne(s) fusionnée(s)`);
+		} else {
+			progress?.('Dédup : aucun doublon strict restant');
 		}
 	}
 
 	// Règle legacy: si toutes les traductions d'un jeu ont AC=false, alors gameAutoCheck=false.
 	if (!dryRun) {
+		const gacIds: string[] = [];
 		for (const [gameId, stat] of gameAcStats) {
-			if (stat.total > 0 && !stat.hasAcTrue) {
-				await db
-					.update(table.game)
-					.set({ gameAutoCheck: false, updatedAt: new Date() })
-					.where(eq(table.game.id, gameId));
+			if (stat.total > 0 && !stat.hasAcTrue) gacIds.push(gameId);
+		}
+		if (gacIds.length > 0) {
+			progress?.(`Mise à jour gameAutoCheck (${gacIds.length} jeu(x) sans AC=true)…`);
+			for (let i = 0; i < gacIds.length; i += UPD_CONCURRENCY) {
+				const chunk = gacIds.slice(i, i + UPD_CONCURRENCY);
+				await Promise.all(
+					chunk.map((gameId) =>
+						db
+							.update(table.game)
+							.set({ gameAutoCheck: false, updatedAt: new Date() })
+							.where(eq(table.game.id, gameId))
+					)
+				);
 			}
 		}
 	}
+
+	if (dryRun) {
+		progress?.('Dry-run : simulation dédup stricte…');
+		const { removed } = await dedupeStrictDuplicateTranslations({ dryRun: true });
+		dedupedTranslations = removed;
+		progress?.(`Dry-run : ${removed} doublon(s) seraient fusionné(s)`);
+	}
+
+	progress?.(
+		`Résumé import : +${insertedGames} jeu(x), ${updatedGames} maj jeu(x), +${insertedTranslations} trad., ${updatedTranslations} maj trad.`
+	);
 
 	return {
 		total: games.length,
@@ -544,21 +999,23 @@ const upsertLegacyGames = async (games: LegacyGame[], options: { dryRun?: boolea
 		updatedGames,
 		insertedTranslations,
 		updatedTranslations,
+		deletedTranslations,
+		dedupedTranslations,
 		createdTranslators,
 		createdProofreaders,
-		skipped
+		skipped,
+		jeuxSheetTouchIds: dryRun ? [] : [...jeuxSheetTouchIds]
 	};
 };
 
-const syncAllDbToSpreadsheet = async (): Promise<{
-	totalTranslations: number;
-	totalTranslators: number;
-	syncedTranslations: number;
-	syncedTranslators: number;
-	errors: string[];
-}> => {
-	return syncDbToSpreadsheetBulk();
+const syncAllDbToSpreadsheet = async (
+	onProgress?: (message: string) => void,
+	opts?: Parameters<typeof syncDbToSpreadsheetBulk>[1]
+) => {
+	return syncDbToSpreadsheetBulk(onProgress, opts ?? {});
 };
+
+type LegacySyncMilestone = { atMs: number; message: string };
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est admin
@@ -566,8 +1023,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw new Error('Accès non autorisé');
 	}
 
-	// Charger la configuration
-	let config;
+	let configRow;
 	try {
 		const configResult = await db
 			.select()
@@ -575,17 +1031,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.where(eq(table.config.id, 'main'))
 			.limit(1);
 
-		config = configResult[0] || null;
+		configRow = configResult[0] || null;
 	} catch (error: unknown) {
 		console.warn('Erreur lors du chargement de la configuration:', error);
-		config = null;
+		configRow = null;
 	}
 
-	const c = config;
+	const effective = configRow ? getEffectiveConfigFromRow(configRow) : await getEffectiveConfig();
+	const config = configRow ? toConfigClientSafe(configRow) : null;
 	const webhookStatus = {
-		updates: Boolean(c?.discordWebhookUpdates?.trim()),
-		translators: Boolean(c?.discordWebhookTranslators?.trim()),
-		admin: Boolean(c?.discordWebhookProofreaders?.trim())
+		updates: Boolean(effective?.discordWebhookUpdates?.trim()),
+		translators: Boolean(effective?.discordWebhookTranslators?.trim()),
+		admin: Boolean(effective?.discordWebhookProofreaders?.trim())
 	};
 
 	return {
@@ -645,15 +1102,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Charger la configuration pour obtenir la clé API ou le token OAuth2
-			const configResult = await db
-				.select()
-				.from(table.config)
-				.where(eq(table.config.id, 'main'))
-				.limit(1);
-
-			const config = configResult[0];
-			const apiKey = config?.googleApiKey;
+			const merged = await getEffectiveConfig();
+			const apiKey = merged?.googleApiKey;
 
 			// Essayer d'obtenir un token OAuth2 valide
 			const oauthToken = await getValidAccessToken();
@@ -855,7 +1305,7 @@ export const actions: Actions = {
 		await request.formData();
 
 		try {
-			const response = await fetch(LEGACY_API_URL);
+			const response = await fetchLegacyApiGet();
 			if (!response.ok) {
 				return { success: false, message: `Erreur API: ${response.status}`, details: null };
 			}
@@ -887,7 +1337,7 @@ export const actions: Actions = {
 		await request.formData();
 
 		try {
-			const response = await fetch(LEGACY_API_URL);
+			const response = await fetchLegacyApiGet();
 			if (!response.ok) {
 				return { success: false, message: `Erreur API: ${response.status}`, details: null };
 			}
@@ -918,6 +1368,8 @@ export const actions: Actions = {
 							updatedGames: 0,
 							insertedTranslations: 0,
 							updatedTranslations: 0,
+							deletedTranslations: 0,
+							dedupedTranslations: 0,
 							createdTranslators: 0,
 							createdProofreaders: 0,
 							skipped: 0
@@ -947,20 +1399,65 @@ export const actions: Actions = {
 
 		await request.formData();
 
+		const t0 = Date.now();
+		const milestones: LegacySyncMilestone[] = [];
+		const progress = (message: string) => {
+			const atMs = Date.now() - t0;
+			milestones.push({ atMs, message });
+			console.log(`[legacy-sync] +${atMs}ms ${message}`);
+		};
+
 		try {
-			const response = await fetch(LEGACY_API_URL);
+			progress('Démarrage : API legacy → DB → Google Sheets');
+			progress(
+				`Requête HTTP GET vers l’API legacy (timeout ${LEGACY_FETCH_TIMEOUT_MS / 1000}s, jusqu’à ${1 + LEGACY_FETCH_RETRIES} tentative(s))…`
+			);
+			const response = await fetchLegacyApiGet(progress);
 			if (!response.ok) {
-				return { success: false, message: `Erreur API: ${response.status}`, details: null };
+				progress(`Échec HTTP : ${response.status}`);
+				return {
+					success: false,
+					message: `Erreur API: ${response.status}`,
+					details: { milestones }
+				};
 			}
 
+			progress(`Réponse HTTP ${response.status}, lecture et parsing JSON…`);
 			const payload = (await response.json()) as { data?: { games?: LegacyGame[] } };
 			const games = payload?.data?.games ?? [];
 			if (!Array.isArray(games) || games.length === 0) {
-				return { success: false, message: 'Aucun game dans data.games', details: null };
+				progress('Payload sans jeux exploitables (data.games vide ou absent)');
+				return {
+					success: false,
+					message: 'Aucun game dans data.games',
+					details: { milestones }
+				};
 			}
 
-			const details = await upsertLegacyGames(games);
-			const spreadsheetSync = await syncAllDbToSpreadsheet();
+			progress(`${games.length} jeu(x) dans le payload, upsert base de données…`);
+			const details = await upsertLegacyGames(games, { progress });
+			const touch = details.jeuxSheetTouchIds;
+			const skipJeuxWrites = touch.length === 0;
+			if (skipJeuxWrites) {
+				progress(
+					'Upsert DB terminé : aucune ligne Jeux à mettre à jour (purge orphelins + TR si besoin)…'
+				);
+			} else {
+				progress(
+					`Upsert DB terminé : push partiel vers Sheets (${touch.length} traduction(s) touchée(s))…`
+				);
+			}
+			const spreadsheetSync = await syncAllDbToSpreadsheet(progress, {
+				onlyJeuxTranslationIds: skipJeuxWrites ? undefined : new Set(touch),
+				skipJeuxRowWrites: skipJeuxWrites,
+				skipTranslatorTab: details.createdTranslators === 0 && details.createdProofreaders === 0
+			});
+			progress(
+				spreadsheetSync.errors.length === 0
+					? 'Terminé : aucune erreur Sheets signalée'
+					: `Terminé : ${spreadsheetSync.errors.length} erreur(s) Sheets (voir details.spreadsheetSync.errors)`
+			);
+
 			return {
 				success: spreadsheetSync.errors.length === 0,
 				message:
@@ -969,14 +1466,17 @@ export const actions: Actions = {
 						: 'Synchronisation API terminee (avec erreurs Spreadsheet)',
 				details: {
 					legacy: details,
+					milestones,
 					spreadsheetSync
 				}
 			};
 		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : 'Erreur inconnue';
+			progress(`Erreur : ${msg}`);
 			return {
 				success: false,
 				message: 'Erreur pendant la synchronisation API',
-				details: error instanceof Error ? error.message : 'Erreur inconnue'
+				details: { error: msg, milestones }
 			};
 		}
 	},
@@ -993,84 +1493,30 @@ export const actions: Actions = {
 			}>;
 			const beforeCount = before[0]?.count ?? 0;
 
-			const duplicateRows = (await db.execute(sql`
-				with ranked as (
-					select
-						gt.id,
-						lower(trim(g.name)) as nkey,
-						lower(trim(gt.tversion)) as vkey,
-						row_number() over (
-							partition by lower(trim(g.name)), lower(trim(gt.tversion))
-							order by gt.updated_at desc, gt.created_at desc, gt.id desc
-						) as rn
-					from game_translation gt
-					join game g on g.id = gt.game_id
-				)
-				select id
-				from ranked
-				where rn > 1
-			`)) as unknown as Array<{ id: string }>;
-
-			const duplicateIds = duplicateRows.map((r) => r.id);
+			const { removed, duplicateIds } = await dedupeStrictDuplicateTranslations();
 			if (duplicateIds.length === 0) {
 				return {
 					success: true,
-					message: 'Aucun doublon à nettoyer',
+					message: 'Aucun doublon (même jeu + version + lien) à nettoyer',
 					details: { before: beforeCount, after: beforeCount, removed: 0 }
 				};
 			}
 
-			await db.transaction(async (tx) => {
-				await tx.execute(sql`
-					with ranked as (
-						select
-							gt.id,
-							lower(trim(g.name)) as nkey,
-							lower(trim(gt.tversion)) as vkey,
-							row_number() over (
-								partition by lower(trim(g.name)), lower(trim(gt.tversion))
-								order by gt.updated_at desc, gt.created_at desc, gt.id desc
-							) as rn
-						from game_translation gt
-						join game g on g.id = gt.game_id
-					),
-					to_keep as (
-						select nkey, vkey, id as keep_id
-						from ranked
-						where rn = 1
-					),
-					to_drop as (
-						select id as drop_id, nkey, vkey
-						from ranked
-						where rn > 1
-					)
-					update submission s
-					set translation_id = k.keep_id
-					from to_drop d
-					join to_keep k on k.nkey = d.nkey and k.vkey = d.vkey
-					where s.translation_id = d.drop_id
-				`);
+			try {
+				await deleteGameTranslationsFromGoogleSheet(duplicateIds);
+			} catch (err) {
+				console.warn('cleanupDuplicateTranslations: sheet', err);
+			}
 
-				await tx
-					.delete(table.gameTranslation)
-					.where(inArray(table.gameTranslation.id, duplicateIds));
-			});
-			await deleteGameTranslationsFromGoogleSheet(duplicateIds);
-
-			const after = (await db.execute(
-				sql`select count(*)::int as count from game_translation`
-			)) as unknown as Array<{
-				count: number;
-			}>;
-			const afterCount = after[0]?.count ?? beforeCount;
+			const afterCount = beforeCount - removed;
 
 			return {
 				success: true,
-				message: 'Doublons nettoyés',
+				message: 'Doublons stricts nettoyés',
 				details: {
 					before: beforeCount,
 					after: afterCount,
-					removed: beforeCount - afterCount
+					removed
 				}
 			};
 		} catch (error: unknown) {
@@ -1162,17 +1608,7 @@ export const actions: Actions = {
 			};
 		}
 
-		const configResult = await db
-			.select({
-				discordWebhookUpdates: table.config.discordWebhookUpdates,
-				discordWebhookTranslators: table.config.discordWebhookTranslators,
-				discordWebhookProofreaders: table.config.discordWebhookProofreaders
-			})
-			.from(table.config)
-			.where(eq(table.config.id, 'main'))
-			.limit(1);
-
-		const cfg = configResult[0];
+		const cfg = await getEffectiveConfig();
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
 			translators: cfg?.discordWebhookTranslators,

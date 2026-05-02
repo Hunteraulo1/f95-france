@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const translators = await db.select().from(translator);
 		const prefilledTranslator =
 			locals.user?.id != null
-				? translators.find((t) => t.userId != null && t.userId === locals.user?.id) ?? null
+				? (translators.find((t) => t.userId != null && t.userId === locals.user?.id) ?? null)
 				: null;
 		const role = locals.user?.role;
 		const directModeActive = locals.user?.directMode ?? true;

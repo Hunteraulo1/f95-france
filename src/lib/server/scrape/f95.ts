@@ -1,4 +1,4 @@
-import type { FormGameType } from '$lib/types';
+import type { GameEngineType } from '$lib/types';
 import { parseHTML } from 'linkedom';
 
 interface F95CheckerResponse {
@@ -6,15 +6,13 @@ interface F95CheckerResponse {
 	msg: Record<string, string> | string;
 }
 
-type GameTypeEnum = FormGameType['type'];
-
 export interface ScrapedF95Game {
 	name: string | null;
 	version: string | null;
-  description: string | null;
+	description: string | null;
 	status: string | null;
 	tags: string | null;
-	type: GameTypeEnum | null;
+	gameType: GameEngineType | null;
 	image: string | null;
 }
 
@@ -57,9 +55,11 @@ const fetchF95Version = async (threadId: string): Promise<string | null> => {
 	return json.msg[threadId] ?? null;
 };
 
-const scrapeGetTitle = (tokens: string[]): { status: string | null; type: GameTypeEnum | null } => {
+const scrapeGetTitle = (
+	tokens: string[]
+): { status: string | null; gameType: GameEngineType | null } => {
 	let status: string | null = null;
-	let type: GameTypeEnum | null = null;
+	let gameType: GameEngineType | null = null;
 
 	for (const token of tokens) {
 		if (!status || status === 'EN COURS') {
@@ -78,35 +78,35 @@ const scrapeGetTitle = (tokens: string[]): { status: string | null; type: GameTy
 
 		switch (token) {
 			case "Ren'Py":
-				type = 'renpy';
+				gameType = 'renpy';
 				break;
 			case 'RPGM':
-				type = 'rpgm';
+				gameType = 'rpgm';
 				break;
 			case 'Unity':
-				type = 'unity';
+				gameType = 'unity';
 				break;
 			case 'Unreal Engine':
-				type = 'unreal';
+				gameType = 'unreal';
 				break;
 			case 'Flash':
-				type = 'flash';
+				gameType = 'flash';
 				break;
 			case 'HTML':
-				type = 'html';
+				gameType = 'html';
 				break;
 			case 'QSP':
-				type = 'qsp';
+				gameType = 'qsp';
 				break;
 			case 'Others':
-				type = 'other';
+				gameType = 'other';
 				break;
 			default:
 				break;
 		}
 	}
 
-	return { status, type };
+	return { status, gameType };
 };
 
 export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game> => {
@@ -135,9 +135,15 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 
 	const title = document.title ?? '';
 	const titleMatch = title.match(/([\w\\']+)(?=\s-)/gi) ?? undefined;
-	const { status, type } = titleMatch ? scrapeGetTitle(titleMatch) : { status: null, type: null };
-  
-  const description = document.querySelector('.message-body > .bbWrapper > div')?.textContent?.replace('Overview:', '').trim() ?? null;
+	const { status, gameType } = titleMatch
+		? scrapeGetTitle(titleMatch)
+		: { status: null, gameType: null };
+
+	const description =
+		document
+			.querySelector('.message-body > .bbWrapper > div')
+			?.textContent?.replace('Overview:', '')
+			.trim() ?? null;
 
 	const titleNode = document.querySelector('.p-title-value')?.cloneNode(true) as HTMLElement | null;
 
@@ -170,7 +176,7 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 		description,
 		status,
 		tags,
-		type,
+		gameType,
 		image
 	};
 };

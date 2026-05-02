@@ -54,7 +54,7 @@ export const initializeUserFromLocals = (userData: User | null) => {
 	if (userData) {
 		// Supprimer le passwordHash des données côté client
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { passwordHash, ...userWithoutPassword } = userData;
+		const { passwordHash, twoFactorSecret, ...userWithoutPassword } = userData;
 		// console.log('🔍 Store - Mise à jour du store avec:', userWithoutPassword.username);
 		user.set(userWithoutPassword as User);
 	} else {

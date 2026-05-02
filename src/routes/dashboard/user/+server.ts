@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Retourner les données utilisateur (sans le mot de passe)
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { passwordHash, ...userWithoutPassword } = userData;
+		const { passwordHash, twoFactorSecret, ...userWithoutPassword } = userData;
 		return json(userWithoutPassword);
 	} catch (error) {
 		console.error('Erreur lors de la récupération des données utilisateur:', error);

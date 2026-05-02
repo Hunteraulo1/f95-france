@@ -9,6 +9,8 @@ export const user = pgTable('user', {
 	username: varchar('username', { length: 32 }).notNull().unique(),
 	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+	twoFactorSecret: text('two_factor_secret'),
 	role: varchar('role', { length: 255 }).notNull().default('user'),
 	theme: themeEnum('theme').default('system'),
 	directMode: boolean('direct_mode').notNull().default(true),
@@ -27,13 +29,41 @@ export const session = pgTable('session', {
 	expiresAt: timestamp('expires_at').notNull()
 });
 
+export const passkey = pgTable('passkey', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	credentialId: text('credential_id').notNull().unique(),
+	publicKey: text('public_key').notNull(),
+	counter: integer('counter').notNull().default(0),
+	transports: text('transports'),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	lastUsedAt: timestamp('last_used_at')
+});
+
+export const passkeyChallenge = pgTable('passkey_challenge', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'cascade',
+		onUpdate: 'cascade'
+	}),
+	type: varchar('type', { length: 32 }).notNull(), // register | login
+	challenge: text('challenge').notNull(),
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 export const game = pgTable('game', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()
 		.default(sql`gen_random_uuid()`),
 	name: varchar('name', { length: 255 }).notNull(),
 	tags: text('tags').notNull(),
-	type: varchar('type', { length: 32 }).notNull().default('other'),
 	image: varchar('image', { length: 500 }).notNull(),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -62,6 +92,8 @@ export const gameTranslation = pgTable('game_translation', {
 	translatorId: varchar('traductor_id', { length: 255 }),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
 	ttype: varchar('ttype', { length: 32 }).notNull(),
+	/** Moteur / technologie du jeu (RenPy, Unity, HTML, etc.) — par traduction. */
+	gameType: varchar('game_type', { length: 32 }).notNull().default('other'),
 	ac: boolean('ac').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -171,6 +203,8 @@ export const notification = pgTable('notification', {
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
+export type Passkey = typeof passkey.$inferSelect;
+export type PasskeyChallenge = typeof passkeyChallenge.$inferSelect;
 export type Game = typeof game.$inferSelect;
 export type GameTranslation = typeof gameTranslation.$inferSelect;
 export type Update = typeof update.$inferSelect;

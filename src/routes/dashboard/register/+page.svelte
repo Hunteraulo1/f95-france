@@ -28,6 +28,7 @@
 					<input
 						id="username"
 						name="username"
+						autocomplete="username"
 						type="text"
 						required
 						class="input-bordered input w-full"
@@ -47,6 +48,7 @@
 					<input
 						id="email"
 						name="email"
+						autocomplete="email"
 						type="email"
 						required
 						class="input-bordered input w-full"
@@ -66,6 +68,7 @@
 					<input
 						id="password"
 						name="password"
+						autocomplete="new-password"
 						type="password"
 						required
 						class="input-bordered input w-full"
@@ -85,6 +88,7 @@
 					<input
 						id="confirmPassword"
 						name="confirmPassword"
+						autocomplete="new-password"
 						type="password"
 						required
 						class="input-bordered input w-full"

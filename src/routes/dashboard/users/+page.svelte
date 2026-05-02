@@ -70,7 +70,10 @@
 											{/if}
 										</div>
 									</div>
-									<a href={`/dashboard/profile/${user.id}`} class="link font-bold link-hover text-nowrap">
+									<a
+										href={`/dashboard/profile/${user.id}`}
+										class="link font-bold text-nowrap link-hover"
+									>
 										{user.username}
 									</a>
 								</div>

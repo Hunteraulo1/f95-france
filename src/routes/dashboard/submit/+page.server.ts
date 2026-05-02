@@ -1,3 +1,4 @@
+import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -84,7 +85,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						.limit(1);
 
 					if (currentGameResult.length > 0) {
-						currentGame = currentGameResult[0];
+						const row = currentGameResult[0];
+						const repType = await defaultGameTypeForGame(row.id);
+						currentGame = { ...row, type: repType };
 					}
 				}
 
@@ -200,7 +203,7 @@ export const actions: Actions = {
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
 		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
 		if (sub.status !== 'pending') {
-			return fail(400, { message: "Seules les soumissions en attente peuvent être annulées" });
+			return fail(400, { message: 'Seules les soumissions en attente peuvent être annulées' });
 		}
 
 		await db
@@ -255,7 +258,8 @@ export const actions: Actions = {
 
 		// Règle: tant que la soumission n'a pas été "ouverte" (proxy adminNotes non vide) et
 		// qu'elle reste en attente, on autorise la modification.
-		if (sub.status !== 'pending') return fail(403, { message: 'Soumission déjà traitée par admin' });
+		if (sub.status !== 'pending')
+			return fail(403, { message: 'Soumission déjà traitée par admin' });
 		if (sub.adminNotes && sub.adminNotes.trim().length > 0) {
 			return fail(403, { message: 'Soumission déjà ouverte par admin' });
 		}

@@ -24,7 +24,10 @@ async function hasUpdateStatusColumn(): Promise<boolean> {
  * - si une ligne existe déjà pour `gameId`, on met à jour `updatedAt`
  * - sinon on crée la ligne
  */
-export async function createGameUpdateRow(gameId: string, status: 'adding' | 'update'): Promise<void> {
+export async function createGameUpdateRow(
+	gameId: string,
+	status: 'adding' | 'update'
+): Promise<void> {
 	if (await hasUpdateStatusColumn()) {
 		await db.insert(table.update).values({
 			gameId,

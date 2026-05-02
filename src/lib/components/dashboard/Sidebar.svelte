@@ -152,7 +152,7 @@
 <aside class="drawer-side is-drawer-close:overflow-visible">
 	<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 	<div
-		class="flex min-h-full flex-col items-start bg-base-100 is-drawer-close:w-14 is-drawer-open:w-64 max-sm:w-64"
+		class="flex min-h-full flex-col items-start bg-base-100 max-sm:w-64 is-drawer-close:w-14 is-drawer-open:w-64"
 	>
 		<!-- Sidebar content here -->
 		<ul class="menu w-full grow">

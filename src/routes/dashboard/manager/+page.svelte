@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
+
+	type GameSearchHit = Game & { type: string };
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
 
 	let searchQuery = $state('');
-	let searchResults = $state<Game[]>([]);
+	let searchResults = $state<GameSearchHit[]>([]);
 	let isLoading = $state(false);
 	let showResults = $state(false);
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;

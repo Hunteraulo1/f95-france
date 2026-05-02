@@ -18,16 +18,18 @@ export const OPTIONS: RequestHandler = async () =>
 export const GET: RequestHandler = async () => {
 	try {
 		// Projection explicite: ne jamais exposer de liaison interne userId.
-		const translators = await db.select({
-			id: translator.id,
-			name: translator.name,
-			discordId: translator.discordId,
-			pages: translator.pages,
-			tradCount: translator.tradCount,
-			readCount: translator.readCount,
-			createdAt: translator.createdAt,
-			updatedAt: translator.updatedAt
-		}).from(translator);
+		const translators = await db
+			.select({
+				id: translator.id,
+				name: translator.name,
+				discordId: translator.discordId,
+				pages: translator.pages,
+				tradCount: translator.tradCount,
+				readCount: translator.readCount,
+				createdAt: translator.createdAt,
+				updatedAt: translator.updatedAt
+			})
+			.from(translator);
 		return json(translators, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translators:', error);

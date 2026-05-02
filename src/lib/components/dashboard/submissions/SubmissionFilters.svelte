@@ -15,8 +15,14 @@
 		onFilterChange: (status: string) => void;
 	}
 
-	let { currentFilter, pendingCount, openedCount, acceptedCount, rejectedCount, onFilterChange }: Props =
-		$props();
+	let {
+		currentFilter,
+		pendingCount,
+		openedCount,
+		acceptedCount,
+		rejectedCount,
+		onFilterChange
+	}: Props = $props();
 
 	const filters = $derived<FilterConfig[]>([
 		{
@@ -52,7 +58,7 @@
 	]);
 </script>
 
-<div class="flex gap-2 flex-wrap">
+<div class="flex flex-wrap gap-2">
 	{#each filters as filter (filter.value)}
 		<button
 			class="btn btn-sm"

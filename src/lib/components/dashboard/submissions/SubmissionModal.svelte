@@ -3,6 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { Game, GameTranslation } from '$lib/server/db/schema';
+
+	/** Jeu tel qu’il apparaît dans le JSON des soumissions (champ moteur `type`). */
+	type GameSubmissionJson = Game & { type?: string };
 	import { user } from '$lib/stores';
 	import {
 		getStatusBadge,
@@ -11,7 +14,9 @@
 		validateStatusChange
 	} from '$lib/utils/submissions';
 
-	interface FieldConfig<T extends GameTranslation | Game = GameTranslation | Game> {
+	interface FieldConfig<
+		T extends GameTranslation | GameSubmissionJson = GameTranslation | GameSubmissionJson
+	> {
 		key: keyof T;
 		label: string;
 		options?: {
@@ -28,10 +33,10 @@
 		translationId?: string | null;
 		adminNotes?: string | null;
 		parsedData?: {
-			game?: Game;
+			game?: GameSubmissionJson;
 			translation?: GameTranslation;
 		} | null;
-		currentGame?: Game | null;
+		currentGame?: GameSubmissionJson | null;
 		currentTranslation?: GameTranslation | null;
 	}
 
@@ -72,6 +77,7 @@
 	let editTranslationTversion = $state<string>('');
 	let editTranslationStatus = $state<string>('in_progress');
 	let editTranslationTtype = $state<string>('manual');
+	let editTranslationGameType = $state<string>('other');
 	let editTranslationTlink = $state<string>('');
 	let editTranslationAc = $state<boolean>(false);
 	let editTranslationTranslatorId = $state<string>('');
@@ -85,7 +91,7 @@
 			submissionEditError = null;
 
 			// Pré-remplir les champs éditables depuis parsedData (soumissions "pending").
-			const game = submission.parsedData?.game as Game | undefined;
+			const game = submission.parsedData?.game;
 			const tr = submission.parsedData?.translation as GameTranslation | undefined;
 
 			editGameName = game?.name ?? '';
@@ -105,6 +111,7 @@
 			editTranslationTversion = (tr?.tversion ?? '') as string;
 			editTranslationStatus = (tr?.status ?? 'in_progress') as string;
 			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
+			editTranslationGameType = (tr?.gameType ?? 'other') as string;
 			editTranslationTlink = (tr?.tlink ?? '') as string;
 			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
 			editTranslationTranslatorId = resolveTranslatorSelectValue(tr?.translatorId);
@@ -123,6 +130,7 @@
 					tversion: editTranslationTversion,
 					status: editTranslationStatus,
 					ttype: editTranslationTtype,
+					gameType: editTranslationGameType,
 					tlink: editTranslationTlink.trim() || null,
 					tname: editTranslationTname,
 					translatorId: editTranslationTranslatorId || null,
@@ -156,6 +164,7 @@
 				tversion: editTranslationTversion,
 				status: editTranslationStatus,
 				ttype: editTranslationTtype,
+				gameType: editTranslationGameType,
 				tlink: editTranslationTlink.trim() || null,
 				tname: editTranslationTname,
 				translatorId: editTranslationTranslatorId || null,
@@ -173,15 +182,15 @@
 	const canEditSubmissionDataAllowed = $derived(
 		Boolean(
 			!canEditStatus &&
-				submission?.status === 'pending' &&
-				(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+			submission?.status === 'pending' &&
+			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
 		)
 	);
 
-	const gameFields: FieldConfig<Game>[] = [
+	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
 		{ key: 'description', label: 'Description', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'type', label: 'Type' },
+		{ key: 'type', label: 'Moteur (toutes les lignes si renseigné)' },
 		{ key: 'website', label: 'Site web' },
 		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
@@ -196,6 +205,7 @@
 		{ key: 'tversion', label: 'Version traduction' },
 		{ key: 'version', label: 'Version de référence', options: { showIfEmpty: true } },
 		{ key: 'status', label: 'Statut' },
+		{ key: 'gameType', label: 'Moteur (ligne)' },
 		{ key: 'ttype', label: 'Type de traduction' },
 		{ key: 'tlink', label: 'Lien', options: { isUrl: true } },
 		{ key: 'ac', label: 'Auto-Check' },
@@ -269,6 +279,20 @@
 			return translatorName || String(value);
 		}
 
+		if (key === 'gameType' && typeof value === 'string') {
+			const labels: Record<string, string> = {
+				renpy: "Ren'Py",
+				rpgm: 'RPGM',
+				unity: 'Unity',
+				unreal: 'Unreal',
+				flash: 'Flash',
+				html: 'HTML',
+				qsp: 'QSP',
+				other: 'Autre'
+			};
+			return labels[value] ?? value;
+		}
+
 		if (typeof value === 'boolean') {
 			return value ? 'Oui' : 'Non';
 		}
@@ -296,7 +320,7 @@
 							Détails du nouveau jeu
 						{/if}
 					</h3>
-					<div class="mt-2 flex items-center gap-2 flex-wrap">
+					<div class="mt-2 flex flex-wrap items-center gap-2">
 						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
 							{getTypeLabel(submission.type)}
 						</div>
@@ -309,7 +333,9 @@
 							</div>
 						{/if}
 						{#if $user?.role === 'superadmin'}
-							<div class="badge badge-outline badge-sm text-nowrap max-w-52 overflow-hidden sm:max-w-none">
+							<div
+								class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap sm:max-w-none"
+							>
 								ID: {submission.id}
 							</div>
 						{/if}
@@ -628,7 +654,7 @@
 					<form
 						method="POST"
 						action="?/updateSubmissionData"
-						use:enhance={(e) => {
+						use:enhance={() => {
 							submissionEditError = null;
 							return async function ({ result, update }) {
 								if (result.type === 'success') {
@@ -661,25 +687,27 @@
 										<input
 											id="editGameName"
 											name="editGameName"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											bind:value={editGameName}
 											required
 										/>
 									</div>
 
-									<div class="form-control">
+									<div class="form-control md:col-span-2">
 										<label class="label" for="editGameType">
-											<span class="label-text">Type</span>
+											<span class="label-text"
+												>Moteur — appliqué à toutes les lignes (fiche jeu)</span
+											>
 										</label>
 										<select
 											id="editGameType"
 											name="editGameType"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editGameType}
 											required
 										>
-											<option value="renpy">RenPy</option>
+											<option value="renpy">Ren'Py</option>
 											<option value="rpgm">RPGM</option>
 											<option value="unity">Unity</option>
 											<option value="unreal">Unreal</option>
@@ -697,7 +725,7 @@
 										<select
 											id="editGameWebsite"
 											name="editGameWebsite"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editGameWebsite}
 											required
 										>
@@ -714,7 +742,7 @@
 										<input
 											id="editGameThreadId"
 											name="editGameThreadId"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											placeholder="(vide)"
 											bind:value={editGameThreadId}
@@ -728,7 +756,7 @@
 										<input
 											id="editGameGameVersion"
 											name="editGameGameVersion"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											bind:value={editGameGameVersion}
 										/>
@@ -741,7 +769,7 @@
 										<input
 											id="editGameLink"
 											name="editGameLink"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="url"
 											placeholder="https://..."
 											bind:value={editGameLink}
@@ -755,7 +783,7 @@
 										<input
 											id="editGameImage"
 											name="editGameImage"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="url"
 											placeholder="https://..."
 											bind:value={editGameImage}
@@ -770,7 +798,7 @@
 										<textarea
 											id="editGameTags"
 											name="editGameTags"
-											class="textarea textarea-bordered w-full"
+											class="textarea-bordered textarea w-full"
 											rows="3"
 											bind:value={editGameTags}
 										></textarea>
@@ -783,7 +811,7 @@
 										<textarea
 											id="editGameDescription"
 											name="editGameDescription"
-											class="textarea textarea-bordered w-full"
+											class="textarea-bordered textarea w-full"
 											rows="3"
 											bind:value={editGameDescription}
 										></textarea>
@@ -804,7 +832,7 @@
 										<input
 											id="editTranslationTranslationName"
 											name="editTranslationTranslationName"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											placeholder="(vide)"
 											bind:value={editTranslationTranslationName}
@@ -818,7 +846,7 @@
 										<input
 											id="editTranslationVersion"
 											name="editTranslationVersion"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											bind:value={editTranslationVersion}
 										/>
@@ -831,7 +859,7 @@
 										<input
 											id="editTranslationTversion"
 											name="editTranslationTversion"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="text"
 											bind:value={editTranslationTversion}
 											required
@@ -845,7 +873,7 @@
 										<select
 											id="editTranslationTname"
 											name="editTranslationTname"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editTranslationTname}
 											required
 										>
@@ -863,7 +891,7 @@
 										<select
 											id="editTranslationStatus"
 											name="editTranslationStatus"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editTranslationStatus}
 											required
 										>
@@ -874,13 +902,35 @@
 									</div>
 
 									<div class="form-control">
+										<label class="label" for="editTranslationGameType">
+											<span class="label-text">Moteur (cette ligne)</span>
+										</label>
+										<select
+											id="editTranslationGameType"
+											name="editTranslationGameType"
+											class="select-bordered select w-full"
+											bind:value={editTranslationGameType}
+											required
+										>
+											<option value="renpy">Ren'Py</option>
+											<option value="rpgm">RPGM</option>
+											<option value="unity">Unity</option>
+											<option value="unreal">Unreal</option>
+											<option value="flash">Flash</option>
+											<option value="html">HTML</option>
+											<option value="qsp">QSP</option>
+											<option value="other">Autre</option>
+										</select>
+									</div>
+
+									<div class="form-control">
 										<label class="label" for="editTranslationTtype">
 											<span class="label-text">Type de traduction</span>
 										</label>
 										<select
 											id="editTranslationTtype"
 											name="editTranslationTtype"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editTranslationTtype}
 											required
 										>
@@ -900,7 +950,7 @@
 										<input
 											id="editTranslationTlink"
 											name="editTranslationTlink"
-											class="input input-bordered w-full"
+											class="input-bordered input w-full"
 											type="url"
 											placeholder="(vide)"
 											bind:value={editTranslationTlink}
@@ -925,7 +975,7 @@
 										<select
 											id="editTranslationTranslatorId"
 											name="editTranslationTranslatorId"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editTranslationTranslatorId}
 										>
 											<option value="">(vide)</option>
@@ -942,7 +992,7 @@
 										<select
 											id="editTranslationProofreaderId"
 											name="editTranslationProofreaderId"
-											class="select select-bordered w-full"
+											class="select-bordered select w-full"
 											bind:value={editTranslationProofreaderId}
 										>
 											<option value="">(vide)</option>
@@ -986,7 +1036,7 @@
 					>
 						<input type="hidden" name="submissionId" value={submission.id} />
 						<div class="modal-action mt-0">
-							<button type="submit" class="btn btn-error btn-outline">Annuler la soumission</button>
+							<button type="submit" class="btn btn-outline btn-error">Annuler la soumission</button>
 						</div>
 					</form>
 				</div>

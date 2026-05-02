@@ -1,40 +1,26 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1763267198480,
-      "tag": "0000_careless_giant_man",
+      "version": "7",
+      "when": 1777628968330,
+      "tag": "0000_simple_mach_iv",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1763373901200,
-      "tag": "0001_dizzy_liz_osborn",
+      "version": "7",
+      "when": 1777629900423,
+      "tag": "0001_rainy_microbe",
       "breakpoints": true
     },
     {
       "idx": 2,
-      "version": "5",
-      "when": 1763387616337,
-      "tag": "0002_careless_shooting_star",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1763466884701,
-      "tag": "0003_mean_pete_wisdom",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1763471169988,
-      "tag": "0004_open_black_panther",
+      "version": "7",
+      "when": 1777722746836,
+      "tag": "0002_sad_mikhail_rasputin",
       "breakpoints": true
     }
   ]

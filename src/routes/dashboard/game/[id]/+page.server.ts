@@ -27,7 +27,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				threadId: table.game.threadId,
 				link: table.game.link,
 				tags: table.game.tags,
-				type: table.game.type,
 				image: table.game.image,
 				gameAutoCheck: table.game.gameAutoCheck,
 				gameVersion: table.game.gameVersion,
@@ -55,12 +54,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				proofreaderId: table.gameTranslation.proofreaderId,
 				ttype: table.gameTranslation.ttype,
 				tname: table.gameTranslation.tname,
+				gameType: table.gameTranslation.gameType,
 				ac: table.gameTranslation.ac,
 				createdAt: table.gameTranslation.createdAt,
 				updatedAt: table.gameTranslation.updatedAt
 			})
 			.from(table.gameTranslation)
-			.where(eq(table.gameTranslation.gameId, gameId));
+			.where(eq(table.gameTranslation.gameId, gameId))
+			.orderBy(asc(table.gameTranslation.createdAt));
 
 		const translators = await db
 			.select({

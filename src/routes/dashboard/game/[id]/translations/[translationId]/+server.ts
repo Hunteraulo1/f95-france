@@ -10,6 +10,7 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -43,6 +44,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			ttype,
 			tlink,
 			tname: tnameBody,
+			gameType: gameTypeBody,
 			directMode,
 			silentMode,
 			ac,
@@ -124,6 +126,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				ttype,
 				tlink: tlinkStored,
 				tname: effectiveTname,
+				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
+					? { gameType: gameTypeBody.trim() }
+					: {}),
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
@@ -145,21 +150,38 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Mode direct pour les admins ou superadmins en mode direct
 		// Mettre à jour la traduction
+		const directSet: {
+			translationName: string | null;
+			version: string | null;
+			tversion: string;
+			status: string;
+			ttype: string;
+			tlink: string;
+			tname: (typeof before)['tname'];
+			translatorId: string | null;
+			proofreaderId: string | null;
+			ac: boolean;
+			updatedAt: Date;
+			gameType?: (typeof before)['gameType'];
+		} = {
+			translationName: translationName || null,
+			version: normalizedVersion,
+			tversion,
+			status,
+			ttype,
+			tlink: tlinkStored,
+			tname: effectiveTname,
+			translatorId: translatorId || null,
+			proofreaderId: proofreaderId || null,
+			ac: acValue,
+			updatedAt: new Date()
+		};
+		if (typeof gameTypeBody === 'string' && gameTypeBody.trim()) {
+			directSet.gameType = coerceGameEngineType(gameTypeBody);
+		}
 		await db
 			.update(table.gameTranslation)
-			.set({
-				translationName: translationName || null,
-				version: normalizedVersion,
-				tversion,
-				status,
-				ttype,
-				tlink: tlinkStored,
-				tname: effectiveTname,
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
-				ac: acValue,
-				updatedAt: new Date()
-			})
+			.set(directSet)
 			.where(eq(table.gameTranslation.id, translationId));
 
 		const dataJson = JSON.stringify({
@@ -171,6 +193,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				status,
 				ttype,
 				tlink: tlinkStored,
+				tname: effectiveTname,
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
@@ -182,6 +205,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				status: before.status,
 				ttype: before.ttype,
 				tlink: before.tlink,
+				tname: before.tname,
+				gameType: before.gameType,
 				translatorId: before.translatorId,
 				proofreaderId: before.proofreaderId,
 				ac: before.ac

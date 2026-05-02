@@ -13,10 +13,8 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import {
-	createGameUpdateRow,
-	touchGameUpdatedToday
-} from '$lib/server/game-updates';
+import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
+import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
@@ -72,7 +70,8 @@ export async function createGameUpdateSubmission(
 	gameData: {
 		name: string;
 		description: string | null;
-		type: string;
+		/** Si présent, appliqué à toutes les traductions à l’acceptation de la soumission. */
+		type?: string;
 		website: string;
 		threadId: number | null;
 		tags: string | null;
@@ -111,6 +110,7 @@ export async function createTranslationSubmission(
 		status: string;
 		ttype: string;
 		tlink: string;
+		gameType?: string;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
 		ac?: boolean | null;
@@ -147,6 +147,7 @@ export async function createTranslationUpdateSubmission(
 		ttype: string;
 		tlink: string;
 		tname?: string | null;
+		gameType?: string;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
 		ac?: boolean | null;
@@ -265,12 +266,15 @@ export async function applySubmission(submissionId: string) {
 			ttype: string;
 			tlink: string | null;
 			tname?: string | null;
+			gameType?: string;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
 		};
 		gameId?: string;
 		translationId?: string;
+		/** Snapshot pour annuler une mise à jour jeu (type moteur par traduction). */
+		originalTranslationGameTypes?: Array<{ id: string; gameType: string }>;
 	};
 	try {
 		parsedData = JSON.parse(sub.data);
@@ -297,19 +301,12 @@ export async function applySubmission(submissionId: string) {
 			throw new Error('Un jeu avec ce nom existe déjà');
 		}
 
+		const engineFromGamePayload = coerceGameEngineType(gameData.type);
+
 		// Créer le jeu
 		await db.insert(table.game).values({
 			name: gameData.name,
 			description: gameData.description || null,
-			type: gameData.type as
-				| 'renpy'
-				| 'rpgm'
-				| 'unity'
-				| 'unreal'
-				| 'flash'
-				| 'html'
-				| 'qsp'
-				| 'other',
 			website: gameData.website as 'f95z' | 'lc' | 'other',
 			threadId: gameData.threadId
 				? typeof gameData.threadId === 'string'
@@ -346,6 +343,12 @@ export async function applySubmission(submissionId: string) {
 		// Créer la traduction si elle est fournie
 		if (parsedData.translation && parsedData.translation.translationName) {
 			const translationData = parsedData.translation;
+			const engineNewTr =
+				translationData.gameType !== undefined &&
+				translationData.gameType !== null &&
+				String(translationData.gameType).trim() !== ''
+					? coerceGameEngineType(translationData.gameType)
+					: engineFromGamePayload;
 			const allowsNewGameAc = await getGameAllowsTranslationAutoCheck(gameId!);
 			const [createdTranslation] = await db
 				.insert(table.gameTranslation)
@@ -365,6 +368,7 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
+					gameType: engineNewTr,
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
 					proofreaderId: translationData.proofreaderId ?? null,
@@ -429,13 +433,20 @@ export async function applySubmission(submissionId: string) {
 			originalGame.gameAutoCheck ?? true
 		);
 
+		const prevTranslationTypes = await db
+			.select({
+				id: table.gameTranslation.id,
+				gameType: table.gameTranslation.gameType
+			})
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, sub.gameId));
+
 		// Sauvegarder les anciennes valeurs dans les données de la soumission
 		const updatedData = {
 			...parsedData,
 			originalGame: {
 				name: originalGame.name,
 				description: originalGame.description,
-				type: originalGame.type,
 				website: originalGame.website,
 				threadId: originalGame.threadId,
 				tags: originalGame.tags,
@@ -443,7 +454,8 @@ export async function applySubmission(submissionId: string) {
 				image: originalGame.image,
 				gameAutoCheck: originalGame.gameAutoCheck ?? true,
 				gameVersion: originalGame.gameVersion ?? null
-			}
+			},
+			originalTranslationGameTypes: prevTranslationTypes
 		};
 
 		// Mettre à jour les données de la soumission avec les anciennes valeurs
@@ -467,15 +479,6 @@ export async function applySubmission(submissionId: string) {
 			.set({
 				name: gameData.name,
 				description: gameData.description || null,
-				type: gameData.type as
-					| 'renpy'
-					| 'rpgm'
-					| 'unity'
-					| 'unreal'
-					| 'flash'
-					| 'html'
-					| 'qsp'
-					| 'other',
 				website: gameData.website as 'f95z' | 'lc' | 'other',
 				threadId: gameData.threadId
 					? typeof gameData.threadId === 'string'
@@ -490,6 +493,18 @@ export async function applySubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+
+		if (
+			gameData.type !== undefined &&
+			gameData.type !== null &&
+			String(gameData.type).trim() !== ''
+		) {
+			const nextEngine = coerceGameEngineType(gameData.type);
+			await db
+				.update(table.gameTranslation)
+				.set({ gameType: nextEngine, updatedAt: new Date() })
+				.where(eq(table.gameTranslation.gameId, sub.gameId));
+		}
 
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(sub.gameId);
@@ -537,7 +552,8 @@ export async function applySubmission(submissionId: string) {
 						tname: originalTranslation.tname,
 						translatorId: originalTranslation.translatorId,
 						proofreaderId: originalTranslation.proofreaderId,
-						ac: originalTranslation.ac
+						ac: originalTranslation.ac,
+						gameType: originalTranslation.gameType
 					}
 				};
 
@@ -555,31 +571,51 @@ export async function applySubmission(submissionId: string) {
 						? (translationData.tname as (typeof originalTranslation)['tname'])
 						: originalTranslation.tname;
 
+				const trSet: {
+					translationName: string | null;
+					version: string | null;
+					tversion: string;
+					status: 'in_progress' | 'completed' | 'abandoned';
+					ttype: 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs';
+					tlink: string;
+					tname: (typeof originalTranslation)['tname'];
+					translatorId: string | null;
+					proofreaderId: string | null;
+					ac: boolean;
+					updatedAt: Date;
+					gameType?: (typeof table.gameTranslation.$inferSelect)['gameType'];
+				} = {
+					translationName: translationData.translationName || null,
+					version:
+						typeof translationData.version === 'string'
+							? translationData.version.trim() || null
+							: null,
+					tversion: translationData.tversion,
+					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
+					ttype: translationData.ttype as
+						| 'auto'
+						| 'vf'
+						| 'manual'
+						| 'semi-auto'
+						| 'to_tested'
+						| 'hs',
+					tlink: translationData.tlink || '',
+					tname: nextTname,
+					translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
+					proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),
+					updatedAt: new Date()
+				};
+				if (
+					translationData.gameType !== undefined &&
+					translationData.gameType !== null &&
+					String(translationData.gameType).trim() !== ''
+				) {
+					trSet.gameType = coerceGameEngineType(translationData.gameType);
+				}
 				await db
 					.update(table.gameTranslation)
-					.set({
-						translationName: translationData.translationName || null,
-						version:
-							typeof translationData.version === 'string'
-								? translationData.version.trim() || null
-								: null,
-						tversion: translationData.tversion,
-						status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
-						ttype: translationData.ttype as
-							| 'auto'
-							| 'vf'
-							| 'manual'
-							| 'semi-auto'
-							| 'to_tested'
-							| 'hs',
-						tlink: translationData.tlink || '',
-						tname: nextTname,
-						translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
-						proofreaderId:
-							translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
-						ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),
-						updatedAt: new Date()
-					})
+					.set(trSet)
 					.where(eq(table.gameTranslation.id, sub.translationId));
 				syncedTranslationId = sub.translationId;
 			} else {
@@ -588,6 +624,13 @@ export async function applySubmission(submissionId: string) {
 					translationData.tname != null && String(translationData.tname).length > 0
 						? translationData.tname
 						: 'translation';
+				const fallbackEngine = await defaultGameTypeForGame(sub.gameId);
+				const engineRecreated =
+					translationData.gameType !== undefined &&
+					translationData.gameType !== null &&
+					String(translationData.gameType).trim() !== ''
+						? coerceGameEngineType(translationData.gameType)
+						: fallbackEngine;
 				const [recreated] = await db
 					.insert(table.gameTranslation)
 					.values({
@@ -606,6 +649,7 @@ export async function applySubmission(submissionId: string) {
 							| 'semi-auto'
 							| 'to_tested'
 							| 'hs',
+						gameType: engineRecreated,
 						tlink: translationData.tlink || '',
 						tname: insertTname as typeof table.gameTranslation.$inferInsert.tname,
 						translatorId: translationData.translatorId ?? null,
@@ -633,6 +677,13 @@ export async function applySubmission(submissionId: string) {
 				translationData.tname != null && String(translationData.tname).length > 0
 					? translationData.tname
 					: 'translation';
+			const engineNewTr = await defaultGameTypeForGame(sub.gameId);
+			const engineCreated =
+				translationData.gameType !== undefined &&
+				translationData.gameType !== null &&
+				String(translationData.gameType).trim() !== ''
+					? coerceGameEngineType(translationData.gameType)
+					: engineNewTr;
 			const [createdRow] = await db
 				.insert(table.gameTranslation)
 				.values({
@@ -651,6 +702,7 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
+					gameType: engineCreated,
 					tlink: translationData.tlink || '',
 					tname: insertTnameNew as typeof table.gameTranslation.$inferInsert.tname,
 					translatorId: translationData.translatorId ?? null,
@@ -744,9 +796,11 @@ export async function applySubmission(submissionId: string) {
 					status: originalTranslation.status,
 					ttype: originalTranslation.ttype,
 					tlink: originalTranslation.tlink,
+					tname: originalTranslation.tname,
 					translatorId: originalTranslation.translatorId,
 					proofreaderId: originalTranslation.proofreaderId,
-					ac: originalTranslation.ac
+					ac: originalTranslation.ac,
+					gameType: originalTranslation.gameType
 				}
 			};
 
@@ -790,12 +844,13 @@ export async function applySubmission(submissionId: string) {
 				originalGame: {
 					name: originalGame.name,
 					description: originalGame.description,
-					type: originalGame.type,
 					website: originalGame.website,
 					threadId: originalGame.threadId,
 					tags: originalGame.tags,
 					link: originalGame.link,
-					image: originalGame.image
+					image: originalGame.image,
+					gameAutoCheck: originalGame.gameAutoCheck ?? true,
+					gameVersion: originalGame.gameVersion ?? null
 				},
 				originalTranslations: existingTranslations.map((t) => ({
 					translationName: t.translationName,
@@ -804,9 +859,11 @@ export async function applySubmission(submissionId: string) {
 					status: t.status,
 					ttype: t.ttype,
 					tlink: t.tlink,
+					tname: t.tname,
 					translatorId: t.translatorId,
 					proofreaderId: t.proofreaderId,
-					ac: t.ac
+					ac: t.ac,
+					gameType: t.gameType
 				}))
 			};
 
@@ -853,7 +910,9 @@ export async function applySubmission(submissionId: string) {
 						adminNotes: rejectionNote,
 						updatedAt: new Date()
 					})
-					.where(and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId)));
+					.where(
+						and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId))
+					);
 			}
 
 			await db
@@ -918,6 +977,7 @@ export async function revertSubmission(submissionId: string) {
 			ttype: string;
 			tlink: string | null;
 			tname?: string | null;
+			gameType?: string;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
@@ -925,12 +985,15 @@ export async function revertSubmission(submissionId: string) {
 		originalGame?: {
 			name: string;
 			description?: string | null;
-			type: string;
+			/** Anciennes soumissions (type sur le jeu) */
+			type?: string;
 			website: string;
 			threadId?: number | null;
 			tags?: string | null;
 			link?: string | null;
 			image: string;
+			gameAutoCheck?: boolean;
+			gameVersion?: string | null;
 		};
 		originalTranslation?: {
 			translationName?: string | null;
@@ -939,9 +1002,11 @@ export async function revertSubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string;
+			tname?: string | null;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
+			gameType?: string;
 		};
 		originalTranslations?: Array<{
 			translationName?: string | null;
@@ -950,10 +1015,13 @@ export async function revertSubmission(submissionId: string) {
 			status: string;
 			ttype: string;
 			tlink: string;
+			tname?: string | null;
 			translatorId?: string | null;
 			proofreaderId?: string | null;
 			ac?: boolean | null;
+			gameType?: string;
 		}>;
+		originalTranslationGameTypes?: Array<{ id: string; gameType: string }>;
 		gameId?: string;
 		translationId?: string;
 	};
@@ -998,15 +1066,6 @@ export async function revertSubmission(submissionId: string) {
 			.set({
 				name: originalGame.name,
 				description: originalGame.description || null,
-				type: originalGame.type as
-					| 'renpy'
-					| 'rpgm'
-					| 'unity'
-					| 'unreal'
-					| 'flash'
-					| 'html'
-					| 'qsp'
-					| 'other',
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'
@@ -1025,35 +1084,74 @@ export async function revertSubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+
+		const snap = parsedData.originalTranslationGameTypes;
+		if (snap && snap.length > 0) {
+			for (const row of snap) {
+				await db
+					.update(table.gameTranslation)
+					.set({
+						gameType: coerceGameEngineType(row.gameType),
+						updatedAt: new Date()
+					})
+					.where(eq(table.gameTranslation.id, row.id));
+			}
+		} else if (originalGame.type) {
+			const legacy = coerceGameEngineType(originalGame.type);
+			await db
+				.update(table.gameTranslation)
+				.set({ gameType: legacy, updatedAt: new Date() })
+				.where(eq(table.gameTranslation.gameId, sub.gameId));
+		}
 	} else if (sub.type === 'translation') {
 		if (sub.translationId && parsedData.originalTranslation) {
 			// Restaurer les anciennes valeurs de la traduction (mise à jour)
 			const originalTranslation = parsedData.originalTranslation;
 
 			// Restaurer la traduction avec les anciennes valeurs
+			const revertTrPatch: {
+				translationName: string | null;
+				version: string | null;
+				tversion: string;
+				status: 'in_progress' | 'completed' | 'abandoned';
+				ttype: 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs';
+				tlink: string;
+				translatorId: string | null;
+				proofreaderId: string | null;
+				ac: boolean;
+				updatedAt: Date;
+				gameType?: (typeof table.gameTranslation.$inferSelect)['gameType'];
+			} = {
+				translationName: originalTranslation.translationName || null,
+				version:
+					typeof originalTranslation.version === 'string'
+						? originalTranslation.version.trim() || null
+						: null,
+				tversion: originalTranslation.tversion,
+				status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
+				ttype: originalTranslation.ttype as
+					| 'auto'
+					| 'vf'
+					| 'manual'
+					| 'semi-auto'
+					| 'to_tested'
+					| 'hs',
+				tlink: originalTranslation.tlink || '',
+				translatorId: originalTranslation.translatorId || null,
+				proofreaderId: originalTranslation.proofreaderId || null,
+				ac: originalTranslation.ac ?? false,
+				updatedAt: new Date()
+			};
+			if (
+				originalTranslation.gameType !== undefined &&
+				originalTranslation.gameType !== null &&
+				String(originalTranslation.gameType).length > 0
+			) {
+				revertTrPatch.gameType = coerceGameEngineType(originalTranslation.gameType);
+			}
 			await db
 				.update(table.gameTranslation)
-				.set({
-					translationName: originalTranslation.translationName || null,
-					version:
-						typeof originalTranslation.version === 'string'
-							? originalTranslation.version.trim() || null
-							: null,
-					tversion: originalTranslation.tversion,
-					status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
-					ttype: originalTranslation.ttype as
-						| 'auto'
-						| 'vf'
-						| 'manual'
-						| 'semi-auto'
-						| 'to_tested'
-						| 'hs',
-					tlink: originalTranslation.tlink || '',
-					translatorId: originalTranslation.translatorId || null,
-					proofreaderId: originalTranslation.proofreaderId || null,
-					ac: originalTranslation.ac ?? false,
-					updatedAt: new Date()
-				})
+				.set(revertTrPatch)
 				.where(eq(table.gameTranslation.id, sub.translationId));
 		} else {
 			// Supprimer la traduction créée (nouvelle traduction ou traduction sans données originales)
@@ -1128,9 +1226,18 @@ export async function revertSubmission(submissionId: string) {
 					| 'to_tested'
 					| 'hs',
 				tlink: originalTranslation.tlink || '',
+				tname:
+					(originalTranslation.tname as typeof table.gameTranslation.$inferInsert.tname) ??
+					'translation',
 				translatorId: originalTranslation.translatorId || null,
 				proofreaderId: originalTranslation.proofreaderId || null,
 				ac: originalTranslation.ac ?? false,
+				gameType:
+					originalTranslation.gameType !== undefined &&
+					originalTranslation.gameType !== null &&
+					String(originalTranslation.gameType).length > 0
+						? coerceGameEngineType(originalTranslation.gameType)
+						: 'other',
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -1149,15 +1256,6 @@ export async function revertSubmission(submissionId: string) {
 				id: sub.gameId,
 				name: originalGame.name,
 				description: originalGame.description || null,
-				type: originalGame.type as
-					| 'renpy'
-					| 'rpgm'
-					| 'unity'
-					| 'unreal'
-					| 'flash'
-					| 'html'
-					| 'qsp'
-					| 'other',
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'
@@ -1174,6 +1272,8 @@ export async function revertSubmission(submissionId: string) {
 						: undefined,
 					true
 				),
+				gameVersion:
+					'gameVersion' in originalGame ? (originalGame.gameVersion as string | null) : null,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
@@ -1198,9 +1298,18 @@ export async function revertSubmission(submissionId: string) {
 							| 'to_tested'
 							| 'hs',
 						tlink: originalTranslation.tlink || '',
+						tname:
+							(originalTranslation.tname as typeof table.gameTranslation.$inferInsert.tname) ??
+							'translation',
 						translatorId: originalTranslation.translatorId || null,
 						proofreaderId: originalTranslation.proofreaderId || null,
 						ac: originalTranslation.ac ?? false,
+						gameType:
+							originalTranslation.gameType !== undefined &&
+							originalTranslation.gameType !== null &&
+							String(originalTranslation.gameType).length > 0
+								? coerceGameEngineType(originalTranslation.gameType)
+								: 'other',
 						createdAt: new Date(),
 						updatedAt: new Date()
 					});
