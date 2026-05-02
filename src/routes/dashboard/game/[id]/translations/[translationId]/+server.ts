@@ -193,6 +193,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				status,
 				ttype,
 				tlink: tlinkStored,
+				tname: effectiveTname,
 				translatorId: translatorId || null,
 				proofreaderId: proofreaderId || null,
 				ac: acValue
@@ -204,6 +205,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				status: before.status,
 				ttype: before.ttype,
 				tlink: before.tlink,
+				tname: before.tname,
 				gameType: before.gameType,
 				translatorId: before.translatorId,
 				proofreaderId: before.proofreaderId,

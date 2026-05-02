@@ -1,13 +1,16 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
+	sendDiscordWebhookProofreadersVersionBumps,
 	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump
+	sendDiscordWebhookUpdatesAutoCheckVersionBump,
+	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 type CheckerResponse = {
@@ -72,9 +75,12 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			threadId: table.game.threadId,
 			translationId: table.gameTranslation.id,
 			translationName: table.gameTranslation.translationName,
+			version: table.gameTranslation.version,
+			tversion: table.gameTranslation.tversion,
 			tname: table.gameTranslation.tname,
 			ac: table.gameTranslation.ac,
-			translatorId: table.gameTranslation.translatorId
+			translatorId: table.gameTranslation.translatorId,
+			proofreaderId: table.gameTranslation.proofreaderId
 		})
 		.from(table.gameTranslation)
 		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId))
@@ -103,11 +109,29 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	}
 
 	const versions = await fetchF95Versions(Array.from(uniqueByGame.values()).map((g) => g.threadId));
-	const changedGames = Array.from(uniqueByGame.values()).filter((g) => {
-		const next = versions.get(g.threadId);
-		if (!next || next === 'Unknown') return false;
-		return (g.gameVersion ?? '') !== next;
-	});
+
+	type UniqueGameRow = {
+		gameId: string;
+		gameName: string;
+		gameVersion: string | null;
+		threadId: number;
+	};
+
+	/** Bump si la fiche jeu OU une traduction auto-check a une « version jeu » (ligne) différente du checker. */
+	const gameNeedsCheckerBump = (g: UniqueGameRow) => {
+		const nextRaw = versions.get(g.threadId);
+		if (!nextRaw || nextRaw === 'Unknown') return false;
+		const next = nextRaw.trim();
+		if ((g.gameVersion ?? '').trim() !== next) return true;
+		for (const r of rows) {
+			if (r.gameId !== g.gameId || !r.ac) continue;
+			const rowV = (r.version ?? '').trim();
+			if (rowV !== '' && rowV !== next) return true;
+		}
+		return false;
+	};
+
+	const changedGames = Array.from(uniqueByGame.values()).filter(gameNeedsCheckerBump);
 
 	if (changedGames.length === 0) {
 		return { scannedGames: uniqueByGame.size, updatedGames: 0, updatedTranslations: 0 };
@@ -115,24 +139,30 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 
 	const changedGameIds = changedGames.map((g) => g.gameId);
 	const impactedTranslations = rows.filter((r) => changedGameIds.includes(r.gameId));
-	const translatorIds = Array.from(
+	const staffIds = Array.from(
 		new Set(
-			impactedTranslations.map((r) => r.translatorId).filter((v): v is string => typeof v === 'string')
+			impactedTranslations.flatMap((r) =>
+				[r.translatorId, r.proofreaderId].filter((v): v is string => typeof v === 'string')
+			)
 		)
 	);
-	const translators = translatorIds.length
+	const staffRows = staffIds.length
 		? await db
 				.select({ id: table.translator.id, discordId: table.translator.discordId })
 				.from(table.translator)
-				.where(inArray(table.translator.id, translatorIds))
+				.where(inArray(table.translator.id, staffIds))
 		: [];
-	const translatorMentionById = new Map(
-		translators.map((t) => [t.id, t.discordId?.trim() ? `<@${t.discordId.trim()}>` : undefined] as const)
+	const staffMentionById = new Map(
+		staffRows.map((s) => [s.id, s.discordId?.trim() ? `<@${s.discordId.trim()}>` : undefined] as const)
 	);
 
+	const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
+	const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
+
 	for (const game of changedGames) {
-		const newVersion = versions.get(game.threadId);
-		if (!newVersion || newVersion === 'Unknown') continue;
+		const newVersionRaw = versions.get(game.threadId);
+		if (!newVersionRaw || newVersionRaw === 'Unknown') continue;
+		const newVersion = newVersionRaw.trim();
 
 		await db
 			.update(table.game)
@@ -141,6 +171,13 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, game.gameId));
+
+		await db
+			.update(table.gameTranslation)
+			.set({ version: newVersion, updatedAt: new Date() })
+			.where(
+				and(eq(table.gameTranslation.gameId, game.gameId), eq(table.gameTranslation.ac, true))
+			);
 
 		try {
 			const scraped = await scrapeF95Thread(game.threadId);
@@ -159,18 +196,35 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			console.warn('[auto-check] scrape non bloquant échoué:', error);
 		}
 
-		const lines = impactedTranslations
-			.filter((t) => t.gameId === game.gameId)
-			.map((t) => {
-				const trLabel = t.translationName?.trim() ? ` - ${t.translationName.trim()}` : '';
-				return {
-					label: `${game.gameName}${trLabel} (${game.gameVersion ?? '—'} -> ${newVersion})`,
-					discordMention: t.translatorId ? translatorMentionById.get(t.translatorId) : undefined
-				};
+		for (const t of impactedTranslations.filter((r) => r.gameId === game.gameId)) {
+			if (
+				!shouldNotifyTranslatorOnAutoCheckVersionBump(
+					{
+						version: t.version,
+						tversion: t.tversion,
+						tname: t.tname
+					},
+					newVersion
+				)
+			) {
+				continue;
+			}
+			translatorWebhookLines.push({
+				gameName: game.gameName,
+				translationName: t.translationName,
+				oldVersion: game.gameVersion ?? '—',
+				newVersion,
+				discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined
 			});
-
-		if (lines.length > 0) {
-			await sendDiscordWebhookTranslatorsVersionBumps(lines);
+			if (t.proofreaderId) {
+				proofreaderWebhookLines.push({
+					gameName: game.gameName,
+					translationName: t.translationName,
+					oldVersion: game.gameVersion ?? '—',
+					newVersion,
+					discordMention: staffMentionById.get(t.proofreaderId)
+				});
+			}
 		}
 
 		const integratedRows = impactedTranslations.filter(
@@ -192,6 +246,13 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		if (hasIntegratedAc) {
 			await touchGameUpdatedToday(game.gameId);
 		}
+	}
+
+	if (translatorWebhookLines.length > 0) {
+		await sendDiscordWebhookTranslatorsVersionBumps(translatorWebhookLines);
+	}
+	if (proofreaderWebhookLines.length > 0) {
+		await sendDiscordWebhookProofreadersVersionBumps(proofreaderWebhookLines);
 	}
 
 	// Une seule synchro bulk évite les lectures répétées (et les 429 quota/minute).
