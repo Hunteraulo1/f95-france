@@ -53,7 +53,7 @@
 				game.link = `https://f95zone.to/threads/${gameId}`;
 				break;
 			case 'lc':
-				game.link = `https://lewcorner.com/threads/${gameId}`;
+				game.link = `https://lewdcorner.com/threads/${gameId}`;
 				break;
 			default:
 				game.link = '';
