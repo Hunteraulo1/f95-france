@@ -16,7 +16,9 @@ export const OPTIONS: RequestHandler = async () =>
 		headers: corsHeaders
 	});
 
-const mapDomain = (website: string | null | undefined): 'F95z' | 'LewdCorner' | 'Autre' | 'Unknown' => {
+const mapDomain = (
+	website: string | null | undefined
+): 'F95z' | 'LewdCorner' | 'Autre' | 'Unknown' => {
 	switch ((website ?? '').trim().toLowerCase()) {
 		case 'f95z':
 			return 'F95z';
@@ -29,7 +31,9 @@ const mapDomain = (website: string | null | undefined): 'F95z' | 'LewdCorner' | 
 	}
 };
 
-const mapHostname = (website: string | null | undefined): 'f95zone.to' | 'lewdcorner.com' | null => {
+const mapHostname = (
+	website: string | null | undefined
+): 'f95zone.to' | 'lewdcorner.com' | null => {
 	switch ((website ?? '').trim().toLowerCase()) {
 		case 'f95z':
 			return 'f95zone.to';
@@ -221,8 +225,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		const translatorIds = Array.from(
 			new Set(
 				rows.flatMap((row) =>
-					[row.translation.translatorId, row.translation.proofreaderId].filter(
-						(id): id is string => Boolean(id)
+					[row.translation.translatorId, row.translation.proofreaderId].filter((id): id is string =>
+						Boolean(id)
 					)
 				)
 			)
@@ -243,11 +247,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		const translatorById = new Map(translatorRows.map((tr) => [tr.id, tr]));
 
 		const gamesWithDbId = rows.map((row) => {
-			const tr = row.translation.translatorId ? translatorById.get(row.translation.translatorId) : null;
-			const pr = row.translation.proofreaderId ? translatorById.get(row.translation.proofreaderId) : null;
+			const tr = row.translation.translatorId
+				? translatorById.get(row.translation.translatorId)
+				: null;
+			const pr = row.translation.proofreaderId
+				? translatorById.get(row.translation.proofreaderId)
+				: null;
 			const payload = {
-        id: row.translation.id,
-        gameId: row.game.id,
+				id: row.translation.id,
+				gameId: row.game.id,
 				threadId: row.game.threadId ?? null,
 				domain: mapDomain(row.game.website),
 				hostname: mapHostname(row.game.website),
@@ -255,7 +263,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				version: row.game.gameVersion ?? '',
 				tversion: row.translation.tversion,
 				tname: mapTName(row.translation.tname),
-        description: row.game.description ?? null,
+				description: row.game.description ?? null,
 				status: mapStatus(row.translation.status),
 				tags: splitTags(row.game.tags),
 				type: mapType(row.translation.gameType),
@@ -289,14 +297,14 @@ export const GET: RequestHandler = async ({ url }) => {
 			.orderBy(desc(updateTable.createdAt));
 
 		const mappedUpdates = updates.map((u) => ({
-				date: u.date,
-				type: mapUpdateType(u.type),
-				gameId: u.gameId
+			date: u.date,
+			type: mapUpdateType(u.type),
+			gameId: u.gameId
 		}));
 
 		const traductorsRows = await db
 			.select({
-        id: translator.id,
+				id: translator.id,
 				name: translator.name,
 				pages: translator.pages,
 				discordId: translator.discordId,
@@ -307,7 +315,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			.orderBy(translator.name);
 
 		const traductors = traductorsRows.map((t) => ({
-      id: t.id,
+			id: t.id,
 			name: t.name,
 			pages: parsePages(t.pages),
 			discordId: t.discordId ? Number.parseInt(t.discordId, 10) || null : null,

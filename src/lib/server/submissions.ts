@@ -13,10 +13,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import {
-	createGameUpdateRow,
-	touchGameUpdatedToday
-} from '$lib/server/game-updates';
+import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
@@ -605,8 +602,7 @@ export async function applySubmission(submissionId: string) {
 					tlink: translationData.tlink || '',
 					tname: nextTname,
 					translatorId: translationData.translatorId ?? originalTranslation.translatorId ?? null,
-					proofreaderId:
-						translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					proofreaderId: translationData.proofreaderId ?? originalTranslation.proofreaderId ?? null,
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),
 					updatedAt: new Date()
 				};
@@ -914,7 +910,9 @@ export async function applySubmission(submissionId: string) {
 						adminNotes: rejectionNote,
 						updatedAt: new Date()
 					})
-					.where(and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId)));
+					.where(
+						and(eq(table.submission.status, 'pending'), eq(table.submission.gameId, sub.gameId))
+					);
 			}
 
 			await db

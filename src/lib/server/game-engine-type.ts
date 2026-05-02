@@ -7,7 +7,9 @@ export type GameEngineColumn = (typeof table.gameTranslation.$inferSelect)['game
 const ALLOWED = ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other'] as const;
 
 export function coerceGameEngineType(value: string | null | undefined): GameEngineColumn {
-	const v = String(value ?? 'other').toLowerCase().trim();
+	const v = String(value ?? 'other')
+		.toLowerCase()
+		.trim();
 	if ((ALLOWED as readonly string[]).includes(v)) return v as GameEngineColumn;
 	return 'other';
 }

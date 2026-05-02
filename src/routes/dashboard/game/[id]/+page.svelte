@@ -316,10 +316,7 @@
 				body: JSON.stringify({
 					name: data.name ?? game.name,
 					description: data.description ?? game.description ?? '',
-					type:
-						data.gameType ??
-						(translations[0]?.gameType as string | undefined) ??
-						'other',
+					type: data.gameType ?? (translations[0]?.gameType as string | undefined) ?? 'other',
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
 					tags: data.tags ?? game.tags ?? '',
@@ -910,7 +907,9 @@
 									<span class="badge badge-lg badge-primary">{getGameEngineLabel(eng)}</span>
 								{/each}
 							{:else}
-								<span class="badge badge-ghost badge-lg">Aucune traduction (moteur non renseigné)</span>
+								<span class="badge badge-ghost badge-lg"
+									>Aucune traduction (moteur non renseigné)</span
+								>
 							{/if}
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
 							{#if game.threadId}
@@ -1021,7 +1020,9 @@
 											</span>
 										</td>
 										<td>
-											<span class="badge badge-neutral">{getGameEngineLabel(translation.gameType)}</span>
+											<span class="badge badge-neutral"
+												>{getGameEngineLabel(translation.gameType)}</span
+											>
 										</td>
 										<td>
 											<span class="badge badge-info">
@@ -1498,7 +1499,8 @@
 				</div>
 				<div class="form-control col-span-2 w-full">
 					<p class="text-sm text-base-content/70">
-						Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini <strong>par ligne de traduction</strong>
+						Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini
+						<strong>par ligne de traduction</strong>
 						: modifiez une traduction ou ajoutez-en une pour le renseigner.
 					</p>
 				</div>

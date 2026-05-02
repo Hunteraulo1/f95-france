@@ -85,7 +85,9 @@
 				error?: string;
 			};
 			if (!optionsRes.ok || !optionsJson.options) {
-				throw new Error(optionsJson.error || "Impossible de démarrer l'enregistrement de la clé d'accès.");
+				throw new Error(
+					optionsJson.error || "Impossible de démarrer l'enregistrement de la clé d'accès."
+				);
 			}
 
 			const response = await startRegistration(optionsJson.options);
@@ -94,16 +96,24 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ response })
 			});
-			const verifyJson = (await verifyRes.json()) as { success?: boolean; message?: string; error?: string };
+			const verifyJson = (await verifyRes.json()) as {
+				success?: boolean;
+				message?: string;
+				error?: string;
+			};
 			if (!verifyRes.ok || !verifyJson.success) {
-				throw new Error(verifyJson.error || verifyJson.message || "Impossible d'enregistrer la clé d'accès.");
+				throw new Error(
+					verifyJson.error || verifyJson.message || "Impossible d'enregistrer la clé d'accès."
+				);
 			}
 
 			passkeyInfo = verifyJson.message ?? "Clé d'accès enregistrée.";
 			window.location.reload();
 		} catch (error: unknown) {
 			passkeyError =
-				error instanceof Error ? error.message : "Erreur lors de l'enregistrement de la clé d'accès.";
+				error instanceof Error
+					? error.message
+					: "Erreur lors de l'enregistrement de la clé d'accès.";
 		} finally {
 			passkeyBusy = false;
 		}
@@ -187,7 +197,7 @@
 			{/if}
 
 			<form
-        class="w-full"
+				class="w-full"
 				method="POST"
 				action="?/updateTheme"
 				use:enhance={() => {
@@ -208,7 +218,7 @@
 					};
 				}}
 			>
-				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row px-4">
+				<div class="flex w-full flex-col items-center justify-between gap-4 px-4 md:flex-row">
 					<label class="input box-content flex w-full">
 						Thème
 						<select
@@ -244,12 +254,12 @@
 
 		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
 			{#if passwordError}
-				<div class="mb-4 alert alert-error w-full">
+				<div class="mb-4 alert w-full alert-error">
 					<span>{passwordError}</span>
 				</div>
 			{/if}
 			{#if passwordInfo}
-				<div class="mb-4 alert alert-success w-full">
+				<div class="mb-4 alert w-full alert-success">
 					<span>{passwordInfo}</span>
 				</div>
 			{/if}
@@ -281,7 +291,7 @@
 						type="password"
 						name="currentPassword"
 						placeholder="Mot de passe actuel"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						autocomplete="current-password"
 						required
 					/>
@@ -289,7 +299,7 @@
 						type="password"
 						name="newPassword"
 						placeholder="Nouveau mot de passe (min. 8 caractères)"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						autocomplete="new-password"
 						minlength="8"
 						required
@@ -298,7 +308,7 @@
 						type="password"
 						name="confirmPassword"
 						placeholder="Confirmer le nouveau mot de passe"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						autocomplete="new-password"
 						minlength="8"
 						required
@@ -317,12 +327,12 @@
 
 		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
 			{#if twoFactorError}
-				<div class="mb-4 alert alert-error w-full">
+				<div class="mb-4 alert w-full alert-error">
 					<span>{twoFactorError}</span>
 				</div>
 			{/if}
 			{#if twoFactorInfo}
-				<div class="mb-4 alert alert-success w-full">
+				<div class="mb-4 alert w-full alert-success">
 					<span>{twoFactorInfo}</span>
 				</div>
 			{/if}
@@ -363,8 +373,8 @@
 				{#if qrCodeDataUrl && manualEntryKey}
 					<div class="w-full rounded-box border border-base-300 p-4">
 						<p class="mb-2 text-sm opacity-80">
-							Scanne ce QR code dans ton application d'authentification (Google Authenticator, Aegis,
-							Authy...) puis valide avec un code.
+							Scanne ce QR code dans ton application d'authentification (Google Authenticator,
+							Aegis, Authy...) puis valide avec un code.
 						</p>
 						<img src={qrCodeDataUrl} alt="QR code 2FA" class="mb-3 h-48 w-48 rounded-box" />
 						<p class="mb-3 text-sm">
@@ -398,7 +408,7 @@
 								<span class="label-text mb-1">Code 2FA (6 chiffres)</span>
 								<input
 									name="code"
-									class="input input-bordered"
+									class="input-bordered input"
 									inputmode="numeric"
 									maxlength="6"
 									autocomplete="one-time-code"
@@ -441,14 +451,14 @@
 							type="password"
 							name="password"
 							placeholder="Mot de passe"
-							class="input input-bordered w-full"
+							class="input-bordered input w-full"
 							bind:value={disablePassword}
 							required
 						/>
 						<input
 							name="code"
 							placeholder="Code 2FA"
-							class="input input-bordered w-full md:w-48"
+							class="input-bordered input w-full md:w-48"
 							inputmode="numeric"
 							maxlength="6"
 							bind:value={disableCode}
@@ -465,12 +475,12 @@
 		<h2 class="text-lg font-semibold text-base-content">Clés d'accès (Passkeys)</h2>
 		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
 			{#if passkeyError}
-				<div class="mb-4 alert alert-error w-full">
+				<div class="mb-4 alert w-full alert-error">
 					<span>{passkeyError}</span>
 				</div>
 			{/if}
 			{#if passkeyInfo}
-				<div class="mb-4 alert alert-success w-full">
+				<div class="mb-4 alert w-full alert-success">
 					<span>{passkeyInfo}</span>
 				</div>
 			{/if}
@@ -480,8 +490,13 @@
 			</div>
 
 			<div class="w-full">
-				<button class="btn btn-primary" type="button" onclick={registerPasskey} disabled={passkeyBusy}>
-					{passkeyBusy ? "Enregistrement en cours..." : "Ajouter une clé d'accès"}
+				<button
+					class="btn btn-primary"
+					type="button"
+					onclick={registerPasskey}
+					disabled={passkeyBusy}
+				>
+					{passkeyBusy ? 'Enregistrement en cours...' : "Ajouter une clé d'accès"}
 				</button>
 			</div>
 
@@ -499,7 +514,11 @@
 							{#each data.passkeys ?? [] as pk (pk.id)}
 								<tr>
 									<td>{new Date(pk.createdAt).toLocaleString('fr-FR')}</td>
-									<td>{pk.lastUsedAt ? new Date(pk.lastUsedAt).toLocaleString('fr-FR') : 'Jamais'}</td>
+									<td
+										>{pk.lastUsedAt
+											? new Date(pk.lastUsedAt).toLocaleString('fr-FR')
+											: 'Jamais'}</td
+									>
 									<td class="text-right">
 										<form
 											method="POST"

@@ -182,7 +182,10 @@ function lienTradDisplayLabel(
  * Libellé « Nom du jeu » dans la feuille : **nom du jeu**, **tiret** (`-`), **nom de traduction**
  * (édition spéciale, DLC, etc.). Espaces autour du tiret pour la lisibilité en tableur.
  */
-function formatJeuxNomAffiche(gameName: string, translationName: string | null | undefined): string {
+function formatJeuxNomAffiche(
+	gameName: string,
+	translationName: string | null | undefined
+): string {
 	const g = (gameName ?? '').trim();
 	let t = (translationName ?? '').trim();
 	t = t.replace(/^[\s\-–—:]+/, '');
@@ -199,7 +202,11 @@ type JeuxRowInput = {
 };
 
 /** Remplit une ligne « Jeux » selon les en-têtes du spreadsheet (sync unitaire + bulk). */
-function populateJeuxRowValues(headersRow: string[], rowValues: string[], input: JeuxRowInput): void {
+function populateJeuxRowValues(
+	headersRow: string[],
+	rowValues: string[],
+	input: JeuxRowInput
+): void {
 	const { tr, game, translator, proofreader } = input;
 	const set = (headers: string | string[], value: string) => {
 		const i = findHeaderIndex(headersRow, Array.isArray(headers) ? headers : [headers]);
@@ -307,7 +314,8 @@ function getTradVerValue(
 	tr: typeof table.gameTranslation.$inferSelect,
 	game: typeof table.game.$inferSelect
 ): string {
-	const translationVersion = typeof tr.tversion === 'string' ? tr.tversion.trim() : (tr.tversion ?? '');
+	const translationVersion =
+		typeof tr.tversion === 'string' ? tr.tversion.trim() : (tr.tversion ?? '');
 	return translationVersion || (game.gameVersion ?? '');
 }
 
@@ -575,12 +583,9 @@ async function applyAcColumnFromJeuxSheetToDb(
 				const [row] = await db
 					.select({ n: count() })
 					.from(table.gameTranslation)
-					.where(
-						and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true))
-					);
+					.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
 				const hasAc = (row?.n ?? 0) > 0;
-				const gameAutoCheck =
-					gameAutoCheckEnabledForWebsite(g.website ?? '') && hasAc;
+				const gameAutoCheck = gameAutoCheckEnabledForWebsite(g.website ?? '') && hasAc;
 				await db
 					.update(table.game)
 					.set({ gameAutoCheck, updatedAt: new Date() })
@@ -653,9 +658,11 @@ async function getSheetIdByTitle(
 	return typeof id === 'number' ? id : null;
 }
 
-async function sortJeuxSheetByGameName(
-	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string }
-): Promise<void> {
+async function sortJeuxSheetByGameName(auth: {
+	spreadsheetId: string;
+	headers: HeadersInit;
+	apiKey?: string;
+}): Promise<void> {
 	const tab = encodeURIComponent(SHEET_TAB_JEUX);
 	const valuesRes = await sheetsFetch(
 		auth.spreadsheetId,
@@ -1134,7 +1141,9 @@ export async function syncDbToSpreadsheetBulk(
 					const game = gameMap.get(tr.gameId);
 					if (!game) continue;
 					const translator = tr.translatorId ? (translatorMap.get(tr.translatorId) ?? null) : null;
-					const proofreader = tr.proofreaderId ? (translatorMap.get(tr.proofreaderId) ?? null) : null;
+					const proofreader = tr.proofreaderId
+						? (translatorMap.get(tr.proofreaderId) ?? null)
+						: null;
 					const row = buildJeuxRow(jeuxSnap.headersRow, { tr, game, translator, proofreader });
 					const rowNumber = jeuxSnap.rowNumberById.get(tr.id);
 					if (rowNumber) {
@@ -1190,10 +1199,10 @@ export async function syncDbToSpreadsheetBulk(
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
-		const snapAfter = skipJeuxRowWrites
-			? jeuxSnap
-			: await getSheetSnapshot(auth, SHEET_TAB_JEUX);
-		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter((id) => !dbTranslationIds.has(id));
+		const snapAfter = skipJeuxRowWrites ? jeuxSnap : await getSheetSnapshot(auth, SHEET_TAB_JEUX);
+		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter(
+			(id) => !dbTranslationIds.has(id)
+		);
 		if (orphanJeuxIds.length > 0) {
 			onProgress?.(`Sheets Jeux : suppression ${orphanJeuxIds.length} ligne(s) orpheline(s)…`);
 			await deleteRowsByTranslationIds(orphanJeuxIds);
@@ -1231,9 +1240,7 @@ export async function syncDbToSpreadsheetBulk(
 					);
 				}
 			}
-			onProgress?.(
-				`Sheets TR : ${updates.length} mise(s) à jour, ${appends.length} ajout(s)…`
-			);
+			onProgress?.(`Sheets TR : ${updates.length} mise(s) à jour, ${appends.length} ajout(s)…`);
 			for (let i = 0; i < updates.length; i += 200) {
 				const end = Math.min(i + 200, updates.length);
 				onProgress?.(`Sheets TR : batch mises à jour ${i + 1}–${end}/${updates.length}…`);
@@ -1357,7 +1364,10 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 		for (let r = 1; r < rows.length; r++) {
 			const rowDate = (rows[r]?.[dateIdx] ?? '').trim();
 			const rowStatus = (rows[r]?.[statusIdx] ?? '').trim();
-			if (rowDate === dateLabel && normalizeHeader(rowStatus) === normalizeHeader(target.statusLabel)) {
+			if (
+				rowDate === dateLabel &&
+				normalizeHeader(rowStatus) === normalizeHeader(target.statusLabel)
+			) {
 				matching.push(r + 1);
 			}
 		}
@@ -1395,25 +1405,31 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 		if (sheetId == null) {
 			throw new Error(`Feuille "${SHEET_TAB_MAJ}" introuvable.`);
 		}
-		const insertRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				requests: [
-					{
-						insertDimension: {
-							range: {
-								sheetId,
-								dimension: 'ROWS',
-								startIndex: 1,
-								endIndex: 1 + insertsAtTop.length
-							},
-							inheritFromBefore: false
+		const insertRes = await sheetsFetch(
+			auth.spreadsheetId,
+			auth.headers,
+			`:batchUpdate`,
+			auth.apiKey,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					requests: [
+						{
+							insertDimension: {
+								range: {
+									sheetId,
+									dimension: 'ROWS',
+									startIndex: 1,
+									endIndex: 1 + insertsAtTop.length
+								},
+								inheritFromBefore: false
+							}
 						}
-					}
-				]
-			})
-		});
+					]
+				})
+			}
+		);
 		if (!insertRes.ok) {
 			const err = await insertRes.text().catch(() => '');
 			throw new Error(`Sheets insert MAJ rows error (${insertRes.status}): ${err.slice(0, 500)}`);

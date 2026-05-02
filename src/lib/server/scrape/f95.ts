@@ -9,7 +9,7 @@ interface F95CheckerResponse {
 export interface ScrapedF95Game {
 	name: string | null;
 	version: string | null;
-  description: string | null;
+	description: string | null;
 	status: string | null;
 	tags: string | null;
 	gameType: GameEngineType | null;
@@ -55,7 +55,9 @@ const fetchF95Version = async (threadId: string): Promise<string | null> => {
 	return json.msg[threadId] ?? null;
 };
 
-const scrapeGetTitle = (tokens: string[]): { status: string | null; gameType: GameEngineType | null } => {
+const scrapeGetTitle = (
+	tokens: string[]
+): { status: string | null; gameType: GameEngineType | null } => {
 	let status: string | null = null;
 	let gameType: GameEngineType | null = null;
 
@@ -133,9 +135,15 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 
 	const title = document.title ?? '';
 	const titleMatch = title.match(/([\w\\']+)(?=\s-)/gi) ?? undefined;
-	const { status, gameType } = titleMatch ? scrapeGetTitle(titleMatch) : { status: null, gameType: null };
-  
-  const description = document.querySelector('.message-body > .bbWrapper > div')?.textContent?.replace('Overview:', '').trim() ?? null;
+	const { status, gameType } = titleMatch
+		? scrapeGetTitle(titleMatch)
+		: { status: null, gameType: null };
+
+	const description =
+		document
+			.querySelector('.message-body > .bbWrapper > div')
+			?.textContent?.replace('Overview:', '')
+			.trim() ?? null;
 
 	const titleNode = document.querySelector('.p-title-value')?.cloneNode(true) as HTMLElement | null;
 

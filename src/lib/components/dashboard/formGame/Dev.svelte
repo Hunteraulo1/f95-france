@@ -3,11 +3,11 @@
 
 	interface Props {
 		game: FormGameType;
-	onDevDataApplied?: () => void;
+		onDevDataApplied?: () => void;
 		// scrapeData: (args: ScrapeDataArgs) => Promise<void>;
 	}
 
-let { game = $bindable(), onDevDataApplied }: Props = $props();
+	let { game = $bindable(), onDevDataApplied }: Props = $props();
 
 	const handleClick = (): void => {
 		game = {
@@ -18,13 +18,13 @@ let { game = $bindable(), onDevDataApplied }: Props = $props();
 			link: 'https://testgame.dev',
 			status: 'abandoned',
 			tags: 'no sexual content',
-      description: 'TEST, DEV, NE PAS TOUCHER',
+			description: 'TEST, DEV, NE PAS TOUCHER',
 			gameType: 'other',
 			gameVersion: 'v666',
-      version: 'v666',
+			version: 'v666',
 			tversion: 'v42',
 			tname: 'translation',
-      translationName: 'test translation',
+			translationName: 'test translation',
 			tlink: 'https://testgame.dev/translation',
 			translatorId: 'Hunteraulo',
 			proofreaderId: 'Rory-Mercury91',

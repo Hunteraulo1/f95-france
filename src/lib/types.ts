@@ -8,4 +8,3 @@ export type PublicUser = Omit<
 	UserType,
 	'passwordHash' | 'twoFactorSecret' | 'twoFactorEnabled' | 'theme' | 'devUserId' | 'email'
 >;
-

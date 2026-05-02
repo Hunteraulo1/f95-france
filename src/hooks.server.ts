@@ -40,7 +40,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (maintenanceEnabled) {
 			const path = event.url.pathname;
 			const isAuthException =
-				path === '/dashboard/login' || path === '/dashboard/register' || path === '/dashboard/logout';
+				path === '/dashboard/login' ||
+				path === '/dashboard/register' ||
+				path === '/dashboard/logout';
 			const isSuperAdmin = event.locals.user?.role === 'superadmin';
 
 			if (!isSuperAdmin && !isAuthException) {

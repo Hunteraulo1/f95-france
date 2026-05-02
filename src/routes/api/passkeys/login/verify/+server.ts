@@ -8,7 +8,7 @@ import {
 	getRpID
 } from '$lib/server/passkeys';
 import { json } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import {
 	verifyAuthenticationResponse,
 	type AuthenticationResponseJSON
@@ -17,7 +17,10 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
 	const { request } = event;
-	const body = (await request.json()) as { username?: string; response?: AuthenticationResponseJSON };
+	const body = (await request.json()) as {
+		username?: string;
+		response?: AuthenticationResponseJSON;
+	};
 	const username = body.username?.trim();
 	if (!body.response) {
 		return json({ error: 'Réponse WebAuthn manquante.' }, { status: 400 });
@@ -40,7 +43,10 @@ export const POST: RequestHandler = async (event) => {
 		return json({ error: "Cette clé d'accès n'est pas enregistrée." }, { status: 400 });
 	}
 	if (username && stored.username !== username) {
-		return json({ error: "Cette clé d'accès n'appartient pas à cet utilisateur." }, { status: 400 });
+		return json(
+			{ error: "Cette clé d'accès n'appartient pas à cet utilisateur." },
+			{ status: 400 }
+		);
 	}
 
 	const expectedChallenge = await consumePasskeyChallenge({

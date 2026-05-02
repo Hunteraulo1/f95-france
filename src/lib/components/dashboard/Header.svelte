@@ -15,10 +15,13 @@
 		</label>
 	</div>
 	<div class="flex-1">
-		<a class="btn xs:text-xl text-sm leading-none btn-ghost flex flex-col xs:inline" href="/">F95 France
-      <span class="text-xs font-bold xs:bg-slate-700 leading-none xs:text-slate-100 text-slate-500 px-2 rounded-full">v{VERSION}</span>
-    </a>
-    
+		<a class="btn flex flex-col text-sm leading-none btn-ghost xs:inline xs:text-xl" href="/"
+			>F95 France
+			<span
+				class="rounded-full px-2 text-xs leading-none font-bold text-slate-500 xs:bg-slate-700 xs:text-slate-100"
+				>v{VERSION}</span
+			>
+		</a>
 	</div>
 	<div class="flex gap-2">
 		<!-- <button class="btn btn-soft btn-primary">Retour au compte { user.username }</button> TODO: Implement user switcher -->
@@ -26,17 +29,17 @@
 			<Notifications />
 		{/if}
 		<div class="dropdown dropdown-end">
-      <a href="/dashboard/profile/">
-			<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-          <div class="flex w-10 items-center justify-center rounded-full">
-            {#if $user?.avatar && $user.avatar !== ''}
-              <img alt="avatar" src={$user.avatar} />
-            {:else}
-              <User />
-            {/if}
-          </div>
-        </div>
-      </a>
+			<a href="/dashboard/profile/">
+				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
+					<div class="flex w-10 items-center justify-center rounded-full">
+						{#if $user?.avatar && $user.avatar !== ''}
+							<img alt="avatar" src={$user.avatar} />
+						{:else}
+							<User />
+						{/if}
+					</div>
+				</div>
+			</a>
 		</div>
 	</div>
 </div>

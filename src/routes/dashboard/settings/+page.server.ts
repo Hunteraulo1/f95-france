@@ -277,7 +277,9 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!user?.twoFactorSecret) {
-			return fail(400, { message: "Aucune configuration 2FA en cours. Lancez d'abord l'activation." });
+			return fail(400, {
+				message: "Aucune configuration 2FA en cours. Lancez d'abord l'activation."
+			});
 		}
 
 		const totp = new OTPAuth.TOTP({
@@ -324,7 +326,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Code 2FA invalide (6 chiffres requis).' });
 		}
 
-		const [user] = await db.select().from(table.user).where(eq(table.user.id, locals.user.id)).limit(1);
+		const [user] = await db
+			.select()
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
 		if (!user) {
 			return fail(404, { message: 'Utilisateur introuvable.' });
 		}

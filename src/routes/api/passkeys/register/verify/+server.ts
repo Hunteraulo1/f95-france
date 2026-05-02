@@ -8,10 +8,7 @@ import {
 } from '$lib/server/passkeys';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
-import {
-	verifyRegistrationResponse,
-	type RegistrationResponseJSON
-} from '@simplewebauthn/server';
+import { verifyRegistrationResponse, type RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -48,7 +45,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const existing = await db
 		.select({ id: table.passkey.id })
 		.from(table.passkey)
-		.where(and(eq(table.passkey.userId, locals.user.id), eq(table.passkey.credentialId, credentialId)))
+		.where(
+			and(eq(table.passkey.userId, locals.user.id), eq(table.passkey.credentialId, credentialId))
+		)
 		.limit(1);
 	if (existing[0]) {
 		return json({ success: true, message: 'Cette clé est déjà enregistrée.' });

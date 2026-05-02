@@ -1,5 +1,9 @@
 import { env } from '$env/dynamic/private';
-import { getEffectiveConfig, getEffectiveConfigFromRow, toConfigClientSafe } from '$lib/server/app-config';
+import {
+	getEffectiveConfig,
+	getEffectiveConfigFromRow,
+	toConfigClientSafe
+} from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import * as table from '$lib/server/db/schema';
@@ -42,7 +46,9 @@ const LEGACY_FETCH_RETRIES = Math.min(
 
 function describeLegacyFetchError(err: unknown, timeoutMs: number): string {
 	if (
-		(typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'TimeoutError') ||
+		(typeof DOMException !== 'undefined' &&
+			err instanceof DOMException &&
+			err.name === 'TimeoutError') ||
 		(err instanceof Error && err.name === 'TimeoutError')
 	) {
 		return `Timeout après ${timeoutMs / 1000}s vers l’API legacy (LEGACY_API_FETCH_TIMEOUT_MS).`;
@@ -67,7 +73,9 @@ async function fetchLegacyApiGet(progress?: (message: string) => void): Promise<
 	for (let i = 0; i < attempts; i++) {
 		if (i > 0) {
 			const delay = Math.min(3000 * (1 << (i - 1)), 25_000);
-			progress?.(`Échec réseau / timeout, nouvelle tentative dans ${delay / 1000}s (${i + 1}/${attempts})…`);
+			progress?.(
+				`Échec réseau / timeout, nouvelle tentative dans ${delay / 1000}s (${i + 1}/${attempts})…`
+			);
 			await new Promise((r) => setTimeout(r, delay));
 		}
 		try {
@@ -158,7 +166,11 @@ const mapTType = (value: string | null | undefined): string | null => {
 	const normalized = normalizeLegacyText(value);
 	if (!normalized) return null;
 	if (normalized.includes('semi')) return 'semi-auto';
-	if (normalized.includes('vf') || normalized.includes('francais') || normalized.includes('francaise'))
+	if (
+		normalized.includes('vf') ||
+		normalized.includes('francais') ||
+		normalized.includes('francaise')
+	)
 		return 'vf';
 	if (
 		normalized.includes('humaine') ||
@@ -170,7 +182,11 @@ const mapTType = (value: string | null | undefined): string | null => {
 	)
 		return 'manual';
 	if (normalized.includes('test')) return 'to_tested';
-	if (normalized.includes(' hs') || normalized.startsWith('hs') || normalized.includes('hors service'))
+	if (
+		normalized.includes(' hs') ||
+		normalized.startsWith('hs') ||
+		normalized.includes('hors service')
+	)
 		return 'hs';
 	if (normalized.includes('auto')) return 'auto';
 	return null;
@@ -434,9 +450,11 @@ type TranslationRowForDedupe = {
  * Supprime les traductions en double : même jeu + même clé stricte (tversion + tlink normalisés)
  * que l’import legacy. Conserve la ligne la plus récemment mise à jour ; réassigne les soumissions.
  */
-async function dedupeStrictDuplicateTranslations(options: {
-	dryRun?: boolean;
-} = {}): Promise<{ removed: number; duplicateIds: string[] }> {
+async function dedupeStrictDuplicateTranslations(
+	options: {
+		dryRun?: boolean;
+	} = {}
+): Promise<{ removed: number; duplicateIds: string[] }> {
 	const dryRun = options.dryRun === true;
 	const rows = await db
 		.select({
@@ -908,13 +926,17 @@ const upsertLegacyGames = async (
 					.update(table.submission)
 					.set({ translationId: null })
 					.where(inArray(table.submission.translationId, idsToDelete));
-				await db.delete(table.gameTranslation).where(inArray(table.gameTranslation.id, idsToDelete));
+				await db
+					.delete(table.gameTranslation)
+					.where(inArray(table.gameTranslation.id, idsToDelete));
 			}
 		}
 	}
 
 	if (deletedTranslations > 0) {
-		progress?.(`Purge payload : ${deletedTranslations} traduction(s) retirée(s) (absentes du legacy)`);
+		progress?.(
+			`Purge payload : ${deletedTranslations} traduction(s) retirée(s) (absentes du legacy)`
+		);
 	} else {
 		progress?.('Purge payload : aucune traduction à retirer');
 	}

@@ -11,7 +11,10 @@ function envFirst(name: string, dbVal: string | null | undefined): string | null
 	return dbVal ?? null;
 }
 
-function secretSource(envName: string, dbVal: string | null | undefined): 'env' | 'database' | 'none' {
+function secretSource(
+	envName: string,
+	dbVal: string | null | undefined
+): 'env' | 'database' | 'none' {
 	if (privateEnv(envName)) return 'env';
 	if (dbVal?.trim()) return 'database';
 	return 'none';
@@ -23,7 +26,10 @@ export function mergeEnvIntoConfigRow(row: Config): Config {
 		...row,
 		discordWebhookUpdates: envFirst('DISCORD_WEBHOOK_UPDATES', row.discordWebhookUpdates),
 		discordWebhookLogs: envFirst('DISCORD_WEBHOOK_LOGS', row.discordWebhookLogs),
-		discordWebhookTranslators: envFirst('DISCORD_WEBHOOK_TRANSLATORS', row.discordWebhookTranslators),
+		discordWebhookTranslators: envFirst(
+			'DISCORD_WEBHOOK_TRANSLATORS',
+			row.discordWebhookTranslators
+		),
 		discordWebhookProofreaders: envFirst(
 			'DISCORD_WEBHOOK_PROOFREADERS',
 			row.discordWebhookProofreaders
@@ -92,7 +98,10 @@ export function toConfigClientSafe(row: Config): ConfigClientSafe {
 		googleSpreadsheetId: envFirst('GOOGLE_SPREADSHEET_ID', row.googleSpreadsheetId),
 		secretSources: {
 			discordUpdates: secretSource('DISCORD_WEBHOOK_UPDATES', row.discordWebhookUpdates),
-			discordTranslators: secretSource('DISCORD_WEBHOOK_TRANSLATORS', row.discordWebhookTranslators),
+			discordTranslators: secretSource(
+				'DISCORD_WEBHOOK_TRANSLATORS',
+				row.discordWebhookTranslators
+			),
 			discordProofreaders: secretSource(
 				'DISCORD_WEBHOOK_PROOFREADERS',
 				row.discordWebhookProofreaders
@@ -109,7 +118,10 @@ export function toConfigClientSafe(row: Config): ConfigClientSafe {
 }
 
 /** Champs à persister pour les jetons OAuth (chiffrés si clé définie). */
-export function oauthTokenFieldsForDb(plainAccess: string, plainRefresh: string | null | undefined) {
+export function oauthTokenFieldsForDb(
+	plainAccess: string,
+	plainRefresh: string | null | undefined
+) {
 	return {
 		googleOAuthAccessToken: sealOAuthToken(plainAccess),
 		googleOAuthRefreshToken: sealOAuthToken(plainRefresh ?? null)

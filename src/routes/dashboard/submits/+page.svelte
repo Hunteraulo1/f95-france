@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
 	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
 	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
@@ -33,17 +34,17 @@
 
 	const closeSubmissionModal = async () => {
 		selectedSubmission = null;
-		// Invalider les données pour mettre à jour les compteurs
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		await goto(`/dashboard/submits?status=${data.statusFilter}`, {
+		await goto(resolve(`/dashboard/submits?status=${data.statusFilter}`), {
 			noScroll: true,
 			invalidateAll: true
 		});
 	};
 
 	const updateFilter = async (status: string) => {
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		await goto(`/dashboard/submits?status=${status}`, { noScroll: true, invalidateAll: true });
+		await goto(resolve(`/dashboard/submits?status=${status}`), {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 </script>
 
@@ -61,7 +62,7 @@
 	<SubmissionFilters
 		currentFilter={data.statusFilter}
 		pendingCount={data.pendingCount}
-		openedCount={(data as any).openedCount ?? 0}
+		openedCount={data.openedCount ?? 0}
 		acceptedCount={data.acceptedCount}
 		rejectedCount={data.rejectedCount}
 		onFilterChange={updateFilter}

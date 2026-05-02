@@ -150,8 +150,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.where(eq(table.gameTranslation.gameId, gameId))
 			.orderBy(asc(table.gameTranslation.createdAt));
 
-		const typeProvided =
-			type !== undefined && type !== null && String(type).trim() !== '';
+		const typeProvided = type !== undefined && type !== null && String(type).trim() !== '';
 		const nextEngine = typeProvided ? coerceGameEngineType(type) : null;
 		const typeChanged = typeProvided
 			? translationRows.length === 0

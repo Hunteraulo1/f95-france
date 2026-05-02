@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { replaceState } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
@@ -29,7 +30,7 @@
 		// replaceState trop tôt pendant l’hydratation lève « router is not initialized » — différer.
 		void tick().then(() => {
 			setTimeout(() => {
-				replaceState('/dashboard/config', get(page).state);
+				replaceState(resolve('/dashboard/config'), get(page).state);
 			}, 0);
 		});
 	});
@@ -117,8 +118,8 @@
 						/>
 						<label class="label" for="autoCheckIntervalMinutes">
 							<span class="label-text-alt text-base-content/60">
-								Entre 5 min et 24h. Le cron passe régulièrement, mais n'exécute l'auto-check que
-								si ce délai est écoulé.
+								Entre 5 min et 24h. Le cron passe régulièrement, mais n'exécute l'auto-check que si
+								ce délai est écoulé.
 							</span>
 						</label>
 					</div>
@@ -136,15 +137,15 @@
 						/>
 						<label class="label" for="autoCheckReferenceTime">
 							<span class="label-text-alt text-base-content/60">
-								L'intervalle démarre à partir de cette heure (ex: 03:00 avec 360 min =>
-								03:00, 09:00, 15:00, 21:00).
+								L'intervalle démarre à partir de cette heure (ex: 03:00 avec 360 min => 03:00,
+								09:00, 15:00, 21:00).
 							</span>
 						</label>
 					</div>
 
 					<div class="divider">Secrets (variables d’environnement)</div>
 
-					<div class="alert alert-info text-sm">
+					<div class="alert text-sm alert-info">
 						<div class="flex flex-col gap-2 text-wrap">
 							<p>
 								Les webhooks Discord, la clé API Google et les identifiants OAuth2 ne sont plus
@@ -157,7 +158,9 @@
 								<li><code>DISCORD_WEBHOOK_PROOFREADERS</code> (canal admin)</li>
 								<li><code>DISCORD_WEBHOOK_LOGS</code> (optionnel)</li>
 								<li><code>GOOGLE_API_KEY</code> (si pas uniquement OAuth)</li>
-								<li><code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code></li>
+								<li>
+									<code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code>
+								</li>
 								<li>
 									<code>GOOGLE_SPREADSHEET_ID</code> (optionnel ; sinon l’ID ci-dessous en base)
 								</li>
@@ -168,29 +171,43 @@
 							</ul>
 							<p class="text-xs opacity-80">
 								Source actuelle (indicatif) — Updates :
-								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordUpdates}</span>
+								<span class="badge badge-ghost badge-sm"
+									>{data.config?.secretSources.discordUpdates}</span
+								>
 								· Translators :
-								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordTranslators}</span>
+								<span class="badge badge-ghost badge-sm"
+									>{data.config?.secretSources.discordTranslators}</span
+								>
 								· Admin :
-								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.discordProofreaders}</span>
+								<span class="badge badge-ghost badge-sm"
+									>{data.config?.secretSources.discordProofreaders}</span
+								>
 								· Clé API :
-								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleApiKey}</span>
+								<span class="badge badge-ghost badge-sm"
+									>{data.config?.secretSources.googleApiKey}</span
+								>
 								· OAuth client :
-								<span class="badge badge-sm badge-ghost">{data.config?.secretSources.googleOAuthClient}</span>
+								<span class="badge badge-ghost badge-sm"
+									>{data.config?.secretSources.googleOAuthClient}</span
+								>
 							</p>
 							<p class="text-xs opacity-90">
 								<span class="font-medium">Google OAuth (session)</span> —
 								{#if data.config?.hasGoogleOAuthToken}
 									<span class="badge badge-sm badge-success">jetons enregistrés</span>
 								{:else}
-									<span class="badge badge-sm badge-ghost">pas encore d’autorisation</span>
+									<span class="badge badge-ghost badge-sm">pas encore d’autorisation</span>
 								{/if}
 								<span class="mx-1 opacity-50">·</span>
 								<span class="font-medium">Stockage en base</span> —
 								{#if data.config?.tokenEncryptionActive}
-									<span class="badge badge-sm badge-success">chiffré (CONFIG_TOKEN_ENCRYPTION_KEY)</span>
+									<span class="badge badge-sm badge-success"
+										>chiffré (CONFIG_TOKEN_ENCRYPTION_KEY)</span
+									>
 								{:else}
-									<span class="badge badge-sm badge-ghost">en clair — optionnel : définir la clé ci-dessus</span>
+									<span class="badge badge-ghost badge-sm"
+										>en clair — optionnel : définir la clé ci-dessus</span
+									>
 								{/if}
 							</p>
 						</div>
@@ -222,7 +239,7 @@
 									? `${window.location.origin}/api/google-oauth/callback`
 									: 'Chargement...'}
 							</code>
-							<p class="mt-2 text-xs text-base-content/70 text-wrap">
+							<p class="mt-2 text-xs text-wrap text-base-content/70">
 								⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants
 								OAuth 2.0 → URI de redirection autorisées
 							</p>
@@ -233,7 +250,7 @@
 								Autoriser avec Google
 							</a>
 							<div class="label">
-								<span class="label-text-alt text-base-content/50 text-wrap">
+								<span class="label-text-alt text-wrap text-base-content/50">
 									{#if data.config?.hasGoogleOAuthToken}
 										<span class="text-success">✓ Jetons OAuth présents (voir serveur / base)</span>
 									{:else}
@@ -243,12 +260,13 @@
 							</div>
 						</div>
 					{:else}
-						<div class="alert alert-warning text-sm text-wrap">
+						<div class="alert text-sm text-wrap alert-warning">
 							<span>
-								Le bouton OAuth n’apparaît que si <code class="text-xs">GOOGLE_OAUTH_CLIENT_ID</code> et
-								<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis (variables
-								d’environnement sur Vercel ou valeurs encore présentes en base). Redéploie après les
-								avoir ajoutées.
+								Le bouton OAuth n’apparaît que si <code class="text-xs">GOOGLE_OAUTH_CLIENT_ID</code
+								>
+								et
+								<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis (variables d’environnement
+								sur Vercel ou valeurs encore présentes en base). Redéploie après les avoir ajoutées.
 							</span>
 						</div>
 					{/if}
@@ -266,7 +284,6 @@
 					</div>
 				</div>
 			</form>
-
 		</div>
 	</div>
 </section>

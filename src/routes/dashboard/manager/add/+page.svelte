@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, replaceState } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
@@ -110,7 +111,7 @@
 		// On garde le déclenchement automatique pour plus tard.
 		pendingQueryThreadIdAutoScrape = true;
 		void runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
-		replaceState('/dashboard/manager/add', page.state);
+		replaceState(resolve('/dashboard/manager/add'), page.state);
 	});
 
 	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
@@ -656,39 +657,39 @@
 			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
 					{#if !adminOnly || isAdmin}
-					{#if needsTranslators && Component === Datalist}
-						<Datalist
-							{step}
-							{name}
-							{title}
-							{active}
-							{className}
-							bind:game
-							translators={data.translators}
-							invalid={name === 'translatorId'
-								? translatorFieldErrors.translatorId
-								: translatorFieldErrors.proofreaderId}
-						/>
-					{:else}
-						<Component
-							{step}
-							{name}
-							{title}
-							{active}
-							{className}
-							{values}
-							{selectOptions}
-							{type}
-							bind:game
-							invalid={fieldFormState.fieldErrors[name] ?? false}
-							warn={fieldFormState.fieldWarns[name] ?? false}
-							onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
-						/>
-					{/if}
+						{#if needsTranslators && Component === Datalist}
+							<Datalist
+								{step}
+								{name}
+								{title}
+								{active}
+								{className}
+								bind:game
+								translators={data.translators}
+								invalid={name === 'translatorId'
+									? translatorFieldErrors.translatorId
+									: translatorFieldErrors.proofreaderId}
+							/>
+						{:else}
+							<Component
+								{step}
+								{name}
+								{title}
+								{active}
+								{className}
+								{values}
+								{selectOptions}
+								{type}
+								bind:game
+								invalid={fieldFormState.fieldErrors[name] ?? false}
+								warn={fieldFormState.fieldWarns[name] ?? false}
+								onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
+							/>
+						{/if}
 					{/if}
 				{/each}
 			</div>
-			<div class="flex w-full justify-center gap-4 px-8 flex-row flex-wrap">
+			<div class="flex w-full flex-row flex-wrap justify-center gap-4 px-8">
 				{#if step < maxStep}
 					<button
 						class="btn w-full btn-outline btn-primary sm:w-48"

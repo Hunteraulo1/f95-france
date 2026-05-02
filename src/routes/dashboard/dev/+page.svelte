@@ -129,18 +129,18 @@
 		message: string;
 		details: string | { updated: number } | null;
 	};
-type AutoCheckManualResult = {
-	success: boolean;
-	message: string;
-	details:
-		| string
-		| {
-				scannedGames: number;
-				updatedGames: number;
-				updatedTranslations: number;
-		  }
-		| null;
-};
+	type AutoCheckManualResult = {
+		success: boolean;
+		message: string;
+		details:
+			| string
+			| {
+					scannedGames: number;
+					updatedGames: number;
+					updatedTranslations: number;
+			  }
+			| null;
+	};
 
 	let testResult = $state<TestResult | null>(null);
 
@@ -162,8 +162,8 @@ type AutoCheckManualResult = {
 	let dbSheetSyncResult = $state<DbSheetSyncResult | null>(null);
 	let clearTranslationNamesIsLoading = $state(false);
 	let clearTranslationNamesResult = $state<ClearTranslationNamesResult | null>(null);
-let autoCheckManualIsLoading = $state(false);
-let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
+	let autoCheckManualIsLoading = $state(false);
+	let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 
 	const isSheetsDetails = (value: unknown): value is SheetsDetails =>
 		typeof value === 'object' && value !== null;
@@ -1297,12 +1297,12 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										total {compareResult.details.games.total}, jeux créés {compareResult.details
 											.games.insertedGames}, jeux MAJ {compareResult.details.games.updatedGames},
 										traductions créées {compareResult.details.games.insertedTranslations},
-										traductions MAJ {compareResult.details.games.updatedTranslations},
-										traductions supprimées (aperçu) {compareResult.details.games.deletedTranslations},
+										traductions MAJ {compareResult.details.games.updatedTranslations}, traductions
+										supprimées (aperçu) {compareResult.details.games.deletedTranslations},
 										dédoublonnage (aperçu) {compareResult.details.games.dedupedTranslations ?? 0},
-										traducteurs créés {compareResult.details.games.createdTranslators}, relecteurs créés {compareResult
-											.details.games.createdProofreaders}, ignorés {compareResult.details.games
-											.skipped}
+										traducteurs créés {compareResult.details.games.createdTranslators}, relecteurs
+										créés {compareResult.details.games.createdProofreaders}, ignorés {compareResult
+											.details.games.skipped}
 									</p>
 								{/if}
 							</div>
@@ -1336,7 +1336,7 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										syncResult.details.spreadsheetSync &&
 										typeof syncResult.details.spreadsheetSync === 'object' &&
 										'prunedJeuxRows' in syncResult.details.spreadsheetSync
-											? syncResult.details.spreadsheetSync.prunedJeuxRows ?? 0
+											? (syncResult.details.spreadsheetSync.prunedJeuxRows ?? 0)
 											: null}
 									<p class="mt-1 text-sm">
 										Total: {legacyDetails.total ?? 0} | Jeux ajoutes: {legacyDetails.insertedGames ??
@@ -1353,12 +1353,12 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 										<div class="collapse-arrow collapse mt-3 bg-base-200">
 											<input type="checkbox" />
 											<div class="collapse-title text-sm font-medium">
-												Journal d’avancement ({syncResult.details.milestones.length} lignes, temps
-												depuis le début)
+												Journal d’avancement ({syncResult.details.milestones.length} lignes, temps depuis
+												le début)
 											</div>
 											<div class="collapse-content text-xs">
 												<pre
-													class="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-base-300 p-3 font-mono">{syncResult.details.milestones
+													class="max-h-64 overflow-auto rounded-lg bg-base-300 p-3 font-mono whitespace-pre-wrap">{syncResult.details.milestones
 														.map((m) => `+${m.atMs}ms\t${m.message}`)
 														.join('\n')}</pre>
 												<p class="mt-2 opacity-80">
@@ -1385,7 +1385,7 @@ let autoCheckManualResult = $state<AutoCheckManualResult | null>(null);
 											</div>
 											<div class="collapse-content text-xs">
 												<pre
-													class="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-base-300 p-3 font-mono">{syncResult.details.milestones
+													class="max-h-48 overflow-auto rounded-lg bg-base-300 p-3 font-mono whitespace-pre-wrap">{syncResult.details.milestones
 														.map((m) => `+${m.atMs}ms\t${m.message}`)
 														.join('\n')}</pre>
 											</div>

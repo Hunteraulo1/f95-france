@@ -134,9 +134,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const pendingCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
-			.where(
-				or(eq(table.submission.status, 'pending'), eq(table.submission.status, 'opened'))
-			);
+			.where(or(eq(table.submission.status, 'pending'), eq(table.submission.status, 'opened')));
 
 		const acceptedCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })

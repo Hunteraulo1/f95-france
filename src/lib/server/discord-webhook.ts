@@ -2,10 +2,7 @@ import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
-import {
-	strTrim,
-	tradVerIndicatesIntegrated
-} from '$lib/server/translation-notify-rules';
+import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -331,7 +328,9 @@ export type TranslatorVersionBumpLine = {
 	discordMention?: string;
 };
 
-function buildAutoCheckVersionBumpFields(lines: TranslatorVersionBumpLine[]): DiscordEmbed['fields'] {
+function buildAutoCheckVersionBumpFields(
+	lines: TranslatorVersionBumpLine[]
+): DiscordEmbed['fields'] {
 	return lines.slice(0, 20).map((l) => {
 		const tr = l.translationName?.trim();
 		const name = trimFieldValue(tr ? `${l.gameName} — ${tr}` : l.gameName, 256);

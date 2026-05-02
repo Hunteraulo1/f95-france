@@ -22,7 +22,9 @@
 			});
 			const optionsJson = (await optionsRes.json()) as { options?: unknown; error?: string };
 			if (!optionsRes.ok || !optionsJson.options) {
-				throw new Error(optionsJson.error || "Impossible de démarrer la connexion par clé d'accès.");
+				throw new Error(
+					optionsJson.error || "Impossible de démarrer la connexion par clé d'accès."
+				);
 			}
 
 			const response = await startAuthentication({
@@ -59,11 +61,21 @@
 	<div class="flex flex-col gap-2">
 		<label class="w-full">
 			Nom d'utilisateur
-			<input name="username" class="input-bordered input" autocomplete="username webauthn" bind:value={username} />
+			<input
+				name="username"
+				class="input-bordered input"
+				autocomplete="username webauthn"
+				bind:value={username}
+			/>
 		</label>
 		<label class="w-full">
 			Mot de passe
-			<input type="password" name="password" class="input-bordered input" autocomplete="current-password" />
+			<input
+				type="password"
+				name="password"
+				class="input-bordered input"
+				autocomplete="current-password"
+			/>
 		</label>
 		<label class="w-full">
 			Code 2FA (si activée)
@@ -78,7 +90,12 @@
 	</div>
 	<div class="mt-4 flex w-full justify-center gap-2">
 		<button class="btn btn-primary"> Se connecter </button>
-		<button class="btn btn-secondary" type="button" onclick={loginWithPasskey} disabled={passkeyLoading}>
+		<button
+			class="btn btn-secondary"
+			type="button"
+			onclick={loginWithPasskey}
+			disabled={passkeyLoading}
+		>
 			{passkeyLoading ? 'Connexion...' : "Connexion avec clé d'accès"}
 		</button>
 		<a href="/dashboard/register" class="btn btn-primary"> Créer un compte </a>

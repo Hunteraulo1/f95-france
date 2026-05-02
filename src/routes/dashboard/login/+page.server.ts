@@ -72,7 +72,7 @@ export const actions: Actions = {
 				throw error;
 			}
 			return fail(500, {
-				message: "Impossible de finaliser la connexion pour le moment (erreur serveur)."
+				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).'
 			});
 		}
 	}

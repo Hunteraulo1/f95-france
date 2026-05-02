@@ -13,8 +13,8 @@
 
 <Header />
 
-<main class="drawer sm:drawer-open h-[calc(100vh-4rem)] overflow-hidden">
-	<div class="drawer-content overflow-y-auto bg-base-200 p-4 sm:p-8 lg:p-16 mb-12">
+<main class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open">
+	<div class="drawer-content mb-12 overflow-y-auto bg-base-200 p-4 sm:p-8 lg:p-16">
 		{@render children?.()}
 	</div>
 	<Sidebar pendingSubmissionsCount={data.pendingSubmissionsCount} />

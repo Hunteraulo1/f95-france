@@ -203,7 +203,7 @@ export const actions: Actions = {
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
 		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
 		if (sub.status !== 'pending') {
-			return fail(400, { message: "Seules les soumissions en attente peuvent être annulées" });
+			return fail(400, { message: 'Seules les soumissions en attente peuvent être annulées' });
 		}
 
 		await db
@@ -258,7 +258,8 @@ export const actions: Actions = {
 
 		// Règle: tant que la soumission n'a pas été "ouverte" (proxy adminNotes non vide) et
 		// qu'elle reste en attente, on autorise la modification.
-		if (sub.status !== 'pending') return fail(403, { message: 'Soumission déjà traitée par admin' });
+		if (sub.status !== 'pending')
+			return fail(403, { message: 'Soumission déjà traitée par admin' });
 		if (sub.adminNotes && sub.adminNotes.trim().length > 0) {
 			return fail(403, { message: 'Soumission déjà ouverte par admin' });
 		}

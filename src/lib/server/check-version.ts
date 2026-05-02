@@ -97,7 +97,10 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		return { scannedGames: 0, updatedGames: 0, updatedTranslations: 0 };
 	}
 
-	const uniqueByGame = new Map<string, { gameId: string; gameName: string; gameVersion: string | null; threadId: number }>();
+	const uniqueByGame = new Map<
+		string,
+		{ gameId: string; gameName: string; gameVersion: string | null; threadId: number }
+	>();
 	for (const row of rows) {
 		if (row.threadId == null) continue;
 		uniqueByGame.set(row.gameId, {
@@ -153,7 +156,9 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				.where(inArray(table.translator.id, staffIds))
 		: [];
 	const staffMentionById = new Map(
-		staffRows.map((s) => [s.id, s.discordId?.trim() ? `<@${s.discordId.trim()}>` : undefined] as const)
+		staffRows.map(
+			(s) => [s.id, s.discordId?.trim() ? `<@${s.discordId.trim()}>` : undefined] as const
+		)
 	);
 
 	const translatorWebhookLines: TranslatorVersionBumpLine[] = [];

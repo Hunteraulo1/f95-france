@@ -25,7 +25,7 @@
 	};
 </script>
 
-<div class="flex gap-8 flex-col md:flex-row">
+<div class="flex flex-col gap-8 md:flex-row">
 	{#if user}
 		<div class="flex flex-col gap-2">
 			<div class="flex h-32 w-32 items-center justify-center rounded-full bg-base-300 p-4">
@@ -51,9 +51,9 @@
 			</p>
 		</div>
 
-		<div class="flex w-full flex-col gap-4 mb-16">
+		<div class="mb-16 flex w-full flex-col gap-4">
 			{#if stats}
-				<div class="stats bg-base-100 shadow flex flex-col lg:flex-row gap-4">
+				<div class="stats flex flex-col gap-4 bg-base-100 shadow lg:flex-row">
 					<div class="stat">
 						<div class="stat-figure text-primary">
 							<CirclePlus />
@@ -72,7 +72,7 @@
 				</div>
 			{/if}
 			{#if stats}
-				<div class="stats bg-base-100 shadow flex flex-col lg:flex-row gap-4">
+				<div class="stats flex flex-col gap-4 bg-base-100 shadow lg:flex-row">
 					<div class="stat">
 						<div class="stat-figure text-primary">
 							<CirclePlus />

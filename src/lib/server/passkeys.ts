@@ -79,15 +79,13 @@ export async function savePasskeyChallenge(input: {
 	type: 'register' | 'login';
 	challenge: string;
 }): Promise<void> {
-	await db
-		.insert(table.passkeyChallenge)
-		.values({
-			userId: input.userId,
-			type: input.type,
-			challenge: input.challenge,
-			expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS),
-			createdAt: new Date()
-		});
+	await db.insert(table.passkeyChallenge).values({
+		userId: input.userId,
+		type: input.type,
+		challenge: input.challenge,
+		expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS),
+		createdAt: new Date()
+	});
 }
 
 export async function consumePasskeyChallenge(input: {
@@ -95,14 +93,23 @@ export async function consumePasskeyChallenge(input: {
 	type: 'register' | 'login';
 }): Promise<string | null> {
 	const now = new Date();
-	const whereUser = input.userId === null ? isNull(table.passkeyChallenge.userId) : eq(table.passkeyChallenge.userId, input.userId);
+	const whereUser =
+		input.userId === null
+			? isNull(table.passkeyChallenge.userId)
+			: eq(table.passkeyChallenge.userId, input.userId);
 	const [row] = await db
 		.select({
 			id: table.passkeyChallenge.id,
 			challenge: table.passkeyChallenge.challenge
 		})
 		.from(table.passkeyChallenge)
-		.where(and(whereUser, eq(table.passkeyChallenge.type, input.type), gt(table.passkeyChallenge.expiresAt, now)))
+		.where(
+			and(
+				whereUser,
+				eq(table.passkeyChallenge.type, input.type),
+				gt(table.passkeyChallenge.expiresAt, now)
+			)
+		)
 		.orderBy(desc(table.passkeyChallenge.createdAt))
 		.limit(1);
 
@@ -110,4 +117,3 @@ export async function consumePasskeyChallenge(input: {
 	await db.delete(table.passkeyChallenge).where(eq(table.passkeyChallenge.id, row.id));
 	return row.challenge;
 }
-

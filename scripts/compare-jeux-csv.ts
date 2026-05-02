@@ -47,7 +47,12 @@ function findRowIdColumnIndex(headers: string[]): number {
 	return i;
 }
 
-function rowIdKeyLabel(legacyH: string[], newH: string[], legacyIdx: number, newIdx: number): string {
+function rowIdKeyLabel(
+	legacyH: string[],
+	newH: string[],
+	legacyIdx: number,
+	newIdx: number
+): string {
 	const a = (legacyH[legacyIdx] ?? '').trim() || 'ID';
 	const b = (newH[newIdx] ?? '').trim() || 'ID DB';
 	if (normalizeHeader(a) === normalizeHeader(b)) return a;
@@ -189,7 +194,10 @@ function inferKeyShape(rows: string[][], idx: number): KeyShape {
 	return 'mixed';
 }
 
-function buildRowMapForFile(rows: string[][], colIndices: number[]): {
+function buildRowMapForFile(
+	rows: string[][],
+	colIndices: number[]
+): {
 	map: Map<string, string[]>;
 	dupes: string[];
 } {
@@ -395,14 +403,12 @@ function main() {
 			const composite = resolveCompositeKeyConfig(legacyH, newH);
 			if (composite) {
 				keyCfg = composite;
-				forcedCompositeReason =
-					`IDs incompatibles détectés (${legacyShape} côté legacy vs ${newShape} côté nouveau)`;
+				forcedCompositeReason = `IDs incompatibles détectés (${legacyShape} côté legacy vs ${newShape} côté nouveau)`;
 			}
 		}
 	}
 
-	const legacyKeyIdx =
-		keyCfg.kind === 'single' ? [keyCfg.legacyIdx] : keyCfg.legacyIdx;
+	const legacyKeyIdx = keyCfg.kind === 'single' ? [keyCfg.legacyIdx] : keyCfg.legacyIdx;
 	const newKeyIdx = keyCfg.kind === 'single' ? [keyCfg.newIdx] : keyCfg.newIdx;
 
 	const L = buildHeaderMaps(legacyH);
@@ -557,9 +563,7 @@ function main() {
 		reportLines.push(`- Lignes seulement nouveau: ${onlyNew.length}`);
 		reportLines.push(`- Cellules différentes (total): ${totalCellIssues}`);
 		reportLines.push(`- Paires de lignes avec au moins une différence: ${idsWithDiffs}`);
-		reportLines.push(
-			`- Colonnes non communes: ${onlyLegacyNorms.length + onlyNewNorms.length}`
-		);
+		reportLines.push(`- Colonnes non communes: ${onlyLegacyNorms.length + onlyNewNorms.length}`);
 		reportLines.push('');
 
 		if (onlyLegacyNorms.length) {
@@ -636,7 +640,8 @@ function main() {
 	}
 
 	console.log('\n--- Résumé ---');
-	if (hasStructural) console.log(`Lignes manquantes d’un côté : ${onlyLegacy.length + onlyNew.length}`);
+	if (hasStructural)
+		console.log(`Lignes manquantes d’un côté : ${onlyLegacy.length + onlyNew.length}`);
 	if (hasCells)
 		console.log(
 			`Paires de lignes (même clé) avec au moins une cellule différente : ${idsWithDiffs}`
