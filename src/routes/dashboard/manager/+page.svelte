@@ -156,7 +156,7 @@
 												{#if game.engineTypes.length > 0}
 													{#each game.engineTypes as eng (eng)}
 														<span
-															class="badge badge-sm border-0 text-white"
+															class="badge border-0 badge-sm text-white"
 															style="background-color: {getGameEngineHexColor(eng)}"
 															>{getGameEngineLabel(eng)}</span
 														>

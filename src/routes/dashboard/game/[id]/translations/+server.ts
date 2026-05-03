@@ -79,8 +79,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const gv = normVersion(game[0].gameVersion);
 		const tv = normVersion(tversion);
 		const vv = normVersion(version);
-		const tnameNorm =
-			typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
+		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
 		/** Intégrée : Trad. Ver. fixe (« Intégrée ») — l’auto-check suit la colonne version (réf.) vs jeu, pas tversion. */
 		const acValue =
 			game[0].gameAutoCheck === true &&

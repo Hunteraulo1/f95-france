@@ -921,15 +921,16 @@
 								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
 								{#each uniqueGameEngines as eng (eng)}
 									<span
-										class="badge badge-lg border-0 text-white"
+										class="badge border-0 badge-lg text-white"
 										style="background-color: {getGameEngineHexColor(eng)}"
 										>{getGameEngineLabel(eng)}</span
 									>
 								{/each}
 							{:else}
 								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
-								<span class="badge badge-ghost badge-lg" title="Aucune traduction ou moteur non renseigné"
-									>Aucun</span
+								<span
+									class="badge badge-ghost badge-lg"
+									title="Aucune traduction ou moteur non renseigné">Aucun</span
 								>
 							{/if}
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
@@ -1138,8 +1139,8 @@
 				</label>
 				{#if newTranslation.tname === 'integrated' && translationAcUiAllowed && (game.gameVersion ?? '').trim()}
 					<p class="mt-1 text-xs text-base-content/60">
-						Traduction intégrée : l’auto-check à la création s’active si cette version est identique à
-						la version du jeu sur la fiche ({(game.gameVersion ?? '').trim()}).
+						Traduction intégrée : l’auto-check à la création s’active si cette version est identique
+						à la version du jeu sur la fiche ({(game.gameVersion ?? '').trim()}).
 					</p>
 				{/if}
 			</div>
@@ -1329,8 +1330,8 @@
 					</label>
 					{#if editTranslationVersionsLockedByAc}
 						<p class="mt-1 text-xs text-base-content/60">
-							Alignée sur la version du jeu (fiche) — non modifiable tant que l’auto-check traduction
-							est actif.
+							Alignée sur la version du jeu (fiche) — non modifiable tant que l’auto-check
+							traduction est actif.
 						</p>
 					{/if}
 				</div>
@@ -1437,7 +1438,9 @@
 			</div>
 
 			<div class="form-control mb-6 w-full">
-				<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+				<div
+					class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
+				>
 					{#if game.website !== 'f95z'}
 						<p>
 							L’auto-check traduction n’est prévu que pour les jeux <strong>F95Zone</strong>. Sur ce
@@ -1445,14 +1448,15 @@
 						</p>
 					{:else if game.gameAutoCheck === false}
 						<p>
-							L’<strong>auto-check du jeu</strong> est désactivé sur cette fiche. À l’enregistrement,
-							l’auto-check de <strong>cette</strong> traduction sera donc mis à <strong>false</strong>
+							L’<strong>auto-check du jeu</strong> est désactivé sur cette fiche. À
+							l’enregistrement, l’auto-check de <strong>cette</strong> traduction sera donc mis à
+							<strong>false</strong>
 							(même si la ligne était marquée en auto-check auparavant).
 						</p>
 						{#if canManageGameAutoCheck}
 							<p class="mt-2 text-base-content/70">
-								Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
-								page), puis cochez l’auto-check jeu pour ce thread F95.
+								Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la page),
+								puis cochez l’auto-check jeu pour ce thread F95.
 							</p>
 						{/if}
 					{:else if canManuallyEditTranslationAc}
@@ -1560,7 +1564,9 @@
 
 			<div class="grid grid-cols-2 gap-4">
 				<div class="form-control col-span-2 w-full">
-					<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+					<div
+						class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
+					>
 						<p>
 							Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini
 							<strong>par ligne de traduction</strong>
@@ -1643,34 +1649,36 @@
 						/>
 					</label>
 				</div>
-				<div class="grid grid-cols-2 gap-4 col-span-2 w-full mb-6">
-          <div class="form-control w-full">
-            <label for="edit-game-tags"> Tags </label>
-            <textarea
-              id="edit-game-tags"
-              placeholder="Ex: 3D, Adventure, Romance"
-              class="textarea h-full w-full"
-              bind:value={editingGame.tags}
-            ></textarea>
-          </div>
-          <div class="form-control w-full">
-            <label for="edit-game-description"> Description </label>
-            <textarea
-              id="edit-game-description"
-              placeholder="Description du jeu"
-              class="textarea h-full w-full"
-              bind:value={editingGame.description}
-            ></textarea>
-          </div>
+				<div class="col-span-2 mb-6 grid w-full grid-cols-2 gap-4">
+					<div class="form-control w-full">
+						<label for="edit-game-tags"> Tags </label>
+						<textarea
+							id="edit-game-tags"
+							placeholder="Ex: 3D, Adventure, Romance"
+							class="textarea h-full w-full"
+							bind:value={editingGame.tags}
+						></textarea>
+					</div>
+					<div class="form-control w-full">
+						<label for="edit-game-description"> Description </label>
+						<textarea
+							id="edit-game-description"
+							placeholder="Description du jeu"
+							class="textarea h-full w-full"
+							bind:value={editingGame.description}
+						></textarea>
+					</div>
 				</div>
 				{#if canManageGameAutoCheck}
 					<div class="form-control col-span-2 w-full">
-						<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+						<div
+							class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
+						>
 							{#if editGameAutoCheckAllowed}
 								<p>
-									Si l’<strong>auto-check jeu</strong> est désactivé, aucune traduction ne pourra
-									avoir l’auto-check. S’il est activé, ce n’est pas obligatoire sur chaque ligne :
-									vous choisissez traduction par traduction.
+									Si l’<strong>auto-check jeu</strong> est désactivé, aucune traduction ne pourra avoir
+									l’auto-check. S’il est activé, ce n’est pas obligatoire sur chaque ligne : vous choisissez
+									traduction par traduction.
 								</p>
 							{:else}
 								<p>
@@ -1706,10 +1714,12 @@
 				{/if}
 				{#if canUseSilentMode}
 					<div class="form-control col-span-2 w-full">
-						<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+						<div
+							class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
+						>
 							<p>
-								Le <strong>mode silencieux</strong> évite d’envoyer une notification Discord lors
-								de cette modification (y compris pour une traduction liée).
+								Le <strong>mode silencieux</strong> évite d’envoyer une notification Discord lors de cette
+								modification (y compris pour une traduction liée).
 							</p>
 						</div>
 						<label class="label mt-4 cursor-pointer justify-start gap-3">

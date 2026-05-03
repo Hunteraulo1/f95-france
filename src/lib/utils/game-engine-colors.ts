@@ -36,7 +36,7 @@ export function getGameEngineHexColor(gameType: string | null | undefined): stri
 		case 'unreal':
 			return '#0f4fb4';
 		case 'html':
-      return '#72ae3d';
+			return '#72ae3d';
 		case 'qsp':
 			return '#d74040';
 		case 'other':

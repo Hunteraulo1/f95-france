@@ -8,7 +8,9 @@ import * as table from '$lib/server/db/schema';
 export const enginesPerGameSubquery = db
 	.select({
 		gameId: table.gameTranslation.gameId,
-		engineTypes: sql<string[]>`array_agg(distinct ${table.gameTranslation.gameType})`.as('engine_types')
+		engineTypes: sql<string[]>`array_agg(distinct ${table.gameTranslation.gameType})`.as(
+			'engine_types'
+		)
 	})
 	.from(table.gameTranslation)
 	.groupBy(table.gameTranslation.gameId)

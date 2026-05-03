@@ -183,16 +183,13 @@
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-				submission?.status === 'pending' &&
-				(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+			submission?.status === 'pending' &&
+			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
 		)
 	);
 	/** Admin : en attente ou ouverte, avant acceptation / refus. */
 	const canEditSubmissionDataAsAdmin = $derived(
-		Boolean(
-			canEditStatus &&
-				(submission?.status === 'pending' || submission?.status === 'opened')
-		)
+		Boolean(canEditStatus && (submission?.status === 'pending' || submission?.status === 'opened'))
 	);
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
