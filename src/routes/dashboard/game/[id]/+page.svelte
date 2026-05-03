@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { ScrapedF95Game } from '$lib/server/scrape/f95';
 	import { newToast } from '$lib/stores';
+	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -14,8 +16,6 @@
 	import SquarePen from '@lucide/svelte/icons/square-pen';
 	import Tag from '@lucide/svelte/icons/tag';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -1577,7 +1577,7 @@
 						<span class="label-text">Mode silencieux (sans notification Discord)</span>
 						<input
 							type="checkbox"
-							class="toggle toggle-sm"
+							class="toggle toggle-sm bg-base-200"
 							bind:checked={editTranslationSilentMode}
 						/>
 					</label>
@@ -1733,7 +1733,7 @@
 							<input
 								id="edit-game-autocheck"
 								type="checkbox"
-								class="toggle toggle-sm"
+								class="toggle toggle-sm bg-base-200"
 								bind:checked={editingGame.gameAutoCheck}
 								disabled={!editGameAutoCheckAllowed}
 							/>
@@ -1759,7 +1759,7 @@
 							</p>
 						</div>
 						<label class="label mt-4 cursor-pointer justify-start gap-3">
-							<input type="checkbox" class="toggle toggle-sm" bind:checked={editGameSilentMode} />
+							<input type="checkbox" class="toggle toggle-sm bg-base-200" bind:checked={editGameSilentMode} />
 							<span class="label-text">Mode silencieux (sans notification Discord)</span>
 						</label>
 					</div>
