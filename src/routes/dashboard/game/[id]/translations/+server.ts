@@ -76,10 +76,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
+		const gv = normVersion(game[0].gameVersion);
+		const tv = normVersion(tversion);
+		const vv = normVersion(version);
+		const tnameNorm =
+			typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
+		/** Intégrée : Trad. Ver. fixe (« Intégrée ») — l’auto-check suit la colonne version (réf.) vs jeu, pas tversion. */
 		const acValue =
 			game[0].gameAutoCheck === true &&
-			normVersion(tversion).length > 0 &&
-			normVersion(tversion) === normVersion(game[0].gameVersion);
+			tnameNorm !== 'no_translation' &&
+			gv.length > 0 &&
+			(tnameNorm === 'integrated' ? vv === gv && tv.length > 0 : tv === gv);
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);

@@ -1,4 +1,4 @@
-import { representativeGameTypeSql } from '$lib/server/db/representative-game-type';
+import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
 import { desc, eq } from 'drizzle-orm';
@@ -36,31 +36,36 @@ export const GET: RequestHandler = async ({ url }) => {
 				gameWebsite: game.website,
 				gameThreadId: game.threadId,
 				gameGameVersion: game.gameVersion,
-				gameType: representativeGameTypeSql,
+				gameEngineTypes: enginesPerGameSubquery.engineTypes,
 				gameTags: game.tags
 			})
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
+			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
 			.orderBy(desc(updateTable.createdAt))
 			.limit(limit);
 
-		const rows = flat.map((r) => ({
-			updateId: r.updateId,
-			updateStatus: r.updateStatus,
-			updateCreatedAt: r.updateCreatedAt,
-			updateUpdatedAt: r.updateUpdatedAt,
-			game: {
-				id: r.gameId,
-				name: r.gameName,
-				image: r.gameImage,
-				link: r.gameLink,
-				website: r.gameWebsite,
-				threadId: r.gameThreadId,
-				gameVersion: r.gameGameVersion,
-				type: r.gameType ?? 'other',
-				tags: r.gameTags
-			}
-		}));
+		const rows = flat.map((r) => {
+			const engineTypes = Array.isArray(r.gameEngineTypes) ? r.gameEngineTypes : [];
+			return {
+				updateId: r.updateId,
+				updateStatus: r.updateStatus,
+				updateCreatedAt: r.updateCreatedAt,
+				updateUpdatedAt: r.updateUpdatedAt,
+				game: {
+					id: r.gameId,
+					name: r.gameName,
+					image: r.gameImage,
+					link: r.gameLink,
+					website: r.gameWebsite,
+					threadId: r.gameThreadId,
+					gameVersion: r.gameGameVersion,
+					type: engineTypes[0] ?? 'other',
+					engineTypes,
+					tags: r.gameTags
+				}
+			};
+		});
 
 		return json(rows, { headers: corsHeaders });
 	} catch (error) {

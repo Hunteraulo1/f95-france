@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
+	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 
-	type GameSearchHit = Game & { type: string };
+	type GameSearchHit = Game & { engineTypes: string[] };
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
@@ -128,8 +129,14 @@
 											<p class="truncate text-sm text-base-content/70">
 												{game.description || 'Aucune description'}
 											</p>
-											<div class="mt-1 flex items-center gap-2">
-												<span class="badge badge-outline badge-sm">{game.type}</span>
+											<div class="mt-1 flex flex-wrap items-center gap-2">
+												{#each (game.engineTypes.length > 0 ? game.engineTypes : ['other']) as eng (eng)}
+													<span
+														class="badge badge-sm border-0 text-white"
+														style="background-color: {getGameEngineHexColor(eng)}"
+														>{getGameEngineLabel(eng)}</span
+													>
+												{/each}
 												{#if game.tags}
 													<span class="truncate text-xs text-base-content/60">{game.tags}</span>
 												{/if}

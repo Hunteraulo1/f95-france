@@ -14,6 +14,7 @@
 	import SquarePen from '@lucide/svelte/icons/square-pen';
 	import Tag from '@lucide/svelte/icons/tag';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -41,6 +42,8 @@
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
 	const canManuallyEditTranslationAc = $derived(canUseSilentMode && game.gameAutoCheck === true);
+	/** Admins : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
+	const canShowTranslationAcCheckbox = $derived(canUseSilentMode && game.website === 'f95z');
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -82,6 +85,15 @@
 
 	const editTranslationLinkNotRequired = $derived(
 		editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation'
+	);
+
+	/** Auto-check actif : les versions suivent la fiche jeu et ne sont plus éditables (sauf cas intégrée / sans trad.). */
+	const editTranslationVersionsLockedByAc = $derived(
+		Boolean(editingTranslation.ac && translationAcUiAllowed)
+	);
+
+	const addTranslationTversionLocked = $derived(
+		newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation'
 	);
 
 	// État pour la suppression
@@ -150,29 +162,6 @@
 		}
 	};
 
-	const getGameEngineLabel = (gt: string) => {
-		switch (gt) {
-			case 'renpy':
-				return "Ren'Py";
-			case 'rpgm':
-				return 'RPGM';
-			case 'unity':
-				return 'Unity';
-			case 'unreal':
-				return 'Unreal';
-			case 'flash':
-				return 'Flash';
-			case 'html':
-				return 'HTML';
-			case 'qsp':
-				return 'QSP';
-			case 'other':
-				return 'Autre';
-			default:
-				return gt;
-		}
-	};
-
 	const gameEngineSelectValues = [
 		'renpy',
 		'rpgm',
@@ -184,10 +173,30 @@
 		'other'
 	] as const;
 
-	const getTranslatorNameById = (id: string | null | undefined) => {
-		if (!id) return null;
-		const translator = translators.find((t) => t.id === id);
-		return translator?.name ?? id;
+	/** Valeur stockée en base : id traducteur, userId lié, ou legacy nom — pour affichage ou champs « nom ». */
+	const getTranslatorDisplayName = (raw: string | null | undefined): string => {
+		const key = raw == null ? '' : String(raw).trim();
+		if (!key) return '';
+		const byId = translators.find((t) => t.id === key);
+		if (byId) return byId.name;
+		const byName = translators.find((t) => t.name === key);
+		if (byName) return byName.name;
+		const byUserId = translators.find((t) => t.userId != null && t.userId === key);
+		if (byUserId) return byUserId.name;
+		return key;
+	};
+
+	/** Saisie traducteur/relecteur (nom affiché, id ou userId) → id en base. */
+	const resolveTranslatorFormInputToId = (raw: string): string | null => {
+		const key = raw.trim();
+		if (!key) return null;
+		const byName = translators.find((t) => t.name === key);
+		if (byName) return byName.id;
+		const byId = translators.find((t) => t.id === key);
+		if (byId) return byId.id;
+		const byUserId = translators.find((t) => t.userId != null && t.userId === key);
+		if (byUserId) return byUserId.id;
+		return null;
 	};
 
 	const normalizeTranslationProgressStatus = (
@@ -232,13 +241,18 @@
 	};
 
 	// Réinitialiser le lien lorsque le statut change vers intégrée ou pas de traduction ;
-	// « Pas de traduction » impose le type « hs »
+	// « Pas de traduction » impose le type « hs » ; intégrée → version de traduction « Intégrée » (comme formulaire jeu)
 	$effect(() => {
 		if (newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation') {
 			newTranslation.tlink = '';
 		}
-		if (newTranslation.tname === 'no_translation') {
+		if (newTranslation.tname === 'integrated') {
+			newTranslation.tversion = 'Intégrée';
+		} else if (newTranslation.tname === 'no_translation') {
 			newTranslation.ttype = 'hs';
+			newTranslation.tversion = '';
+		} else if (newTranslation.tversion === 'Intégrée') {
+			newTranslation.tversion = '';
 		}
 	});
 
@@ -249,7 +263,7 @@
 		}
 	});
 
-	/** Même logique que l’ajout : lien vide si intégrée / pas de traduction ; type hs si pas de traduction */
+	/** Même logique que l’ajout : lien vide si intégrée / pas de traduction ; type hs si pas de traduction ; intégrée → tversion */
 	$effect(() => {
 		if (!showEditTranslationModal) return;
 		if (
@@ -258,8 +272,25 @@
 		) {
 			editingTranslation.tlink = '';
 		}
-		if (editingTranslation.tname === 'no_translation') {
+		if (editingTranslation.tname === 'integrated') {
+			editingTranslation.tversion = 'Intégrée';
+		} else if (editingTranslation.tname === 'no_translation') {
 			editingTranslation.ttype = 'hs';
+			editingTranslation.tversion = '';
+		} else if (editingTranslation.tversion === 'Intégrée') {
+			editingTranslation.tversion = '';
+		}
+	});
+
+	/** Auto-check traduction : aligner sur `game.gameVersion` (intégrée → seule la version de référence ; tversion reste « Intégrée »). */
+	$effect(() => {
+		if (!showEditTranslationModal) return;
+		if (!editingTranslation.ac || !translationAcUiAllowed) return;
+		if (editingTranslation.tname === 'no_translation') return;
+		const gv = (game.gameVersion ?? '').trim();
+		editingTranslation.version = gv;
+		if (editingTranslation.tname !== 'integrated') {
+			editingTranslation.tversion = gv;
 		}
 	});
 
@@ -410,10 +441,8 @@
 			let proofreaderIdValue: string | null = null;
 
 			if (newTranslation.translatorId) {
-				const translator = translators.find((t) => t.name === newTranslation.translatorId);
-				if (translator) {
-					translatorIdValue = translator.id;
-				} else {
+				translatorIdValue = resolveTranslatorFormInputToId(newTranslation.translatorId);
+				if (!translatorIdValue) {
 					newToast({
 						alertType: 'error',
 						message: `Traducteur "${newTranslation.translatorId}" non trouvé`
@@ -423,10 +452,8 @@
 			}
 
 			if (newTranslation.proofreaderId) {
-				const proofreader = translators.find((t) => t.name === newTranslation.proofreaderId);
-				if (proofreader) {
-					proofreaderIdValue = proofreader.id;
-				} else {
+				proofreaderIdValue = resolveTranslatorFormInputToId(newTranslation.proofreaderId);
+				if (!proofreaderIdValue) {
 					newToast({
 						alertType: 'error',
 						message: `Relecteur "${newTranslation.proofreaderId}" non trouvé`
@@ -504,8 +531,8 @@
 			gameType: translation.gameType,
 			tlink: translation.tlink,
 			tname: translation.tname as (typeof editingTranslation)['tname'],
-			translatorId: translation.translatorId || '',
-			proofreaderId: translation.proofreaderId || '',
+			translatorId: getTranslatorDisplayName(translation.translatorId),
+			proofreaderId: getTranslatorDisplayName(translation.proofreaderId),
 			ac: translation.ac ?? false
 		};
 		showEditTranslationModal = true;
@@ -552,38 +579,24 @@
 			let proofreaderIdValue: string | null = null;
 
 			if (editingTranslation.translatorId) {
-				const tr = translators.find((t) => t.name === editingTranslation.translatorId);
-				if (tr) {
-					translatorIdValue = tr.id;
-				} else {
-					const byId = translators.find((t) => t.id === editingTranslation.translatorId);
-					if (byId) {
-						translatorIdValue = byId.id;
-					} else {
-						newToast({
-							alertType: 'error',
-							message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
-						});
-						return;
-					}
+				translatorIdValue = resolveTranslatorFormInputToId(editingTranslation.translatorId);
+				if (!translatorIdValue) {
+					newToast({
+						alertType: 'error',
+						message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
+					});
+					return;
 				}
 			}
 
 			if (editingTranslation.proofreaderId) {
-				const pr = translators.find((t) => t.name === editingTranslation.proofreaderId);
-				if (pr) {
-					proofreaderIdValue = pr.id;
-				} else {
-					const byId = translators.find((t) => t.id === editingTranslation.proofreaderId);
-					if (byId) {
-						proofreaderIdValue = byId.id;
-					} else {
-						newToast({
-							alertType: 'error',
-							message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
-						});
-						return;
-					}
+				proofreaderIdValue = resolveTranslatorFormInputToId(editingTranslation.proofreaderId);
+				if (!proofreaderIdValue) {
+					newToast({
+						alertType: 'error',
+						message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
+					});
+					return;
 				}
 			}
 
@@ -904,7 +917,11 @@
 							{#if uniqueGameEngines.length > 0}
 								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
 								{#each uniqueGameEngines as eng (eng)}
-									<span class="badge badge-lg badge-primary">{getGameEngineLabel(eng)}</span>
+									<span
+										class="badge badge-lg border-0 text-white"
+										style="background-color: {getGameEngineHexColor(eng)}"
+										>{getGameEngineLabel(eng)}</span
+									>
 								{/each}
 							{:else}
 								<span class="badge badge-ghost badge-lg"
@@ -1000,13 +1017,13 @@
 													{#if translation.translatorId}
 														<p>
 															<strong>Traducteur :</strong>
-															{getTranslatorNameById(translation.translatorId)}
+															{getTranslatorDisplayName(translation.translatorId)}
 														</p>
 													{/if}
 													{#if translation.proofreaderId}
 														<p>
 															<strong>Relecteur :</strong>
-															{getTranslatorNameById(translation.proofreaderId)}
+															{getTranslatorDisplayName(translation.proofreaderId)}
 														</p>
 													{/if}
 												</div>
@@ -1020,7 +1037,9 @@
 											</span>
 										</td>
 										<td>
-											<span class="badge badge-neutral"
+											<span
+												class="badge border-0 text-white"
+												style="background-color: {getGameEngineHexColor(translation.gameType)}"
 												>{getGameEngineLabel(translation.gameType)}</span
 											>
 										</td>
@@ -1113,6 +1132,12 @@
 						bind:value={newTranslation.version}
 					/>
 				</label>
+				{#if newTranslation.tname === 'integrated' && translationAcUiAllowed && (game.gameVersion ?? '').trim()}
+					<p class="mt-1 text-xs text-base-content/60">
+						Traduction intégrée : l’auto-check à la création s’active si cette version est identique à
+						la version du jeu sur la fiche ({(game.gameVersion ?? '').trim()}).
+					</p>
+				{/if}
 			</div>
 
 			<div class="form-control mb-4 w-full">
@@ -1124,6 +1149,7 @@
 						placeholder="Ex: 1.0"
 						class="w-full input-ghost"
 						bind:value={newTranslation.tversion}
+						disabled={addTranslationTversionLocked}
 						required
 					/>
 				</label>
@@ -1159,7 +1185,7 @@
 
 			<div class="form-control mb-4 w-full">
 				<label class="input pr-0" for="new-game-type">
-					Moteur du jeu (cette ligne)
+					Moteur du jeu
 					<select
 						id="new-game-type"
 						class="w-full select-ghost"
@@ -1294,8 +1320,15 @@
 							placeholder="Ex: 1.2"
 							class="w-full input-ghost"
 							bind:value={editingTranslation.version}
+							disabled={editTranslationVersionsLockedByAc}
 						/>
 					</label>
+					{#if editTranslationVersionsLockedByAc}
+						<p class="mt-1 text-xs text-base-content/60">
+							Alignée sur la version du jeu (fiche) — non modifiable tant que l’auto-check traduction
+							est actif.
+						</p>
+					{/if}
 				</div>
 
 				<div class="form-control mb-4 w-full">
@@ -1307,9 +1340,15 @@
 							placeholder="Ex: 1.0"
 							class="w-full input-ghost"
 							bind:value={editingTranslation.tversion}
+							disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
 							required
 						/>
 					</label>
+					{#if editTranslationVersionsLockedByAc && !editTranslationLinkNotRequired}
+						<p class="mt-1 text-xs text-base-content/60">
+							Égale à la version du jeu — suivie automatiquement par l’auto-check.
+						</p>
+					{/if}
 				</div>
 
 				<div class="form-control mb-4 w-full">
@@ -1345,7 +1384,7 @@
 
 				<div class="form-control mb-4 w-full">
 					<label class="label" for="edit-game-type">
-						<span class="label-text">Moteur du jeu (cette ligne)</span>
+						<span class="label-text">Moteur du jeu</span>
 					</label>
 					<select
 						id="edit-game-type"
@@ -1394,27 +1433,59 @@
 			</div>
 
 			<div class="form-control mb-6 w-full">
-				<p class="mt-1 text-xs text-base-content/60">
-					{#if game.gameAutoCheck === false}
-						L’auto-check du jeu est désactivé, l’auto-check de cette traduction sera forcé à false.
+				<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+					{#if game.website !== 'f95z'}
+						<p>
+							L’auto-check traduction n’est prévu que pour les jeux <strong>F95Zone</strong>. Sur ce
+							site, il reste désactivé.
+						</p>
+					{:else if game.gameAutoCheck === false}
+						<p>
+							L’<strong>auto-check du jeu</strong> est désactivé sur cette fiche. À l’enregistrement,
+							l’auto-check de <strong>cette</strong> traduction sera donc mis à <strong>false</strong>
+							(même si la ligne était marquée en auto-check auparavant).
+						</p>
+						{#if canManageGameAutoCheck}
+							<p class="mt-2 text-base-content/70">
+								Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
+								page), puis cochez l’auto-check jeu pour ce thread F95.
+							</p>
+						{/if}
 					{:else if canManuallyEditTranslationAc}
-						Vous pouvez modifier l’auto-check de cette traduction.
+						<p>
+							Vous pouvez activer l’auto-check sur cette ligne. S’il est actif, la version de
+							référence suit le jeu ; pour une traduction <strong>intégrée</strong>, la Trad. Ver.
+							reste « Intégrée ».
+						</p>
 					{:else}
-						L’auto-check de cette traduction est conservé lors de cette modification.
+						<p>
+							L’auto-check de cette traduction n’est pas modifiable avec votre rôle ; la valeur en
+							base est conservée si vous enregistrez les autres champs.
+						</p>
 					{/if}
-				</p>
+				</div>
 			</div>
 
-			{#if canManuallyEditTranslationAc}
+			{#if canShowTranslationAcCheckbox}
 				<div class="form-control mb-6 w-full">
-					<label class="label cursor-pointer justify-start gap-3">
+					<label
+						class="label cursor-pointer justify-start gap-3 {!canManuallyEditTranslationAc
+							? 'opacity-70'
+							: ''}"
+					>
 						<input
 							type="checkbox"
 							class="checkbox checkbox-sm"
 							bind:checked={editingTranslation.ac}
+							disabled={!canManuallyEditTranslationAc}
 						/>
-						<span class="label-text">Auto-Check traduction</span>
+						<span class="label-text">Auto-check traduction</span>
 					</label>
+					{#if !canManuallyEditTranslationAc && game.website === 'f95z' && game.gameAutoCheck === false}
+						<p class="mt-1 text-xs text-base-content/60">
+							Réactivez d’abord l’auto-check du jeu pour cocher cette case.
+						</p>
+					{/if}
 				</div>
 			{/if}
 
@@ -1484,6 +1555,15 @@
 			<h3 class="mb-4 text-lg font-bold">Modifier le jeu</h3>
 
 			<div class="grid grid-cols-2 gap-4">
+				<div class="form-control col-span-2 w-full">
+					<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+						<p>
+							Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini
+							<strong>par ligne de traduction</strong>
+							: modifiez une traduction ou ajoutez-en une pour le renseigner.
+						</p>
+					</div>
+				</div>
 				<div class="form-control w-full">
 					<label class="input" for="edit-game-name">
 						Nom du jeu
@@ -1496,13 +1576,6 @@
 							required
 						/>
 					</label>
-				</div>
-				<div class="form-control col-span-2 w-full">
-					<p class="text-sm text-base-content/70">
-						Le <strong>moteur</strong> (Ren’Py, Unity, etc.) est défini
-						<strong>par ligne de traduction</strong>
-						: modifiez une traduction ou ajoutez-en une pour le renseigner.
-					</p>
 				</div>
 				<div class="form-control w-full">
 					<label class="input" for="edit-game-website">
@@ -1566,59 +1639,79 @@
 						/>
 					</label>
 				</div>
-				<div class="form-control w-full">
-					<label for="edit-game-tags"> Tags </label>
-					<textarea
-						id="edit-game-tags"
-						placeholder="Ex: 3D, Adventure, Romance"
-						class="textarea h-full w-full"
-						bind:value={editingGame.tags}
-					></textarea>
-				</div>
-				<div class="form-control w-full">
-					<label for="edit-game-description"> Description </label>
-					<textarea
-						id="edit-game-description"
-						placeholder="Description du jeu"
-						class="textarea h-full w-full"
-						bind:value={editingGame.description}
-					></textarea>
+				<div class="grid grid-cols-2 gap-4 col-span-2 w-full mb-6">
+          <div class="form-control w-full">
+            <label for="edit-game-tags"> Tags </label>
+            <textarea
+              id="edit-game-tags"
+              placeholder="Ex: 3D, Adventure, Romance"
+              class="textarea h-full w-full"
+              bind:value={editingGame.tags}
+            ></textarea>
+          </div>
+          <div class="form-control w-full">
+            <label for="edit-game-description"> Description </label>
+            <textarea
+              id="edit-game-description"
+              placeholder="Description du jeu"
+              class="textarea h-full w-full"
+              bind:value={editingGame.description}
+            ></textarea>
+          </div>
 				</div>
 				{#if canManageGameAutoCheck}
 					<div class="form-control col-span-2 w-full">
-						<label class="label cursor-pointer" for="edit-game-autocheck">
-							<span class="label-text"
-								>Auto-check jeu (autorise l’Auto-check sur les traductions)</span
-							>
+						<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+							{#if editGameAutoCheckAllowed}
+								<p>
+									Si l’<strong>auto-check jeu</strong> est désactivé, aucune traduction ne pourra
+									avoir l’auto-check. S’il est activé, ce n’est pas obligatoire sur chaque ligne :
+									vous choisissez traduction par traduction.
+								</p>
+							{:else}
+								<p>
+									L’auto-check jeu n’est disponible que lorsque le site web du jeu est
+									<strong>F95Zone</strong> (<code class="text-xs">f95z</code>). Passez le site en
+									F95Zone pour pouvoir l’activer.
+								</p>
+							{/if}
+						</div>
+						<label
+							class="label mt-4 cursor-pointer justify-start gap-3 {!editGameAutoCheckAllowed
+								? 'opacity-70'
+								: ''}"
+							for="edit-game-autocheck"
+						>
 							<input
 								id="edit-game-autocheck"
 								type="checkbox"
-								class="toggle"
+								class="toggle toggle-sm"
 								bind:checked={editingGame.gameAutoCheck}
 								disabled={!editGameAutoCheckAllowed}
 							/>
+							<span class="label-text"
+								>Auto-check jeu (autorise l’auto-check sur les traductions)</span
+							>
 						</label>
-						<p class="label-text-alt text-base-content/60">
-							{#if editGameAutoCheckAllowed}
-								Si désactivé, aucune traduction ne pourra avoir l’Auto-Check. Si activé, ce n’est
-								pas obligatoire sur chaque traduction : vous choisissez ligne par ligne.
-							{:else}
-								Disponible uniquement lorsque le site web du jeu est <code class="text-xs"
-									>f95z</code
-								> (F95Zone).
-							{/if}
-						</p>
+						{#if !editGameAutoCheckAllowed}
+							<p class="mt-1 text-xs text-base-content/60">
+								Choisissez le site F95Zone ci-dessus pour activer cette option.
+							</p>
+						{/if}
 					</div>
 				{/if}
 				{#if canUseSilentMode}
-					<div class="form-control col-span-2">
-						<label class="label cursor-pointer">
-							<span class="label-text">Mode silencieux</span>
+					<div class="form-control col-span-2 w-full">
+						<div class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80">
+							<p>
+								Le <strong>mode silencieux</strong> évite d’envoyer une notification Discord lors
+								de cette modification (y compris pour une traduction liée).
+							</p>
+						</div>
+						<label class="label mt-4 cursor-pointer justify-start gap-3">
 							<input type="checkbox" class="toggle toggle-sm" bind:checked={editGameSilentMode} />
+							<span class="label-text">Mode silencieux (sans notification Discord)</span>
 						</label>
-						<p class="label-text-alt text-base-content/60">
-							Aucune notification Discord envoyée pour la modification de traduction liée.
-						</p>
 					</div>
 				{/if}
 			</div>

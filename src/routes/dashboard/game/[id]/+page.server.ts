@@ -66,7 +66,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const translators = await db
 			.select({
 				id: table.translator.id,
-				name: table.translator.name
+				name: table.translator.name,
+				userId: table.translator.userId
 			})
 			.from(table.translator)
 			.orderBy(asc(table.translator.name));
