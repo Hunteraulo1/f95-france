@@ -1725,7 +1725,7 @@
 							{/if}
 						</div>
 						<label
-							class="label mt-4 cursor-pointer justify-start gap-3 {!editGameAutoCheckAllowed
+							class="label cursor-pointer {!editGameAutoCheckAllowed
 								? 'opacity-70'
 								: ''}"
 							for="edit-game-autocheck"
@@ -1758,9 +1758,9 @@
 								modification (y compris pour une traduction liée).
 							</p>
 						</div>
-						<label class="label mt-4 cursor-pointer justify-start gap-3">
-							<input type="checkbox" class="toggle toggle-sm bg-base-200" bind:checked={editGameSilentMode} />
+						<label class="label cursor-pointer">
 							<span class="label-text">Mode silencieux (sans notification Discord)</span>
+							<input type="checkbox" class="toggle toggle-sm bg-base-200" bind:checked={editGameSilentMode} />
 						</label>
 					</div>
 				{/if}
