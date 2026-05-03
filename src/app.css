@@ -9,3 +9,18 @@
 @theme {
 	--breakpoint-xs: 30rem;
 }
+
+/*
+ * Firefox (visibilité des polices / RFP) : une pile monospace système peut tenter
+ * « Liberation Mono » et être bloquée (niveau 2). On garde l’apparence kbd sans police mono dédiée.
+ */
+:where(.kbd) {
+	font-family:
+		ui-sans-serif,
+		system-ui,
+		sans-serif,
+		'Apple Color Emoji',
+		'Segoe UI Emoji',
+		'Segoe UI Symbol',
+		'Noto Color Emoji';
+}
