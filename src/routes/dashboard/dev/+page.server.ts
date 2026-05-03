@@ -535,6 +535,10 @@ const chooseCanonicalGameName = (currentName: string, incomingName: string): str
 	return curr;
 };
 
+/** Évite '' en base si une FK translator existe côté Postgres (UUID vide = violation). */
+const normOptionalTranslatorFk = (id: string | null | undefined): string | null =>
+	id != null && String(id).trim() !== '' ? String(id).trim() : null;
+
 const extractLegacyTranslationName = (
 	gameName: string,
 	legacyItemName: string | null | undefined
@@ -633,6 +637,8 @@ const upsertLegacyGames = async (
 	const TR_INS_BATCH = 60;
 	const TRANS_INS_BATCH = 80;
 	const UPD_CONCURRENCY = 40;
+	/** Maj traductions : parallélisme modéré pour limiter les deadlocks (vs 40 en même temps). */
+	const TRANS_UPD_PARALLEL = 16;
 
 	const bufGameIns: (typeof table.game.$inferInsert)[] = [];
 	const bufTrIns: (typeof table.translator.$inferInsert)[] = [];
@@ -656,6 +662,8 @@ const upsertLegacyGames = async (
 		bufTransIns.length = 0;
 	};
 	const flushBeforeTranslationWrite = async () => {
+		// Appliquer d’abord les maj jeu en attente : les INSERT traduction vérifient le FK game_id.
+		await drainGameUpdates();
 		await flushGameInserts();
 		await flushTrInserts();
 	};
@@ -675,8 +683,11 @@ const upsertLegacyGames = async (
 	};
 	const flushTransUpdates = async () => {
 		if (dryRun || pendingTransUpdates.length === 0) return;
-		await Promise.all(pendingTransUpdates);
-		pendingTransUpdates.length = 0;
+		const batch = pendingTransUpdates.splice(0, pendingTransUpdates.length);
+		for (let i = 0; i < batch.length; i += TRANS_UPD_PARALLEL) {
+			const chunk = batch.slice(i, i + TRANS_UPD_PARALLEL);
+			await Promise.all(chunk);
+		}
 	};
 
 	progress?.(
@@ -801,6 +812,9 @@ const upsertLegacyGames = async (
 				createdProofreaders++;
 			}
 		}
+
+		translatorId = normOptionalTranslatorFk(translatorId);
+		proofreaderId = normOptionalTranslatorFk(proofreaderId);
 
 		const tversion = item.tversion?.trim() || 'unknown';
 		const acValue = parseLegacyBoolean(item.ac);
