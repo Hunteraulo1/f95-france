@@ -7,13 +7,18 @@
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
 
+	/** Attente après la dernière frappe avant d’appeler l’API (limite le nombre de requêtes). */
+	const SEARCH_DEBOUNCE_MS = 450;
+
 	let searchQuery = $state('');
 	let searchResults = $state<GameSearchHit[]>([]);
 	let isLoading = $state(false);
 	let showResults = $state(false);
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Incrémenté à chaque recherche lancée : ignore les réponses d’une requête plus ancienne. */
+	let searchGeneration = 0;
 
-	const searchGames = async (query: string) => {
+	const searchGames = async (query: string, generation: number) => {
 		if (!query || query.trim().length < 1) {
 			searchResults = [];
 			showResults = false;
@@ -25,6 +30,8 @@
 			const response = await fetch(`/dashboard/manager?q=${encodeURIComponent(query)}`);
 			const data = await response.json();
 
+			if (generation !== searchGeneration) return;
+
 			if (response.ok) {
 				searchResults = data.games;
 				showResults = true;
@@ -33,30 +40,44 @@
 				searchResults = [];
 			}
 		} catch (error) {
+			if (generation !== searchGeneration) return;
 			console.error('Erreur lors de la recherche:', error);
 			searchResults = [];
 		} finally {
-			isLoading = false;
+			if (generation === searchGeneration) {
+				isLoading = false;
+			}
 		}
 	};
 
 	const debouncedSearch = (query: string) => {
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
 		}
 
-		searchTimeout = setTimeout(() => {
-			searchGames(query);
-		}, 500);
+		debounceTimer = setTimeout(() => {
+			debounceTimer = null;
+			const trimmed = query.trim();
+			if (trimmed.length < 1) {
+				searchResults = [];
+				showResults = false;
+				isLoading = false;
+				return;
+			}
+			const gen = ++searchGeneration;
+			void searchGames(query, gen);
+		}, SEARCH_DEBOUNCE_MS);
 	};
 
 	const clearSearch = () => {
 		searchQuery = '';
 		searchResults = [];
 		showResults = false;
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-			searchTimeout = null;
+		searchGeneration += 1;
+		isLoading = false;
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
 		}
 	};
 
@@ -130,13 +151,17 @@
 												{game.description || 'Aucune description'}
 											</p>
 											<div class="mt-1 flex flex-wrap items-center gap-2">
-												{#each (game.engineTypes.length > 0 ? game.engineTypes : ['other']) as eng (eng)}
-													<span
-														class="badge badge-sm border-0 text-white"
-														style="background-color: {getGameEngineHexColor(eng)}"
-														>{getGameEngineLabel(eng)}</span
-													>
-												{/each}
+												{#if game.engineTypes.length > 0}
+													{#each game.engineTypes as eng (eng)}
+														<span
+															class="badge badge-sm border-0 text-white"
+															style="background-color: {getGameEngineHexColor(eng)}"
+															>{getGameEngineLabel(eng)}</span
+														>
+													{/each}
+												{:else}
+													<span class="badge badge-ghost badge-sm">Aucun</span>
+												{/if}
 												{#if game.tags}
 													<span class="truncate text-xs text-base-content/60">{game.tags}</span>
 												{/if}

@@ -924,8 +924,9 @@
 									>
 								{/each}
 							{:else}
-								<span class="badge badge-ghost badge-lg"
-									>Aucune traduction (moteur non renseigné)</span
+								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
+								<span class="badge badge-ghost badge-lg" title="Aucune traduction ou moteur non renseigné"
+									>Aucun</span
 								>
 							{/if}
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
