@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import Input from './Input.svelte';
 
@@ -25,11 +26,14 @@
 
 	if (!game) throw new Error('no game data');
 
+	const previewSrc = $derived(resolveGameImageSrc(game.image, { website: game.website }));
+
 	const handleImageError = (e: Event): void => {
 		const target = e.currentTarget as HTMLImageElement;
+		const base = previewSrc;
 
-		if (game.image.startsWith('https://attachments.f95zone.to/')) {
-			target.src = game.image.replace('attachments', 'preview');
+		if (base.startsWith('https://attachments.f95zone.to/')) {
+			target.src = base.replace('attachments', 'preview');
 		} else {
 			target.classList.add('hidden');
 		}
@@ -57,10 +61,11 @@
 	type="text"
 >
 	<img
-		src={game.image}
+		src={previewSrc}
 		alt="bannière du jeu 2"
 		class="absolute top-20 z-10 hidden w-full max-w-md rounded-md"
 		loading="lazy"
+		referrerpolicy="no-referrer"
 		onerror={handleImageError}
 	/>
 </Input>

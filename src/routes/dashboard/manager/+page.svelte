@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 
 	type GameSearchHit = Game & { engineTypes: string[] };
 	import Plus from '@lucide/svelte/icons/plus';
@@ -140,10 +141,11 @@
 								>
 									<div class="flex items-start gap-3">
 										<img
-											src={game.image}
+											src={resolveGameImageSrc(game.image, { website: game.website })}
 											alt={game.name}
 											class="h-12 w-12 rounded object-cover"
 											loading="lazy"
+											referrerpolicy="no-referrer"
 										/>
 										<div class="min-w-0 flex-1">
 											<h3 class="truncate text-base font-semibold">{game.name}</h3>

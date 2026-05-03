@@ -6,6 +6,7 @@
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Loader from '@lucide/svelte/icons/loader';
 	import Table2 from '@lucide/svelte/icons/table-2';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -835,10 +836,11 @@
 										{#if details.image}
 											<div class="flex justify-center">
 												<img
-													src={details.image}
+													src={resolveGameImageSrc(details.image)}
 													alt="Aperçu"
 													class="h-40 w-28 rounded-lg object-cover shadow"
 													loading="lazy"
+													referrerpolicy="no-referrer"
 												/>
 											</div>
 										{/if}

@@ -15,11 +15,13 @@
 	import Tag from '@lucide/svelte/icons/tag';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	const game = $derived(data.game);
+	const gameCoverSrc = $derived(resolveGameImageSrc(game.image, { website: game.website }));
 	const translations = $derived(data.translations);
 	const uniqueGameEngines = $derived([...new Set(translations.map((t) => t.gameType))]);
 	const translators = $derived(data.translators);
@@ -877,10 +879,11 @@
 					<!-- Image du jeu -->
 					<div class="flex shrink-0 flex-col gap-4">
 						<img
-							src={game.image}
+							src={gameCoverSrc}
 							alt={game.name}
 							class="h-64 w-48 rounded-lg object-cover shadow-md"
 							loading="lazy"
+							referrerpolicy="no-referrer"
 						/>
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
 							<SquarePen size={16} />

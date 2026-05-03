@@ -56,7 +56,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				game: {
 					id: table.game.id,
 					name: table.game.name,
-					image: table.game.image
+					image: table.game.image,
+					website: table.game.website
 				},
 				translation: {
 					id: table.gameTranslation.id,

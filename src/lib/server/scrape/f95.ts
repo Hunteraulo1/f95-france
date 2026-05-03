@@ -1,4 +1,5 @@
 import type { GameEngineType } from '$lib/types';
+import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 
 interface F95CheckerResponse {
@@ -161,7 +162,9 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 
 	const imgSrc =
 		document.querySelector<HTMLImageElement>('img.bbImage')?.getAttribute('src') ?? null;
-	const image = imgSrc ? imgSrc.replace('thumb/', '') : null;
+	const image = imgSrc
+		? resolveGameImageSrc(imgSrc.replace('thumb/', ''), { website: 'f95z' })
+		: null;
 
 	let version: string | null = null;
 	try {
