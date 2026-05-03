@@ -26,6 +26,7 @@
 	const uniqueGameEngines = $derived([...new Set(translations.map((t) => t.gameType))]);
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
+	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const canUseSilentMode = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
@@ -942,6 +943,22 @@
 									>Version jeu : {game.gameVersion}</span
 								>
 							{/if}
+							{#if isSuperAdmin}
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-lg hover:bg-base-200 sm:max-w-none"
+									title="Copier l’ID du jeu"
+									onclick={() => {
+										navigator.clipboard.writeText(game.id);
+										newToast({
+											alertType: 'success',
+											message: 'ID du jeu copié dans le presse-papiers'
+										});
+									}}
+								>
+									ID: {game.id}
+								</button>
+							{/if}
 						</div>
 
 						{#if game.tags}
@@ -1300,6 +1317,25 @@
 	<div class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="mb-4 text-lg font-bold">Modifier la traduction</h3>
+
+			{#if isSuperAdmin}
+				<div class="mb-4">
+					<button
+						type="button"
+						class="badge max-w-full overflow-hidden text-left badge-outline badge-sm hover:bg-base-200"
+						title="Copier l’ID de la traduction"
+						onclick={() => {
+							navigator.clipboard.writeText(editingTranslation.id);
+							newToast({
+								alertType: 'success',
+								message: 'ID de la traduction copié dans le presse-papiers'
+							});
+						}}
+					>
+						ID: {editingTranslation.id}
+					</button>
+				</div>
+			{/if}
 
 			{#key editingTranslation.id}
 				<div class="form-control mb-4 w-full">

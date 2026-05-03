@@ -6,7 +6,7 @@
 
 	/** Jeu tel qu’il apparaît dans le JSON des soumissions (champ moteur `type`). */
 	type GameSubmissionJson = Game & { type?: string };
-	import { user } from '$lib/stores';
+	import { newToast, user } from '$lib/stores';
 	import {
 		getStatusBadge,
 		getTypeBadge,
@@ -30,6 +30,7 @@
 		id: string;
 		status: string;
 		type: string;
+		gameId?: string | null;
 		translationId?: string | null;
 		adminNotes?: string | null;
 		parsedData?: {
@@ -341,11 +342,49 @@
 							</div>
 						{/if}
 						{#if $user?.role === 'superadmin'}
-							<div
-								class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap sm:max-w-none"
+							<button
+								type="button"
+								class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+								onclick={() => {
+									navigator.clipboard.writeText(submission.id);
+									newToast({
+										alertType: 'success',
+										message: 'ID de la soumission copié dans le presse-papiers'
+									});
+								}}
 							>
 								ID: {submission.id}
-							</div>
+							</button>
+							{#if submission.gameId}
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+									onclick={() => {
+										navigator.clipboard.writeText(submission.gameId!);
+										newToast({
+											alertType: 'success',
+											message: 'ID du jeu copié dans le presse-papiers'
+										});
+									}}
+								>
+									ID: {submission.gameId}
+								</button>
+							{/if}
+							{#if submission.translationId}
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+									onclick={() => {
+										navigator.clipboard.writeText(submission.translationId!);
+										newToast({
+											alertType: 'success',
+											message: 'ID de la traduction copié dans le presse-papiers'
+										});
+									}}
+								>
+									ID: {submission.translationId}
+								</button>
+							{/if}
 						{/if}
 					</div>
 				</div>

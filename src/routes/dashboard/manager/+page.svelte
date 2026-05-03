@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
+	import { newToast, user } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 
@@ -135,11 +136,13 @@
 							<div class="p-4 text-center text-base-content/60">Aucun jeu trouvé</div>
 						{:else}
 							{#each searchResults as game (game.id)}
-								<a
-									href="/dashboard/game/{game.id}"
-									class="block cursor-pointer border-b border-base-300 p-4 last:border-b-0 hover:bg-base-200"
+								<div
+									class="flex items-stretch border-b border-base-300 last:border-b-0 hover:bg-base-200"
 								>
-									<div class="flex items-start gap-3">
+									<a
+										href="/dashboard/game/{game.id}"
+										class="flex min-w-0 flex-1 cursor-pointer items-start gap-3 p-4"
+									>
 										<img
 											src={resolveGameImageSrc(game.image, { website: game.website })}
 											alt={game.name}
@@ -169,8 +172,25 @@
 												{/if}
 											</div>
 										</div>
-									</div>
-								</a>
+									</a>
+									{#if $user?.role === 'superadmin'}
+										<button
+											type="button"
+											class="badge badge-outline badge-sm mt-3 mr-2 max-w-40 shrink-0 self-start overflow-hidden hover:bg-base-200 sm:max-w-52"
+											title="Copier l’ID du jeu"
+											onclick={(e) => {
+												e.preventDefault();
+												void navigator.clipboard.writeText(game.id);
+												newToast({
+													alertType: 'success',
+													message: 'ID du jeu copié dans le presse-papiers'
+												});
+											}}
+										>
+											ID: {game.id}
+										</button>
+									{/if}
+								</div>
 							{/each}
 						{/if}
 					</div>
