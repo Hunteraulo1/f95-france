@@ -179,12 +179,23 @@
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
-	const canEditSubmissionDataAllowed = $derived(
+	/** Utilisateur : uniquement en attente, tant que l’admin n’a pas laissé de note (ancienne règle). */
+	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-			submission?.status === 'pending' &&
-			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+				submission?.status === 'pending' &&
+				(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
 		)
+	);
+	/** Admin : en attente ou ouverte, avant acceptation / refus. */
+	const canEditSubmissionDataAsAdmin = $derived(
+		Boolean(
+			canEditStatus &&
+				(submission?.status === 'pending' || submission?.status === 'opened')
+		)
+	);
+	const canEditSubmissionDataAllowed = $derived(
+		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
@@ -643,7 +654,13 @@
 
 			{#if canEditSubmissionDataAllowed}
 				<div class="mt-6 border-t border-base-300 pt-4">
-					<h4 class="text-md mb-4 font-semibold">Modifier les données de la soumission</h4>
+					<h4 class="text-md mb-4 font-semibold">
+						{#if canEditSubmissionDataAsAdmin}
+							Modifier les données (admin / superadmin)
+						{:else}
+							Modifier les données de la soumission
+						{/if}
+					</h4>
 
 					{#if submissionEditError}
 						<div class="mb-4 alert alert-error">

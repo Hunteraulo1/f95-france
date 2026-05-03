@@ -2,6 +2,11 @@ import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import {
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
+} from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
@@ -205,6 +210,47 @@ export const actions: Actions = {
 			.update(table.submission)
 			.set({ status: 'opened', updatedAt: new Date() })
 			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
+
+		return { success: true };
+	},
+	/** Admin / superadmin : corriger le JSON tant que la soumission n’est pas acceptée / refusée. */
+	updateSubmissionData: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return fail(403, { message: 'Accès non autorisé' });
+		}
+
+		const formData = await request.formData();
+		const submissionId = formData.get('submissionId');
+		const submissionDataJson = formData.get('submissionDataJson');
+
+		if (typeof submissionId !== 'string' || !submissionId.trim()) {
+			return fail(400, { message: 'ID de soumission requis' });
+		}
+
+		const parsed = parseSubmissionPayloadJson(submissionDataJson);
+		if (!parsed.ok) return fail(400, { message: parsed.message });
+
+		const [sub] = await db
+			.select({
+				id: table.submission.id,
+				status: table.submission.status,
+				type: table.submission.type
+			})
+			.from(table.submission)
+			.where(eq(table.submission.id, submissionId))
+			.limit(1);
+
+		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.status !== 'pending' && sub.status !== 'opened') {
+			return fail(400, {
+				message: 'Seules les soumissions en attente ou ouvertes peuvent être modifiées'
+			});
+		}
+
+		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);
+		if (shapeError) return fail(400, { message: shapeError });
+
+		await persistSubmissionPayload(submissionId, parsed.data);
 
 		return { success: true };
 	},
