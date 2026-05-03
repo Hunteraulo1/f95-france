@@ -4,7 +4,7 @@ import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -20,12 +20,14 @@ export const OPTIONS: RequestHandler = async () =>
 		headers: corsHeaders
 	});
 
-export const GET: RequestHandler = async ({ url }) => {
-	try {
-		const limitRaw = url.searchParams.get('limit');
-		const parsedLimit = limitRaw ? Number.parseInt(limitRaw, 10) : 50;
-		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 200) : 50;
+export const GET: RequestHandler = async ({ params, url }) => {
+	const updateId = params.id;
 
+	if (!updateId) {
+		return json({ error: "L'identifiant de la mise à jour est requis." }, { status: 400, headers: corsHeaders });
+	}
+
+	try {
 		const inc = parseInclude(url.searchParams);
 		const withGame = inc.has('game');
 		const withTranslations = inc.has('translations');
@@ -40,9 +42,14 @@ export const GET: RequestHandler = async ({ url }) => {
 					gameId: updateTable.gameId
 				})
 				.from(updateTable)
-				.orderBy(desc(updateTable.createdAt))
-				.limit(limit);
-			return json(slim, { headers: corsHeaders });
+				.where(eq(updateTable.id, updateId))
+				.limit(1);
+
+			if (slim.length === 0) {
+				return json({ error: 'Mise à jour introuvable.' }, { status: 404, headers: corsHeaders });
+			}
+
+			return json(slim[0], { headers: corsHeaders });
 		}
 
 		if (!withGame && withTranslations) {
@@ -55,17 +62,25 @@ export const GET: RequestHandler = async ({ url }) => {
 					gameId: updateTable.gameId
 				})
 				.from(updateTable)
-				.orderBy(desc(updateTable.createdAt))
-				.limit(limit);
-			const byGame = await translationsByGameIds(slim.map((s) => s.gameId));
-			const rows = slim.map((s) => ({
-				...s,
-				game: {
-					id: s.gameId,
-					translations: byGame.get(s.gameId) ?? []
-				}
-			}));
-			return json(rows, { headers: corsHeaders });
+				.where(eq(updateTable.id, updateId))
+				.limit(1);
+
+			if (slim.length === 0) {
+				return json({ error: 'Mise à jour introuvable.' }, { status: 404, headers: corsHeaders });
+			}
+
+			const s = slim[0];
+			const byGame = await translationsByGameIds([s.gameId]);
+			return json(
+				{
+					...s,
+					game: {
+						id: s.gameId,
+						translations: byGame.get(s.gameId) ?? []
+					}
+				},
+				{ headers: corsHeaders }
+			);
 		}
 
 		const flat = await db
@@ -87,36 +102,40 @@ export const GET: RequestHandler = async ({ url }) => {
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
 			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
-			.orderBy(desc(updateTable.createdAt))
-			.limit(limit);
+			.where(eq(updateTable.id, updateId))
+			.limit(1);
 
-		if (!withTranslations) {
-			const rows = flat.map((r) => ({
-				updateId: r.updateId,
-				updateStatus: r.updateStatus,
-				updateCreatedAt: r.updateCreatedAt,
-				updateUpdatedAt: r.updateUpdatedAt,
-				gameId: r.gameId,
-				game: embeddedGameFromRow(r)
-			}));
-			return json(rows, { headers: corsHeaders });
+		if (flat.length === 0) {
+			return json({ error: 'Mise à jour introuvable.' }, { status: 404, headers: corsHeaders });
 		}
 
-		const byGame = await translationsByGameIds(flat.map((r) => r.gameId));
-		const rows = flat.map((r) => ({
+		const r = flat[0];
+		const base = {
 			updateId: r.updateId,
 			updateStatus: r.updateStatus,
 			updateCreatedAt: r.updateCreatedAt,
 			updateUpdatedAt: r.updateUpdatedAt,
 			gameId: r.gameId,
-			game: {
-				...embeddedGameFromRow(r),
-				translations: byGame.get(r.gameId) ?? []
-			}
-		}));
-		return json(rows, { headers: corsHeaders });
+			game: embeddedGameFromRow(r)
+		};
+
+		if (!withTranslations) {
+			return json(base, { headers: corsHeaders });
+		}
+
+		const byGame = await translationsByGameIds([r.gameId]);
+		return json(
+			{
+				...base,
+				game: {
+					...base.game,
+					translations: byGame.get(r.gameId) ?? []
+				}
+			},
+			{ headers: corsHeaders }
+		);
 	} catch (error) {
-		console.error('Error fetching updates:', error);
-		return json({ error: 'Impossible de récupérer les mises à jour.' }, { status: 500, headers: corsHeaders });
+		console.error('Error fetching update:', error);
+		return json({ error: 'Impossible de récupérer la mise à jour.' }, { status: 500, headers: corsHeaders });
 	}
 };

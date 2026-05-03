@@ -30,6 +30,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(rows, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translations:', error);
-		return json({ error: 'Failed to fetch translations' }, { status: 500, headers: corsHeaders });
+		return json({ error: 'Impossible de récupérer les traductions.' }, { status: 500, headers: corsHeaders });
 	}
 };

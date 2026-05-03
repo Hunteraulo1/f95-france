@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -15,10 +16,15 @@ export const OPTIONS: RequestHandler = async () =>
 		headers: corsHeaders
 	});
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ params }) => {
+	const id = params.id;
+
+	if (!id) {
+		return json({ error: "L'identifiant du traducteur est requis." }, { status: 400, headers: corsHeaders });
+	}
+
 	try {
-		// Projection explicite: ne jamais exposer de liaison interne userId.
-		const translators = await db
+		const rows = await db
 			.select({
 				id: translator.id,
 				name: translator.name,
@@ -29,14 +35,17 @@ export const GET: RequestHandler = async () => {
 				createdAt: translator.createdAt,
 				updatedAt: translator.updatedAt
 			})
-			.from(translator);
-		return json(translators, { headers: corsHeaders });
+			.from(translator)
+			.where(eq(translator.id, id))
+			.limit(1);
+
+		if (rows.length === 0) {
+			return json({ error: 'Traducteur introuvable.' }, { status: 404, headers: corsHeaders });
+		}
+
+		return json(rows[0], { headers: corsHeaders });
 	} catch (error) {
-		console.error('Error fetching translators:', error);
-		return json({ error: 'Impossible de récupérer les traducteurs.' }, { status: 500, headers: corsHeaders });
+		console.error('Error fetching translator:', error);
+		return json({ error: 'Impossible de récupérer le traducteur.' }, { status: 500, headers: corsHeaders });
 	}
 };
-
-/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
-export const POST: RequestHandler = async () =>
-	json({ error: 'Méthode non autorisée.' }, { status: 405, headers: corsHeaders });
