@@ -1,3 +1,4 @@
+import { dateRangeOnColumn, parseOptionalDateRangeQuery } from '$lib/server/api/date-range-query';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { parseInclude } from '$lib/server/api/include-query';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
@@ -26,12 +27,18 @@ export const GET: RequestHandler = async ({ url }) => {
 		const parsedLimit = limitRaw ? Number.parseInt(limitRaw, 10) : 50;
 		const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 200) : 50;
 
+		const range = parseOptionalDateRangeQuery(url.searchParams);
+		if (!range.ok) {
+			return json({ error: range.message }, { status: 400, headers: corsHeaders });
+		}
+		const updateDateWhere = dateRangeOnColumn(updateTable.createdAt, range.from, range.to);
+
 		const inc = parseInclude(url.searchParams);
 		const withGame = inc.has('game');
 		const withTranslations = inc.has('translations');
 
-		if (!withGame && !withTranslations) {
-			const slim = await db
+		const slimSelect = () =>
+			db
 				.select({
 					updateId: updateTable.id,
 					updateStatus: updateTable.status,
@@ -39,22 +46,17 @@ export const GET: RequestHandler = async ({ url }) => {
 					updateUpdatedAt: updateTable.updatedAt,
 					gameId: updateTable.gameId
 				})
-				.from(updateTable)
+				.from(updateTable);
+
+		if (!withGame && !withTranslations) {
+			const slim = await (updateDateWhere ? slimSelect().where(updateDateWhere) : slimSelect())
 				.orderBy(desc(updateTable.createdAt))
 				.limit(limit);
 			return json(slim, { headers: corsHeaders });
 		}
 
 		if (!withGame && withTranslations) {
-			const slim = await db
-				.select({
-					updateId: updateTable.id,
-					updateStatus: updateTable.status,
-					updateCreatedAt: updateTable.createdAt,
-					updateUpdatedAt: updateTable.updatedAt,
-					gameId: updateTable.gameId
-				})
-				.from(updateTable)
+			const slim = await (updateDateWhere ? slimSelect().where(updateDateWhere) : slimSelect())
 				.orderBy(desc(updateTable.createdAt))
 				.limit(limit);
 			const byGame = await translationsByGameIds(slim.map((s) => s.gameId));
@@ -68,7 +70,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json(rows, { headers: corsHeaders });
 		}
 
-		const flat = await db
+		const flatBase = db
 			.select({
 				updateId: updateTable.id,
 				updateStatus: updateTable.status,
@@ -86,7 +88,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			})
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
-			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId));
+
+		const flat = await (updateDateWhere ? flatBase.where(updateDateWhere) : flatBase)
 			.orderBy(desc(updateTable.createdAt))
 			.limit(limit);
 

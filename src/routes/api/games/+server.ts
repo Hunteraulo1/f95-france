@@ -2,6 +2,7 @@ import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { parseInclude } from '$lib/server/api/include-query';
 import { db } from '$lib/server/db';
 import { game } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -19,7 +20,18 @@ export const OPTIONS: RequestHandler = async () =>
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const games = await db.select().from(game);
+		const websiteFilter = url.searchParams.get('website')?.trim();
+		if (websiteFilter && websiteFilter.length > 32) {
+			return json(
+				{ error: 'Paramètre website invalide (32 caractères maximum).' },
+				{ status: 400, headers: corsHeaders }
+			);
+		}
+
+		const selectGames = () => db.select().from(game);
+		const games = await (websiteFilter
+			? selectGames().where(eq(game.website, websiteFilter))
+			: selectGames());
 		if (!parseInclude(url.searchParams).has('translations')) {
 			return json(games, { headers: corsHeaders });
 		}
@@ -35,6 +47,6 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 };
 
-/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+/** Écriture interdite sur l’API publique. */
 export const POST: RequestHandler = async () =>
 	json({ error: 'Méthode non autorisée.' }, { status: 405, headers: corsHeaders });

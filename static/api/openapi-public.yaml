@@ -2,7 +2,9 @@ openapi: 3.0.3
 info:
   title: API publique F95 France
   description: |
-    Routes HTTP en **lecture seule** (méthode GET) avec en-tête CORS ouvert (`*`), destinées aux intégrations publiques. Les écritures se font via le tableau de bord.
+    Routes HTTP en **lecture seule** (méthode GET) avec en-tête CORS ouvert (`*`), destinées aux intégrations publiques.
+
+    Utilisez l’API avec modération : un volume de requêtes trop élevé ou un comportement abusif peut entraîner l’application de **restrictions** (limitation de débit, blocage temporaire ou définitif, etc.) sans préavis.
 
     **Documentation interactive (Redoc) :** [`/api/`](/api/)
   version: 1.0.0
@@ -13,13 +15,15 @@ servers:
 
 tags:
   - name: Jeux
-    description: Données brutes des jeux (schéma base)
+    description: Jeux référencés sur le site et leurs informations (fiche, liens, version, etc.).
   - name: Traductions
-    description: Lignes de traduction (schéma base)
+    description: |
+      Liste des traductions : chaque entrée est rattachée à un jeu (statut, liens vers les patchs, etc.).
   - name: Traducteurs
-    description: Traducteurs publics (sans liaison utilisateur interne)
+    description: Liste publique des traducteurs.
   - name: Mises à jour
-    description: Fil des mises à jour avec jeu associé
+    description: |
+      Jeux pour lesquels une traduction a été mise à jour par un traducteur, ou dont la traduction est indiquée comme intégrée au jeu — le fil reflète ces événements dans l’ordre chronologique.
 
 paths:
   /api/games:
@@ -29,9 +33,11 @@ paths:
       operationId: listGames
       parameters:
         - $ref: '#/components/parameters/Include'
+        - $ref: '#/components/parameters/GameWebsite'
       responses:
         '200':
-          description: Tableau de jeux
+          description: |
+            Tableau de jeux. Filtre optionnel : `website` restreint aux jeux dont le code site correspond (ex. `f95z`, `lc`).
           content:
             application/json:
               schema:
@@ -89,6 +95,8 @@ paths:
                           ac: false
                           createdAt: '2019-08-24T14:15:22Z'
                           updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -169,15 +177,16 @@ paths:
       summary: Liste des traductions
       description: |
         Sans filtre, retourne toutes les lignes triées par `updatedAt` décroissant.
-        Avec `gameId`, filtre sur ce jeu.
+
+        Filtres optionnels (combinés en **ET**) : `gameId`, `status`, `gameType`, `versionMatchesTversion`.
+        `versionMatchesTversion=true` : uniquement les lignes où `version` est renseigné et égal à `tversion` (traduction alignée sur la version du jeu au sens stocké en base).
+        `versionMatchesTversion=false` : le contraire (`version` nul ou différent de `tversion`).
       operationId: listTranslations
       parameters:
-        - name: gameId
-          in: query
-          description: UUID du jeu (optionnel)
-          schema:
-            type: string
-            format: uuid
+        - $ref: '#/components/parameters/TranslationFilterGameId'
+        - $ref: '#/components/parameters/TranslationFilterStatus'
+        - $ref: '#/components/parameters/TranslationFilterGameType'
+        - $ref: '#/components/parameters/TranslationFilterVersionMatchesTversion'
       responses:
         '200':
           description: Tableau de traductions
@@ -187,6 +196,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/GameTranslation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -218,7 +229,16 @@ paths:
       description: |
         Champs exposés : identifiant, nom, Discord, pages, compteurs, dates.
         La liaison interne `userId` n’est pas renvoyée.
+
+        Filtres optionnels sur les compteurs : `tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax` (entiers ≥ 0, bornes inclusives).
+        `hasDiscord=true` : uniquement les traducteurs avec un `discordId` renseigné ; `hasDiscord=false` : uniquement ceux sans `discordId`. Sans ce paramètre, la liste ne filtre pas sur Discord (tous les traducteurs peuvent apparaître).
       operationId: listTranslators
+      parameters:
+        - $ref: '#/components/parameters/TranslatorTradCountMin'
+        - $ref: '#/components/parameters/TranslatorTradCountMax'
+        - $ref: '#/components/parameters/TranslatorReadCountMin'
+        - $ref: '#/components/parameters/TranslatorReadCountMax'
+        - $ref: '#/components/parameters/TranslatorHasDiscord'
       responses:
         '200':
           description: Tableau de traducteurs
@@ -228,6 +248,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/TranslatorPublic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -267,6 +289,8 @@ paths:
             maximum: 200
             default: 50
         - $ref: '#/components/parameters/Include'
+        - $ref: '#/components/parameters/UpdatesStartDate'
+        - $ref: '#/components/parameters/UpdatesEndDate'
       responses:
         '200':
           description: |
@@ -274,6 +298,8 @@ paths:
             `include=game` : ajoute un objet `game` enrichi (sans tableau `translations` dans `game`).
             `include=translations` : ajoute un objet `game` minimal (clés `id` et `translations` dans `game`, sans les autres champs enrichis).
             `include=game,translations` : `game` enrichi avec `translations` à l’intérieur de `game`.
+
+            Filtre optionnel : `startDate` / `endDate` restreignent les entrées selon `updateCreatedAt` (bornes inclusives ; voir paramètres).
           content:
             application/json:
               schema:
@@ -373,6 +399,8 @@ paths:
                             ac: false
                             createdAt: '2019-08-24T14:15:22Z'
                             updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -497,6 +525,17 @@ components:
       schema:
         type: string
         format: uuid
+    GameWebsite:
+      name: website
+      in: query
+      required: false
+      description: |
+        Code du site d’origine du jeu, comme dans le champ `website` de chaque jeu (ex. `f95z`, `lc`, `other`).
+        Si absent, tous les jeux sont renvoyés.
+      schema:
+        type: string
+        maxLength: 32
+        example: f95z
     Include:
       name: include
       in: query
@@ -515,6 +554,40 @@ components:
       schema:
         type: string
         format: uuid
+    TranslationFilterGameId:
+      name: gameId
+      in: query
+      required: false
+      description: Ne garde que les traductions liées à ce jeu (UUID).
+      schema:
+        type: string
+        format: uuid
+    TranslationFilterStatus:
+      name: status
+      in: query
+      required: false
+      description: Égalité stricte sur le champ `status` (valeur telle qu’en base, p.ex. `in_progress`).
+      schema:
+        type: string
+        maxLength: 32
+    TranslationFilterGameType:
+      name: gameType
+      in: query
+      required: false
+      description: Égalité stricte sur le champ `gameType` (ex. `renpy`, `unity`, `other`).
+      schema:
+        type: string
+        maxLength: 32
+    TranslationFilterVersionMatchesTversion:
+      name: versionMatchesTversion
+      in: query
+      required: false
+      description: |
+        `true` : `version` non nul et égal à `tversion`.
+        `false` : `version` nul ou différent de `tversion`.
+        Si absent, pas de filtre sur cette condition.
+      schema:
+        type: boolean
     TranslatorId:
       name: id
       in: path
@@ -529,6 +602,68 @@ components:
       schema:
         type: string
         format: uuid
+    TranslatorTradCountMin:
+      name: tradCountMin
+      in: query
+      required: false
+      description: Borne inférieure inclusive sur `tradCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorTradCountMax:
+      name: tradCountMax
+      in: query
+      required: false
+      description: Borne supérieure inclusive sur `tradCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorReadCountMin:
+      name: readCountMin
+      in: query
+      required: false
+      description: Borne inférieure inclusive sur `readCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorReadCountMax:
+      name: readCountMax
+      in: query
+      required: false
+      description: Borne supérieure inclusive sur `readCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorHasDiscord:
+      name: hasDiscord
+      in: query
+      required: false
+      description: |
+        `true` : seulement les traducteurs avec un identifiant Discord (`discordId` non nul).
+        `false` : seulement ceux sans `discordId`.
+        Si vous omettez ce paramètre, la réponse inclut les deux cas (avec ou sans Discord).
+      schema:
+        type: boolean
+    UpdatesStartDate:
+      name: startDate
+      in: query
+      required: false
+      description: |
+        Borne inférieure **inclusive** sur la date de création de l’entrée (`updateCreatedAt`).
+        ISO 8601 complet ou date seule `AAAA-MM-JJ` (interprétée en **minuit UTC**).
+      schema:
+        type: string
+        example: '2024-01-15'
+    UpdatesEndDate:
+      name: endDate
+      in: query
+      required: false
+      description: |
+        Borne supérieure **inclusive** sur `updateCreatedAt`.
+        ISO 8601 complet ou date seule `AAAA-MM-JJ` (journée entière jusqu’à **23:59:59.999 UTC**).
+      schema:
+        type: string
+        example: '2024-01-31'
 
   responses:
     BadRequest:

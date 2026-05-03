@@ -45,6 +45,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	}
 };
 
-/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+/** Écriture interdite sur l’API publique. */
 export const PUT: RequestHandler = async () =>
 	json({ error: 'Méthode non autorisée.' }, { status: 405, headers: corsHeaders });

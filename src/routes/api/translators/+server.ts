@@ -1,3 +1,4 @@
+import { parseTranslatorCountFilters } from '$lib/server/api/translator-count-filters';
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
@@ -15,21 +16,30 @@ export const OPTIONS: RequestHandler = async () =>
 		headers: corsHeaders
 	});
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Projection explicite: ne jamais exposer de liaison interne userId.
-		const translators = await db
-			.select({
-				id: translator.id,
-				name: translator.name,
-				discordId: translator.discordId,
-				pages: translator.pages,
-				tradCount: translator.tradCount,
-				readCount: translator.readCount,
-				createdAt: translator.createdAt,
-				updatedAt: translator.updatedAt
-			})
-			.from(translator);
+		const filters = parseTranslatorCountFilters(url.searchParams);
+		if (!filters.ok) {
+			return json({ error: filters.message }, { status: 400, headers: corsHeaders });
+		}
+
+		const selectTranslators = () =>
+			db
+				.select({
+					id: translator.id,
+					name: translator.name,
+					discordId: translator.discordId,
+					pages: translator.pages,
+					tradCount: translator.tradCount,
+					readCount: translator.readCount,
+					createdAt: translator.createdAt,
+					updatedAt: translator.updatedAt
+				})
+				.from(translator);
+
+		const translators = await (filters.where
+			? selectTranslators().where(filters.where)
+			: selectTranslators());
 		return json(translators, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translators:', error);
@@ -37,6 +47,6 @@ export const GET: RequestHandler = async () => {
 	}
 };
 
-/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+/** Écriture interdite sur l’API publique. */
 export const POST: RequestHandler = async () =>
 	json({ error: 'Méthode non autorisée.' }, { status: 405, headers: corsHeaders });
