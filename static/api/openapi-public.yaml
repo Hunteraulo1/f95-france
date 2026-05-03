@@ -1,0 +1,704 @@
+openapi: 3.0.3
+info:
+  title: API publique F95 France
+  description: |
+    Endpoints HTTP en **lecture seule** (GET) avec CORS ouvert (`*`), destinés aux intégrations et à l’extension navigateur.
+
+    - Les écritures (POST/PUT sur ces ressources) renvoient **405 Method Not Allowed** : utiliser le tableau de bord.
+    - L’**extract thread** (`/api/extract/...`) est réservé aux **administrateurs** connectés (cookie de session). Le CORS est restreint en production (`EXTRACT_F95_ALLOWED_ORIGINS`, `EXTRACT_LC_ALLOWED_ORIGINS`).
+
+    **Documentation interactive (Redoc) :** [`/api/`](/api/)
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Origine du site (remplacez par l’URL de production pour les tests depuis un client externe)
+
+tags:
+  - name: Jeux
+    description: Données brutes des jeux (schéma base)
+  - name: Traductions
+    description: Lignes de traduction (schéma base)
+  - name: Traducteurs
+    description: Traducteurs publics (sans liaison utilisateur interne)
+  - name: Mises à jour
+    description: Fil des mises à jour avec jeu associé
+  - name: Extension
+    description: Agrégat formaté pour l’extension (jeux + mises à jour + traducteurs)
+  - name: Extract
+    description: Import jeu depuis un thread F95 / LewdCorner (admin, session requise)
+
+paths:
+  /api/games:
+    get:
+      tags: [Jeux]
+      summary: Liste des jeux
+      operationId: listGames
+      responses:
+        '200':
+          description: Tableau de jeux
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Game'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Jeux]
+      summary: Non supporté
+      operationId: postGamesDisallowed
+      responses:
+        '405':
+          description: Méthode interdite
+
+  /api/games/{id}:
+    get:
+      tags: [Jeux]
+      summary: Détail d’un jeu
+      operationId: getGameById
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Jeu trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [Jeux]
+      summary: Non supporté
+      operationId: putGameDisallowed
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '405':
+          description: Méthode interdite
+
+  /api/translations:
+    get:
+      tags: [Traductions]
+      summary: Liste des traductions
+      description: |
+        Sans filtre, retourne toutes les lignes triées par `updatedAt` décroissant.
+        Avec `gameId`, filtre sur ce jeu.
+      operationId: listTranslations
+      parameters:
+        - name: gameId
+          in: query
+          description: UUID du jeu (optionnel)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tableau de traductions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameTranslation'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translations/{id}:
+    get:
+      tags: [Traductions]
+      summary: Détail d’une traduction
+      operationId: getTranslationById
+      parameters:
+        - $ref: '#/components/parameters/TranslationId'
+      responses:
+        '200':
+          description: Traduction trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTranslation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translators:
+    get:
+      tags: [Traducteurs]
+      summary: Liste des traducteurs (projection publique)
+      description: |
+        Champs exposés : identifiant, nom, Discord, pages, compteurs, dates.
+        La liaison interne `userId` n’est pas renvoyée.
+      operationId: listTranslators
+      responses:
+        '200':
+          description: Tableau de traducteurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TranslatorPublic'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Traducteurs]
+      summary: Non supporté
+      operationId: postTranslatorsDisallowed
+      responses:
+        '405':
+          description: Méthode interdite
+
+  /api/updates:
+    get:
+      tags: [Mises à jour]
+      summary: Dernières mises à jour
+      operationId: listUpdates
+      parameters:
+        - name: limit
+          in: query
+          description: Nombre max d’entrées (1–200, défaut 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Liste des mises à jour avec jeu enrichi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpdateWithGame'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/extension:
+    get:
+      tags: [Extension]
+      summary: Données agrégées (extension)
+      description: |
+        Alias de `/api/extension-api`. Réponse normalisée pour l’extension (libellés français, tags découpés, etc.).
+      operationId: getExtensionData
+      parameters:
+        - name: gameId
+          in: query
+          description: Filtrer les entrées « jeu + traduction » sur cet UUID de jeu
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Enveloppe `data` avec jeux, mises à jour et traducteurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtensionBundle'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/extension-api:
+    get:
+      tags: [Extension]
+      summary: Données agrégées (même contenu que /api/extension)
+      operationId: getExtensionApiData
+      parameters:
+        - name: gameId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Identique à `/api/extension`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtensionBundle'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/extract/f95/{threadId}:
+    get:
+      tags: [Extract]
+      summary: Extract F95 (GET)
+      description: |
+        Crée ou retrouve un jeu à partir d’un ID de thread F95. **Session admin requise** (cookie `auth-session`).
+        Avec `Accept: text/html`, redirection 302 vers la fiche jeu. Sinon JSON `{ created, gameId, redirect }`.
+      operationId: extractF95Get
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExtractSuccessJson'
+        '302':
+          description: Redirection vers `/dashboard/game/{id}` si Accept HTML
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Soumission déjà en attente pour ce thread
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Extract]
+      summary: Extract F95 (POST, corps JSON optionnel)
+      operationId: extractF95Post
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Champs optionnels (nom, tags, image, lien, etc.) — voir implémentation serveur
+      responses:
+        '200':
+          $ref: '#/components/responses/ExtractSuccessJson'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflit soumission
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/extract/lc/{threadId}:
+    get:
+      tags: [Extract]
+      summary: Extract LewdCorner (GET)
+      description: Même sémantique que F95, site `lc`.
+      operationId: extractLcGet
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExtractSuccessJson'
+        '302':
+          description: Redirection si Accept HTML
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflit soumission
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Extract]
+      summary: Extract LewdCorner (POST)
+      operationId: extractLcPost
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          $ref: '#/components/responses/ExtractSuccessJson'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflit soumission
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth-session
+      description: Cookie de session utilisateur (rôle admin requis pour extract)
+
+  parameters:
+    GameId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TranslationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ThreadId:
+      name: threadId
+      in: path
+      required: true
+      description: Identifiant numérique du thread sur le site source
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    Forbidden:
+      description: Accès refusé (droits insuffisants)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    ServerError:
+      description: Erreur serveur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    ExtractSuccessJson:
+      description: Jeu créé ou existant
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [created, gameId, redirect]
+            properties:
+              created:
+                type: boolean
+              gameId:
+                type: string
+                format: uuid
+              redirect:
+                type: string
+                description: Chemin relatif vers la fiche jeu dashboard
+
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tags:
+          type: string
+          description: Tags séparés par des virgules (texte brut)
+        image:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          description: Code site (ex. f95z, lc)
+        threadId:
+          type: integer
+          nullable: true
+        link:
+          type: string
+        gameAutoCheck:
+          type: boolean
+        gameVersion:
+          type: string
+          nullable: true
+
+    GameTranslation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        translationName:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: ex. in_progress, completed, abandoned
+        tversion:
+          type: string
+        tlink:
+          type: string
+        tname:
+          type: string
+        translatorId:
+          type: string
+          nullable: true
+        proofreaderId:
+          type: string
+          nullable: true
+        ttype:
+          type: string
+        gameType:
+          type: string
+          description: Moteur / techno (renpy, unity, other, …)
+        ac:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TranslatorPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        discordId:
+          type: string
+          nullable: true
+        pages:
+          type: string
+          description: JSON ou texte des pages / liens
+        tradCount:
+          type: integer
+          nullable: true
+        readCount:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateWithGame:
+      type: object
+      required: [updateId, updateStatus, updateCreatedAt, updateUpdatedAt, game]
+      properties:
+        updateId:
+          type: string
+          format: uuid
+        updateStatus:
+          type: string
+        updateCreatedAt:
+          type: string
+          format: date-time
+        updateUpdatedAt:
+          type: string
+          format: date-time
+        game:
+          type: object
+          required: [id, name, image, link, website, threadId, gameVersion, type, engineTypes, tags]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            image:
+              type: string
+            link:
+              type: string
+            website:
+              type: string
+            threadId:
+              type: integer
+              nullable: true
+            gameVersion:
+              type: string
+              nullable: true
+            type:
+              type: string
+              description: Premier moteur de la liste ou `other`
+            engineTypes:
+              type: array
+              items:
+                type: string
+            tags:
+              type: string
+
+    ExtensionGameRow:
+      type: object
+      description: Ligne « jeu + traduction » normalisée pour l’extension
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        threadId:
+          type: integer
+          nullable: true
+        domain:
+          type: string
+          enum: [F95z, LewdCorner, Autre, Unknown]
+        hostname:
+          type: string
+          nullable: true
+          description: Host du site quand applicable (f95zone.to, lewdcorner.com)
+        name:
+          type: string
+        version:
+          type: string
+        tversion:
+          type: string
+        tname:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [EN COURS, TERMINÉ, ABANDONNÉ]
+        tags:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+        traductor:
+          type: string
+          nullable: true
+        proofreader:
+          type: string
+          nullable: true
+        ttype:
+          type: string
+        ac:
+          type: boolean
+        link:
+          type: string
+        tlink:
+          type: string
+          nullable: true
+        trlink:
+          type: string
+          nullable: true
+        prlink:
+          type: string
+          nullable: true
+        image:
+          type: string
+          nullable: true
+
+    ExtensionUpdateRow:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [AJOUT DE JEU, MISE À JOUR]
+        gameId:
+          type: string
+          format: uuid
+
+    ExtensionTraductorRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        pages:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              link:
+                type: string
+        discordId:
+          type: integer
+          nullable: true
+        tradCount:
+          type: integer
+        readCount:
+          type: integer
+        score:
+          type: integer
+
+    ExtensionBundle:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [games, updates, traductors]
+          properties:
+            games:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExtensionGameRow'
+            updates:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExtensionUpdateRow'
+            traductors:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExtensionTraductorRow'
