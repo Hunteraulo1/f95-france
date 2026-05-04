@@ -1,3 +1,4 @@
+import { ensureSessionApiKey } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
@@ -166,6 +167,7 @@ export async function createUser(username: string, email: string, password: stri
 	};
 
 	await db.insert(table.user).values(user);
+	await ensureSessionApiKey(userId);
 	return user;
 }
 

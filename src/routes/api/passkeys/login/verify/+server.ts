@@ -2,17 +2,23 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
+	checkLoginThrottle,
+	clearLoginThrottle,
+	LOGIN_THROTTLE_MESSAGE,
+	recordLoginFailure
+} from '$lib/server/login-throttle';
+import {
 	base64URLToBytes,
 	consumePasskeyChallenge,
 	getExpectedOrigin,
 	getRpID
 } from '$lib/server/passkeys';
-import { json } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import {
 	verifyAuthenticationResponse,
 	type AuthenticationResponseJSON
 } from '@simplewebauthn/server';
+import { json } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async (event) => {
@@ -24,6 +30,11 @@ export const POST: RequestHandler = async (event) => {
 	const username = body.username?.trim();
 	if (!body.response) {
 		return json({ error: 'Réponse WebAuthn manquante.' }, { status: 400 });
+	}
+
+	const throttle = await checkLoginThrottle(event);
+	if (!throttle.ok) {
+		return json({ error: LOGIN_THROTTLE_MESSAGE }, { status: 429 });
 	}
 
 	const [stored] = await db
@@ -40,9 +51,11 @@ export const POST: RequestHandler = async (event) => {
 		.where(eq(table.passkey.credentialId, body.response.id))
 		.limit(1);
 	if (!stored) {
+		await recordLoginFailure(event);
 		return json({ error: "Cette clé d'accès n'est pas enregistrée." }, { status: 400 });
 	}
 	if (username && stored.username !== username) {
+		await recordLoginFailure(event);
 		return json(
 			{ error: "Cette clé d'accès n'appartient pas à cet utilisateur." },
 			{ status: 400 }
@@ -54,6 +67,7 @@ export const POST: RequestHandler = async (event) => {
 		type: 'login'
 	});
 	if (!expectedChallenge) {
+		await recordLoginFailure(event);
 		return json({ error: 'Challenge expiré, recommencez la connexion.' }, { status: 400 });
 	}
 
@@ -71,6 +85,7 @@ export const POST: RequestHandler = async (event) => {
 	});
 
 	if (!verification.verified) {
+		await recordLoginFailure(event);
 		return json({ error: "Échec de vérification de la clé d'accès." }, { status: 400 });
 	}
 
@@ -85,6 +100,7 @@ export const POST: RequestHandler = async (event) => {
 	const sessionToken = auth.generateSessionToken();
 	const session = await auth.createSession(sessionToken, stored.userId);
 	auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+	await clearLoginThrottle(event);
 
 	return json({ success: true });
 };

@@ -1,0 +1,983 @@
+openapi: 3.0.3
+info:
+  title: API publique F95 France
+  description: |
+    Routes HTTP en **lecture seule** (méthode GET) avec en-tête CORS ouvert (`*`), destinées aux intégrations publiques.
+
+    ### Authentification
+
+    Pour chaque opération décrite dans cette spécification, la requête doit prouver l’identité par **l’une** des options suivantes :
+
+    1. **Cookie de session** — après connexion sur le tableau de bord (`auth-session`, envoi automatique avec `credentials: 'include'` depuis le même site).
+    2. **Clé API** — en-tête **`Authorization`** avec le schéma **`Bearer`** et la **clé complète** comme jeton (ex. préfixe `f95ext_…`), ou en-tête **`X-Api-Key`** avec la même valeur. Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Pour relever ce plafond, **contactez un administrateur du site**. Réponse **`429`** si la **limite par minute** est dépassée (trop de requêtes dans la fenêtre courante).
+
+    Les appels avec clé se comportent comme si le **propriétaire** de la clé effectuait la requête (droits et données visibles alignés sur ce compte).
+
+    **Sans authentification valide :** réponse **`401`** (`application/json`, champ `error`).
+
+    ### Usage
+
+    Utilisez l’API avec modération : un volume de requêtes trop élevé ou un comportement abusif peut entraîner l’application de **restrictions** (limitation de débit, blocage temporaire ou définitif, etc.) sans préavis.
+
+    **Documentation interactive (Redoc) :** [`/api/`](/api/)
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Origine du site (remplacez par l’URL de production pour les tests depuis un client externe)
+
+# Au moins une des exigences ci‑dessous doit être satisfaite (OU logique entre les éléments du tableau).
+security:
+  - SessionCookie: []
+  - ApiKeyBearer: []
+  - ApiKeyHeader: []
+
+tags:
+  - name: Jeux
+    description: Jeux référencés sur le site et leurs informations (fiche, liens, version, etc.).
+  - name: Traductions
+    description: |
+      Liste des traductions : chaque entrée est rattachée à un jeu (statut, liens vers les patchs, etc.).
+  - name: Traducteurs
+    description: Liste publique des traducteurs.
+  - name: Mises à jour
+    description: |
+      Jeux pour lesquels une traduction a été mise à jour par un traducteur, ou dont la traduction est indiquée comme intégrée au jeu — le fil reflète ces événements dans l’ordre chronologique.
+
+paths:
+  /api/games:
+    get:
+      tags: [Jeux]
+      summary: Liste des jeux
+      operationId: listGames
+      parameters:
+        - $ref: '#/components/parameters/Include'
+        - $ref: '#/components/parameters/GameWebsite'
+      responses:
+        '200':
+          description: |
+            Tableau de jeux. Filtre optionnel : `website` restreint aux jeux dont le code site correspond (ex. `f95z`, `lc`).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Game'
+              examples:
+                sansTraductions:
+                  summary: Par défaut (sans paramètre include)
+                  description: |
+                    Tableau de jeux (un seul élément ici pour l’exemple ; la liste réelle peut être longue). Pas de champ `translations`.
+                  value:
+                    - id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      name: Visual Novel démo
+                      tags: renpy, vn, demo
+                      image: https://example.com/covers/vn-demo.png
+                      createdAt: '2019-08-24T14:15:22Z'
+                      updatedAt: '2024-03-01T10:00:00Z'
+                      description: Synopsis court du jeu.
+                      website: f95z
+                      threadId: 12345
+                      link: https://f95zone.to/threads/12345
+                      gameAutoCheck: true
+                      gameVersion: '1.2.0'
+                avecTraductions:
+                  summary: Avec le paramètre include=translations
+                  description: |
+                    Même forme avec le champ `translations` sur chaque jeu (souvent un tableau vide s’il n’y a aucune ligne). Tri par date `updatedAt` décroissante ; un seul objet traduction en exemple.
+                  value:
+                    - id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      name: Visual Novel démo
+                      tags: renpy, vn, demo
+                      image: https://example.com/covers/vn-demo.png
+                      createdAt: '2019-08-24T14:15:22Z'
+                      updatedAt: '2024-03-01T10:00:00Z'
+                      description: Synopsis court du jeu.
+                      website: f95z
+                      threadId: 12345
+                      link: https://f95zone.to/threads/12345
+                      gameAutoCheck: true
+                      gameVersion: '1.2.0'
+                      translations:
+                        - id: a1b2c3d4-1111-2222-3333-444455556666
+                          gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                          translationName: Français
+                          version: '1.0'
+                          status: in_progress
+                          tversion: '0.9'
+                          tlink: https://example.com/patch-fr
+                          tname: team_alpha
+                          translatorId: null
+                          proofreaderId: null
+                          ttype: fan
+                          gameType: renpy
+                          ac: false
+                          createdAt: '2019-08-24T14:15:22Z'
+                          updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/games/{id}:
+    get:
+      tags: [Jeux]
+      summary: Détail d’un jeu
+      operationId: getGameById
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/Include'
+      responses:
+        '200':
+          description: Jeu trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+              examples:
+                sansTraductions:
+                  summary: Par défaut
+                  description: Détail du jeu sans le champ `translations`.
+                  value:
+                    id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                    name: Visual Novel démo
+                    tags: renpy, vn, demo
+                    image: https://example.com/covers/vn-demo.png
+                    createdAt: '2019-08-24T14:15:22Z'
+                    updatedAt: '2024-03-01T10:00:00Z'
+                    description: Synopsis court du jeu.
+                    website: f95z
+                    threadId: 12345
+                    link: https://f95zone.to/threads/12345
+                    gameAutoCheck: true
+                    gameVersion: '1.2.0'
+                avecTraductions:
+                  summary: Avec le paramètre include=translations
+                  description: Même jeu avec les traductions associées (tri par `updatedAt` décroissant ; un seul élément en exemple).
+                  value:
+                    id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                    name: Visual Novel démo
+                    tags: renpy, vn, demo
+                    image: https://example.com/covers/vn-demo.png
+                    createdAt: '2019-08-24T14:15:22Z'
+                    updatedAt: '2024-03-01T10:00:00Z'
+                    description: Synopsis court du jeu.
+                    website: f95z
+                    threadId: 12345
+                    link: https://f95zone.to/threads/12345
+                    gameAutoCheck: true
+                    gameVersion: '1.2.0'
+                    translations:
+                      - id: a1b2c3d4-1111-2222-3333-444455556666
+                        gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                        translationName: Français
+                        version: '1.0'
+                        status: in_progress
+                        tversion: '0.9'
+                        tlink: https://example.com/patch-fr
+                        tname: team_alpha
+                        translatorId: null
+                        proofreaderId: null
+                        ttype: fan
+                        gameType: renpy
+                        ac: false
+                        createdAt: '2019-08-24T14:15:22Z'
+                        updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translations:
+    get:
+      tags: [Traductions]
+      summary: Liste des traductions
+      description: |
+        Sans filtre, retourne toutes les lignes triées par `updatedAt` décroissant.
+
+        Filtres optionnels (combinés en **ET**) : `gameId`, `status`, `gameType`, `versionMatchesTversion`.
+        `versionMatchesTversion=true` : uniquement les lignes où `version` est renseigné et égal à `tversion` (traduction alignée sur la version du jeu au sens stocké en base).
+        `versionMatchesTversion=false` : le contraire (`version` nul ou différent de `tversion`).
+      operationId: listTranslations
+      parameters:
+        - $ref: '#/components/parameters/TranslationFilterGameId'
+        - $ref: '#/components/parameters/TranslationFilterStatus'
+        - $ref: '#/components/parameters/TranslationFilterGameType'
+        - $ref: '#/components/parameters/TranslationFilterVersionMatchesTversion'
+      responses:
+        '200':
+          description: Tableau de traductions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameTranslation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translations/{id}:
+    get:
+      tags: [Traductions]
+      summary: Détail d’une traduction
+      operationId: getTranslationById
+      parameters:
+        - $ref: '#/components/parameters/TranslationId'
+      responses:
+        '200':
+          description: Traduction trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameTranslation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translators:
+    get:
+      tags: [Traducteurs]
+      summary: Liste des traducteurs (projection publique)
+      description: |
+        Champs exposés : identifiant, nom, Discord, pages, compteurs, dates.
+        La liaison interne `userId` n’est pas renvoyée.
+
+        Filtres optionnels sur les compteurs : `tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax` (entiers ≥ 0, bornes inclusives).
+        `hasDiscord=true` : uniquement les traducteurs avec un `discordId` renseigné ; `hasDiscord=false` : uniquement ceux sans `discordId`. Sans ce paramètre, la liste ne filtre pas sur Discord (tous les traducteurs peuvent apparaître).
+      operationId: listTranslators
+      parameters:
+        - $ref: '#/components/parameters/TranslatorTradCountMin'
+        - $ref: '#/components/parameters/TranslatorTradCountMax'
+        - $ref: '#/components/parameters/TranslatorReadCountMin'
+        - $ref: '#/components/parameters/TranslatorReadCountMax'
+        - $ref: '#/components/parameters/TranslatorHasDiscord'
+      responses:
+        '200':
+          description: Tableau de traducteurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TranslatorPublic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/translators/{id}:
+    get:
+      tags: [Traducteurs]
+      summary: Détail d’un traducteur (projection publique)
+      operationId: getTranslatorById
+      parameters:
+        - $ref: '#/components/parameters/TranslatorId'
+      responses:
+        '200':
+          description: Traducteur trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatorPublic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/updates:
+    get:
+      tags: [Mises à jour]
+      summary: Dernières mises à jour
+      operationId: listUpdates
+      parameters:
+        - name: limit
+          in: query
+          description: Nombre max d’entrées (1–200, défaut 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - $ref: '#/components/parameters/Include'
+        - $ref: '#/components/parameters/UpdatesStartDate'
+        - $ref: '#/components/parameters/UpdatesEndDate'
+      responses:
+        '200':
+          description: |
+            Par défaut : champs de la mise à jour et `gameId`.
+            `include=game` : ajoute un objet `game` enrichi (sans tableau `translations` dans `game`).
+            `include=translations` : ajoute un objet `game` minimal (clés `id` et `translations` dans `game`, sans les autres champs enrichis).
+            `include=game,translations` : `game` enrichi avec `translations` à l’intérieur de `game`.
+
+            Filtre optionnel : `startDate` / `endDate` restreignent les entrées selon `updateCreatedAt` (bornes inclusives ; voir paramètres).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpdatePublic'
+              examples:
+                sansJeu:
+                  summary: Par défaut (sans paramètre include)
+                  description: Uniquement les champs de la mise à jour et l’identifiant `gameId`.
+                  value:
+                    - updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                      updateStatus: update
+                      updateCreatedAt: '2019-08-24T14:15:22Z'
+                      updateUpdatedAt: '2019-08-24T14:15:22Z'
+                      gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                avecJeu:
+                  summary: Avec le paramètre include=game
+                  description: Objet `game` enrichi (moteurs, étiquettes, etc.).
+                  value:
+                    - updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                      updateStatus: update
+                      updateCreatedAt: '2019-08-24T14:15:22Z'
+                      updateUpdatedAt: '2019-08-24T14:15:22Z'
+                      gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      game:
+                        id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                        name: Exemple
+                        image: https://example.com/cover.png
+                        link: https://f95zone.to/threads/12345
+                        website: f95z
+                        threadId: 12345
+                        gameVersion: '1.0'
+                        type: renpy
+                        engineTypes: [renpy, unity]
+                        tags: renpy, vn
+                avecTraductions:
+                  summary: Avec le paramètre include=translations
+                  description: Objet `game` réduit (seule la clé `id` côté jeu) et les `translations` imbriquées dans `game`.
+                  value:
+                    - updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                      updateStatus: update
+                      updateCreatedAt: '2019-08-24T14:15:22Z'
+                      updateUpdatedAt: '2019-08-24T14:15:22Z'
+                      gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      game:
+                        id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                        translations:
+                          - id: a1b2c3d4-1111-2222-3333-444455556666
+                            gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                            translationName: Français
+                            version: '1.0'
+                            status: in_progress
+                            tversion: '0.9'
+                            tlink: https://example.com/patch-fr
+                            tname: team_alpha
+                            translatorId: null
+                            proofreaderId: null
+                            ttype: fan
+                            gameType: renpy
+                            ac: false
+                            createdAt: '2019-08-24T14:15:22Z'
+                            updatedAt: '2024-03-10T12:00:00Z'
+                jeuEtTraductions:
+                  summary: Avec include=game et include=translations
+                  description: Jeu enrichi ; les `translations` sont dans le même objet `game`.
+                  value:
+                    - updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                      updateStatus: update
+                      updateCreatedAt: '2019-08-24T14:15:22Z'
+                      updateUpdatedAt: '2019-08-24T14:15:22Z'
+                      gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      game:
+                        id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                        name: Exemple
+                        image: https://example.com/cover.png
+                        link: https://f95zone.to/threads/12345
+                        website: f95z
+                        threadId: 12345
+                        gameVersion: '1.0'
+                        type: renpy
+                        engineTypes: [renpy, unity]
+                        tags: renpy, vn
+                        translations:
+                          - id: a1b2c3d4-1111-2222-3333-444455556666
+                            gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                            translationName: Français
+                            version: '1.0'
+                            status: in_progress
+                            tversion: '0.9'
+                            tlink: https://example.com/patch-fr
+                            tname: team_alpha
+                            translatorId: null
+                            proofreaderId: null
+                            ttype: fan
+                            gameType: renpy
+                            ac: false
+                            createdAt: '2019-08-24T14:15:22Z'
+                            updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/updates/{id}:
+    get:
+      tags: [Mises à jour]
+      summary: Détail d’une mise à jour
+      operationId: getUpdateById
+      parameters:
+        - $ref: '#/components/parameters/UpdateId'
+        - $ref: '#/components/parameters/Include'
+      responses:
+        '200':
+          description: |
+            Même logique que la liste : les traductions sont toujours dans l’objet `game` ; avec seul `include=translations`, `game` ne contient que les clés `id` et `translations`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdatePublic'
+              examples:
+                sansJeu:
+                  summary: Par défaut
+                  value:
+                    updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                    updateStatus: update
+                    updateCreatedAt: '2019-08-24T14:15:22Z'
+                    updateUpdatedAt: '2019-08-24T14:15:22Z'
+                    gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                avecJeu:
+                  summary: Avec le paramètre include=game
+                  value:
+                    updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                    updateStatus: update
+                    updateCreatedAt: '2019-08-24T14:15:22Z'
+                    updateUpdatedAt: '2019-08-24T14:15:22Z'
+                    gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                    game:
+                      id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      name: Exemple
+                      image: https://example.com/cover.png
+                      link: https://f95zone.to/threads/12345
+                      website: f95z
+                      threadId: 12345
+                      gameVersion: '1.0'
+                      type: renpy
+                      engineTypes: [renpy, unity]
+                      tags: renpy, vn
+                avecTraductions:
+                  summary: Avec le paramètre include=translations
+                  value:
+                    updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                    updateStatus: update
+                    updateCreatedAt: '2019-08-24T14:15:22Z'
+                    updateUpdatedAt: '2019-08-24T14:15:22Z'
+                    gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                    game:
+                      id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      translations:
+                        - id: a1b2c3d4-1111-2222-3333-444455556666
+                          gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                          translationName: Français
+                          version: '1.0'
+                          status: in_progress
+                          tversion: '0.9'
+                          tlink: https://example.com/patch-fr
+                          tname: team_alpha
+                          translatorId: null
+                          proofreaderId: null
+                          ttype: fan
+                          gameType: renpy
+                          ac: false
+                          createdAt: '2019-08-24T14:15:22Z'
+                          updatedAt: '2024-03-10T12:00:00Z'
+                jeuEtTraductions:
+                  summary: Avec include=game et include=translations
+                  value:
+                    updateId: 5cebcd16-bfee-44cf-a327-a26bd6ddf285
+                    updateStatus: update
+                    updateCreatedAt: '2019-08-24T14:15:22Z'
+                    updateUpdatedAt: '2019-08-24T14:15:22Z'
+                    gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                    game:
+                      id: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                      name: Exemple
+                      image: https://example.com/cover.png
+                      link: https://f95zone.to/threads/12345
+                      website: f95z
+                      threadId: 12345
+                      gameVersion: '1.0'
+                      type: renpy
+                      engineTypes: [renpy, unity]
+                      tags: renpy, vn
+                      translations:
+                        - id: a1b2c3d4-1111-2222-3333-444455556666
+                          gameId: 3f0eee32-8eac-4668-9e6a-0123456789ab
+                          translationName: Français
+                          version: '1.0'
+                          status: in_progress
+                          tversion: '0.9'
+                          tlink: https://example.com/patch-fr
+                          tname: team_alpha
+                          translatorId: null
+                          proofreaderId: null
+                          ttype: fan
+                          gameType: renpy
+                          ac: false
+                          createdAt: '2019-08-24T14:15:22Z'
+                          updatedAt: '2024-03-10T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth-session
+      description: |
+        Cookie de session émis après connexion sur le site (tableau de bord). Envoyé automatiquement par le navigateur pour les requêtes same-site.
+    ApiKeyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: |
+        Valeur complète de la clé API (ex. préfixe `f95ext_…`). Équivalent à l’en-tête `X-Api-Key`.
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: |
+        Même secret que pour l’en-tête Authorization avec schéma Bearer (valeur = clé complète).
+
+  parameters:
+    GameId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GameWebsite:
+      name: website
+      in: query
+      required: false
+      description: |
+        Code du site d’origine du jeu, comme dans le champ `website` de chaque jeu (ex. `f95z`, `lc`, `other`).
+        Si absent, tous les jeux sont renvoyés.
+      schema:
+        type: string
+        maxLength: 32
+        example: f95z
+    Include:
+      name: include
+      in: query
+      required: false
+      description: |
+        Ressources liées à inclure. Liste séparée par des virgules (insensible à la casse).
+        - `translations` — sur **`/api/games`** et **`/api/games/{id}`** : ajoute `translations` sur le jeu. Sur **`/api/updates`** et **`/api/updates/{id}`** : ajoute `translations` **dans** l’objet `game` (jeu minimal `id` + `translations` si `game` n’est pas demandé ; sinon jeu enrichi + `translations`).
+        - `game` — sur **`/api/updates`** et **`/api/updates/{id}`** : enrichit l’objet `game` (moteurs, étiquettes, etc.). Peut se combiner avec : `include=game,translations`.
+      schema:
+        type: string
+        example: translations,game
+    TranslationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TranslationFilterGameId:
+      name: gameId
+      in: query
+      required: false
+      description: Ne garde que les traductions liées à ce jeu (UUID).
+      schema:
+        type: string
+        format: uuid
+    TranslationFilterStatus:
+      name: status
+      in: query
+      required: false
+      description: Égalité stricte sur le champ `status` (valeur telle qu’en base, p.ex. `in_progress`).
+      schema:
+        type: string
+        maxLength: 32
+    TranslationFilterGameType:
+      name: gameType
+      in: query
+      required: false
+      description: Égalité stricte sur le champ `gameType` (ex. `renpy`, `unity`, `other`).
+      schema:
+        type: string
+        maxLength: 32
+    TranslationFilterVersionMatchesTversion:
+      name: versionMatchesTversion
+      in: query
+      required: false
+      description: |
+        `true` : `version` non nul et égal à `tversion`.
+        `false` : `version` nul ou différent de `tversion`.
+        Si absent, pas de filtre sur cette condition.
+      schema:
+        type: boolean
+    TranslatorId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UpdateId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TranslatorTradCountMin:
+      name: tradCountMin
+      in: query
+      required: false
+      description: Borne inférieure inclusive sur `tradCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorTradCountMax:
+      name: tradCountMax
+      in: query
+      required: false
+      description: Borne supérieure inclusive sur `tradCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorReadCountMin:
+      name: readCountMin
+      in: query
+      required: false
+      description: Borne inférieure inclusive sur `readCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorReadCountMax:
+      name: readCountMax
+      in: query
+      required: false
+      description: Borne supérieure inclusive sur `readCount`.
+      schema:
+        type: integer
+        minimum: 0
+    TranslatorHasDiscord:
+      name: hasDiscord
+      in: query
+      required: false
+      description: |
+        `true` : seulement les traducteurs avec un identifiant Discord (`discordId` non nul).
+        `false` : seulement ceux sans `discordId`.
+        Si vous omettez ce paramètre, la réponse inclut les deux cas (avec ou sans Discord).
+      schema:
+        type: boolean
+    UpdatesStartDate:
+      name: startDate
+      in: query
+      required: false
+      description: |
+        Borne inférieure **inclusive** sur la date de création de l’entrée (`updateCreatedAt`).
+        ISO 8601 complet ou date seule `AAAA-MM-JJ` (interprétée en **minuit UTC**).
+      schema:
+        type: string
+        example: '2024-01-15'
+    UpdatesEndDate:
+      name: endDate
+      in: query
+      required: false
+      description: |
+        Borne supérieure **inclusive** sur `updateCreatedAt`.
+        ISO 8601 complet ou date seule `AAAA-MM-JJ` (journée entière jusqu’à **23:59:59.999 UTC**).
+      schema:
+        type: string
+        example: '2024-01-31'
+
+  responses:
+    Unauthorized:
+      description: |
+        Session absente ou expirée, ou clé API manquante / invalide / révoquée / expirée.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    TooManyRequests:
+      description: |
+        Limite de fréquence atteinte : trop de requêtes dans la minute pour la session ou la clé API utilisée. Réessayer après un court délai.
+      headers:
+        Retry-After:
+          description: Délai recommandé avant un nouvel essai (secondes).
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    QuotaSuspended:
+      description: |
+        Accès API suspendu : le quota a été fixé à 0 (blocage côté administration). Distinct d’un simple **429** (trop de requêtes dans la minute).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    ServerError:
+      description: Erreur serveur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+
+  schemas:
+    ErrorBody:
+      type: object
+      description: Réponse d’erreur (codes HTTP 4xx ou 5xx).
+      properties:
+        error:
+          type: string
+          description: Message d’erreur lisible.
+
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tags:
+          type: string
+          description: Tags séparés par des virgules (texte brut)
+        image:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          description: Code site (ex. f95z, lc)
+        threadId:
+          type: integer
+          nullable: true
+        link:
+          type: string
+        gameAutoCheck:
+          type: boolean
+        gameVersion:
+          type: string
+          nullable: true
+        translations:
+          type: array
+          description: |
+            Présent uniquement si la requête contient `include=translations` (éventuellement avec d’autres valeurs séparées par des virgules). Tri par date `updatedAt` décroissante.
+          items:
+            $ref: '#/components/schemas/GameTranslation'
+
+    GameTranslation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        translationName:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: Valeur technique renvoyée par l’API (p.ex. in_progress, completed, abandoned).
+        tversion:
+          type: string
+        tlink:
+          type: string
+        tname:
+          type: string
+        translatorId:
+          type: string
+          nullable: true
+        proofreaderId:
+          type: string
+          nullable: true
+        ttype:
+          type: string
+        gameType:
+          type: string
+          description: Moteur ou techno (codes renpy, unity, other, …).
+        ac:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TranslatorPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        discordId:
+          type: string
+          nullable: true
+        pages:
+          type: string
+          description: JSON ou texte des pages / liens
+        tradCount:
+          type: integer
+          nullable: true
+        readCount:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdatePublic:
+      type: object
+      required: [updateId, updateStatus, updateCreatedAt, updateUpdatedAt, gameId]
+      properties:
+        updateId:
+          type: string
+          format: uuid
+        updateStatus:
+          type: string
+        updateCreatedAt:
+          type: string
+          format: date-time
+        updateUpdatedAt:
+          type: string
+          format: date-time
+        gameId:
+          type: string
+          format: uuid
+        game:
+          description: |
+            Présent si la requête contient `include=game` et/ou `include=translations`.
+            - `include=game` : champs enrichis (sans tableau `translations` sauf si `include=translations` est aussi présent).
+            - `include=translations` seul : uniquement les clés `id` et `translations` (pas de `name`, `image`, etc.).
+            - Les deux : jeu enrichi avec `translations` à l’intérieur de `game`.
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+              description: Présent si `include=game`
+            image:
+              type: string
+            link:
+              type: string
+            website:
+              type: string
+            threadId:
+              type: integer
+              nullable: true
+            gameVersion:
+              type: string
+              nullable: true
+            type:
+              type: string
+              description: Premier moteur de la liste ou la valeur technique `other` (si `include=game`).
+            engineTypes:
+              type: array
+              items:
+                type: string
+            tags:
+              type: string
+            translations:
+              type: array
+              description: |
+                Présent si la requête contient `include=translations`. Traductions du jeu, tri par `updatedAt` décroissant.
+              items:
+                $ref: '#/components/schemas/GameTranslation'

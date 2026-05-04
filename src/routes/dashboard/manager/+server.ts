@@ -1,6 +1,6 @@
 import { getUserById } from '$lib/server/auth';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
-import { representativeGameTypeSql } from '$lib/server/db/representative-game-type';
+import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
@@ -80,19 +80,20 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				threadId: table.game.threadId,
 				link: table.game.link,
 				tags: table.game.tags,
-				type: representativeGameTypeSql,
+				engineTypes: enginesPerGameSubquery.engineTypes,
 				image: table.game.image,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
 			.from(table.game)
+			.leftJoin(enginesPerGameSubquery, eq(table.game.id, enginesPerGameSubquery.gameId))
 			.where(whereClause)
 			.orderBy(table.game.name)
 			.limit(20);
 
-		const games = rawGames.map((g) => ({
-			...g,
-			type: g.type ?? 'other'
+		const games = rawGames.map(({ engineTypes, ...rest }) => ({
+			...rest,
+			engineTypes: Array.isArray(engineTypes) ? engineTypes : []
 		}));
 
 		return json({ games });

@@ -1,18 +1,26 @@
 <script lang="ts">
 	import type { Game } from '$lib/server/db/schema';
+	import { newToast, user } from '$lib/stores';
+	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 
-	type GameSearchHit = Game & { type: string };
+	type GameSearchHit = Game & { engineTypes: string[] };
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
+
+	/** Attente après la dernière frappe avant d’appeler l’API (limite le nombre de requêtes). */
+	const SEARCH_DEBOUNCE_MS = 450;
 
 	let searchQuery = $state('');
 	let searchResults = $state<GameSearchHit[]>([]);
 	let isLoading = $state(false);
 	let showResults = $state(false);
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Incrémenté à chaque recherche lancée : ignore les réponses d’une requête plus ancienne. */
+	let searchGeneration = 0;
 
-	const searchGames = async (query: string) => {
+	const searchGames = async (query: string, generation: number) => {
 		if (!query || query.trim().length < 1) {
 			searchResults = [];
 			showResults = false;
@@ -24,6 +32,8 @@
 			const response = await fetch(`/dashboard/manager?q=${encodeURIComponent(query)}`);
 			const data = await response.json();
 
+			if (generation !== searchGeneration) return;
+
 			if (response.ok) {
 				searchResults = data.games;
 				showResults = true;
@@ -32,30 +42,44 @@
 				searchResults = [];
 			}
 		} catch (error) {
+			if (generation !== searchGeneration) return;
 			console.error('Erreur lors de la recherche:', error);
 			searchResults = [];
 		} finally {
-			isLoading = false;
+			if (generation === searchGeneration) {
+				isLoading = false;
+			}
 		}
 	};
 
 	const debouncedSearch = (query: string) => {
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
 		}
 
-		searchTimeout = setTimeout(() => {
-			searchGames(query);
-		}, 500);
+		debounceTimer = setTimeout(() => {
+			debounceTimer = null;
+			const trimmed = query.trim();
+			if (trimmed.length < 1) {
+				searchResults = [];
+				showResults = false;
+				isLoading = false;
+				return;
+			}
+			const gen = ++searchGeneration;
+			void searchGames(query, gen);
+		}, SEARCH_DEBOUNCE_MS);
 	};
 
 	const clearSearch = () => {
 		searchQuery = '';
 		searchResults = [];
 		showResults = false;
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-			searchTimeout = null;
+		searchGeneration += 1;
+		isLoading = false;
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+			debounceTimer = null;
 		}
 	};
 
@@ -112,31 +136,61 @@
 							<div class="p-4 text-center text-base-content/60">Aucun jeu trouvé</div>
 						{:else}
 							{#each searchResults as game (game.id)}
-								<a
-									href="/dashboard/game/{game.id}"
-									class="block cursor-pointer border-b border-base-300 p-4 last:border-b-0 hover:bg-base-200"
+								<div
+									class="flex items-stretch border-b border-base-300 last:border-b-0 hover:bg-base-200"
 								>
-									<div class="flex items-start gap-3">
+									<a
+										href="/dashboard/game/{game.id}"
+										class="flex min-w-0 flex-1 cursor-pointer items-start gap-3 p-4"
+									>
 										<img
-											src={game.image}
+											src={resolveGameImageSrc(game.image, { website: game.website })}
 											alt={game.name}
 											class="h-12 w-12 rounded object-cover"
 											loading="lazy"
+											referrerpolicy="no-referrer"
 										/>
 										<div class="min-w-0 flex-1">
 											<h3 class="truncate text-base font-semibold">{game.name}</h3>
 											<p class="truncate text-sm text-base-content/70">
 												{game.description || 'Aucune description'}
 											</p>
-											<div class="mt-1 flex items-center gap-2">
-												<span class="badge badge-outline badge-sm">{game.type}</span>
+											<div class="mt-1 flex flex-wrap items-center gap-2">
+												{#if game.engineTypes.length > 0}
+													{#each game.engineTypes as eng (eng)}
+														<span
+															class="badge border-0 badge-sm text-white"
+															style="background-color: {getGameEngineHexColor(eng)}"
+															>{getGameEngineLabel(eng)}</span
+														>
+													{/each}
+												{:else}
+													<span class="badge badge-ghost badge-sm">Aucun</span>
+												{/if}
 												{#if game.tags}
 													<span class="truncate text-xs text-base-content/60">{game.tags}</span>
 												{/if}
 											</div>
 										</div>
-									</div>
-								</a>
+									</a>
+									{#if $user?.role === 'superadmin'}
+										<button
+											type="button"
+											class="mt-3 mr-2 badge max-w-40 shrink-0 self-start overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-52"
+											title="Copier l’ID du jeu"
+											onclick={(e) => {
+												e.preventDefault();
+												void navigator.clipboard.writeText(game.id);
+												newToast({
+													alertType: 'success',
+													message: 'ID du jeu copié dans le presse-papiers'
+												});
+											}}
+										>
+											ID: {game.id}
+										</button>
+									{/if}
+								</div>
 							{/each}
 						{/if}
 					</div>

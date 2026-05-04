@@ -1,13 +1,14 @@
+import { parseTranslationListFilters } from '$lib/server/api/translation-list-filters';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
+import { desc } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>
@@ -18,18 +19,23 @@ export const OPTIONS: RequestHandler = async () =>
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const gameId = url.searchParams.get('gameId')?.trim();
+		const filters = parseTranslationListFilters(url.searchParams);
+		if (!filters.ok) {
+			return json({ error: filters.message }, { status: 400, headers: corsHeaders });
+		}
 
-		const baseQuery = db.select().from(gameTranslation);
-		const rows = gameId
-			? await baseQuery
-					.where(eq(gameTranslation.gameId, gameId))
-					.orderBy(desc(gameTranslation.updatedAt))
-			: await baseQuery.orderBy(desc(gameTranslation.updatedAt));
+		const rows = await (
+			filters.where
+				? db.select().from(gameTranslation).where(filters.where)
+				: db.select().from(gameTranslation)
+		).orderBy(desc(gameTranslation.updatedAt));
 
 		return json(rows, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translations:', error);
-		return json({ error: 'Failed to fetch translations' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer les traductions.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };

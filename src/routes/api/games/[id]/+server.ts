@@ -1,3 +1,5 @@
+import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import { parseInclude } from '$lib/server/api/include-query';
 import { db } from '$lib/server/db';
 import { game } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
@@ -7,7 +9,7 @@ import type { RequestHandler } from './$types';
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>
@@ -16,25 +18,36 @@ export const OPTIONS: RequestHandler = async () =>
 		headers: corsHeaders
 	});
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
 	const gameId = params.id;
 
 	if (!gameId) {
-		return json({ error: 'Game ID is required' }, { status: 400, headers: corsHeaders });
+		return json(
+			{ error: "L'identifiant du jeu est requis." },
+			{ status: 400, headers: corsHeaders }
+		);
 	}
 
 	try {
 		const selectedGame = await db.select().from(game).where(eq(game.id, gameId));
 		if (selectedGame.length === 0) {
-			return json({ error: 'Game not found' }, { status: 404, headers: corsHeaders });
+			return json({ error: 'Jeu introuvable.' }, { status: 404, headers: corsHeaders });
 		}
-		return json(selectedGame[0], { headers: corsHeaders });
+		const g = selectedGame[0];
+		if (!parseInclude(url.searchParams).has('translations')) {
+			return json(g, { headers: corsHeaders });
+		}
+		const byGame = await translationsByGameIds([g.id]);
+		return json({ ...g, translations: byGame.get(g.id) ?? [] }, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching game:', error);
-		return json({ error: 'Failed to fetch game' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer le jeu.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };
 
-/** Écriture interdite sur l’API publique : utiliser le tableau de bord. */
+/** Écriture interdite sur l’API publique. */
 export const PUT: RequestHandler = async () =>
-	json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
+	json({ error: 'Méthode non autorisée.' }, { status: 405, headers: corsHeaders });

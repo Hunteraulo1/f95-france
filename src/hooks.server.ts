@@ -1,3 +1,11 @@
+import {
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
+} from '$lib/server/api-keys';
+import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -69,9 +77,42 @@ export const handle: Handle = async ({ event, resolve }) => {
 		console.warn('Maintenance check skipped:', error);
 	}
 
-	let capturedBody: string | null = null;
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
+
+	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
+	const apiKeyExemptPath =
+		pathname === '/api' ||
+		pathname === '/api/' ||
+		pathname.startsWith('/api/cron/') ||
+		pathname.startsWith('/api/passkeys/') ||
+		pathname.startsWith('/api/google-oauth/');
+
+	// Routes /api/* : si en-tête Bearer / X-Api-Key → auth par clé ; sinon session cookie (quota `kind=session`).
+	if (isApiPath && method !== 'OPTIONS' && method !== 'HEAD' && !apiKeyExemptPath) {
+		const wantsApiKey = extractApiKeyFromRequest(event.request) !== null;
+		if (wantsApiKey) {
+			const keyResult = await validateApiKeyRequest(event.request);
+			if (!keyResult.ok) {
+				return jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders);
+			}
+			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);
+			if (!userRow) {
+				return jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders);
+			}
+			event.locals.user = userRow;
+			event.locals.authenticatedViaApiKey = true;
+		} else if (event.locals.user) {
+			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
+			if (!sessionRate.ok) {
+				return jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders);
+			}
+		} else {
+			return jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders);
+		}
+	}
+
+	let capturedBody: string | null = null;
 
 	// Exclure les fichiers statiques du logging pour éviter la surcharge
 	const isStaticAsset =

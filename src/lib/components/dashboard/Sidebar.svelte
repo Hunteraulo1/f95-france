@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
 	import Inbox from '@lucide/svelte/icons/inbox';
+	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Languages from '@lucide/svelte/icons/languages';
 	import Library from '@lucide/svelte/icons/library';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -15,6 +15,7 @@
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import Users from '@lucide/svelte/icons/users';
 	import type { Component } from 'svelte';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		pendingSubmissionsCount?: number;
@@ -105,6 +106,12 @@
 			roles: ['admin']
 		},
 		{
+			label: 'Gestion API',
+			href: '/dashboard/api-management',
+			icon: KeyRound,
+			roles: ['superadmin']
+		},
+		{
 			label: 'Configuration',
 			href: '/dashboard/config',
 			icon: Settings,
@@ -124,6 +131,12 @@
 		},
 		{
 			split: true,
+			roles: ['all']
+		},
+		{
+			label: 'Mes clés API',
+			href: '/dashboard/api-keys',
+			icon: KeyRound,
 			roles: ['all']
 		},
 		{

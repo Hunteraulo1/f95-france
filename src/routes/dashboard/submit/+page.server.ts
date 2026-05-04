@@ -1,6 +1,11 @@
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import {
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
+} from '$lib/server/submission-payload-update';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { fail } from '@sveltejs/kit';
@@ -227,19 +232,9 @@ export const actions: Actions = {
 		if (typeof submissionId !== 'string' || !submissionId.trim()) {
 			return fail(400, { message: 'ID de soumission requis' });
 		}
-		if (typeof submissionDataJson !== 'string' || !submissionDataJson.trim()) {
-			return fail(400, { message: 'Données de soumission requises' });
-		}
 
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(submissionDataJson);
-		} catch {
-			return fail(400, { message: 'JSON invalide' });
-		}
-		if (!parsed || typeof parsed !== 'object') {
-			return fail(400, { message: 'JSON invalide (objet attendu)' });
-		}
+		const parsed = parseSubmissionPayloadJson(submissionDataJson);
+		if (!parsed.ok) return fail(400, { message: parsed.message });
 
 		const [sub] = await db
 			.select({
@@ -264,26 +259,10 @@ export const actions: Actions = {
 			return fail(403, { message: 'Soumission déjà ouverte par admin' });
 		}
 
-		// Validation minimale de la structure
-		const obj = parsed as Record<string, unknown>;
-		if (sub.type === 'translation') {
-			if (!('translation' in obj) || obj.translation === null) {
-				return fail(400, { message: 'Données invalides: clé `translation` manquante' });
-			}
-		} else {
-			// type: game | update
-			if (!('game' in obj) || obj.game === null) {
-				return fail(400, { message: 'Données invalides: clé `game` manquante' });
-			}
-		}
+		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);
+		if (shapeError) return fail(400, { message: shapeError });
 
-		await db
-			.update(table.submission)
-			.set({
-				data: JSON.stringify(parsed),
-				updatedAt: new Date()
-			})
-			.where(eq(table.submission.id, submissionId));
+		await persistSubmissionPayload(submissionId, parsed.data);
 
 		return { success: true };
 	}

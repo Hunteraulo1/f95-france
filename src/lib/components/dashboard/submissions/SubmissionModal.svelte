@@ -6,7 +6,7 @@
 
 	/** Jeu tel qu’il apparaît dans le JSON des soumissions (champ moteur `type`). */
 	type GameSubmissionJson = Game & { type?: string };
-	import { user } from '$lib/stores';
+	import { newToast, user } from '$lib/stores';
 	import {
 		getStatusBadge,
 		getTypeBadge,
@@ -30,6 +30,7 @@
 		id: string;
 		status: string;
 		type: string;
+		gameId?: string | null;
 		translationId?: string | null;
 		adminNotes?: string | null;
 		parsedData?: {
@@ -179,12 +180,20 @@
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
-	const canEditSubmissionDataAllowed = $derived(
+	/** Utilisateur : uniquement en attente, tant que l’admin n’a pas laissé de note (ancienne règle). */
+	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
 			submission?.status === 'pending' &&
 			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
 		)
+	);
+	/** Admin : en attente ou ouverte, avant acceptation / refus. */
+	const canEditSubmissionDataAsAdmin = $derived(
+		Boolean(canEditStatus && (submission?.status === 'pending' || submission?.status === 'opened'))
+	);
+	const canEditSubmissionDataAllowed = $derived(
+		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
@@ -333,11 +342,49 @@
 							</div>
 						{/if}
 						{#if $user?.role === 'superadmin'}
-							<div
-								class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap sm:max-w-none"
+							<button
+								type="button"
+								class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+								onclick={() => {
+									navigator.clipboard.writeText(submission.id);
+									newToast({
+										alertType: 'success',
+										message: 'ID de la soumission copié dans le presse-papiers'
+									});
+								}}
 							>
 								ID: {submission.id}
-							</div>
+							</button>
+							{#if submission.gameId}
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+									onclick={() => {
+										navigator.clipboard.writeText(submission.gameId!);
+										newToast({
+											alertType: 'success',
+											message: 'ID du jeu copié dans le presse-papiers'
+										});
+									}}
+								>
+									ID: {submission.gameId}
+								</button>
+							{/if}
+							{#if submission.translationId}
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
+									onclick={() => {
+										navigator.clipboard.writeText(submission.translationId!);
+										newToast({
+											alertType: 'success',
+											message: 'ID de la traduction copié dans le presse-papiers'
+										});
+									}}
+								>
+									ID: {submission.translationId}
+								</button>
+							{/if}
 						{/if}
 					</div>
 				</div>
@@ -643,7 +690,13 @@
 
 			{#if canEditSubmissionDataAllowed}
 				<div class="mt-6 border-t border-base-300 pt-4">
-					<h4 class="text-md mb-4 font-semibold">Modifier les données de la soumission</h4>
+					<h4 class="text-md mb-4 font-semibold">
+						{#if canEditSubmissionDataAsAdmin}
+							Modifier les données (admin / superadmin)
+						{:else}
+							Modifier les données de la soumission
+						{/if}
+					</h4>
 
 					{#if submissionEditError}
 						<div class="mb-4 alert alert-error">

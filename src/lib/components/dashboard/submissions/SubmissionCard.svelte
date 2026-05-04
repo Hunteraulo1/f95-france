@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { newToast, user } from '$lib/stores';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
@@ -17,6 +18,7 @@
 			id: string;
 			name: string;
 			image: string;
+			website?: string | null;
 		} | null;
 		gameId?: string | null;
 		translation?: {
@@ -115,9 +117,12 @@
 					{#if submission.game}
 						{#if submission.game.image}
 							<img
-								src={submission.game.image}
+								src={resolveGameImageSrc(submission.game.image, {
+									website: submission.game.website
+								})}
 								alt={submission.game.name}
 								class="h-10 w-10 rounded object-cover"
+								referrerpolicy="no-referrer"
 							/>
 						{/if}
 						<div class="flex flex-col">

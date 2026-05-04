@@ -14,7 +14,10 @@ export const GET: RequestHandler = async (event) => {
 		request: event.request,
 		website: WEBSITE
 	});
-	const mergeHeaders = (h: HeadersInit = {}) => ({ ...corsHeadersExtract(event.request, WEBSITE), ...h });
+	const mergeHeaders = (h: HeadersInit = {}) => ({
+		...corsHeadersExtract(event.request, WEBSITE),
+		...h
+	});
 
 	if (!out.ok) {
 		return json(out.body, { status: out.status, headers: mergeHeaders() });
@@ -39,7 +42,10 @@ export const POST: RequestHandler = async (event) => {
 		request: event.request,
 		website: WEBSITE
 	});
-	const mergeHeaders = (h: HeadersInit = {}) => ({ ...corsHeadersExtract(event.request, WEBSITE), ...h });
+	const mergeHeaders = (h: HeadersInit = {}) => ({
+		...corsHeadersExtract(event.request, WEBSITE),
+		...h
+	});
 
 	if (!out.ok) {
 		return json(out.body, { status: out.status, headers: mergeHeaders() });

@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
 import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -79,8 +80,9 @@ function shouldNotifyTranslationModificationForUpdatesChannel(
 /** Discord n’accepte que des URLs absolues pour les images d’embed. */
 function embedImageUrl(raw: string | null | undefined): string | undefined {
 	if (!raw || typeof raw !== 'string') return undefined;
-	const u = raw.trim();
-	if (u.startsWith('http://') || u.startsWith('https://')) return u;
+	const u = resolveGameImageSrc(raw);
+	if (!u) return undefined;
+	if (u.startsWith('https://') || u.startsWith('http://')) return u;
 	return undefined;
 }
 

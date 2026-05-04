@@ -46,11 +46,14 @@ function allowedOriginsForSite(website: ExtractThreadWebsite): Set<string> {
 	return parseAllowedOrigins(raw);
 }
 
-export function corsHeadersExtract(request: Request, website: ExtractThreadWebsite): Record<string, string> {
+export function corsHeadersExtract(
+	request: Request,
+	website: ExtractThreadWebsite
+): Record<string, string> {
 	const origin = request.headers.get('origin');
 	const headers: Record<string, string> = {
 		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type'
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 	};
 
 	// `vite dev` : requêtes cross-origin (Tampermonkey sur F95/LC → localhost) sans EXTRACT_* en .env.
