@@ -3,9 +3,9 @@ import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
-import { timingSafeEqual } from 'node:crypto';
-import { Buffer } from 'node:buffer';
 import { eq } from 'drizzle-orm';
+import { Buffer } from 'node:buffer';
+import { timingSafeEqual } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
 function safeCompareToken(a: string, b: string): boolean {
@@ -50,6 +50,13 @@ function parseReferenceMinutes(reference: string | null | undefined): number {
 	return hh * 60 + mm;
 }
 
+function parseCronMaxWaitMs(raw: string | undefined): number {
+	const parsed = Number.parseInt((raw ?? '').trim(), 10);
+	// garde une marge sous 30s pour les limites de cron providers
+	if (Number.isFinite(parsed) && parsed >= 1_000 && parsed <= 29_000) return parsed;
+	return 25_000;
+}
+
 export const POST: RequestHandler = async ({ request }) => {
 	if (!hasCronAuth(request)) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,6 +65,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	console.info('[cron/check-version] déclenché à', new Date().toISOString());
 
 	try {
+		const url = new URL(request.url);
+		const isForcedRun = ['1', 'true', 'yes', 'on'].includes(
+			(url.searchParams.get('force') ?? '').toLowerCase()
+		);
 		const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
 		const intervalMinutes = cfg?.autoCheckIntervalMinutes ?? 360;
 		const referenceMinutes = parseReferenceMinutes(cfg?.autoCheckReferenceTime);
@@ -71,7 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const currentSlotStart = new Date(currentSlotStartMs);
 		const nextSlotStart = new Date(currentSlotStartMs + intervalMs);
 
-		if (lastRunAt && lastRunAt.getTime() >= currentSlotStartMs) {
+		if (!isForcedRun && lastRunAt && lastRunAt.getTime() >= currentSlotStartMs) {
 			return json({
 				ok: true,
 				skipped: true,
@@ -84,13 +95,53 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		const result = await runAutoCheckVersions();
+		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
+		const runPromise = runAutoCheckVersions();
+		const timeoutResult = await Promise.race([
+			runPromise.then((result) => ({ kind: 'done' as const, result })),
+			new Promise<{ kind: 'timeout' }>((resolve) => {
+				setTimeout(() => resolve({ kind: 'timeout' }), maxWaitMs);
+			})
+		]);
+
+		if (timeoutResult.kind === 'timeout') {
+			// Continue l’exécution en arrière-plan ; réponse rapide pour éviter l’échec cron.
+			void runPromise
+				.then(async () => {
+					const finishedAt = new Date();
+					await db
+						.update(table.config)
+						.set({ autoCheckLastRunAt: finishedAt, updatedAt: finishedAt })
+						.where(eq(table.config.id, 'main'));
+				})
+				.catch((error) => {
+					console.error('[cron/check-version] échec async après timeout:', error);
+				});
+
+			return json(
+				{
+					ok: true,
+					accepted: true,
+					reason: 'processing_in_background',
+					timeoutMs: maxWaitMs,
+					forced: isForcedRun
+				},
+				{ status: 202 }
+			);
+		}
+
+		const finishedAt = new Date();
 		await db
 			.update(table.config)
-			.set({ autoCheckLastRunAt: now, updatedAt: now })
+			.set({ autoCheckLastRunAt: finishedAt, updatedAt: finishedAt })
 			.where(eq(table.config.id, 'main'));
 
-		return json({ ok: true, ...result });
+		return json({
+			ok: true,
+			...timeoutResult.result,
+			durationMs: finishedAt.getTime() - now.getTime(),
+			forced: isForcedRun
+		});
 	} catch (error) {
 		console.error('[cron/check-version] erreur:', error);
 		return json({ ok: false, error: 'Auto-check failed' }, { status: 500 });
