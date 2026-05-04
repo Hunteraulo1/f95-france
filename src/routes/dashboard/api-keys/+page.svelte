@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import BookOpen from '@lucide/svelte/icons/book-open';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
 
@@ -17,9 +18,15 @@
 </svelte:head>
 
 <div class="max-w-8xl mx-auto flex w-full flex-col gap-6 p-4">
-	<div class="flex items-center gap-2">
-		<KeyRound class="size-8 text-primary" aria-hidden="true" />
-		<h1 class="text-2xl font-semibold">Mes clés API</h1>
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<div class="flex items-center gap-2">
+			<KeyRound class="size-8 text-primary" aria-hidden="true" />
+			<h1 class="text-2xl font-semibold">Mes clés API</h1>
+		</div>
+		<a href="/api" class="btn btn-outline btn-sm gap-2">
+			<BookOpen class="size-4 shrink-0" aria-hidden="true" />
+			Documentation API
+		</a>
 	</div>
 
 	<p class="text-sm text-base-content/80">
