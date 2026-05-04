@@ -1,13 +1,12 @@
+import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import * as auth from '$lib/server/auth';
+import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
-
-const DEV_IMPERSONATION_ORIGIN_COOKIE = 'dev-impersonation-origin-user-id';
 
 export const load: PageServerLoad = async ({ locals, cookies }) => {
 	// Vérifier que l'utilisateur est authentifié
