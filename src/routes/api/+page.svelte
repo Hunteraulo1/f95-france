@@ -263,21 +263,34 @@
 		if (!node) return;
 
 		const win = window as typeof window & {
-			Redoc?: { init: (url: string, opts: Record<string, unknown>, el: HTMLElement) => void };
+			Redoc?: {
+				init: (url: string, opts: Record<string, unknown>, el: HTMLElement) => void;
+				/** Démonte la racine React (bundles standalone 2.x) — requis avant un second `init` sur le même nœud. */
+				destroy?: (el: HTMLElement) => void;
+			};
 		};
 
 		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+		const teardownRedoc = () => {
+			try {
+				win.Redoc?.destroy?.(node);
+			} catch {
+				/* nœud déjà vide ou pas encore monté */
+			}
+			node.innerHTML = '';
+		};
+
 		const mount = () => {
 			if (!win.Redoc) return;
-			node.innerHTML = '';
+			teardownRedoc();
 			node.setAttribute('data-redoc-palette', isDarkTheme() ? 'dark' : 'light');
 			try {
 				win.Redoc.init(SPEC_URL, { ...baseRedocOptions(), theme: buildRedocTheme() }, node);
 			} catch (e) {
 				console.error('Redoc (thème) :', e);
 				try {
-					node.innerHTML = '';
+					teardownRedoc();
 					win.Redoc.init(SPEC_URL, baseRedocOptions(), node);
 				} catch (e2) {
 					console.error('Redoc :', e2);
@@ -321,6 +334,7 @@
 		return () => {
 			observer.disconnect();
 			if (debounceTimer) clearTimeout(debounceTimer);
+			teardownRedoc();
 		};
 	});
 </script>

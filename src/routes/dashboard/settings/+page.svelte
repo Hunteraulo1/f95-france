@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { startRegistration } from '@simplewebauthn/browser';
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
+	import { startRegistration } from '@simplewebauthn/browser';
 	import { themeChange } from 'theme-change';
 	import type { PageData } from './$types';
 

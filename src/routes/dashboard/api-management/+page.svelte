@@ -184,7 +184,7 @@
 												/>
 												{#if row.kind !== 'session'}
 													<input
-														class="input-bordered input input-xs w-full min-w-[10rem]"
+														class="input-bordered input input-xs w-full min-w-40"
 														type="datetime-local"
 														name="expiresAt"
 														value={toLocalInput(row.expiresAt)}
