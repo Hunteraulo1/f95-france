@@ -3,7 +3,7 @@ import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ url, locals }) => {
 	// Vérifier si on est sur une page qui nécessite une authentification
-	const protectedPaths = ['/dashboard'];
+	const protectedPaths = ['/dashboard', '/api-management'];
 	const isProtectedPath = protectedPaths.some((path) => url.pathname.startsWith(path));
 
 	// Vérifier si on est sur une page d'authentification

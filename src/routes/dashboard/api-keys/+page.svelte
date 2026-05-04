@@ -16,7 +16,7 @@
 	<title>Mes clés API — F95 France</title>
 </svelte:head>
 
-<div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4">
+<div class="mx-auto flex w-full max-w-8xl flex-col gap-6 p-4">
 	<div class="flex items-center gap-2">
 		<KeyRound class="size-8 text-primary" aria-hidden="true" />
 		<h1 class="text-2xl font-semibold">Mes clés API</h1>
@@ -142,7 +142,7 @@
 						{/if}
 					</td>
 					<td><span class="badge badge-success">Active</span></td>
-					<td><span class="text-sm text-base-content/60">Non révocable</span></td>
+					<td></td>
 				</tr>
 				{#each data.keys as row (row.id)}
 					<tr>

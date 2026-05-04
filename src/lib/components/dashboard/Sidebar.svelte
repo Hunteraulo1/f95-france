@@ -106,8 +106,8 @@
 			roles: ['admin']
 		},
 		{
-			label: 'Clés API (admin)',
-			href: '/dashboard/admin/api-keys',
+			label: 'Gestion API',
+			href: '/api-management',
 			icon: KeyRound,
 			roles: ['admin']
 		},
