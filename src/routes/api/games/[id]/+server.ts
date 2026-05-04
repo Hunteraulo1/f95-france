@@ -22,7 +22,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const gameId = params.id;
 
 	if (!gameId) {
-		return json({ error: "L'identifiant du jeu est requis." }, { status: 400, headers: corsHeaders });
+		return json(
+			{ error: "L'identifiant du jeu est requis." },
+			{ status: 400, headers: corsHeaders }
+		);
 	}
 
 	try {
@@ -35,13 +38,13 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			return json(g, { headers: corsHeaders });
 		}
 		const byGame = await translationsByGameIds([g.id]);
-		return json(
-			{ ...g, translations: byGame.get(g.id) ?? [] },
-			{ headers: corsHeaders }
-		);
+		return json({ ...g, translations: byGame.get(g.id) ?? [] }, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching game:', error);
-		return json({ error: 'Impossible de récupérer le jeu.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer le jeu.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };
 

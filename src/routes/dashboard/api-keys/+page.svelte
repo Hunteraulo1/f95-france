@@ -16,7 +16,7 @@
 	<title>Mes clés API — F95 France</title>
 </svelte:head>
 
-<div class="mx-auto flex w-full max-w-8xl flex-col gap-6 p-4">
+<div class="max-w-8xl mx-auto flex w-full flex-col gap-6 p-4">
 	<div class="flex items-center gap-2">
 		<KeyRound class="size-8 text-primary" aria-hidden="true" />
 		<h1 class="text-2xl font-semibold">Mes clés API</h1>
@@ -29,7 +29,8 @@
 		<strong>clé</strong> dans
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">Authorization: Bearer …</code>
 		ou
-		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">X-Api-Key</code>. La clé agit comme ton compte pour ces appels. Tu peux avoir au plus
+		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">X-Api-Key</code>. La clé agit comme ton
+		compte pour ces appels. Tu peux avoir au plus
 		<strong>{data.limits.maxKeys}</strong> clés actives ; chaque nouvelle clé a un quota de
 		<strong>{data.limits.defaultRpm}</strong> requêtes par minute. Pour augmenter cette limite,
 		<strong>contacte un administrateur</strong>.
@@ -37,8 +38,8 @@
 
 	<div class="alert alert-info sm:alert-horizontal">
 		<span>
-			Utilise l’API avec <strong>modération</strong> : un trafic excessif ou un usage abusif peut
-			entraîner des restrictions (limitation de débit, révocation des clés, etc.).
+			Utilise l’API avec <strong>modération</strong> : un trafic excessif ou un usage abusif peut entraîner
+			des restrictions (limitation de débit, révocation des clés, etc.).
 		</span>
 	</div>
 
@@ -50,7 +51,9 @@
 		<div role="alert" class="alert alert-warning">
 			<div class="flex flex-col gap-2">
 				<span class="font-medium">Copiez cette clé maintenant — elle ne sera plus affichée.</span>
-				<code class="rounded bg-base-100 p-2 text-sm break-all text-base-content select-all">{newKey}</code>
+				<code class="rounded bg-base-100 p-2 text-sm break-all text-base-content select-all"
+					>{newKey}</code
+				>
 				<button
 					type="button"
 					class="btn btn-ghost btn-sm"
@@ -99,7 +102,7 @@
 				</label>
 				<button
 					type="submit"
-					class="btn btn-primary w-fit"
+					class="btn w-fit btn-primary"
 					disabled={data.activeCount >= data.limits.maxKeys}
 				>
 					Générer une clé
@@ -188,7 +191,7 @@
 							{#if !row.revokedAt}
 								<form method="post" action="?/revoke" use:enhance>
 									<input type="hidden" name="id" value={row.id} />
-									<button type="submit" class="btn btn-ghost btn-sm text-error">Révoquer</button>
+									<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
 								</form>
 							{/if}
 						</td>

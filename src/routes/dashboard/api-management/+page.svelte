@@ -38,15 +38,17 @@
 	</div>
 
 	<p class="text-sm text-base-content/80">
-		Gestion de toutes les clés : création pour un utilisateur, révocation, modification du quota et de
-		l’expiration.
+		Gestion de toutes les clés : création pour un utilisateur, révocation, modification du quota et
+		de l’expiration.
 	</p>
 
 	{#if newKey}
 		<div role="alert" class="alert alert-warning">
 			<div class="flex flex-col gap-2">
 				<span class="font-medium">Nouvelle clé — à copier tout de suite.</span>
-				<code class="rounded bg-base-100 p-2 text-sm break-all text-base-content select-all">{newKey}</code>
+				<code class="rounded bg-base-100 p-2 text-sm break-all text-base-content select-all"
+					>{newKey}</code
+				>
 				<button
 					type="button"
 					class="btn btn-ghost btn-sm"
@@ -88,7 +90,7 @@
 					<input class="input-bordered input w-full max-w-md" name="label" placeholder="Clé API" />
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="text-sm font-medium">Requêtes max / minute (0–10 000)</span>
+					<span class="text-sm font-medium">Requêtes max / minute (0-10000)</span>
 					<input
 						class="input-bordered input w-full max-w-xs"
 						type="number"
@@ -100,9 +102,13 @@
 				</label>
 				<label class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Expiration (optionnel)</span>
-					<input class="input-bordered input w-full max-w-xs" type="datetime-local" name="expiresAt" />
+					<input
+						class="input-bordered input w-full max-w-xs"
+						type="datetime-local"
+						name="expiresAt"
+					/>
 				</label>
-				<button type="submit" class="btn btn-primary w-fit">Générer</button>
+				<button type="submit" class="btn w-fit btn-primary">Générer</button>
 			</form>
 		</div>
 	</div>
@@ -144,22 +150,29 @@
 						<td>{formatDt(row.lastUsedAt)}</td>
 						<td>
 							{#if row.revokedAt}
-								<span class="badge badge-error badge-sm">Révoquée</span>
+								<span class="badge badge-sm badge-error">Révoquée</span>
 							{:else if row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()}
-								<span class="badge badge-warning badge-sm">Expirée</span>
+								<span class="badge badge-sm badge-warning">Expirée</span>
 							{:else}
-								<span class="badge badge-success badge-sm">Active</span>
+								<span class="badge badge-sm badge-success">Active</span>
 							{/if}
 						</td>
 						<td>
 							<div class="flex flex-col gap-1">
 								{#if !row.revokedAt}
-									<details class="collapse-arrow collapse bg-base-100 rounded border border-base-300">
+									<details
+										class="collapse-arrow collapse rounded border border-base-300 bg-base-100"
+									>
 										<summary class="collapse-title min-h-0 px-2 py-1 text-xs font-medium">
 											Quota / expiration
 										</summary>
 										<div class="collapse-content px-2 pb-2">
-											<form method="post" action="?/updateLimits" use:enhance class="flex flex-col gap-2">
+											<form
+												method="post"
+												action="?/updateLimits"
+												use:enhance
+												class="flex flex-col gap-2"
+											>
 												<input type="hidden" name="id" value={row.id} />
 												<input
 													class="input-bordered input input-xs w-24"
@@ -177,14 +190,18 @@
 														value={toLocalInput(row.expiresAt)}
 													/>
 												{/if}
-												<button type="submit" class="btn btn-primary btn-xs w-fit">Enregistrer</button>
+												<button type="submit" class="btn w-fit btn-xs btn-primary"
+													>Enregistrer</button
+												>
 											</form>
 										</div>
 									</details>
 									{#if row.kind !== 'session'}
 										<form method="post" action="?/revoke" use:enhance>
 											<input type="hidden" name="id" value={row.id} />
-											<button type="submit" class="btn btn-ghost btn-xs text-error w-fit">Révoquer</button>
+											<button type="submit" class="btn w-fit text-error btn-ghost btn-xs"
+												>Révoquer</button
+											>
 										</form>
 									{/if}
 								{/if}

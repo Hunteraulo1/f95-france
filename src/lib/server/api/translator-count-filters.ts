@@ -10,7 +10,9 @@ export type TranslatorCountFiltersParseResult =
  * Filtres optionnels : compteurs (`tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax`),
  * et `hasDiscord` (true = `discordId` renseigné, false = absent).
  */
-export function parseTranslatorCountFilters(searchParams: URLSearchParams): TranslatorCountFiltersParseResult {
+export function parseTranslatorCountFilters(
+	searchParams: URLSearchParams
+): TranslatorCountFiltersParseResult {
 	const tMin = parseNonNegInt(searchParams, 'tradCountMin');
 	if (!tMin.ok) return tMin;
 	const tMax = parseNonNegInt(searchParams, 'tradCountMax');

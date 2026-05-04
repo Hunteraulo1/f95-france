@@ -176,7 +176,7 @@
 									{#if $user?.role === 'superadmin'}
 										<button
 											type="button"
-											class="badge badge-outline badge-sm mt-3 mr-2 max-w-40 shrink-0 self-start overflow-hidden hover:bg-base-200 sm:max-w-52"
+											class="mt-3 mr-2 badge max-w-40 shrink-0 self-start overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-52"
 											title="Copier l’ID du jeu"
 											onclick={(e) => {
 												e.preventDefault();

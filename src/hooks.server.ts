@@ -1,9 +1,9 @@
 import {
-  consumeSessionApiKeyRateForUser,
-  extractApiKeyFromRequest,
-  getUserForApiKeyOwner,
-  jsonApiKeyGuardResponse,
-  validateApiKeyRequest
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';

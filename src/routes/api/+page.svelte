@@ -55,10 +55,7 @@
 			const r = Math.round(Math.min(255, Math.max(0, parseFloat(m[1]))));
 			const g = Math.round(Math.min(255, Math.max(0, parseFloat(m[2]))));
 			const b = Math.round(Math.min(255, Math.max(0, parseFloat(m[3]))));
-			return (
-				'#' +
-				[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')
-			).toLowerCase();
+			return ('#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')).toLowerCase();
 		}
 		return fb;
 	}
@@ -127,37 +124,21 @@
 					errorContent: '#1f2937'
 				};
 
-		const primary = semantic(
-			'--color-primary',
-			'--color-primary-content',
-			'#570df8',
-			'#ffffff'
-		);
-		const success = semantic(
-			'--color-success',
-			'--color-success-content',
-			'#36d399',
-			'#ffffff'
-		);
+		const primary = semantic('--color-primary', '--color-primary-content', '#570df8', '#ffffff');
+		const success = semantic('--color-success', '--color-success-content', '#36d399', '#ffffff');
 		const warning = semantic(
 			'--color-warning',
 			'--color-warning-content',
 			'#fbbd23',
 			fb.warningContent
 		);
-		const error = semantic(
-			'--color-error',
-			'--color-error-content',
-			'#f87272',
-			fb.errorContent
-		);
+		const error = semantic('--color-error', '--color-error-content', '#f87272', fb.errorContent);
 		const info = resolveThemeColor('--color-info', '#3abff8');
 		const base100 = resolveThemeColor('--color-base-100', fb.base100);
 		const base200 = resolveThemeColor('--color-base-200', fb.base200);
 		const base300 = resolveThemeColor('--color-base-300', fb.base300);
 		const baseContent = resolveThemeColor('--color-base-content', fb.baseContent);
 		const neutral = resolveThemeColor('--color-neutral', fb.neutral);
-		const neutralContent = resolveThemeColor('--color-neutral-content', fb.neutralContent);
 		const secondary = resolveThemeColor('--color-secondary', '#6366f1');
 		const accent = resolveThemeColor('--color-accent', '#f471b6');
 
@@ -292,11 +273,7 @@
 			if (!win.Redoc) return;
 			node.innerHTML = '';
 			try {
-				win.Redoc.init(
-					SPEC_URL,
-					{ ...baseRedocOptions(), theme: buildRedocTheme() },
-					node
-				);
+				win.Redoc.init(SPEC_URL, { ...baseRedocOptions(), theme: buildRedocTheme() }, node);
 			} catch (e) {
 				console.error('Redoc (thème) :', e);
 				try {

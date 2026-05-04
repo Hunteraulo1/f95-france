@@ -20,7 +20,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const translationId = params.id;
 
 	if (!translationId) {
-		return json({ error: "L'identifiant de la traduction est requis." }, { status: 400, headers: corsHeaders });
+		return json(
+			{ error: "L'identifiant de la traduction est requis." },
+			{ status: 400, headers: corsHeaders }
+		);
 	}
 
 	try {
@@ -37,6 +40,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		return json(rows[0], { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translation:', error);
-		return json({ error: 'Impossible de récupérer la traduction.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer la traduction.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };

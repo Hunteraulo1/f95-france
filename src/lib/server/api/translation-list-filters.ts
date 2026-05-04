@@ -13,7 +13,9 @@ const GAME_TYPE_MAX = 32;
  * Filtres optionnels pour `GET /api/translations` : `gameId`, `status`, `gameType`,
  * `versionMatchesTversion` (true = `version` non nul et égal à `tversion`).
  */
-export function parseTranslationListFilters(searchParams: URLSearchParams): TranslationListFiltersResult {
+export function parseTranslationListFilters(
+	searchParams: URLSearchParams
+): TranslationListFiltersResult {
 	const gameIdRaw = searchParams.get('gameId')?.trim();
 	const gameId = gameIdRaw && gameIdRaw.length > 0 ? gameIdRaw : undefined;
 
@@ -24,7 +26,10 @@ export function parseTranslationListFilters(searchParams: URLSearchParams): Tran
 
 	const gameTypeRaw = searchParams.get('gameType')?.trim();
 	if (gameTypeRaw && gameTypeRaw.length > GAME_TYPE_MAX) {
-		return { ok: false, message: `Paramètre gameType trop long (${GAME_TYPE_MAX} caractères maximum).` };
+		return {
+			ok: false,
+			message: `Paramètre gameType trop long (${GAME_TYPE_MAX} caractères maximum).`
+		};
 	}
 
 	const versionMatch = parseOptionalBool(searchParams, 'versionMatchesTversion');

@@ -101,7 +101,9 @@ export type ApiKeyValidateFailure =
 	| 'quota_disabled';
 
 /** Valide la clé (hash, révocation, expiration) et le quota ; met à jour `last_used_at`. */
-export async function validateApiKeyRequest(request: Request): Promise<
+export async function validateApiKeyRequest(
+	request: Request
+): Promise<
 	{ ok: true; keyId: string; ownerUserId: string } | { ok: false; failure: ApiKeyValidateFailure }
 > {
 	const raw = extractApiKeyFromRequest(request);
@@ -245,10 +247,7 @@ export async function ensureSessionApiKey(ownerUserId: string): Promise<void> {
 		.select({ id: table.apiKey.id })
 		.from(table.apiKey)
 		.where(
-			and(
-				eq(table.apiKey.ownerUserId, ownerUserId),
-				eq(table.apiKey.kind, API_KEY_KIND_SESSION)
-			)
+			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
 		)
 		.limit(1);
 	if (existing) return;
@@ -277,10 +276,7 @@ export async function ensureSessionApiKey(ownerUserId: string): Promise<void> {
 			.select({ id: table.apiKey.id })
 			.from(table.apiKey)
 			.where(
-				and(
-					eq(table.apiKey.ownerUserId, ownerUserId),
-					eq(table.apiKey.kind, API_KEY_KIND_SESSION)
-				)
+				and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
 			)
 			.limit(1);
 		if (!again) throw new Error('ensureSessionApiKey: échec insertion ligne session');
@@ -304,10 +300,7 @@ export async function getSessionApiKeyRowForOwner(
 		})
 		.from(table.apiKey)
 		.where(
-			and(
-				eq(table.apiKey.ownerUserId, ownerUserId),
-				eq(table.apiKey.kind, API_KEY_KIND_SESSION)
-			)
+			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
 		)
 		.limit(1);
 	return row ?? null;
@@ -326,10 +319,7 @@ export async function consumeSessionApiKeyRateForUser(
 		})
 		.from(table.apiKey)
 		.where(
-			and(
-				eq(table.apiKey.ownerUserId, ownerUserId),
-				eq(table.apiKey.kind, API_KEY_KIND_SESSION)
-			)
+			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
 		)
 		.limit(1);
 

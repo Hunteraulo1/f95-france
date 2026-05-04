@@ -20,7 +20,10 @@ export const GET: RequestHandler = async ({ params }) => {
 	const id = params.id;
 
 	if (!id) {
-		return json({ error: "L'identifiant du traducteur est requis." }, { status: 400, headers: corsHeaders });
+		return json(
+			{ error: "L'identifiant du traducteur est requis." },
+			{ status: 400, headers: corsHeaders }
+		);
 	}
 
 	try {
@@ -46,6 +49,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		return json(rows[0], { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translator:', error);
-		return json({ error: 'Impossible de récupérer le traducteur.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer le traducteur.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };

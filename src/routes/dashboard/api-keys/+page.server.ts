@@ -1,11 +1,11 @@
 import {
-    countActiveApiKeysForOwner,
-    createApiKey,
-    getSessionApiKeyRowForOwner,
-    listApiKeysForOwner,
-    revokeApiKeyForActor,
-    USER_API_KEY_DEFAULT_RPM,
-    USER_API_KEY_MAX_COUNT
+	countActiveApiKeysForOwner,
+	createApiKey,
+	getSessionApiKeyRowForOwner,
+	listApiKeysForOwner,
+	revokeApiKeyForActor,
+	USER_API_KEY_DEFAULT_RPM,
+	USER_API_KEY_MAX_COUNT
 } from '$lib/server/api-keys';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';

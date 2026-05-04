@@ -642,7 +642,7 @@
 						<span class="label-text pr-2">Mode silencieux</span>
 						<input
 							type="checkbox"
-							class="toggle toggle-sm toggle-primary"
+							class="toggle toggle-primary toggle-sm"
 							checked={silentMode}
 							onchange={() => {
 								silentMode = !silentMode;

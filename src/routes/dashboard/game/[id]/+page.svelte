@@ -1322,7 +1322,7 @@
 				<div class="mb-4">
 					<button
 						type="button"
-						class="badge max-w-full overflow-hidden text-left badge-outline badge-sm hover:bg-base-200"
+						class="badge max-w-full overflow-hidden badge-outline text-left badge-sm hover:bg-base-200"
 						title="Copier l’ID de la traduction"
 						onclick={() => {
 							navigator.clipboard.writeText(editingTranslation.id);
@@ -1577,7 +1577,7 @@
 						<span class="label-text">Mode silencieux (sans notification Discord)</span>
 						<input
 							type="checkbox"
-							class="toggle toggle-sm bg-base-200"
+							class="toggle bg-base-200 toggle-sm"
 							bind:checked={editTranslationSilentMode}
 						/>
 					</label>
@@ -1725,15 +1725,13 @@
 							{/if}
 						</div>
 						<label
-							class="label cursor-pointer {!editGameAutoCheckAllowed
-								? 'opacity-70'
-								: ''}"
+							class="label cursor-pointer {!editGameAutoCheckAllowed ? 'opacity-70' : ''}"
 							for="edit-game-autocheck"
 						>
 							<input
 								id="edit-game-autocheck"
 								type="checkbox"
-								class="toggle toggle-sm bg-base-200"
+								class="toggle bg-base-200 toggle-sm"
 								bind:checked={editingGame.gameAutoCheck}
 								disabled={!editGameAutoCheckAllowed}
 							/>
@@ -1760,7 +1758,11 @@
 						</div>
 						<label class="label cursor-pointer">
 							<span class="label-text">Mode silencieux (sans notification Discord)</span>
-							<input type="checkbox" class="toggle toggle-sm bg-base-200" bind:checked={editGameSilentMode} />
+							<input
+								type="checkbox"
+								class="toggle bg-base-200 toggle-sm"
+								bind:checked={editGameSilentMode}
+							/>
 						</label>
 					</div>
 				{/if}

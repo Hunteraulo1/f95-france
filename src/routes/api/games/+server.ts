@@ -43,7 +43,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(payload, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching games:', error);
-		return json({ error: 'Impossible de récupérer les jeux.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer les jeux.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };
 

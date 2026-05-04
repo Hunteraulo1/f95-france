@@ -33,9 +33,6 @@ export const POST: RequestHandler = async ({ locals }) => {
 		return json({ ok: true, ...result });
 	} catch (err) {
 		console.error('[api/private/auto-check] erreur:', err);
-		return json(
-			{ ok: false, error: "Échec de l'auto-check." },
-			{ status: 500 }
-		);
+		return json({ ok: false, error: "Échec de l'auto-check." }, { status: 500 });
 	}
 };

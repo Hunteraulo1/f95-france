@@ -121,6 +121,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(rows, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching updates:', error);
-		return json({ error: 'Impossible de récupérer les mises à jour.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer les mises à jour.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };

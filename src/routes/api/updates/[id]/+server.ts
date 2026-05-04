@@ -24,7 +24,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const updateId = params.id;
 
 	if (!updateId) {
-		return json({ error: "L'identifiant de la mise à jour est requis." }, { status: 400, headers: corsHeaders });
+		return json(
+			{ error: "L'identifiant de la mise à jour est requis." },
+			{ status: 400, headers: corsHeaders }
+		);
 	}
 
 	try {
@@ -136,6 +139,9 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		);
 	} catch (error) {
 		console.error('Error fetching update:', error);
-		return json({ error: 'Impossible de récupérer la mise à jour.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer la mise à jour.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };

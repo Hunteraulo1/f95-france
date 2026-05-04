@@ -43,7 +43,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		return json(translators, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translators:', error);
-		return json({ error: 'Impossible de récupérer les traducteurs.' }, { status: 500, headers: corsHeaders });
+		return json(
+			{ error: 'Impossible de récupérer les traducteurs.' },
+			{ status: 500, headers: corsHeaders }
+		);
 	}
 };
 
