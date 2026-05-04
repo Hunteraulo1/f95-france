@@ -1,3 +1,9 @@
+import {
+    getUserForApiKeyOwner,
+    jsonApiKeyGuardResponse,
+    validateApiKeyRequest
+} from '$lib/server/api-keys';
+import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -69,9 +75,34 @@ export const handle: Handle = async ({ event, resolve }) => {
 		console.warn('Maintenance check skipped:', error);
 	}
 
-	let capturedBody: string | null = null;
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
+
+	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
+	const apiKeyExemptPath =
+		pathname === '/api' ||
+		pathname === '/api/' ||
+		pathname.startsWith('/api/cron/') ||
+		pathname.startsWith('/api/passkeys/') ||
+		pathname.startsWith('/api/google-oauth/');
+
+	// Toutes les routes /api/* : session cookie OU clé API (sauf exceptions ci-dessus, OPTIONS/HEAD).
+	if (isApiPath && method !== 'OPTIONS' && method !== 'HEAD' && !apiKeyExemptPath) {
+		if (!event.locals.user) {
+			const keyResult = await validateApiKeyRequest(event.request);
+			if (!keyResult.ok) {
+				return jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders);
+			}
+			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);
+			if (!userRow) {
+				return jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders);
+			}
+			event.locals.user = userRow;
+			event.locals.authenticatedViaApiKey = true;
+		}
+	}
+
+	let capturedBody: string | null = null;
 
 	// Exclure les fichiers statiques du logging pour éviter la surcharge
 	const isStaticAsset =

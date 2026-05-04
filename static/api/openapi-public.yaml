@@ -4,6 +4,19 @@ info:
   description: |
     Routes HTTP en **lecture seule** (méthode GET) avec en-tête CORS ouvert (`*`), destinées aux intégrations publiques.
 
+    ### Authentification
+
+    Pour chaque opération décrite dans cette spécification, la requête doit prouver l’identité par **l’une** des options suivantes :
+
+    1. **Cookie de session** — après connexion sur le tableau de bord (`auth-session`, envoi automatique avec `credentials: 'include'` depuis le même site).
+    2. **Clé API** — en-tête **`Authorization: Bearer &lt;clé&gt;`** ou **`X-Api-Key: &lt;clé&gt;`** (même valeur). Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Réponse **`429`** si le quota est dépassé.
+
+    Les appels avec clé se comportent comme si le **propriétaire** de la clé effectuait la requête (droits et données visibles alignés sur ce compte).
+
+    **Sans authentification valide :** réponse **`401`** (`application/json`, champ `error`).
+
+    ### Usage
+
     Utilisez l’API avec modération : un volume de requêtes trop élevé ou un comportement abusif peut entraîner l’application de **restrictions** (limitation de débit, blocage temporaire ou définitif, etc.) sans préavis.
 
     **Documentation interactive (Redoc) :** [`/api/`](/api/)
@@ -12,6 +25,12 @@ info:
 servers:
   - url: /
     description: Origine du site (remplacez par l’URL de production pour les tests depuis un client externe)
+
+# Au moins une des exigences ci‑dessous doit être satisfaite (OU logique entre les éléments du tableau).
+security:
+  - SessionCookie: []
+  - ApiKeyBearer: []
+  - ApiKeyHeader: []
 
 tags:
   - name: Jeux
@@ -97,6 +116,10 @@ paths:
                           updatedAt: '2024-03-10T12:00:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -168,6 +191,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -198,6 +225,10 @@ paths:
                   $ref: '#/components/schemas/GameTranslation'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -219,6 +250,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -250,6 +285,10 @@ paths:
                   $ref: '#/components/schemas/TranslatorPublic'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -271,6 +310,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -401,6 +444,10 @@ paths:
                             updatedAt: '2024-03-10T12:00:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -513,10 +560,34 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/ServerError'
 
 components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth-session
+      description: |
+        Cookie de session émis après connexion sur le site (tableau de bord). Envoyé automatiquement par le navigateur pour les requêtes same-site.
+    ApiKeyBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+      description: |
+        Valeur complète de la clé API (ex. préfixe `f95ext_…`). Équivalent à l’en-tête `X-Api-Key`.
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: |
+        Même secret que pour l’en-tête Authorization avec schéma Bearer (valeur = clé complète).
+
   parameters:
     GameId:
       name: id
@@ -666,6 +737,25 @@ components:
         example: '2024-01-31'
 
   responses:
+    Unauthorized:
+      description: |
+        Session absente ou expirée, ou clé API manquante / invalide / révoquée / expirée.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    TooManyRequests:
+      description: Quota de requêtes par minute dépassé pour cette clé API.
+      headers:
+        Retry-After:
+          description: Délai recommandé avant un nouvel essai (secondes).
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
     BadRequest:
       description: Requête invalide
       content:

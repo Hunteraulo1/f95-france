@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types';
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>

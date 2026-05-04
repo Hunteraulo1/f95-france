@@ -1,17 +1,17 @@
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { parseInclude } from '$lib/server/api/include-query';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { db } from '$lib/server/db';
+import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game, update as updateTable } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>

@@ -1,14 +1,14 @@
 import { parseTranslationListFilters } from '$lib/server/api/translation-list-filters';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
-import { desc } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
+import { desc } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>

@@ -2,14 +2,14 @@ import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { parseInclude } from '$lib/server/api/include-query';
 import { db } from '$lib/server/db';
 import { game } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
 
 export const OPTIONS: RequestHandler = async () =>

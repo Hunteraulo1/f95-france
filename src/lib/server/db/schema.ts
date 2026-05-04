@@ -66,6 +66,40 @@ export const loginThrottle = pgTable('login_throttle', {
 	lockedUntil: timestamp('locked_until')
 });
 
+/** Clés d’accès pour l’API extension (hash SHA-256 du secret complet). */
+export const apiKey = pgTable('api_key', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	keyHash: varchar('key_hash', { length: 64 }).notNull().unique(),
+	/** Préfixe affiché dans l’admin (début de la clé, sans révéler le secret). */
+	keyPrefix: varchar('key_prefix', { length: 32 }).notNull(),
+	label: varchar('label', { length: 255 }).notNull().default(''),
+	requestsPerMinute: integer('requests_per_minute').notNull().default(60),
+	expiresAt: timestamp('expires_at'),
+	revokedAt: timestamp('revoked_at'),
+	lastUsedAt: timestamp('last_used_at'),
+	/** Compte auquel la clé appartient (quotas / révocation utilisateur). */
+	ownerUserId: varchar('owner_user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	createdByUserId: varchar('created_by_user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+/** Fenêtre d’une minute pour le quota `requests_per_minute` par clé. */
+export const apiKeyRate = pgTable('api_key_rate', {
+	apiKeyId: varchar('api_key_id', { length: 255 })
+		.primaryKey()
+		.references(() => apiKey.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	requestCount: integer('request_count').notNull().default(0),
+	windowStartedAt: timestamp('window_started_at').notNull().defaultNow()
+});
+
 export const game = pgTable('game', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()
@@ -221,3 +255,5 @@ export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;
 export type Notification = typeof notification.$inferSelect;
+export type ApiKey = typeof apiKey.$inferSelect;
+export type ApiKeyRate = typeof apiKeyRate.$inferSelect;

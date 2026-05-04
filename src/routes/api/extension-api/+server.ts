@@ -1,14 +1,11 @@
 import { db } from '$lib/server/db';
 import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
+import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
 import { json } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
-const corsHeaders = {
-	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'GET, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-};
+const corsHeaders = extensionApiCorsHeaders;
 
 export const OPTIONS: RequestHandler = async () =>
 	new Response(null, {
