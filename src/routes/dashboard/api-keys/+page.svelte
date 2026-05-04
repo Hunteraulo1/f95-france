@@ -25,7 +25,7 @@
 			<KeyRound class="size-8 text-primary" aria-hidden="true" />
 			<h1 class="text-2xl font-semibold">Mes clés API</h1>
 		</div>
-		<a href="/api" class="btn btn-outline btn-sm gap-2">
+		<a href="/api" class="btn gap-2 btn-outline btn-sm">
 			<BookOpen class="size-4 shrink-0" aria-hidden="true" />
 			Documentation API
 		</a>

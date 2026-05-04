@@ -223,7 +223,7 @@
 								{:else if row.kind !== 'session'}
 									<form method="post" action="?/restoreRevoked" use:enhance>
 										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn w-fit btn-success btn-outline btn-xs">
+										<button type="submit" class="btn w-fit btn-outline btn-xs btn-success">
 											Rétablir la clé
 										</button>
 									</form>
