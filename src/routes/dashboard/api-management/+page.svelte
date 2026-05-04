@@ -40,8 +40,8 @@
 	</div>
 
 	<p class="text-sm text-base-content/80">
-		Gestion de toutes les clés : création pour un utilisateur, révocation, modification du quota et
-		de l’expiration.
+		Gestion de toutes les clés : création pour un utilisateur, révocation, rétablissement d’une clé
+		révoquée, modification du quota et de l’expiration.
 	</p>
 
 	{#if newKey}
@@ -71,6 +71,18 @@
 	{#if form && 'updated' in form && form.updated}
 		<div role="alert" class="alert alert-success">
 			<span>Quota / expiration mis à jour.</span>
+		</div>
+	{/if}
+
+	{#if form && 'revoked' in form && form.revoked}
+		<div role="alert" class="alert alert-success">
+			<span>Clé révoquée.</span>
+		</div>
+	{/if}
+
+	{#if form && 'restored' in form && form.restored}
+		<div role="alert" class="alert alert-success">
+			<span>Clé rétablie : elle peut à nouveau être utilisée (si non expirée).</span>
 		</div>
 	{/if}
 
@@ -208,6 +220,13 @@
 											>
 										</form>
 									{/if}
+								{:else if row.kind !== 'session'}
+									<form method="post" action="?/restoreRevoked" use:enhance>
+										<input type="hidden" name="id" value={row.id} />
+										<button type="submit" class="btn w-fit btn-success btn-outline btn-xs">
+											Rétablir la clé
+										</button>
+									</form>
 								{/if}
 							</div>
 						</td>
