@@ -9,7 +9,7 @@ info:
     Pour chaque opération décrite dans cette spécification, la requête doit prouver l’identité par **l’une** des options suivantes :
 
     1. **Cookie de session** — après connexion sur le tableau de bord (`auth-session`, envoi automatique avec `credentials: 'include'` depuis le même site).
-    2. **Clé API** — en-tête **`Authorization: Bearer &lt;clé&gt;`** ou **`X-Api-Key: &lt;clé&gt;`** (même valeur). Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Réponse **`429`** si le quota est dépassé.
+    2. **Clé API** — en-tête **`Authorization`** avec le schéma **`Bearer`** et la **clé complète** comme jeton (ex. préfixe `f95ext_…`), ou en-tête **`X-Api-Key`** avec la même valeur. Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Réponse **`429`** si le quota est dépassé.
 
     Les appels avec clé se comportent comme si le **propriétaire** de la clé effectuait la requête (droits et données visibles alignés sur ce compte).
 
