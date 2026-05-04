@@ -25,6 +25,8 @@
 		const pad = (n: number) => String(n).padStart(2, '0');
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 	};
+
+	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 </script>
 
 <svelte:head>
@@ -121,6 +123,7 @@
 					<th>Préfixe</th>
 					<th>Libellé</th>
 					<th>Quota</th>
+					<th>Utilisations (total)</th>
 					<th>Créée</th>
 					<th>Expire</th>
 					<th>Dernière utilisation</th>
@@ -145,6 +148,7 @@
 							{row.label || '—'}
 						</td>
 						<td>{row.requestsPerMinute}</td>
+						<td class="tabular-nums">{formatCount(row.totalRequestCount)}</td>
 						<td>{formatDt(row.createdAt)}</td>
 						<td>{formatDt(row.expiresAt)}</td>
 						<td>{formatDt(row.lastUsedAt)}</td>
@@ -210,7 +214,7 @@
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="9" class="text-base-content/70">Aucune clé.</td>
+						<td colspan="10" class="text-base-content/70">Aucune clé.</td>
 					</tr>
 				{/each}
 			</tbody>

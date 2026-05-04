@@ -11,6 +11,8 @@
 			? form.createdKey
 			: null
 	);
+
+	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 </script>
 
 <svelte:head>
@@ -125,6 +127,7 @@
 					<th>Préfixe</th>
 					<th>Libellé</th>
 					<th>Quota / min</th>
+					<th>Utilisations (total)</th>
 					<th>Créée</th>
 					<th>Expire</th>
 					<th>Dernière utilisation</th>
@@ -139,6 +142,9 @@
 						<span class="font-medium">Session</span>
 					</td>
 					<td>{data.sessionKey?.requestsPerMinute ?? data.limits.defaultRpm}</td>
+					<td class="tabular-nums">
+						{formatCount(data.sessionKey?.totalRequestCount ?? 0)}
+					</td>
 					<td><span class="text-base-content/70">—</span></td>
 					<td><span class="text-base-content/70">—</span></td>
 					<td>
@@ -159,6 +165,7 @@
 						<td><code class="text-sm">{row.keyPrefix}…</code></td>
 						<td>{row.label || '—'}</td>
 						<td>{row.requestsPerMinute}</td>
+						<td class="tabular-nums">{formatCount(row.totalRequestCount)}</td>
 						<td
 							>{new Intl.DateTimeFormat('fr-FR', {
 								dateStyle: 'short',
@@ -205,7 +212,7 @@
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="8" class="text-base-content/70">Aucune clé API générée pour le moment.</td>
+						<td colspan="9" class="text-base-content/70">Aucune clé API générée pour le moment.</td>
 					</tr>
 				{/each}
 			</tbody>

@@ -78,6 +78,20 @@
       "when": 1777890700000,
       "tag": "0010_rls_deny_all_remaining_public_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777890800000,
+      "tag": "0011_api_key_total_request_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777896893978,
+      "tag": "0012_bouncy_cammi",
+      "breakpoints": true
     }
   ]
 }

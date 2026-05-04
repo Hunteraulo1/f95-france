@@ -137,7 +137,11 @@ export async function validateApiKeyRequest(
 	const touch = new Date();
 	await db
 		.update(table.apiKey)
-		.set({ lastUsedAt: touch, updatedAt: touch })
+		.set({
+			lastUsedAt: touch,
+			updatedAt: touch,
+			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
+		})
 		.where(eq(table.apiKey.id, row.id));
 
 	return { ok: true, keyId: row.id, ownerUserId: row.ownerUserId };
@@ -203,6 +207,7 @@ export type ApiKeyListRow = {
 	expiresAt: Date | null;
 	revokedAt: Date | null;
 	lastUsedAt: Date | null;
+	totalRequestCount: number;
 	createdAt: Date;
 };
 
@@ -232,6 +237,7 @@ export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyLi
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt
 		})
 		.from(table.apiKey)
@@ -296,6 +302,7 @@ export async function getSessionApiKeyRowForOwner(
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt
 		})
 		.from(table.apiKey)
@@ -338,7 +345,11 @@ export async function consumeSessionApiKeyRateForUser(
 	const touch = new Date();
 	await db
 		.update(table.apiKey)
-		.set({ lastUsedAt: touch, updatedAt: touch })
+		.set({
+			lastUsedAt: touch,
+			updatedAt: touch,
+			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
+		})
 		.where(eq(table.apiKey.id, row.id));
 
 	return { ok: true };
@@ -362,6 +373,7 @@ export async function listApiKeysForAdmin(): Promise<ApiKeyAdminRow[]> {
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt,
 			ownerUserId: table.apiKey.ownerUserId,
 			ownerUsername: table.user.username,
