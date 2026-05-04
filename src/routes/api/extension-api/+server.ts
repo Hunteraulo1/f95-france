@@ -1,5 +1,9 @@
 import { db } from '$lib/server/db';
 import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
+import {
+	isExtensionApiCallerAllowed,
+	resolveUserForExtensionApiOriginGate
+} from '$lib/server/extension-api-access';
 import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
 import { json } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
@@ -7,11 +11,19 @@ import type { RequestHandler } from './$types';
 
 const corsHeaders = extensionApiCorsHeaders;
 
-export const OPTIONS: RequestHandler = async () =>
-	new Response(null, {
+export const OPTIONS: RequestHandler = async ({ request, locals }) => {
+	const gateUser = await resolveUserForExtensionApiOriginGate(locals);
+	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+		return json(
+			{ error: "Accès interdit à l'API extension." },
+			{ status: 403, headers: corsHeaders }
+		);
+	}
+	return new Response(null, {
 		status: 204,
 		headers: corsHeaders
 	});
+};
 
 const mapDomain = (
 	website: string | null | undefined
@@ -172,7 +184,14 @@ const firstPageLink = (raw: string | null | undefined): string | null => {
 const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À JOUR' =>
 	(v ?? '').trim().toLowerCase() === 'adding' ? 'AJOUT DE JEU' : 'MISE À JOUR';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, request, locals }) => {
+	const gateUser = await resolveUserForExtensionApiOriginGate(locals);
+	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+		return json(
+			{ error: "Accès interdit à l'API extension." },
+			{ status: 403, headers: corsHeaders }
+		);
+	}
 	try {
 		const gameId = url.searchParams.get('gameId')?.trim();
 

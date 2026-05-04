@@ -25,6 +25,8 @@
 		const pad = (n: number) => String(n).padStart(2, '0');
 		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 	};
+
+	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 </script>
 
 <svelte:head>
@@ -38,8 +40,8 @@
 	</div>
 
 	<p class="text-sm text-base-content/80">
-		Gestion de toutes les clés : création pour un utilisateur, révocation, modification du quota et
-		de l’expiration.
+		Gestion de toutes les clés : création pour un utilisateur, révocation, rétablissement d’une clé
+		révoquée, modification du quota et de l’expiration.
 	</p>
 
 	{#if newKey}
@@ -69,6 +71,18 @@
 	{#if form && 'updated' in form && form.updated}
 		<div role="alert" class="alert alert-success">
 			<span>Quota / expiration mis à jour.</span>
+		</div>
+	{/if}
+
+	{#if form && 'revoked' in form && form.revoked}
+		<div role="alert" class="alert alert-success">
+			<span>Clé révoquée.</span>
+		</div>
+	{/if}
+
+	{#if form && 'restored' in form && form.restored}
+		<div role="alert" class="alert alert-success">
+			<span>Clé rétablie : elle peut à nouveau être utilisée (si non expirée).</span>
 		</div>
 	{/if}
 
@@ -121,6 +135,7 @@
 					<th>Préfixe</th>
 					<th>Libellé</th>
 					<th>Quota</th>
+					<th>Utilisations (total)</th>
 					<th>Créée</th>
 					<th>Expire</th>
 					<th>Dernière utilisation</th>
@@ -145,6 +160,7 @@
 							{row.label || '—'}
 						</td>
 						<td>{row.requestsPerMinute}</td>
+						<td class="tabular-nums">{formatCount(row.totalRequestCount)}</td>
 						<td>{formatDt(row.createdAt)}</td>
 						<td>{formatDt(row.expiresAt)}</td>
 						<td>{formatDt(row.lastUsedAt)}</td>
@@ -184,7 +200,7 @@
 												/>
 												{#if row.kind !== 'session'}
 													<input
-														class="input-bordered input input-xs w-full min-w-[10rem]"
+														class="input-bordered input input-xs w-full min-w-40"
 														type="datetime-local"
 														name="expiresAt"
 														value={toLocalInput(row.expiresAt)}
@@ -204,13 +220,20 @@
 											>
 										</form>
 									{/if}
+								{:else if row.kind !== 'session'}
+									<form method="post" action="?/restoreRevoked" use:enhance>
+										<input type="hidden" name="id" value={row.id} />
+										<button type="submit" class="btn w-fit btn-outline btn-xs btn-success">
+											Rétablir la clé
+										</button>
+									</form>
 								{/if}
 							</div>
 						</td>
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="9" class="text-base-content/70">Aucune clé.</td>
+						<td colspan="10" class="text-base-content/70">Aucune clé.</td>
 					</tr>
 				{/each}
 			</tbody>

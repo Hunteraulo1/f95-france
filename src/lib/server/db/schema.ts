@@ -81,6 +81,8 @@ export const apiKey = pgTable('api_key', {
 	expiresAt: timestamp('expires_at'),
 	revokedAt: timestamp('revoked_at'),
 	lastUsedAt: timestamp('last_used_at'),
+	/** Nombre total de requêtes /api/* comptabilisées après authentification (clé ou quota session). */
+	totalRequestCount: integer('total_request_count').notNull().default(0),
 	/** Compte auquel la clé appartient (quotas / révocation utilisateur). */
 	ownerUserId: varchar('owner_user_id', { length: 255 })
 		.notNull()

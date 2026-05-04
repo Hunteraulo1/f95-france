@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
 const RATE_WINDOW_MS = 60_000;
 
@@ -137,7 +137,11 @@ export async function validateApiKeyRequest(
 	const touch = new Date();
 	await db
 		.update(table.apiKey)
-		.set({ lastUsedAt: touch, updatedAt: touch })
+		.set({
+			lastUsedAt: touch,
+			updatedAt: touch,
+			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
+		})
 		.where(eq(table.apiKey.id, row.id));
 
 	return { ok: true, keyId: row.id, ownerUserId: row.ownerUserId };
@@ -203,6 +207,7 @@ export type ApiKeyListRow = {
 	expiresAt: Date | null;
 	revokedAt: Date | null;
 	lastUsedAt: Date | null;
+	totalRequestCount: number;
 	createdAt: Date;
 };
 
@@ -232,6 +237,7 @@ export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyLi
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt
 		})
 		.from(table.apiKey)
@@ -296,6 +302,7 @@ export async function getSessionApiKeyRowForOwner(
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt
 		})
 		.from(table.apiKey)
@@ -338,7 +345,11 @@ export async function consumeSessionApiKeyRateForUser(
 	const touch = new Date();
 	await db
 		.update(table.apiKey)
-		.set({ lastUsedAt: touch, updatedAt: touch })
+		.set({
+			lastUsedAt: touch,
+			updatedAt: touch,
+			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
+		})
 		.where(eq(table.apiKey.id, row.id));
 
 	return { ok: true };
@@ -362,6 +373,7 @@ export async function listApiKeysForAdmin(): Promise<ApiKeyAdminRow[]> {
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
 			lastUsedAt: table.apiKey.lastUsedAt,
+			totalRequestCount: table.apiKey.totalRequestCount,
 			createdAt: table.apiKey.createdAt,
 			ownerUserId: table.apiKey.ownerUserId,
 			ownerUsername: table.user.username,
@@ -461,6 +473,24 @@ async function revokeApiKey(id: string): Promise<boolean> {
 				eq(table.apiKey.id, id),
 				isNull(table.apiKey.revokedAt),
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
+			)
+		)
+		.returning({ id: table.apiKey.id });
+
+	return updated.length > 0;
+}
+
+/** Rétablit une clé Bearer révoquée (superadmin uniquement — contrôle côté route). */
+export async function restoreRevokedApiKeyAdmin(keyId: string): Promise<boolean> {
+	const touch = new Date();
+	const updated = await db
+		.update(table.apiKey)
+		.set({ revokedAt: null, updatedAt: touch })
+		.where(
+			and(
+				eq(table.apiKey.id, keyId),
+				eq(table.apiKey.kind, API_KEY_KIND_BEARER),
+				isNotNull(table.apiKey.revokedAt)
 			)
 		)
 		.returning({ id: table.apiKey.id });

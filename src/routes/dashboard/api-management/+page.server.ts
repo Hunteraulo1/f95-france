@@ -1,6 +1,7 @@
 import {
 	createApiKey,
 	listApiKeysForAdmin,
+	restoreRevokedApiKeyAdmin,
 	revokeApiKeyForActor,
 	updateApiKeyLimitsAdmin
 } from '$lib/server/api-keys';
@@ -115,6 +116,27 @@ export const actions: Actions = {
 		}
 
 		return { ok: true as const, revoked: true };
+	},
+
+	restoreRevoked: async ({ request, locals }) => {
+		if (!locals.user || locals.user.role !== 'superadmin') {
+			return fail(403, { message: 'Accès refusé.' });
+		}
+
+		const formData = await request.formData();
+		const id = String(formData.get('id') ?? '').trim();
+		if (!id) {
+			return fail(400, { message: 'Identifiant de clé manquant.' });
+		}
+
+		const ok = await restoreRevokedApiKeyAdmin(id);
+		if (!ok) {
+			return fail(400, {
+				message: 'Clé introuvable, non révoquée, ou entrée « session » (non rétablissable ici).'
+			});
+		}
+
+		return { ok: true as const, restored: true };
 	},
 
 	updateLimits: async ({ request, locals }) => {
