@@ -18,6 +18,14 @@ authenticated USING (false)
 WITH
     CHECK (false);
 
+-- login_throttle
+DROP POLICY IF EXISTS deny_all_login_throttle ON public.login_throttle;
+
+CREATE POLICY deny_all_login_throttle ON public.login_throttle FOR ALL TO anon,
+authenticated USING (false)
+WITH
+    CHECK (false);
+
 -- api_log
 DROP POLICY IF EXISTS deny_all_api_log ON public.api_log;
 

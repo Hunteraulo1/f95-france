@@ -11,8 +11,8 @@ import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		error(403, 'Accès réservé aux administrateurs.');
+	if (!locals.user || locals.user.role !== 'superadmin') {
+		error(403, 'Accès réservé aux super-administrateurs.');
 	}
 
 	try {
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+		if (!locals.user || locals.user.role !== 'superadmin') {
 			return fail(403, { message: 'Accès refusé.' });
 		}
 
@@ -94,7 +94,7 @@ export const actions: Actions = {
 	},
 
 	revoke: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+		if (!locals.user || locals.user.role !== 'superadmin') {
 			return fail(403, { message: 'Accès refusé.' });
 		}
 
@@ -118,7 +118,7 @@ export const actions: Actions = {
 	},
 
 	updateLimits: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+		if (!locals.user || locals.user.role !== 'superadmin') {
 			return fail(403, { message: 'Accès refusé.' });
 		}
 

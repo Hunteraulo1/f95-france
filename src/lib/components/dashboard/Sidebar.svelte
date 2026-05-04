@@ -109,7 +109,7 @@
 			label: 'Gestion API',
 			href: '/dashboard/api-management',
 			icon: KeyRound,
-			roles: ['admin']
+			roles: ['superadmin']
 		},
 		{
 			label: 'Configuration',

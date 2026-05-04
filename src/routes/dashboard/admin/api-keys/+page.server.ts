@@ -3,5 +3,5 @@ import type { PageServerLoad } from './$types';
 
 /** Ancienne URL : redirection permanente vers la gestion API. */
 export const load: PageServerLoad = () => {
-	throw redirect(308, '/api-management');
+	throw redirect(308, '/dashboard/api-management');
 };
