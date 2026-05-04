@@ -145,18 +145,17 @@
 		const textSecondary = dark ? '#a3a3a3' : '#525252';
 
 		/**
-		 * Panneau droit « Response samples » : les tokens Prism de Redoc sont pensés pour un fond
-		 * sombre type Material (#263238). Avec neutral/neutralContent daisy, le contraste casse
-		 * (ponctuation en opacité sur couleur héritée, etc.).
+		 * Panneau droit « Response samples » : en thème sombre, fond Material (#263238) pour les
+		 * tokens Prism prévus pour fond sombre. En thème clair, on aligne sur base-200 / base-300
+		 * (variables daisy déjà résolues en hex pour Redoc).
 		 */
-		const samplePanelBg = '#263238';
-		const samplePanelFg = '#eeffff';
-		const sampleCodeBg = '#1b2327';
+		const samplePanelBg = dark ? '#263238' : base200;
+		const samplePanelFg = dark ? '#eeffff' : baseContent;
+		const sampleCodeBg = dark ? '#1b2327' : base300;
 
 		/**
-		 * Panneau droit (variante Wp) : `.tab-success` etc. s’appliquent après l’onglet sélectionné
-		 * et écrasent `rightPanel.textColor`. `baseContent` sur fond #263238 est illisible — on garde
-		 * la teinte sémantique (contraste suffisant sur fond sombre).
+		 * Panneau droit : `.tab-success` etc. écrasent `rightPanel.textColor`. En sombre on garde la
+		 * teinte sémantique sur fond #263238 ; en clair, `base200` + accents restent lisibles.
 		 */
 		const responseColors = (accentColor: string) => ({
 			color: accentColor,
@@ -272,6 +271,7 @@
 		const mount = () => {
 			if (!win.Redoc) return;
 			node.innerHTML = '';
+			node.setAttribute('data-redoc-palette', isDarkTheme() ? 'dark' : 'light');
 			try {
 				win.Redoc.init(SPEC_URL, { ...baseRedocOptions(), theme: buildRedocTheme() }, node);
 			} catch (e) {
@@ -330,13 +330,12 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div bind:this={container} class="min-h-screen bg-base-100"></div>
+<div bind:this={container} class="redoc-host min-h-screen bg-base-100"></div>
 
 <style>
 	/*
 	 * Redoc : la racine styled de `.redoc-markdown` ($f) n’impose pas `color` ; les <p> héritent
 	 * d’ancêtres peu contrastés. On aligne le markdown de la colonne centrale sur daisyUI.
-	 * (.api-content exclut le panneau droit « Response samples », fond sombre + texte clair.)
 	 */
 	:global(.redoc-wrap .api-content .redoc-markdown) {
 		color: var(--color-base-content);
@@ -355,5 +354,94 @@
 
 	:global(.redoc-wrap .api-content table td span) {
 		color: var(--color-base-content);
+	}
+
+	/*
+	 * Palette claire : Prism + Redoc JSON utilisent des couleurs pour fond sombre (#a0fbaa,
+	 * .token.property.string → white, collapser #fff). On recolle tout au thème daisy.
+	 */
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap pre) {
+		color: var(--color-base-content);
+		background-color: var(--color-base-300);
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .redoc-json) {
+		color: var(--color-base-content);
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .redoc-json code) {
+		color: var(--color-base-content);
+	}
+
+	/* Boutons +/- d’expansion du JSON (Redoc force color: #fff) */
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .redoc-json .collapser) {
+		color: var(--color-base-content) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .redoc-json .collapser:focus) {
+		outline-color: var(--color-primary) !important;
+	}
+
+	/* Clés d’objet JSON : span.property.token.string — Redoc/Prism → white sur fond sombre */
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.property.string) {
+		color: var(--color-info) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.property),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.tag),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.number),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.constant),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.symbol) {
+		color: var(--color-info) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.boolean) {
+		color: var(--color-error) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.keyword) {
+		color: var(--color-secondary) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.selector),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.attr-name),
+	/* Valeurs string uniquement : les clés sont `.property.token.string` (couleur info ci-dessus). */
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.string:not(.property)),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.char),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.builtin),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.inserted) {
+		color: color-mix(in srgb, var(--color-success) 78%, var(--color-base-content) 22%) !important;
+		opacity: 1 !important;
+	}
+
+	:global(
+		.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.string:not(.property) + a,
+		.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.string:not(.property) + a:visited
+	) {
+		color: var(--color-primary) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.operator),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.entity),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.url),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.variable) {
+		color: var(--color-warning) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.comment),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.prolog),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.doctype),
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.cdata) {
+		color: color-mix(in srgb, var(--color-neutral) 55%, var(--color-base-content) 45%) !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .token.punctuation) {
+		color: color-mix(in srgb, var(--color-base-content) 58%, transparent) !important;
+		opacity: 1 !important;
+	}
+
+	:global(.redoc-host[data-redoc-palette='light'] .redoc-wrap .namespace) {
+		color: var(--color-base-content) !important;
+		opacity: 1 !important;
 	}
 </style>
