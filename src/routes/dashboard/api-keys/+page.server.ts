@@ -4,8 +4,7 @@ import {
     listApiKeysForOwner,
     revokeApiKeyForActor,
     USER_API_KEY_DEFAULT_RPM,
-    USER_API_KEY_MAX_COUNT,
-    USER_API_KEY_MAX_RPM
+    USER_API_KEY_MAX_COUNT
 } from '$lib/server/api-keys';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -23,7 +22,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			activeCount,
 			limits: {
 				maxKeys: USER_API_KEY_MAX_COUNT,
-				maxRpm: USER_API_KEY_MAX_RPM,
 				defaultRpm: USER_API_KEY_DEFAULT_RPM
 			}
 		};
@@ -55,13 +53,6 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const label = String(formData.get('label') ?? '').trim() || 'Ma clé';
-		const rpmParsed = Number.parseInt(
-			String(formData.get('requestsPerMinute') ?? String(USER_API_KEY_DEFAULT_RPM)),
-			10
-		);
-		const requestsPerMinute = Number.isFinite(rpmParsed)
-			? Math.min(USER_API_KEY_MAX_RPM, Math.max(1, rpmParsed))
-			: USER_API_KEY_DEFAULT_RPM;
 
 		const expiresRaw = String(formData.get('expiresAt') ?? '').trim();
 		let expiresAt: Date | null = null;
@@ -75,7 +66,7 @@ export const actions: Actions = {
 
 		const { rawKey } = await createApiKey({
 			label,
-			requestsPerMinute,
+			requestsPerMinute: USER_API_KEY_DEFAULT_RPM,
 			expiresAt,
 			ownerUserId: locals.user.id,
 			createdByUserId: locals.user.id

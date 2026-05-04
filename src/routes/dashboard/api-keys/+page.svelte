@@ -30,10 +30,17 @@
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">Authorization: Bearer …</code>
 		ou
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">X-Api-Key</code>. La clé agit comme ton compte pour ces appels. Tu peux avoir au plus
-		<strong>{data.limits.maxKeys}</strong> clés actives ; par défaut
-		<strong>{data.limits.defaultRpm}</strong> requêtes/min, jusqu’à
-		<strong>{data.limits.maxRpm}</strong> au maximum.
+		<strong>{data.limits.maxKeys}</strong> clés actives ; chaque nouvelle clé a un quota de
+		<strong>{data.limits.defaultRpm}</strong> requêtes par minute. Pour augmenter cette limite,
+		<strong>contacte un administrateur</strong>.
 	</p>
+
+	<div class="alert alert-info sm:alert-horizontal">
+		<span>
+			Utilise l’API avec <strong>modération</strong> : un trafic excessif ou un usage abusif peut
+			entraîner des restrictions (limitation de débit, révocation des clés, etc.).
+		</span>
+	</div>
 
 	<p class="text-sm text-base-content/70">
 		Clés actives : {data.activeCount} / {data.limits.maxKeys}
@@ -80,19 +87,6 @@
 						class="input-bordered input w-full max-w-md"
 						name="label"
 						placeholder="Extension navigateur, script…"
-					/>
-				</label>
-				<label class="flex flex-col gap-1">
-					<span class="text-sm font-medium"
-						>Requêtes max / minute (1–{data.limits.maxRpm}, défaut {data.limits.defaultRpm})</span
-					>
-					<input
-						class="input-bordered input w-full max-w-xs"
-						type="number"
-						name="requestsPerMinute"
-						min="1"
-						max={data.limits.maxRpm}
-						value={data.limits.defaultRpm}
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
