@@ -58,6 +58,14 @@ export const passkeyChallenge = pgTable('passkey_challenge', {
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+/** Compteur d’échecs de connexion par IP (anti-bruteforce côté app). */
+export const loginThrottle = pgTable('login_throttle', {
+	clientKey: varchar('client_key', { length: 128 }).primaryKey(),
+	failedCount: integer('failed_count').notNull().default(0),
+	windowStartedAt: timestamp('window_started_at').notNull().defaultNow(),
+	lockedUntil: timestamp('locked_until')
+});
+
 export const game = pgTable('game', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()

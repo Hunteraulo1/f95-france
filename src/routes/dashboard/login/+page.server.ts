@@ -1,4 +1,9 @@
 import * as auth from '$lib/server/auth';
+import {
+    checkLoginThrottle,
+    clearLoginThrottle,
+    recordLoginFailure
+} from '$lib/server/login-throttle';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';
@@ -29,14 +34,21 @@ export const actions: Actions = {
 			return fail(400, { message: 'Le mot de passe est requis.' });
 		}
 
+		const throttle = await checkLoginThrottle(event);
+		if (!throttle.ok) {
+			return fail(429, { message: throttle.message });
+		}
+
 		try {
 			const user = await auth.getUserByUsername(username);
 			if (!user) {
+				await recordLoginFailure(event);
 				return fail(400, { message: "Aucun compte trouvé pour ce nom d'utilisateur." });
 			}
 
 			const validPassword = auth.verifyPassword(password, user.passwordHash);
 			if (!validPassword) {
+				await recordLoginFailure(event);
 				return fail(400, { message: 'Mot de passe incorrect.' });
 			}
 
@@ -57,6 +69,7 @@ export const actions: Actions = {
 				});
 				const delta = totp.validate({ token: twoFactorCode, window: 1 });
 				if (delta === null) {
+					await recordLoginFailure(event);
 					return fail(400, { message: 'Code 2FA invalide ou expiré.' });
 				}
 			}
@@ -65,6 +78,7 @@ export const actions: Actions = {
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, user.id);
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+			await clearLoginThrottle(event);
 
 			throw redirect(302, '/dashboard');
 		} catch (error) {
