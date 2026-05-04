@@ -1,6 +1,7 @@
 import {
     countActiveApiKeysForOwner,
     createApiKey,
+    getSessionApiKeyRowForOwner,
     listApiKeysForOwner,
     revokeApiKeyForActor,
     USER_API_KEY_DEFAULT_RPM,
@@ -15,10 +16,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	try {
-		const keys = await listApiKeysForOwner(locals.user.id);
-		const activeCount = await countActiveApiKeysForOwner(locals.user.id);
+		const [keys, activeCount, sessionKey] = await Promise.all([
+			listApiKeysForOwner(locals.user.id),
+			countActiveApiKeysForOwner(locals.user.id),
+			getSessionApiKeyRowForOwner(locals.user.id)
+		]);
 		return {
 			keys,
+			sessionKey,
 			activeCount,
 			limits: {
 				maxKeys: USER_API_KEY_MAX_COUNT,
@@ -27,11 +32,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		if (/api_key/i.test(msg) && /does not exist|n'existe pas|undefined_table|owner_user_id/i.test(msg)) {
+		if (
+			/api_key/i.test(msg) &&
+			/does not exist|n'existe pas|undefined_table|owner_user_id|kind/i.test(msg)
+		) {
 			console.error('[api-keys] tables manquantes — migrations Drizzle', err);
 			error(
 				503,
-				'Tables « api_key » absentes ou schéma à jour requis : exécutez les migrations (pnpm db:push ou drizzle/0005_api_key_owner.sql).'
+				'Tables « api_key » absentes ou schéma à jour requis : exécutez les migrations (pnpm db:push ou drizzle/0006_api_key_kind.sql).'
 			);
 		}
 		throw err;

@@ -23,9 +23,9 @@
 	</div>
 
 	<p class="text-sm text-base-content/80">
-		Toutes les routes sous
+		Pour appeler l’API sous
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">/api/</code>
-		(sauf cron, passkeys, OAuth et la page doc) exigent une <strong>session</strong> (cookie) ou cette
+		, il faut une <strong>session</strong> (cookie) ou cette
 		<strong>clé</strong> dans
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">Authorization: Bearer …</code>
 		ou
@@ -43,7 +43,7 @@
 	</div>
 
 	<p class="text-sm text-base-content/70">
-		Clés actives : {data.activeCount} / {data.limits.maxKeys}
+		Clés API actives (hors session) : {data.activeCount} / {data.limits.maxKeys}
 	</p>
 
 	{#if newKey}
@@ -123,6 +123,27 @@
 				</tr>
 			</thead>
 			<tbody>
+				<tr class="bg-base-200/50">
+					<td><span class="text-base-content/60">—</span></td>
+					<td>
+						<span class="font-medium">Session</span>
+					</td>
+					<td>{data.sessionKey?.requestsPerMinute ?? data.limits.defaultRpm}</td>
+					<td><span class="text-base-content/70">—</span></td>
+					<td><span class="text-base-content/70">—</span></td>
+					<td>
+						{#if data.sessionKey?.lastUsedAt}
+							{new Intl.DateTimeFormat('fr-FR', {
+								dateStyle: 'short',
+								timeStyle: 'short'
+							}).format(new Date(data.sessionKey.lastUsedAt))}
+						{:else}
+							<span class="text-base-content/70">—</span>
+						{/if}
+					</td>
+					<td><span class="badge badge-success">Active</span></td>
+					<td><span class="text-sm text-base-content/60">Non révocable</span></td>
+				</tr>
 				{#each data.keys as row (row.id)}
 					<tr>
 						<td><code class="text-sm">{row.keyPrefix}…</code></td>
@@ -174,7 +195,7 @@
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="8" class="text-base-content/70">Aucune clé pour le moment.</td>
+						<td colspan="8" class="text-base-content/70">Aucune clé API générée pour le moment.</td>
 					</tr>
 				{/each}
 			</tbody>

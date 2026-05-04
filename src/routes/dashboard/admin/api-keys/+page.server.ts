@@ -31,7 +31,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return { keys, usersList };
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		if (/api_key/i.test(msg) && /does not exist|n'existe pas|undefined_table|owner_user_id/i.test(msg)) {
+		if (
+			/api_key/i.test(msg) &&
+			/does not exist|n'existe pas|undefined_table|owner_user_id|kind/i.test(msg)
+		) {
 			console.error('[admin/api-keys] tables manquantes — migrations Drizzle', err);
 			error(
 				503,
@@ -66,7 +69,7 @@ export const actions: Actions = {
 		const label = String(formData.get('label') ?? '').trim() || 'Clé API';
 		const rpmParsed = Number.parseInt(String(formData.get('requestsPerMinute') ?? '60'), 10);
 		const requestsPerMinute = Number.isFinite(rpmParsed)
-			? Math.min(10_000, Math.max(1, rpmParsed))
+			? Math.min(10_000, Math.max(0, rpmParsed))
 			: 60;
 
 		const expiresRaw = String(formData.get('expiresAt') ?? '').trim();
@@ -106,7 +109,9 @@ export const actions: Actions = {
 			role: locals.user.role
 		});
 		if (!ok) {
-			return fail(400, { message: 'Clé introuvable ou déjà révoquée.' });
+			return fail(400, {
+				message: 'Clé introuvable, déjà révoquée, ou entrée « session » non révocable.'
+			});
 		}
 
 		return { ok: true as const, revoked: true };
@@ -124,8 +129,8 @@ export const actions: Actions = {
 		}
 
 		const rpmParsed = Number.parseInt(String(formData.get('requestsPerMinute') ?? ''), 10);
-		if (!Number.isFinite(rpmParsed) || rpmParsed < 1) {
-			return fail(400, { message: 'Quota / minute invalide.' });
+		if (!Number.isFinite(rpmParsed) || rpmParsed < 0) {
+			return fail(400, { message: 'Quota / minute invalide (entier ≥ 0).' });
 		}
 		const requestsPerMinute = Math.min(10_000, rpmParsed);
 

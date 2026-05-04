@@ -1,7 +1,9 @@
 import {
-    getUserForApiKeyOwner,
-    jsonApiKeyGuardResponse,
-    validateApiKeyRequest
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -86,9 +88,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/api/passkeys/') ||
 		pathname.startsWith('/api/google-oauth/');
 
-	// Toutes les routes /api/* : session cookie OU clé API (sauf exceptions ci-dessus, OPTIONS/HEAD).
+	// Routes /api/* : si en-tête Bearer / X-Api-Key → auth par clé ; sinon session cookie (quota `kind=session`).
 	if (isApiPath && method !== 'OPTIONS' && method !== 'HEAD' && !apiKeyExemptPath) {
-		if (!event.locals.user) {
+		const wantsApiKey = extractApiKeyFromRequest(event.request) !== null;
+		if (wantsApiKey) {
 			const keyResult = await validateApiKeyRequest(event.request);
 			if (!keyResult.ok) {
 				return jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders);
@@ -99,6 +102,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
+		} else if (event.locals.user) {
+			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
+			if (!sessionRate.ok) {
+				return jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders);
+			}
+		} else {
+			return jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders);
 		}
 	}
 

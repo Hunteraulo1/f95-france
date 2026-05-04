@@ -75,6 +75,8 @@ export const apiKey = pgTable('api_key', {
 	/** Préfixe affiché dans l’admin (début de la clé, sans révéler le secret). */
 	keyPrefix: varchar('key_prefix', { length: 32 }).notNull(),
 	label: varchar('label', { length: 255 }).notNull().default(''),
+	/** `bearer` = clé secrète ; `session` = quota cookie (une ligne par compte, non utilisable comme Bearer). */
+	kind: varchar('kind', { length: 16 }).notNull().default('bearer'),
 	requestsPerMinute: integer('requests_per_minute').notNull().default(60),
 	expiresAt: timestamp('expires_at'),
 	revokedAt: timestamp('revoked_at'),

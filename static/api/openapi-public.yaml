@@ -9,7 +9,7 @@ info:
     Pour chaque opération décrite dans cette spécification, la requête doit prouver l’identité par **l’une** des options suivantes :
 
     1. **Cookie de session** — après connexion sur le tableau de bord (`auth-session`, envoi automatique avec `credentials: 'include'` depuis le même site).
-    2. **Clé API** — en-tête **`Authorization`** avec le schéma **`Bearer`** et la **clé complète** comme jeton (ex. préfixe `f95ext_…`), ou en-tête **`X-Api-Key`** avec la même valeur. Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Pour relever ce plafond, **contactez un administrateur du site**. Réponse **`429`** si le quota est dépassé.
+    2. **Clé API** — en-tête **`Authorization`** avec le schéma **`Bearer`** et la **clé complète** comme jeton (ex. préfixe `f95ext_…`), ou en-tête **`X-Api-Key`** avec la même valeur. Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Pour relever ce plafond, **contactez un administrateur du site**. Réponse **`429`** si la **limite par minute** est dépassée (trop de requêtes dans la fenêtre courante) ; réponse **`403`** si l’**accès API est suspendu** (quota fixé à 0 par l’administration — ce n’est pas un dépassement temporaire).
 
     Les appels avec clé se comportent comme si le **propriétaire** de la clé effectuait la requête (droits et données visibles alignés sur ce compte).
 
@@ -120,6 +120,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -195,6 +197,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -229,6 +233,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -254,6 +260,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -289,6 +297,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -314,6 +324,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -448,6 +460,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -564,6 +578,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '403':
+          $ref: '#/components/responses/QuotaSuspended'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -745,13 +761,21 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     TooManyRequests:
-      description: Quota de requêtes par minute dépassé pour cette clé API.
+      description: |
+        Limite de fréquence atteinte : trop de requêtes dans la minute pour la session ou la clé API utilisée. Réessayer après un court délai.
       headers:
         Retry-After:
           description: Délai recommandé avant un nouvel essai (secondes).
           schema:
             type: integer
             example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    QuotaSuspended:
+      description: |
+        Accès API suspendu : le quota a été fixé à 0 (blocage côté administration). Distinct d’un simple **429** (trop de requêtes dans la minute).
       content:
         application/json:
           schema:

@@ -93,7 +93,7 @@
 						class="input-bordered input w-full max-w-xs"
 						type="number"
 						name="requestsPerMinute"
-						min="1"
+						min="0"
 						max="10000"
 						value="60"
 					/>
@@ -131,8 +131,13 @@
 								<span class="text-xs text-base-content/70">{row.ownerEmail}</span>
 							</div>
 						</td>
-						<td><code class="text-xs">{row.keyPrefix}…</code></td>
-						<td>{row.label || '—'}</td>
+						<td><code class="text-xs">{row.keyPrefix}{row.kind === 'session' ? '' : '…'}</code></td>
+						<td>
+							{#if row.kind === 'session'}
+								<span class="badge badge-ghost badge-sm">Session</span>
+							{/if}
+							{row.label || '—'}
+						</td>
 						<td>{row.requestsPerMinute}</td>
 						<td>{formatDt(row.createdAt)}</td>
 						<td>{formatDt(row.expiresAt)}</td>
@@ -160,24 +165,28 @@
 													class="input-bordered input input-xs w-24"
 													type="number"
 													name="requestsPerMinute"
-													min="1"
+													min="0"
 													max="10000"
 													value={row.requestsPerMinute}
 												/>
-												<input
-													class="input-bordered input input-xs w-full min-w-[10rem]"
-													type="datetime-local"
-													name="expiresAt"
-													value={toLocalInput(row.expiresAt)}
-												/>
+												{#if row.kind !== 'session'}
+													<input
+														class="input-bordered input input-xs w-full min-w-[10rem]"
+														type="datetime-local"
+														name="expiresAt"
+														value={toLocalInput(row.expiresAt)}
+													/>
+												{/if}
 												<button type="submit" class="btn btn-primary btn-xs w-fit">Enregistrer</button>
 											</form>
 										</div>
 									</details>
-									<form method="post" action="?/revoke" use:enhance>
-										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn btn-ghost btn-xs text-error w-fit">Révoquer</button>
-									</form>
+									{#if row.kind !== 'session'}
+										<form method="post" action="?/revoke" use:enhance>
+											<input type="hidden" name="id" value={row.id} />
+											<button type="submit" class="btn btn-ghost btn-xs text-error w-fit">Révoquer</button>
+										</form>
+									{/if}
 								{/if}
 							</div>
 						</td>
