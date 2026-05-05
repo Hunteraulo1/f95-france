@@ -162,7 +162,7 @@
 
 <input id="my-drawer-4" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
 
-<aside class="drawer-side is-drawer-close:overflow-visible">
+<aside class="drawer-side is-drawer-close:overflow-visible max-h-[calc(100vh-4rem)]">
 	<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 	<div
 		class="flex min-h-full flex-col items-start bg-base-100 max-sm:w-64 is-drawer-close:w-14 is-drawer-open:w-64"
