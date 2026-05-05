@@ -11,14 +11,9 @@ import type { RequestHandler } from './$types';
 
 const corsHeaders = extensionApiCorsHeaders;
 
-export const OPTIONS: RequestHandler = async ({ request, locals }) => {
-	const gateUser = await resolveUserForExtensionApiOriginGate(locals);
-	if (!isExtensionApiCallerAllowed(request, gateUser)) {
-		return json(
-			{ error: "Accès interdit à l'API extension." },
-			{ status: 403, headers: corsHeaders }
-		);
-	}
+export const OPTIONS: RequestHandler = async () => {
+	// Toujours répondre au preflight CORS sans contrôle d'authentification.
+	// Le contrôle réel est appliqué sur GET.
 	return new Response(null, {
 		status: 204,
 		headers: corsHeaders

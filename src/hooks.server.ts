@@ -1,9 +1,10 @@
 import {
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+    EXTENSION_ONLY_API_ROUTE,
+    consumeSessionApiKeyRateForUser,
+    extractApiKeyFromRequest,
+    getUserForApiKeyOwner,
+    jsonApiKeyGuardResponse,
+    validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -95,6 +96,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 			const keyResult = await validateApiKeyRequest(event.request);
 			if (!keyResult.ok) {
 				return jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders);
+			}
+			if (keyResult.routeScope && pathname !== keyResult.routeScope) {
+				return new Response(
+					JSON.stringify({
+						error: `Cette clé API est restreinte à la route ${EXTENSION_ONLY_API_ROUTE}.`
+					}),
+					{
+						status: 403,
+						headers: {
+							'content-type': 'application/json; charset=utf-8',
+							...apiPublicErrorCorsHeaders
+						}
+					}
+				);
 			}
 			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);
 			if (!userRow) {
