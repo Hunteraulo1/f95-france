@@ -40,6 +40,14 @@
 		(game[name] as string) = value;
 	};
 
+	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
+		try {
+			return checkRole(roles);
+		} catch {
+			return false;
+		}
+	};
+
 	let modal = $state(false);
 </script>
 
@@ -62,7 +70,7 @@
 				<option>{item.name}</option>
 			{/each}
 		</datalist>
-		{#if checkRole(['admin', 'superadmin'])}
+		{#if safeCheckRole(['admin', 'superadmin'])}
 			<button
 				type="button"
 				class="btn w-min btn-primary"

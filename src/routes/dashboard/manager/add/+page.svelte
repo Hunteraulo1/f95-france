@@ -74,6 +74,7 @@
 		gameType: string;
 		image: string;
 		gameVersion: string;
+		description: string;
 	};
 	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
 
@@ -87,8 +88,21 @@
 	let pendingQueryThreadIdAutoScrape = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
-	const isAdmin = checkRole(['admin', 'superadmin']);
+	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
+		try {
+			return checkRole(roles);
+		} catch {
+			return false;
+		}
+	};
+
+	const isAdmin = safeCheckRole(['admin', 'superadmin']);
 	const maxStep = $derived(isAdmin ? 5 : 3);
+	let stepLabels = $derived(
+		isAdmin
+			? ['Site', 'Thread', 'Infos jeu', 'Traduction', 'Auto-check', 'Validation']
+			: ['Site', 'Thread', 'Infos jeu', 'Traduction']
+	);
 
 	let fieldFormState = $derived(computeGameFormFieldState(game));
 	let translatorFieldErrors = $derived(
@@ -161,7 +175,8 @@
 			normScrapeField(game.tags) !== b.tags ||
 			normScrapeField(game.gameType) !== b.gameType ||
 			normScrapeField(game.image) !== b.image ||
-			normScrapeField(game.gameVersion) !== b.gameVersion
+			normScrapeField(game.gameVersion) !== b.gameVersion ||
+			normScrapeField(game.description) !== b.description
 		) {
 			game.ac = false;
 		}
@@ -175,7 +190,8 @@
 			normScrapeField(game.tags) === b.tags &&
 			normScrapeField(game.gameType) === b.gameType &&
 			normScrapeField(game.image) === b.image &&
-			normScrapeField(game.gameVersion) === b.gameVersion
+			normScrapeField(game.gameVersion) === b.gameVersion &&
+			normScrapeField(game.description) === b.description
 		);
 	};
 
@@ -229,6 +245,7 @@
 				tags: string | null;
 				gameType: GameEngineType | null;
 				image: string | null;
+				description: string | null;
 			};
 
 			game = {
@@ -237,7 +254,8 @@
 				tags: data.tags ?? game.tags,
 				gameType: data.gameType ?? game.gameType,
 				image: data.image ?? game.image,
-				gameVersion: data.version ?? game.gameVersion
+				gameVersion: data.version ?? game.gameVersion,
+				description: data.description ?? game.description
 			};
 
 			scrapeBaseline = {
@@ -245,7 +263,8 @@
 				tags: normScrapeField(game.tags),
 				gameType: normScrapeField(game.gameType),
 				image: normScrapeField(game.image),
-				gameVersion: normScrapeField(game.gameVersion)
+				gameVersion: normScrapeField(game.gameVersion),
+				description: normScrapeField(game.description)
 			};
 			savedId = threadId;
 		} catch (error) {
@@ -504,9 +523,18 @@
 		{
 			Component: Select,
 			active: [2, 5],
-			title: 'Type du jeu',
+			title: 'Moteur du jeu',
 			name: 'gameType',
-			values: ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other']
+			selectOptions: [
+				{ value: 'renpy', label: 'RenPy' },
+				{ value: 'rpgm', label: 'RPGM' },
+				{ value: 'unity', label: 'Unity' },
+				{ value: 'unreal', label: 'Unreal' },
+				{ value: 'flash', label: 'Flash' },
+				{ value: 'html', label: 'HTML' },
+				{ value: 'qsp', label: 'QSP' },
+				{ value: 'other', label: 'Autre' }
+			]
 		},
 		{
 			Component: InputImage,
@@ -523,7 +551,7 @@
 		{
 			Component: Input,
 			active: [2, 5],
-			title: 'Version du jeu (fiche)',
+			title: 'Version du jeu',
 			name: 'gameVersion',
 			type: 'text'
 		},
@@ -586,7 +614,14 @@
 			active: [3, 5],
 			title: 'Type de Traduction',
 			name: 'ttype',
-			values: ['auto', 'vf', 'manual', 'semi-auto', 'to_tested', 'hs']
+			selectOptions: [
+				{ value: 'vf', label: 'VO Française' },
+				{ value: 'manual', label: 'Traduction Humaine' },
+				{ value: 'semi-auto', label: 'Traduction Semi-Automatique' },
+				{ value: 'auto', label: 'Traduction Automatique' },
+				{ value: 'to_tested', label: 'À tester' },
+				{ value: 'hs', label: 'Lien Trad HS' }
+			]
 		},
 		{
 			Component: Checkbox,
@@ -606,23 +641,44 @@
 </script>
 
 {#if !$isLoading}
-	<div class="mt-0 flex w-full flex-col items-center justify-center gap-4">
+	<div class="mx-auto mt-0 flex w-full max-w-7xl flex-col gap-4 px-3 py-2 sm:px-5 lg:px-8">
+		<div class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div class="space-y-1">
+					<h1 class="text-xl font-semibold sm:text-2xl">Ajouter un jeu</h1>
+					<p class="text-sm text-base-content/70">
+						Formulaire repensé en plusieurs étapes pour réduire les erreurs et accélérer la saisie.
+					</p>
+				</div>
+				<div class="badge badge-outline badge-lg badge-primary">
+					Étape {step + 1} / {maxStep + 1}
+				</div>
+			</div>
+			<progress class="progress mt-4 w-full progress-primary" value={step + 1} max={maxStep + 1}
+			></progress>
+			<ul class="steps steps-horizontal mt-4 hidden w-full overflow-x-auto lg:flex">
+				{#each stepLabels as label, index (label)}
+					<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
+				{/each}
+			</ul>
+		</div>
+
 		<form
-			class="relative flex w-full flex-col items-center"
+			class="relative flex w-full flex-col gap-5 rounded-box border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6"
 			onsubmit={handleSubmit}
 			autocomplete="off"
 		>
 			{#if scraping}
-				<div class="left-0 flex items-center gap-1 lg:absolute">
+				<div class="alert flex items-center gap-2 alert-soft text-sm alert-info">
 					<LoaderCircle />
 					Chargement des données en cours
 				</div>
 			{/if}
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
-				<div class="w-full px-8 text-sm text-base-content/60">Vérification du thread…</div>
+				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
 			{#if threadDuplicateCheck && (threadDuplicateCheck.gameExists || threadDuplicateCheck.pendingSubmission)}
-				<div class="mb-2 alert w-full max-w-3xl alert-warning shadow-sm" role="alert">
+				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">
 						<span class="font-medium">Attention — conflit possible</span>
 						<ul class="list-inside list-disc space-y-0.5">
@@ -636,10 +692,17 @@
 					</div>
 				</div>
 			{/if}
-			{#if isAdmin}
-				<div class="form-control">
-					<label class="label cursor-pointer">
-						<span class="label-text pr-2">Mode silencieux</span>
+
+			<div
+				class="flex w-full flex-wrap items-center justify-between gap-3 rounded-box bg-base-200/60 px-4 py-3"
+			>
+				<div class="text-sm text-base-content/80">
+					<span class="font-medium">Section active :</span>
+					{stepLabels[step]}
+				</div>
+				{#if isAdmin}
+					<label class="label cursor-pointer gap-2 p-0">
+						<span class="label-text">Mode silencieux</span>
 						<input
 							type="checkbox"
 							class="toggle toggle-primary toggle-sm"
@@ -649,12 +712,12 @@
 							}}
 						/>
 					</label>
-				</div>
-			{/if}
-			<div class="w-full px-8 text-sm text-base-content/70">
-				Étape {step + 1} / {maxStep + 1}
+				{/if}
 			</div>
-			<div class="grid w-full grid-cols-1 gap-8 p-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+			<div
+				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
+			>
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
 					{#if !adminOnly || isAdmin}
 						{#if needsTranslators && Component === Datalist}
@@ -689,10 +752,13 @@
 					{/if}
 				{/each}
 			</div>
-			<div class="flex w-full flex-row flex-wrap justify-center gap-4 px-8">
+
+			<div
+				class="flex w-full flex-row flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-4 sm:px-4"
+			>
 				{#if step < maxStep}
 					<button
-						class="btn w-full btn-outline btn-primary sm:w-48"
+						class="btn w-full btn-outline btn-primary sm:w-44"
 						type="button"
 						onclick={() => changeStep(-1)}
 						disabled={step <= 0}
@@ -700,7 +766,7 @@
 						Précédent
 					</button>
 					<button
-						class="btn w-full btn-primary sm:w-48"
+						class="btn w-full btn-primary sm:w-44"
 						type="button"
 						onclick={() => changeStep(1)}
 					>
@@ -708,7 +774,7 @@
 					</button>
 				{:else}
 					<button
-						class="btn w-full btn-primary sm:w-48"
+						class="btn w-full btn-primary sm:w-52"
 						type="submit"
 						disabled={blockFinalSubmit}
 						title={blockFinalSubmit
@@ -718,7 +784,7 @@
 						Ajouter le jeu
 					</button>
 				{/if}
-				{#if checkRole(['superadmin'])}
+				{#if safeCheckRole(['superadmin'])}
 					<Dev
 						bind:game
 						onDevDataApplied={() => {

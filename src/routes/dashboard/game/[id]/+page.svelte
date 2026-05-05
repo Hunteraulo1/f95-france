@@ -90,8 +90,15 @@
 		editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation'
 	);
 
-	/** Auto-check actif : les versions suivent la fiche jeu et ne sont plus éditables (sauf cas intégrée / sans trad.). */
+	/** Verrouillage des versions seulement pour les traductions intégrées en auto-check. */
 	const editTranslationVersionsLockedByAc = $derived(
+		Boolean(
+			editingTranslation.ac &&
+				translationAcUiAllowed &&
+				editingTranslation.tname === 'integrated'
+		)
+	);
+	const editTranslationReferenceVersionLockedByAc = $derived(
 		Boolean(editingTranslation.ac && translationAcUiAllowed)
 	);
 
@@ -285,15 +292,15 @@
 		}
 	});
 
-	/** Auto-check traduction : aligner sur `game.gameVersion` (intégrée → seule la version de référence ; tversion reste « Intégrée »). */
+	/** Auto-check traduction : alignement automatique uniquement pour les traductions intégrées. */
 	$effect(() => {
 		if (!showEditTranslationModal) return;
 		if (!editingTranslation.ac || !translationAcUiAllowed) return;
 		if (editingTranslation.tname === 'no_translation') return;
 		const gv = (game.gameVersion ?? '').trim();
-		editingTranslation.version = gv;
-		if (editingTranslation.tname !== 'integrated') {
-			editingTranslation.tversion = gv;
+		if (editingTranslation.tname === 'integrated') {
+			editingTranslation.version = gv;
+			editingTranslation.tversion = 'Intégrée';
 		}
 	});
 
@@ -918,26 +925,23 @@
 						{/if}
 
 						<div class="mb-4 flex flex-wrap gap-2">
-							{#if uniqueGameEngines.length > 0}
-								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
-								{#each uniqueGameEngines as eng (eng)}
-									<span
-										class="badge border-0 badge-lg text-white"
-										style="background-color: {getGameEngineHexColor(eng)}"
-										>{getGameEngineLabel(eng)}</span
-									>
-								{/each}
-							{:else}
-								<span class="self-center text-xs font-medium text-base-content/60">Moteurs :</span>
-								<span
-									class="badge badge-ghost badge-lg"
-									title="Aucune traduction ou moteur non renseigné">Aucun</span
-								>
-							{/if}
-							<span class="badge badge-lg badge-secondary">{game.website}</span>
-							{#if game.threadId}
+							
+              {#if game.threadId}
 								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
 							{/if}
+							
+              <span class="badge badge-lg badge-secondary">{game.website}</span>
+              
+              {#each uniqueGameEngines as eng (eng)}
+                <span
+                  class="badge border-0 badge-lg text-white"
+                  style="background-color: {getGameEngineHexColor(eng)}"
+                  >{getGameEngineLabel(eng)}</span
+                >
+              {:else}
+                <span class="badge badge-ghost badge-lg" title="Aucune traduction ou moteur non renseigné">Aucun moteur</span>
+              {/each}
+
 							{#if game.gameVersion}
 								<span class="badge badge-lg badge-accent" title="Version du jeu"
 									>Version jeu : {game.gameVersion}</span
@@ -1315,8 +1319,15 @@
 <!-- Modal de modification de traduction -->
 {#if showEditTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="mb-4 text-lg font-bold">Modifier la traduction</h3>
+		<div class="modal-box max-w-3xl">
+			<div class="mb-5 flex items-start justify-between gap-4">
+				<div>
+					<h3 class="text-lg font-bold">Modifier la traduction</h3>
+					<p class="mt-1 text-sm text-base-content/70">
+						Mettez a jour la ligne de traduction sans perdre les infos existantes.
+					</p>
+				</div>
+			</div>
 
 			{#if isSuperAdmin}
 				<div class="mb-4">
@@ -1338,7 +1349,11 @@
 			{/if}
 
 			{#key editingTranslation.id}
-				<div class="form-control mb-4 w-full">
+				<div class="mb-3">
+					<h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
+				</div>
+				<div class="grid gap-4 md:grid-cols-2">
+					<div class="form-control w-full md:col-span-2">
 					<label class="input" for="edit-translationName">
 						Nom de la traduction
 						<input
@@ -1352,62 +1367,7 @@
 					</label>
 				</div>
 
-				<div class="form-control mb-4 w-full">
-					<label class="input" for="edit-version">
-						Version de référence
-						<input
-							id="edit-version"
-							type="text"
-							placeholder="Ex: 1.2"
-							class="w-full input-ghost"
-							bind:value={editingTranslation.version}
-							disabled={editTranslationVersionsLockedByAc}
-						/>
-					</label>
-					{#if editTranslationVersionsLockedByAc}
-						<p class="mt-1 text-xs text-base-content/60">
-							Alignée sur la version du jeu (fiche) — non modifiable tant que l’auto-check
-							traduction est actif.
-						</p>
-					{/if}
-				</div>
-
-				<div class="form-control mb-4 w-full">
-					<label class="input" for="edit-tversion">
-						Version de traduction
-						<input
-							id="edit-tversion"
-							type="text"
-							placeholder="Ex: 1.0"
-							class="w-full input-ghost"
-							bind:value={editingTranslation.tversion}
-							disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
-							required
-						/>
-					</label>
-					{#if editTranslationVersionsLockedByAc && !editTranslationLinkNotRequired}
-						<p class="mt-1 text-xs text-base-content/60">
-							Égale à la version du jeu — suivie automatiquement par l’auto-check.
-						</p>
-					{/if}
-				</div>
-
-				<div class="form-control mb-4 w-full">
-					<label class="label" for="edit-status">
-						<span class="label-text">Progression</span>
-					</label>
-					<select
-						id="edit-status"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.status}
-					>
-						<option value="in_progress">En cours</option>
-						<option value="completed">Terminé</option>
-						<option value="abandoned">Abandonné</option>
-					</select>
-				</div>
-
-				<div class="form-control mb-4 w-full">
+				<div class="form-control w-full">
 					<label class="label" for="edit-tname">
 						<span class="label-text">Statut de traduction</span>
 					</label>
@@ -1423,7 +1383,41 @@
 					</select>
 				</div>
 
-				<div class="form-control mb-4 w-full">
+				<div class="form-control w-full">
+					<label class="label" for="edit-status">
+						<span class="label-text">Progression</span>
+					</label>
+					<select
+						id="edit-status"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.status}
+					>
+						<option value="in_progress">En cours</option>
+						<option value="completed">Terminé</option>
+						<option value="abandoned">Abandonné</option>
+					</select>
+				</div>
+
+				<div class="form-control w-full">
+					<label class="label" for="edit-ttype">
+						<span class="label-text">Type de traduction</span>
+					</label>
+					<select
+						id="edit-ttype"
+						class="select-bordered select w-full"
+						bind:value={editingTranslation.ttype}
+						disabled={editingTranslation.tname === 'no_translation'}
+					>
+						<option value="vf">VO Française</option>
+						<option value="manual">Traduction Humaine</option>
+						<option value="semi-auto">Traduction Semi-Automatique</option>
+						<option value="auto">Traduction Automatique</option>
+						<option value="to_tested">À tester</option>
+						<option value="hs">Lien Trad HS</option>
+					</select>
+				</div>
+
+				<div class="form-control w-full">
 					<label class="label" for="edit-game-type">
 						<span class="label-text">Moteur du jeu</span>
 					</label>
@@ -1437,28 +1431,50 @@
 						{/each}
 					</select>
 				</div>
-
-				<div class="form-control mb-4 w-full">
-					<label class="label" for="edit-ttype">
-						<span class="label-text">Type de traduction</span>
-					</label>
-					<select
-						id="edit-ttype"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.ttype}
-						disabled={editingTranslation.tname === 'no_translation'}
-					>
-						<option value="manual">Manuelle</option>
-						<option value="auto">Automatique</option>
-						<option value="semi-auto">Semi-Automatique</option>
-						<option value="vf">VO Française</option>
-						<option value="to_tested">À tester</option>
-						<option value="hs">Lien HS</option>
-					</select>
 				</div>
-			{/key}
 
-			<div class="form-control mb-6 w-full">
+				<div class="divider my-5">Versions et lien</div>
+				<div class="grid gap-4 md:grid-cols-2">
+					<div class="form-control w-full">
+					<label class="input" for="edit-version">
+						Version de référence
+						<input
+							id="edit-version"
+							type="text"
+							placeholder="Ex: 1.2"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.version}
+							disabled={editTranslationReferenceVersionLockedByAc}
+						/>
+					</label>
+					{#if editTranslationReferenceVersionLockedByAc}
+						<p class="mt-1 text-xs text-base-content/60">
+							Version de référence verrouillée tant que l’auto-check traduction est actif.
+						</p>
+					{/if}
+				</div>
+
+				<div class="form-control w-full">
+					<label class="input" for="edit-tversion">
+						Version de traduction
+						<input
+							id="edit-tversion"
+							type="text"
+							placeholder="Ex: 1.0"
+							class="w-full input-ghost"
+							bind:value={editingTranslation.tversion}
+							disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
+							required
+						/>
+					</label>
+					{#if editTranslationVersionsLockedByAc}
+						<p class="mt-1 text-xs text-base-content/60">
+							Pour une traduction intégrée, la version reste « Intégrée » et la version de
+							référence suit automatiquement la version du jeu.
+						</p>
+					{/if}
+				</div>
+					<div class="form-control w-full md:col-span-2">
 				<label class="input" for="edit-tlink">
 					Lien de traduction
 					<input
@@ -1472,10 +1488,12 @@
 					/>
 				</label>
 			</div>
+				</div>
+			{/key}
 
-			<div class="form-control mb-6 w-full">
+			<div class="form-control mb-6 w-full pt-3">
 				<div
-					class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
+					class="rounded-box border border-base-300 bg-base-200/30 p-4 text-sm text-base-content/80"
 				>
 					{#if game.website !== 'f95z'}
 						<p>
@@ -1503,8 +1521,7 @@
 						</p>
 					{:else}
 						<p>
-							L’auto-check de cette traduction n’est pas modifiable avec votre rôle ; la valeur en
-							base est conservée si vous enregistrez les autres champs.
+							L’auto-check de cette traduction n’est pas modifiable avec votre rôle.
 						</p>
 					{/if}
 				</div>
@@ -1533,6 +1550,7 @@
 				</div>
 			{/if}
 
+			<div class="divider my-5">Contributeurs</div>
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control">
 					<label class="label" for="edit-translator">
