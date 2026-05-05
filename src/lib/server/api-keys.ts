@@ -8,6 +8,8 @@ const RATE_WINDOW_MS = 60_000;
 
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
+export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
+const EXTENSION_ONLY_LABEL_TOKEN = '[extension-only]';
 
 /** Nombre maximal de clés actives par compte utilisateur (hors révoquées). */
 export const USER_API_KEY_MAX_COUNT = 3;
@@ -45,6 +47,11 @@ export function extractApiKeyFromRequest(request: Request): string | null {
 	const header = request.headers.get('x-api-key')?.trim();
 	if (header) return header;
 	return null;
+}
+
+function inferRouteScopeFromLabel(label: string | null | undefined): string | null {
+	const normalized = (label ?? '').toLowerCase();
+	return normalized.includes(EXTENSION_ONLY_LABEL_TOKEN) ? EXTENSION_ONLY_API_ROUTE : null;
 }
 
 export type ConsumeApiKeyRateResult = 'ok' | 'rate_limited' | 'quota_disabled';
@@ -104,7 +111,10 @@ export type ApiKeyValidateFailure =
 export async function validateApiKeyRequest(
 	request: Request
 ): Promise<
-	{ ok: true; keyId: string; ownerUserId: string } | { ok: false; failure: ApiKeyValidateFailure }
+	{ ok: true; keyId: string; ownerUserId: string; routeScope: string | null } | {
+		ok: false;
+		failure: ApiKeyValidateFailure;
+	}
 > {
 	const raw = extractApiKeyFromRequest(request);
 	if (!raw) {
@@ -144,7 +154,12 @@ export async function validateApiKeyRequest(
 		})
 		.where(eq(table.apiKey.id, row.id));
 
-	return { ok: true, keyId: row.id, ownerUserId: row.ownerUserId };
+	return {
+		ok: true,
+		keyId: row.id,
+		ownerUserId: row.ownerUserId,
+		routeScope: inferRouteScopeFromLabel(row.label)
+	};
 }
 
 const FAILURE_SPEC: Record<

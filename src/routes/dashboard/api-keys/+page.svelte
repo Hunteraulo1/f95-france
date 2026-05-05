@@ -44,6 +44,11 @@
 		<strong>{data.limits.defaultRpm}</strong> requêtes par minute. Pour augmenter cette limite,
 		<strong>contacte un administrateur</strong>.
 	</p>
+	<p class="text-sm text-base-content/70">
+		Pour limiter une clé à la route extension uniquement, ajoute le tag
+		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">[extension-only]</code>
+		dans son libellé.
+	</p>
 
 	<div class="alert alert-info sm:alert-horizontal">
 		<span>

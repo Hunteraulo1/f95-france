@@ -7,6 +7,7 @@ const EXTENSION_ORIGIN_PREFIXES = [
 	'moz-extension://',
 	'safari-web-extension://'
 ] as const;
+const EXTENSION_USER_AGENT_HINTS = ['f95-france-extension', 'f95france-extension'] as const;
 
 /**
  * Identité utilisée pour le contournement « superadmin » sur `/api/extension-api`.
@@ -31,6 +32,12 @@ export async function resolveUserForExtensionApiOriginGate(locals: {
  */
 export function isExtensionApiCallerAllowed(request: Request, user: User | null): boolean {
 	if (user?.role === 'superadmin') return true;
+
+	const userAgent = request.headers.get('user-agent')?.toLowerCase().trim() ?? '';
+	if (!userAgent) return false;
+	const hasExpectedUserAgent = EXTENSION_USER_AGENT_HINTS.some((hint) => userAgent.includes(hint));
+	if (!hasExpectedUserAgent) return false;
+
 	const origin = request.headers.get('origin')?.trim() ?? '';
 	if (!origin) return false;
 	return EXTENSION_ORIGIN_PREFIXES.some((prefix) => origin.startsWith(prefix));
