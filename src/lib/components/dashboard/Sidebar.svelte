@@ -162,7 +162,7 @@
 
 <input id="my-drawer-4" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
 
-<aside class="drawer-side is-drawer-close:overflow-visible max-h-[calc(100vh-4rem)]">
+<aside class="drawer-side max-h-[calc(100vh-4rem)] is-drawer-close:overflow-visible">
 	<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 	<div
 		class="flex min-h-full flex-col items-start bg-base-100 max-sm:w-64 is-drawer-close:w-14 is-drawer-open:w-64"
@@ -178,14 +178,14 @@
 
 						<li>
 							<a
-								class="font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right h-8 flex items-center"
+								class="flex h-8 items-center font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
 								class:text-red-400={item.href === '/dashboard/logout'}
 								data-tip="Homepage"
 								href={item.href}
 								onclick={closeDrawerOnMobile}
 							>
 								<IconComponent size={16} />
-								<span class="text-nowrap is-drawer-close:hidden leading-4">
+								<span class="leading-4 text-nowrap is-drawer-close:hidden">
 									{item.label}
 									{#if item.badgeKey && pendingSubmissionsCount > 0}
 										<div class="ml-1 badge badge-xs badge-warning">
