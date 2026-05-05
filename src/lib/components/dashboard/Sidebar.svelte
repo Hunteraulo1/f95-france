@@ -178,7 +178,7 @@
 
 						<li>
 							<a
-								class="font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right h-9"
+								class="font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right h-8 flex items-center"
 								class:text-red-400={item.href === '/dashboard/logout'}
 								data-tip="Homepage"
 								href={item.href}
