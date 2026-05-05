@@ -6,6 +6,8 @@ import {
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	deleteTranslationFromGoogleSheet,
@@ -13,8 +15,6 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
-import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
@@ -811,6 +811,13 @@ export async function applySubmission(submissionId: string) {
 					data: JSON.stringify(updatedData)
 				})
 				.where(eq(table.submission.id, submissionId));
+
+			// Délier toutes les soumissions qui référencent encore cette traduction
+			// avant la suppression physique pour respecter la contrainte FK.
+			await db
+				.update(table.submission)
+				.set({ translationId: null, updatedAt: new Date() })
+				.where(eq(table.submission.translationId, sub.translationId));
 
 			// Supprimer la traduction
 			await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, sub.translationId));

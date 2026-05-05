@@ -1,16 +1,27 @@
 <script lang="ts">
-	import type { Game } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
-
-	type GameSearchHit = Game & { engineTypes: string[] };
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
 
 	/** Attente après la dernière frappe avant d’appeler l’API (limite le nombre de requêtes). */
 	const SEARCH_DEBOUNCE_MS = 450;
+
+	type GameSearchHit = {
+		id: string;
+		name: string;
+		description: string | null;
+		website: 'f95z' | 'lc' | 'other';
+		threadId: number | null;
+		link: string;
+		tags: string | null;
+		engineTypes: string[];
+		image: string;
+		createdAt: string | Date;
+		updatedAt: string | Date;
+	};
 
 	let searchQuery = $state('');
 	let searchResults = $state<GameSearchHit[]>([]);
@@ -165,7 +176,7 @@
 														>
 													{/each}
 												{:else}
-													<span class="badge badge-ghost badge-sm">Aucun</span>
+													<span class="badge badge-ghost badge-sm">Aucun moteur</span>
 												{/if}
 												{#if game.tags}
 													<span class="truncate text-xs text-base-content/60">{game.tags}</span>

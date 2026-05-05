@@ -34,7 +34,37 @@
 		class="flex h-full w-full flex-col justify-center"
 		class:hidden={!step || !active?.includes(step)}
 	>
-		<label for={name}>{title}:</label>
+		<div class="mb-1 flex items-center gap-2">
+			<label for={name}>{title}:</label>
+			{#if name === 'gameAutoCheck'}
+				<div
+					class="tooltip tooltip-right"
+					data-tip="Mise à jour automatique des infos du jeu (version du jeu, description, image, tags)"
+				>
+					<button
+						type="button"
+						class="btn btn-circle btn-ghost btn-xs"
+						aria-label="Aide auto-check jeu"
+					>
+						?
+					</button>
+				</div>
+			{/if}
+			{#if name === 'ac'}
+				<div
+					class="tooltip tooltip-right"
+					data-tip="Mise à jour automatique des infos de la traduction (status, version de référence, moteur)"
+				>
+					<button
+						type="button"
+						class="btn btn-circle btn-ghost btn-xs"
+						aria-label="Aide auto-check traduction"
+					>
+						?
+					</button>
+				</div>
+			{/if}
+		</div>
 		<input
 			placeholder={title}
 			id={name}

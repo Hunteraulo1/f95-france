@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { FormGameType } from '$lib/types';
+	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import Link2Off from '@lucide/svelte/icons/link-2-off';
@@ -97,7 +97,34 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<label for={name}>{title}:</label>
+	<div class="mb-1 flex items-center gap-2">
+		<label for={name}>{title}:</label>
+		{#if name === 'translationName'}
+			<div class="tooltip tooltip-right" data-tip="Exemple : Saison 1">
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-xs"
+					aria-label="Aide nom de la traduction"
+				>
+					?
+				</button>
+			</div>
+		{/if}
+		{#if name === 'version'}
+			<div
+				class="tooltip tooltip-right"
+				data-tip="Version de référence = dernière version sortie du jeu pour la branche concernée (pas la version de la traduction). Exemple : s'il y a une saison 1 et une saison 2, pour une traduction de la saison 1, indique la dernière version de la saison 1."
+			>
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-xs"
+					aria-label="Aide version de référence"
+				>
+					?
+				</button>
+			</div>
+		{/if}
+	</div>
 	<div class="flex gap-1">
 		<input
 			{...attributes}

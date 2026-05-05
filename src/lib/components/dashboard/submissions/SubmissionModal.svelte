@@ -2,10 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { Game, GameTranslation } from '$lib/server/db/schema';
-
-	/** Jeu tel qu’il apparaît dans le JSON des soumissions (champ moteur `type`). */
-	type GameSubmissionJson = Game & { type?: string };
+	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
 		getStatusBadge,
@@ -14,10 +11,25 @@
 		validateStatusChange
 	} from '$lib/utils/submissions';
 
+	type SubmissionPrimitive = string | number | boolean | null | undefined;
+
+	interface GameSubmissionJson {
+		name?: string | null;
+		description?: string | null;
+		type?: string | null;
+		website?: string | null;
+		threadId?: string | number | null;
+		tags?: string | null;
+		link?: string | null;
+		image?: string | null;
+		gameVersion?: string | null;
+		gameAutoCheck?: boolean | null;
+	}
+
 	interface FieldConfig<
 		T extends GameTranslation | GameSubmissionJson = GameTranslation | GameSubmissionJson
 	> {
-		key: keyof T;
+		key: Extract<keyof T, string>;
 		label: string;
 		options?: {
 			isMultiline?: boolean;
@@ -180,12 +192,12 @@
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
-	/** Utilisateur : uniquement en attente, tant que l’admin n’a pas laissé de note (ancienne règle). */
+	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-			submission?.status === 'pending' &&
-			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+			submission?.type !== 'delete' &&
+			(submission?.status === 'pending' || submission?.status === 'rejected')
 		)
 	);
 	/** Admin : en attente ou ouverte, avant acceptation / refus. */
@@ -195,6 +207,7 @@
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
+	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
@@ -205,7 +218,7 @@
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
 		{ key: 'link', label: 'Lien', options: { isUrl: true, showIfEmpty: true } },
 		{ key: 'image', label: 'Image', options: { isUrl: true } },
-		{ key: 'gameVersion', label: 'Version jeu (fiche)', options: { showIfEmpty: true } }
+		{ key: 'gameVersion', label: 'Version jeu', options: { showIfEmpty: true } }
 	];
 
 	const translationFields: FieldConfig<GameTranslation>[] = [
@@ -222,16 +235,23 @@
 		{ key: 'proofreaderId', label: 'Relecteur', options: { showIfEmpty: true } }
 	];
 
-	const getFieldValue = (
-		obj: Record<string, unknown>,
-		key: string
-	): string | number | boolean | null | undefined => {
-		return obj[key] as string | number | boolean | null | undefined;
+	const getFieldValue = <T extends object>(
+		obj: T,
+		key: Extract<keyof T, string>
+	): SubmissionPrimitive => {
+		const value: unknown = obj[key];
+		return typeof value === 'string' ||
+			typeof value === 'number' ||
+			typeof value === 'boolean' ||
+			value === null ||
+			value === undefined
+			? value
+			: undefined;
 	};
 
 	const valuesAreEqual = (
-		oldValue: string | number | boolean | null | undefined,
-		newValue: string | number | boolean | null | undefined
+		oldValue: SubmissionPrimitive,
+		newValue: SubmissionPrimitive
 	): boolean => {
 		const normalizedOld = oldValue === null || oldValue === undefined ? null : oldValue;
 		const normalizedNew = newValue === null || newValue === undefined ? null : newValue;
@@ -274,7 +294,7 @@
 	};
 
 	const formatFieldValue = (
-		value: string | number | boolean | null | undefined,
+		value: SubmissionPrimitive,
 		showIfEmpty: boolean,
 		key?: string
 	): string => {
@@ -353,7 +373,7 @@
 									});
 								}}
 							>
-								ID: {submission.id}
+								ID SOUMISSION: {submission.id}
 							</button>
 							{#if submission.gameId}
 								<button
@@ -367,7 +387,7 @@
 										});
 									}}
 								>
-									ID: {submission.gameId}
+									ID JEU: {submission.gameId}
 								</button>
 							{/if}
 							{#if submission.translationId}
@@ -382,13 +402,22 @@
 										});
 									}}
 								>
-									ID: {submission.translationId}
+									ID TRADUCTION: {submission.translationId}
 								</button>
 							{/if}
 						{/if}
 					</div>
 				</div>
 			</div>
+
+			{#if adminNoteDisplay}
+				<div role="status" class="mb-4 alert items-start alert-info">
+					<div class="space-y-1">
+						<div class="font-semibold">Note admin</div>
+						<p class="wrap-break-word whitespace-pre-wrap">{adminNoteDisplay}</p>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Section des détails (scrollable) -->
 			<div class="flex-1 overflow-y-auto pr-2">
@@ -397,8 +426,8 @@
 						if (!submission?.currentGame || !submission?.parsedData?.game) {
 							return false;
 						}
-						const oldValue = getFieldValue(submission.currentGame, String(field.key));
-						const newValue = getFieldValue(submission.parsedData.game, String(field.key));
+						const oldValue = getFieldValue(submission.currentGame, field.key);
+						const newValue = getFieldValue(submission.parsedData.game, field.key);
 						return !valuesAreEqual(oldValue, newValue);
 					})}
 					{#if hasAnyChanges}
@@ -569,11 +598,8 @@
 								if (!submission?.currentTranslation || !submission?.parsedData?.translation) {
 									return false;
 								}
-								const oldValue = getFieldValue(submission.currentTranslation, String(field.key));
-								const newValue = getFieldValue(
-									submission.parsedData.translation,
-									String(field.key)
-								);
+								const oldValue = getFieldValue(submission.currentTranslation, field.key);
+								const newValue = getFieldValue(submission.parsedData.translation, field.key);
 								return !valuesAreEqual(oldValue, newValue);
 							})}
 							{#if hasAnyChanges}
@@ -804,7 +830,7 @@
 
 									<div class="form-control">
 										<label class="label" for="editGameGameVersion">
-											<span class="label-text">Version jeu (fiche)</span>
+											<span class="label-text">Version jeu</span>
 										</label>
 										<input
 											id="editGameGameVersion"
