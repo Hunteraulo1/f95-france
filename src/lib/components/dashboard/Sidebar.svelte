@@ -178,14 +178,14 @@
 
 						<li>
 							<a
-								class="font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
+								class="font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right h-9"
 								class:text-red-400={item.href === '/dashboard/logout'}
 								data-tip="Homepage"
 								href={item.href}
 								onclick={closeDrawerOnMobile}
 							>
 								<IconComponent size={16} />
-								<span class="text-nowrap is-drawer-close:hidden">
+								<span class="text-nowrap is-drawer-close:hidden leading-0">
 									{item.label}
 									{#if item.badgeKey && pendingSubmissionsCount > 0}
 										<div class="ml-1 badge badge-xs badge-warning">
