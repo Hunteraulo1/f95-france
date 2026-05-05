@@ -1,7 +1,7 @@
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
-import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
+import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
 	parseSubmissionPayloadJson,
 	persistSubmissionPayload,
@@ -213,7 +213,7 @@ export const actions: Actions = {
 
 		return { success: true };
 	},
-	/** Admin / superadmin : corriger le JSON tant que la soumission n’est pas acceptée / refusée. */
+	/** Admin / superadmin : corriger le JSON tant que la soumission n’est pas acceptée. */
 	updateSubmissionData: async ({ request, locals }) => {
 		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
 			return fail(403, { message: 'Accès non autorisé' });
@@ -241,9 +241,9 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
-		if (sub.status !== 'pending' && sub.status !== 'opened') {
+		if (sub.status !== 'pending' && sub.status !== 'opened' && sub.status !== 'rejected') {
 			return fail(400, {
-				message: 'Seules les soumissions en attente ou ouvertes peuvent être modifiées'
+				message: 'Seules les soumissions en attente, ouvertes ou refusées peuvent être modifiées'
 			});
 		}
 
@@ -301,9 +301,11 @@ export const actions: Actions = {
 			const submissionUserId = currentSubmission[0].userId;
 			const submissionType = currentSubmission[0].type;
 
-			// Empêcher un retour à "pending" après ouverture
-			if (status === 'pending' && currentStatus !== 'pending') {
-				return fail(400, { message: 'Impossible de repasser en pending après ouverture' });
+			// Autoriser le retour à "pending" sauf depuis "accepted" (workflow protégé).
+			if (status === 'pending' && currentStatus === 'accepted') {
+				return fail(400, {
+					message: 'Impossible de repasser en attente depuis une soumission acceptée'
+				});
 			}
 
 			// Mettre à jour le statut

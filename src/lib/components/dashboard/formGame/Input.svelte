@@ -103,7 +103,7 @@
 			<div class="tooltip tooltip-right" data-tip="Exemple : Saison 1">
 				<button
 					type="button"
-					class="btn btn-xs btn-circle btn-ghost"
+					class="btn btn-circle btn-ghost btn-xs"
 					aria-label="Aide nom de la traduction"
 				>
 					?
@@ -115,7 +115,11 @@
 				class="tooltip tooltip-right"
 				data-tip="Version de référence = dernière version sortie du jeu pour la branche concernée (pas la version de la traduction). Exemple : s'il y a une saison 1 et une saison 2, pour une traduction de la saison 1, indique la dernière version de la saison 1."
 			>
-				<button type="button" class="btn btn-xs btn-circle btn-ghost" aria-label="Aide version de référence">
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-xs"
+					aria-label="Aide version de référence"
+				>
 					?
 				</button>
 			</div>

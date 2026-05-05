@@ -1,19 +1,19 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    clampTranslationAc,
-    clearAllTranslationAutoCheckForGame,
-    getGameAllowsTranslationAutoCheck,
-    resolveGameAutoCheckForWebsite
+	clampTranslationAc,
+	clearAllTranslationAutoCheckForGame,
+	getGameAllowsTranslationAutoCheck,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-    deleteGameTranslationsFromGoogleSheet,
-    deleteTranslationFromGoogleSheet,
-    syncGameTranslationsToGoogleSheet,
-    syncTranslationToGoogleSheet,
-    syncTranslatorToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	deleteTranslationFromGoogleSheet,
+	syncGameTranslationsToGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 

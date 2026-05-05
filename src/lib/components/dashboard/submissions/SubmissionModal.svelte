@@ -192,12 +192,12 @@
 	const isRejected = $derived(selectedStatus === 'rejected');
 	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
-	/** Utilisateur : uniquement en attente, tant que l’admin n’a pas laissé de note (ancienne règle). */
+	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-			submission?.status === 'pending' &&
-			(!submission?.adminNotes || submission.adminNotes.trim().length === 0)
+			submission?.type !== 'delete' &&
+			(submission?.status === 'pending' || submission?.status === 'rejected')
 		)
 	);
 	/** Admin : en attente ou ouverte, avant acceptation / refus. */
@@ -207,6 +207,7 @@
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
+	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
@@ -372,7 +373,7 @@
 									});
 								}}
 							>
-								ID: {submission.id}
+								ID SOUMISSION: {submission.id}
 							</button>
 							{#if submission.gameId}
 								<button
@@ -386,7 +387,7 @@
 										});
 									}}
 								>
-									ID: {submission.gameId}
+									ID JEU: {submission.gameId}
 								</button>
 							{/if}
 							{#if submission.translationId}
@@ -401,13 +402,22 @@
 										});
 									}}
 								>
-									ID: {submission.translationId}
+									ID TRADUCTION: {submission.translationId}
 								</button>
 							{/if}
 						{/if}
 					</div>
 				</div>
 			</div>
+
+			{#if adminNoteDisplay}
+				<div role="status" class="mb-4 alert items-start alert-info">
+					<div class="space-y-1">
+						<div class="font-semibold">Note admin</div>
+						<p class="wrap-break-word whitespace-pre-wrap">{adminNoteDisplay}</p>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Section des détails (scrollable) -->
 			<div class="flex-1 overflow-y-auto pr-2">
@@ -589,10 +599,7 @@
 									return false;
 								}
 								const oldValue = getFieldValue(submission.currentTranslation, field.key);
-								const newValue = getFieldValue(
-									submission.parsedData.translation,
-									field.key
-								);
+								const newValue = getFieldValue(submission.parsedData.translation, field.key);
 								return !valuesAreEqual(oldValue, newValue);
 							})}
 							{#if hasAnyChanges}

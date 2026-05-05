@@ -1,14 +1,14 @@
-import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
+import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
-import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Vérifier que l'utilisateur est authentifié
@@ -250,19 +250,36 @@ export const actions: Actions = {
 
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
 		if (sub.userId !== locals.user.id) return fail(403, { message: 'Accès non autorisé' });
+		if (sub.type === 'delete') {
+			return fail(403, {
+				message: 'Les soumissions de suppression ne peuvent pas être corrigées puis renvoyées'
+			});
+		}
 
-		// Règle: tant que la soumission n'a pas été "ouverte" (proxy adminNotes non vide) et
-		// qu'elle reste en attente, on autorise la modification.
-		if (sub.status !== 'pending')
-			return fail(403, { message: 'Soumission déjà traitée par admin' });
-		if (sub.adminNotes && sub.adminNotes.trim().length > 0) {
-			return fail(403, { message: 'Soumission déjà ouverte par admin' });
+		// Autoriser la correction d'une soumission refusée :
+		// l'utilisateur peut modifier tant qu'elle est "pending" ou "rejected".
+		if (sub.status !== 'pending' && sub.status !== 'rejected') {
+			return fail(403, {
+				message: 'Seules les soumissions en attente ou refusées sont modifiables'
+			});
 		}
 
 		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);
 		if (shapeError) return fail(400, { message: shapeError });
 
 		await persistSubmissionPayload(submissionId, parsed.data);
+
+		// Après correction d'une soumission refusée, la remettre automatiquement en attente.
+		if (sub.status === 'rejected') {
+			await db
+				.update(table.submission)
+				.set({
+					status: 'pending',
+					adminNotes: null,
+					updatedAt: new Date()
+				})
+				.where(eq(table.submission.id, submissionId));
+		}
 
 		return { success: true };
 	}

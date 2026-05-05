@@ -93,9 +93,7 @@
 	/** Verrouillage des versions seulement pour les traductions intégrées en auto-check. */
 	const editTranslationVersionsLockedByAc = $derived(
 		Boolean(
-			editingTranslation.ac &&
-				translationAcUiAllowed &&
-				editingTranslation.tname === 'integrated'
+			editingTranslation.ac && translationAcUiAllowed && editingTranslation.tname === 'integrated'
 		)
 	);
 	const editTranslationReferenceVersionLockedByAc = $derived(
@@ -925,22 +923,24 @@
 						{/if}
 
 						<div class="mb-4 flex flex-wrap gap-2">
-							
-              {#if game.threadId}
+							{#if game.threadId}
 								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
 							{/if}
-							
-              <span class="badge badge-lg badge-secondary">{game.website}</span>
-              
-              {#each uniqueGameEngines as eng (eng)}
-                <span
-                  class="badge border-0 badge-lg text-white"
-                  style="background-color: {getGameEngineHexColor(eng)}"
-                  >{getGameEngineLabel(eng)}</span
-                >
-              {:else}
-                <span class="badge badge-ghost badge-lg" title="Aucune traduction ou moteur non renseigné">Aucun moteur</span>
-              {/each}
+
+							<span class="badge badge-lg badge-secondary">{game.website}</span>
+
+							{#each uniqueGameEngines as eng (eng)}
+								<span
+									class="badge border-0 badge-lg text-white"
+									style="background-color: {getGameEngineHexColor(eng)}"
+									>{getGameEngineLabel(eng)}</span
+								>
+							{:else}
+								<span
+									class="badge badge-ghost badge-lg"
+									title="Aucune traduction ou moteur non renseigné">Aucun moteur</span
+								>
+							{/each}
 
 							{#if game.gameVersion}
 								<span class="badge badge-lg badge-accent" title="Version du jeu"
@@ -1354,140 +1354,140 @@
 				</div>
 				<div class="grid gap-4 md:grid-cols-2">
 					<div class="form-control w-full md:col-span-2">
-					<label class="input" for="edit-translationName">
-						Nom de la traduction
-						<input
-							id="edit-translationName"
-							type="text"
-							placeholder="Ex: Saison 1"
-							class="w-full input-ghost"
-							bind:value={editingTranslation.translationName}
-							required
-						/>
-					</label>
-				</div>
+						<label class="input" for="edit-translationName">
+							Nom de la traduction
+							<input
+								id="edit-translationName"
+								type="text"
+								placeholder="Ex: Saison 1"
+								class="w-full input-ghost"
+								bind:value={editingTranslation.translationName}
+								required
+							/>
+						</label>
+					</div>
 
-				<div class="form-control w-full">
-					<label class="label" for="edit-tname">
-						<span class="label-text">Statut de traduction</span>
-					</label>
-					<select
-						id="edit-tname"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.tname}
-					>
-						<option value="no_translation">Pas de traduction</option>
-						<option value="integrated">Intégrée</option>
-						<option value="translation">Traduction</option>
-						<option value="translation_with_mods">Traduction avec mods</option>
-					</select>
-				</div>
+					<div class="form-control w-full">
+						<label class="label" for="edit-tname">
+							<span class="label-text">Statut de traduction</span>
+						</label>
+						<select
+							id="edit-tname"
+							class="select-bordered select w-full"
+							bind:value={editingTranslation.tname}
+						>
+							<option value="no_translation">Pas de traduction</option>
+							<option value="integrated">Intégrée</option>
+							<option value="translation">Traduction</option>
+							<option value="translation_with_mods">Traduction avec mods</option>
+						</select>
+					</div>
 
-				<div class="form-control w-full">
-					<label class="label" for="edit-status">
-						<span class="label-text">Progression</span>
-					</label>
-					<select
-						id="edit-status"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.status}
-					>
-						<option value="in_progress">En cours</option>
-						<option value="completed">Terminé</option>
-						<option value="abandoned">Abandonné</option>
-					</select>
-				</div>
+					<div class="form-control w-full">
+						<label class="label" for="edit-status">
+							<span class="label-text">Progression</span>
+						</label>
+						<select
+							id="edit-status"
+							class="select-bordered select w-full"
+							bind:value={editingTranslation.status}
+						>
+							<option value="in_progress">En cours</option>
+							<option value="completed">Terminé</option>
+							<option value="abandoned">Abandonné</option>
+						</select>
+					</div>
 
-				<div class="form-control w-full">
-					<label class="label" for="edit-ttype">
-						<span class="label-text">Type de traduction</span>
-					</label>
-					<select
-						id="edit-ttype"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.ttype}
-						disabled={editingTranslation.tname === 'no_translation'}
-					>
-						<option value="vf">VO Française</option>
-						<option value="manual">Traduction Humaine</option>
-						<option value="semi-auto">Traduction Semi-Automatique</option>
-						<option value="auto">Traduction Automatique</option>
-						<option value="to_tested">À tester</option>
-						<option value="hs">Lien Trad HS</option>
-					</select>
-				</div>
+					<div class="form-control w-full">
+						<label class="label" for="edit-ttype">
+							<span class="label-text">Type de traduction</span>
+						</label>
+						<select
+							id="edit-ttype"
+							class="select-bordered select w-full"
+							bind:value={editingTranslation.ttype}
+							disabled={editingTranslation.tname === 'no_translation'}
+						>
+							<option value="vf">VO Française</option>
+							<option value="manual">Traduction Humaine</option>
+							<option value="semi-auto">Traduction Semi-Automatique</option>
+							<option value="auto">Traduction Automatique</option>
+							<option value="to_tested">À tester</option>
+							<option value="hs">Lien Trad HS</option>
+						</select>
+					</div>
 
-				<div class="form-control w-full">
-					<label class="label" for="edit-game-type">
-						<span class="label-text">Moteur du jeu</span>
-					</label>
-					<select
-						id="edit-game-type"
-						class="select-bordered select w-full"
-						bind:value={editingTranslation.gameType}
-					>
-						{#each gameEngineSelectValues as v (v)}
-							<option value={v}>{getGameEngineLabel(v)}</option>
-						{/each}
-					</select>
-				</div>
+					<div class="form-control w-full">
+						<label class="label" for="edit-game-type">
+							<span class="label-text">Moteur du jeu</span>
+						</label>
+						<select
+							id="edit-game-type"
+							class="select-bordered select w-full"
+							bind:value={editingTranslation.gameType}
+						>
+							{#each gameEngineSelectValues as v (v)}
+								<option value={v}>{getGameEngineLabel(v)}</option>
+							{/each}
+						</select>
+					</div>
 				</div>
 
 				<div class="divider my-5">Versions et lien</div>
 				<div class="grid gap-4 md:grid-cols-2">
 					<div class="form-control w-full">
-					<label class="input" for="edit-version">
-						Version de référence
-						<input
-							id="edit-version"
-							type="text"
-							placeholder="Ex: 1.2"
-							class="w-full input-ghost"
-							bind:value={editingTranslation.version}
-							disabled={editTranslationReferenceVersionLockedByAc}
-						/>
-					</label>
-					{#if editTranslationReferenceVersionLockedByAc}
-						<p class="mt-1 text-xs text-base-content/60">
-							Version de référence verrouillée tant que l’auto-check traduction est actif.
-						</p>
-					{/if}
-				</div>
+						<label class="input" for="edit-version">
+							Version de référence
+							<input
+								id="edit-version"
+								type="text"
+								placeholder="Ex: 1.2"
+								class="w-full input-ghost"
+								bind:value={editingTranslation.version}
+								disabled={editTranslationReferenceVersionLockedByAc}
+							/>
+						</label>
+						{#if editTranslationReferenceVersionLockedByAc}
+							<p class="mt-1 text-xs text-base-content/60">
+								Version de référence verrouillée tant que l’auto-check traduction est actif.
+							</p>
+						{/if}
+					</div>
 
-				<div class="form-control w-full">
-					<label class="input" for="edit-tversion">
-						Version de traduction
-						<input
-							id="edit-tversion"
-							type="text"
-							placeholder="Ex: 1.0"
-							class="w-full input-ghost"
-							bind:value={editingTranslation.tversion}
-							disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
-							required
-						/>
-					</label>
-					{#if editTranslationVersionsLockedByAc}
-						<p class="mt-1 text-xs text-base-content/60">
-							Pour une traduction intégrée, la version reste « Intégrée » et la version de
-							référence suit automatiquement la version du jeu.
-						</p>
-					{/if}
-				</div>
+					<div class="form-control w-full">
+						<label class="input" for="edit-tversion">
+							Version de traduction
+							<input
+								id="edit-tversion"
+								type="text"
+								placeholder="Ex: 1.0"
+								class="w-full input-ghost"
+								bind:value={editingTranslation.tversion}
+								disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
+								required
+							/>
+						</label>
+						{#if editTranslationVersionsLockedByAc}
+							<p class="mt-1 text-xs text-base-content/60">
+								Pour une traduction intégrée, la version reste « Intégrée » et la version de
+								référence suit automatiquement la version du jeu.
+							</p>
+						{/if}
+					</div>
 					<div class="form-control w-full md:col-span-2">
-				<label class="input" for="edit-tlink">
-					Lien de traduction
-					<input
-						id="edit-tlink"
-						type="url"
-						placeholder="https://..."
-						class="w-full input-ghost"
-						bind:value={editingTranslation.tlink}
-						disabled={editTranslationLinkNotRequired}
-						required={!editTranslationLinkNotRequired}
-					/>
-				</label>
-			</div>
+						<label class="input" for="edit-tlink">
+							Lien de traduction
+							<input
+								id="edit-tlink"
+								type="url"
+								placeholder="https://..."
+								class="w-full input-ghost"
+								bind:value={editingTranslation.tlink}
+								disabled={editTranslationLinkNotRequired}
+								required={!editTranslationLinkNotRequired}
+							/>
+						</label>
+					</div>
 				</div>
 			{/key}
 
@@ -1520,9 +1520,7 @@
 							reste « Intégrée ».
 						</p>
 					{:else}
-						<p>
-							L’auto-check de cette traduction n’est pas modifiable avec votre rôle.
-						</p>
+						<p>L’auto-check de cette traduction n’est pas modifiable avec votre rôle.</p>
 					{/if}
 				</div>
 			</div>
