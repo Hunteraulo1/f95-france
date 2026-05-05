@@ -185,7 +185,7 @@
 								onclick={closeDrawerOnMobile}
 							>
 								<IconComponent size={16} />
-								<span class="text-nowrap is-drawer-close:hidden leading-0">
+								<span class="text-nowrap is-drawer-close:hidden leading-4">
 									{item.label}
 									{#if item.badgeKey && pendingSubmissionsCount > 0}
 										<div class="ml-1 badge badge-xs badge-warning">
