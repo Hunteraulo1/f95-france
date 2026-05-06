@@ -48,9 +48,17 @@
 		parsedData?: {
 			game?: GameSubmissionJson;
 			translation?: GameTranslation;
+			translatorId?: string;
+			pages?: Array<{ name?: string; link?: string }>;
+			originalPages?: Array<{ name?: string; link?: string }>;
 		} | null;
 		currentGame?: GameSubmissionJson | null;
 		currentTranslation?: GameTranslation | null;
+		currentTranslator?: {
+			id: string;
+			name: string;
+			pages: Array<{ name: string; link: string }>;
+		} | null;
 	}
 
 	interface Translator {
@@ -75,7 +83,6 @@
 	// Champs "réels" pour modifier la soumission (au lieu d'un JSON visible)
 	let editGameName = $state<string>('');
 	let editGameDescription = $state<string>('');
-	let editGameType = $state<string>('other');
 	let editGameWebsite = $state<string>('f95z');
 	let editGameThreadId = $state<string>('');
 	let editGameTags = $state<string>('');
@@ -95,6 +102,7 @@
 	let editTranslationAc = $state<boolean>(false);
 	let editTranslationTranslatorId = $state<string>('');
 	let editTranslationProofreaderId = $state<string>('');
+	let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
 	$effect(() => {
 		if (submission) {
@@ -109,7 +117,6 @@
 
 			editGameName = game?.name ?? '';
 			editGameDescription = (game?.description ?? '') as string;
-			editGameType = (game?.type ?? 'other') as string;
 			editGameWebsite = (game?.website ?? 'f95z') as string;
 			editGameThreadId = game?.threadId != null ? String(game.threadId) : '';
 			editGameTags = (game?.tags ?? '') as string;
@@ -118,22 +125,45 @@
 			editGameGameVersion = (game?.gameVersion ?? '') as string;
 			editGameAutoCheck = typeof game?.gameAutoCheck === 'boolean' ? game?.gameAutoCheck : true;
 
-			editTranslationTranslationName = tr?.translationName ?? '';
-			editTranslationVersion = (tr?.version ?? '') as string;
-			editTranslationTname = (tr?.tname ?? 'translation') as string;
-			editTranslationTversion = (tr?.tversion ?? '') as string;
-			editTranslationStatus = (tr?.status ?? 'in_progress') as string;
-			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
-			editTranslationGameType = (tr?.gameType ?? 'other') as string;
-			editTranslationTlink = (tr?.tlink ?? '') as string;
-			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
-			editTranslationTranslatorId = resolveTranslatorSelectValue(tr?.translatorId);
-			editTranslationProofreaderId = resolveTranslatorSelectValue(tr?.proofreaderId);
+			const currentTr = submission.currentTranslation;
+			const fallbackGameType =
+				tr?.gameType ?? currentTr?.gameType ?? submission.parsedData?.game?.type ?? 'other';
+			const fallbackTname = tr?.tname ?? currentTr?.tname ?? 'translation';
+			const fallbackStatus = tr?.status ?? currentTr?.status ?? 'in_progress';
+			const fallbackTtype = tr?.ttype ?? currentTr?.ttype ?? 'manual';
+			const fallbackAc = typeof tr?.ac === 'boolean' ? tr.ac : (currentTr?.ac ?? false);
+			const fallbackTranslatorId = tr?.translatorId ?? currentTr?.translatorId ?? '';
+			const fallbackProofreaderId = tr?.proofreaderId ?? currentTr?.proofreaderId ?? '';
+
+			editTranslationTranslationName = tr?.translationName ?? currentTr?.translationName ?? '';
+			editTranslationVersion = (tr?.version ?? currentTr?.version ?? '') as string;
+			editTranslationTname = fallbackTname as string;
+			editTranslationTversion = (tr?.tversion ?? currentTr?.tversion ?? '') as string;
+			editTranslationStatus = fallbackStatus as string;
+			editTranslationTtype = fallbackTtype as string;
+			editTranslationGameType = fallbackGameType as string;
+			editTranslationTlink = (tr?.tlink ?? currentTr?.tlink ?? '') as string;
+			editTranslationAc = fallbackAc;
+			editTranslationTranslatorId = resolveTranslatorSelectValue(fallbackTranslatorId);
+			editTranslationProofreaderId = resolveTranslatorSelectValue(fallbackProofreaderId);
+
+			if (submission.type === 'translator_pages') {
+				const pages = normalizeTranslatorPages(submission.parsedData?.pages);
+				editTranslatorPages = pages.length ? pages : [{ name: '', link: '' }];
+			}
 		}
 	});
 
 	const submissionDataJsonHidden = $derived(() => {
 		if (!submission) return '';
+
+		if (submission.type === 'translator_pages') {
+			return JSON.stringify({
+				translatorId:
+					submission.parsedData?.translatorId ?? submission.currentTranslator?.id ?? null,
+				pages: normalizeTranslatorPages(editTranslatorPages)
+			});
+		}
 
 		if (submission.type === 'translation') {
 			return JSON.stringify({
@@ -154,10 +184,9 @@
 		}
 
 		// game | update
-		const gameObj = {
+		const gameObj: Record<string, unknown> = {
 			name: editGameName,
 			description: editGameDescription.trim() || null,
-			type: editGameType,
 			website: editGameWebsite,
 			threadId: editGameThreadId.trim() || null,
 			tags: editGameTags.trim() || null,
@@ -166,7 +195,6 @@
 			gameAutoCheck: editGameAutoCheck,
 			gameVersion: editGameGameVersion.trim() || null
 		};
-
 		const includeTranslation = Boolean(submission.parsedData?.translation);
 		const out: Record<string, unknown> = { game: gameObj };
 
@@ -196,6 +224,7 @@
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
+			submission?.type !== 'translator_pages' &&
 			submission?.type !== 'delete' &&
 			(submission?.status === 'pending' || submission?.status === 'rejected')
 		)
@@ -212,7 +241,6 @@
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
 		{ key: 'description', label: 'Description', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'type', label: 'Moteur (toutes les lignes si renseigné)' },
 		{ key: 'website', label: 'Site web' },
 		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
@@ -328,6 +356,24 @@
 
 		return String(value);
 	};
+
+	const normalizeTranslatorPages = (
+		pages: Array<{ name?: string; link?: string }> | undefined
+	): Array<{ name: string; link: string }> => {
+		if (!Array.isArray(pages)) return [];
+		return pages.map((p) => ({
+			name: String(p.name ?? '').trim(),
+			link: String(p.link ?? '').trim()
+		}));
+	};
+
+	const addTranslatorPageRow = () => {
+		editTranslatorPages = [...editTranslatorPages, { name: '', link: '' }];
+	};
+
+	const removeTranslatorPageRow = (index: number) => {
+		editTranslatorPages = editTranslatorPages.filter((_, i) => i !== index);
+	};
 </script>
 
 {#if submission}
@@ -339,6 +385,8 @@
 					<h3 class="text-lg font-bold">
 						{#if submission.type === 'update'}
 							Changements proposés (jeu)
+						{:else if submission.type === 'translator_pages'}
+							Changements proposés (pages traducteur)
 						{:else if submission.type === 'translation'}
 							{#if submission.currentTranslation}
 								Changements proposés (traduction)
@@ -421,7 +469,68 @@
 
 			<!-- Section des détails (scrollable) -->
 			<div class="flex-1 overflow-y-auto pr-2">
-				{#if submission.type === 'update' && submission.parsedData?.game && submission.currentGame}
+				{#if submission.type === 'translator_pages'}
+					{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
+					{@const currentPages = submission.currentTranslator?.pages ?? []}
+					{@const fallbackOldPages = normalizeTranslatorPages(submission.parsedData?.originalPages)}
+					{@const oldPages =
+						currentPages.length > 0
+							? currentPages
+							: submission.status === 'accepted'
+								? fallbackOldPages
+								: []}
+					{@const maxRows = Math.max(oldPages.length, proposedPages.length, 1)}
+
+					<div class="space-y-4">
+						<div class="alert alert-info">
+							<div class="space-y-1">
+								<div class="font-semibold">Validation des pages traducteur</div>
+								<div class="text-sm opacity-80">
+									Traducteur: <strong>{submission.currentTranslator?.name ?? 'Inconnu'}</strong>
+								</div>
+							</div>
+						</div>
+
+						<div class="overflow-x-auto rounded-box border border-base-300">
+							<table class="table table-zebra">
+								<thead>
+									<tr>
+										<th>#</th>
+										<th class="w-[45%]">Pages actuelles</th>
+										<th class="w-[45%]">Pages proposées</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each Array.from({ length: maxRows }, (_unused, i) => i) as index (index)}
+										{@const oldEntry = oldPages[index] ?? { name: '', link: '' }}
+										{@const newEntry = proposedPages[index] ?? { name: '', link: '' }}
+										{@const isChanged =
+											oldEntry.name !== newEntry.name || oldEntry.link !== newEntry.link}
+										<tr class={isChanged ? 'bg-warning/10' : ''}>
+											<td class="font-mono text-xs opacity-70">{index + 1}</td>
+											<td>
+												<div class="space-y-1">
+													<div class="font-medium">{oldEntry.name || '(vide)'}</div>
+													<div class="text-xs break-all opacity-70">
+														{oldEntry.link || '(vide)'}
+													</div>
+												</div>
+											</td>
+											<td>
+												<div class="space-y-1">
+													<div class="font-medium text-success">{newEntry.name || '(vide)'}</div>
+													<div class="text-xs break-all text-success/80">
+														{newEntry.link || '(vide)'}
+													</div>
+												</div>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{:else if submission.type === 'update' && submission.parsedData?.game && submission.currentGame}
 					{@const hasAnyChanges = gameFields.some((field) => {
 						if (!submission?.currentGame || !submission?.parsedData?.game) {
 							return false;
@@ -753,8 +862,56 @@
 
 						<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 						<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+						{#if submission.type === 'translator_pages'}
+							<input
+								type="hidden"
+								name="translatorId"
+								value={submission.parsedData?.translatorId ??
+									submission.currentTranslator?.id ??
+									''}
+							/>
+						{/if}
 
-						{#if submission.type !== 'translation'}
+						{#if submission.type === 'translator_pages'}
+							<div class="mt-2 space-y-4">
+								<h5 class="text-md font-semibold">Pages traducteur</h5>
+								<div class="space-y-2">
+									{#each editTranslatorPages as page, index (index)}
+										<div class="flex items-center gap-2">
+											<input
+												type="text"
+												class="input-bordered input flex-1"
+												placeholder="Nom de la page"
+												name="editTranslatorPageName"
+												bind:value={page.name}
+											/>
+											<input
+												type="url"
+												class="input-bordered input flex-1"
+												placeholder="Lien"
+												name="editTranslatorPageLink"
+												bind:value={page.link}
+											/>
+											<button
+												type="button"
+												class="btn btn-sm btn-error"
+												onclick={() => removeTranslatorPageRow(index)}
+											>
+												✕
+											</button>
+										</div>
+									{/each}
+									{#if editTranslatorPages.length === 0}
+										<div class="text-sm opacity-70">
+											Aucune page (la liste sera vide après enregistrement).
+										</div>
+									{/if}
+								</div>
+								<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPageRow}>
+									+ Ajouter une ligne
+								</button>
+							</div>
+						{:else if submission.type !== 'translation' && submission.type !== 'translator_pages'}
 							<div class="mt-2 space-y-4">
 								<h5 class="text-md font-semibold">Détails du jeu</h5>
 
@@ -771,30 +928,6 @@
 											bind:value={editGameName}
 											required
 										/>
-									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editGameType">
-											<span class="label-text"
-												>Moteur — appliqué à toutes les lignes (fiche jeu)</span
-											>
-										</label>
-										<select
-											id="editGameType"
-											name="editGameType"
-											class="select-bordered select w-full"
-											bind:value={editGameType}
-											required
-										>
-											<option value="renpy">Ren'Py</option>
-											<option value="rpgm">RPGM</option>
-											<option value="unity">Unity</option>
-											<option value="unreal">Unreal</option>
-											<option value="flash">Flash</option>
-											<option value="html">HTML</option>
-											<option value="qsp">QSP</option>
-											<option value="other">Autre</option>
-										</select>
 									</div>
 
 									<div class="form-control">

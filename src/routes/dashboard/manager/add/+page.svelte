@@ -55,11 +55,11 @@
 		version: null,
 		status: 'in_progress',
 		tversion: '',
-		tname: 'no_translation',
+		tname: 'translation',
 		tlink: '',
 		translatorId: null,
 		proofreaderId: null,
-		ttype: 'hs',
+		ttype: 'auto',
 		ac: false
 	});
 
@@ -417,9 +417,7 @@
 				const translationName =
 					game.translationName?.trim().length && game.translationName?.trim().length > 0
 						? game.translationName.trim()
-						: game.translatorId?.trim().length && game.translatorId?.trim().length > 0
-							? game.translatorId.trim()
-							: `${payload.game.name} - traduction`;
+						: `${payload.game.name} - traduction`;
 
 				payload.translation = {
 					translationName,

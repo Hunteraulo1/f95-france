@@ -1,3 +1,4 @@
 {
+	"buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then bun run db:migrate; fi && bun run build",
 	"crons": []
 }

@@ -13,6 +13,7 @@ import {
 	deleteTranslationFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet,
 	syncTranslationToGoogleSheet,
+	syncTranslatorLinksInJeuxSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
@@ -41,6 +42,8 @@ export async function createGameSubmission(
 		status: string;
 		ttype: string;
 		tlink: string | null;
+		tname?: string | null;
+		gameType?: string | null;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
 		ac?: boolean | null;
@@ -283,7 +286,76 @@ export async function applySubmission(submissionId: string) {
 	}
 
 	// Appliquer les changements selon le type
-	if (sub.type === 'game') {
+	if (sub.type === 'translator_pages') {
+		const translatorIdCandidate = (parsedData as { translatorId?: unknown; gameId?: unknown })
+			.translatorId;
+		const translatorId =
+			typeof translatorIdCandidate === 'string' && translatorIdCandidate.trim() !== ''
+				? translatorIdCandidate.trim()
+				: null;
+
+		const pagesValue = (parsedData as { pages?: unknown }).pages;
+		let pagesRaw: unknown[] = [];
+		if (Array.isArray(pagesValue)) {
+			pagesRaw = pagesValue;
+		} else if (typeof pagesValue === 'string') {
+			try {
+				const parsedPages = JSON.parse(pagesValue);
+				if (Array.isArray(parsedPages)) pagesRaw = parsedPages;
+			} catch {
+				pagesRaw = [];
+			}
+		}
+
+		if (!translatorId || (pagesRaw.length === 0 && pagesValue !== undefined)) {
+			// Autorise explicitement une liste vide [] (suppression de toutes les pages),
+			// mais refuse les payloads invalides.
+			if (!translatorId || !Array.isArray(pagesValue)) {
+				throw new Error('Données traducteur invalides');
+			}
+		}
+
+		if (!translatorId || (!Array.isArray(pagesValue) && typeof pagesValue !== 'string')) {
+			throw new Error('Données traducteur invalides');
+		}
+		const pages = pagesRaw
+			.filter(
+				(item): item is { name?: string; link?: string } =>
+					typeof item === 'object' && item !== null
+			)
+			.map((item) => ({
+				name: String(item.name ?? '').trim(),
+				link: String(item.link ?? '').trim()
+			}))
+			.filter((item) => item.name !== '' || item.link !== '');
+
+		const [translatorRow] = await db
+			.select({ pages: table.translator.pages })
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+		if (!translatorRow) throw new Error('Traducteur introuvable');
+
+		await db
+			.update(table.submission)
+			.set({
+				data: JSON.stringify({
+					...parsedData,
+					originalPages: translatorRow.pages
+				})
+			})
+			.where(eq(table.submission.id, submissionId));
+
+		await db
+			.update(table.translator)
+			.set({ pages: JSON.stringify(pages), updatedAt: new Date() })
+			.where(eq(table.translator.id, translatorId));
+
+		// Important: en environnement serverless, le fire-and-forget peut être interrompu
+		// à la fin de la requête. On attend explicitement la sync Sheets.
+		await syncTranslatorToGoogleSheet(translatorId);
+		await syncTranslatorLinksInJeuxSheet(translatorId);
+	} else if (sub.type === 'game') {
 		// Créer un nouveau jeu
 		const gameData = parsedData.game;
 		if (!gameData) {
@@ -1039,7 +1111,21 @@ export async function revertSubmission(submissionId: string) {
 	}
 
 	// Annuler les changements selon le type
-	if (sub.type === 'game') {
+	if (sub.type === 'translator_pages') {
+		const translatorId =
+			parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
+		const originalPages = (parsedData as { originalPages?: string }).originalPages;
+		if (!translatorId || typeof originalPages !== 'string') {
+			throw new Error('Données originales du traducteur manquantes');
+		}
+		await db
+			.update(table.translator)
+			.set({ pages: originalPages, updatedAt: new Date() })
+			.where(eq(table.translator.id, translatorId));
+		// Même logique qu'à l'application: on attend la sync pour garantir la cohérence.
+		await syncTranslatorToGoogleSheet(translatorId);
+		await syncTranslatorLinksInJeuxSheet(translatorId);
+	} else if (sub.type === 'game') {
 		// Supprimer le jeu créé (et sa traduction si créée)
 		if (!sub.gameId) {
 			throw new Error("ID de jeu manquant pour l'annulation");

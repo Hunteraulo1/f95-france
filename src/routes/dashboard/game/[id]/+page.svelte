@@ -55,7 +55,7 @@
 		version: '',
 		tversion: '',
 		status: 'in_progress',
-		ttype: 'manual',
+		ttype: 'auto',
 		gameType: 'other' as string,
 		tlink: '',
 		tname: 'translation',
@@ -73,7 +73,7 @@
 		version: '',
 		tversion: '',
 		status: 'in_progress',
-		ttype: 'manual',
+		ttype: 'auto',
 		gameType: 'other' as string,
 		tlink: '',
 		tname: 'translation' as
@@ -207,6 +207,26 @@
 		return null;
 	};
 
+	/** Valeur par défaut du champ traducteur pour l'utilisateur connecté (nom affiché attendu par le formulaire). */
+	const getCurrentUserDefaultTranslatorInput = (): string => {
+		const currentUserId = currentUser?.id ?? null;
+		if (!currentUserId) return '';
+
+		// Cas principal : traducteur lié au user via translator.userId
+		const byUserId = translators.find((t) => t.userId != null && t.userId === currentUserId);
+		if (byUserId?.name) return byUserId.name;
+
+		// Compat legacy: si un champ translatorId/traductorId est présent sur l'objet user, l'accepter aussi.
+		const linkedTranslatorRaw =
+			(currentUser as { translatorId?: unknown; traductorId?: unknown })?.translatorId ??
+			(currentUser as { traductorId?: unknown })?.traductorId;
+		if (typeof linkedTranslatorRaw === 'string' && linkedTranslatorRaw.trim().length > 0) {
+			return getTranslatorDisplayName(linkedTranslatorRaw);
+		}
+
+		return '';
+	};
+
 	const normalizeTranslationProgressStatus = (
 		s: string | undefined | null
 	): 'in_progress' | 'completed' | 'abandoned' => {
@@ -215,17 +235,18 @@
 	};
 
 	const openAddTranslationModal = () => {
+		const defaultTranslatorInput = getCurrentUserDefaultTranslatorInput();
 		newTranslation = {
 			translationName: '',
 			version: '',
 			tversion: '',
 			status: 'in_progress',
-			ttype: 'manual',
+			ttype: 'auto',
 			gameType: translations[0]?.gameType ?? 'other',
 			tlink: '',
 			tname: 'translation',
 			ac: false,
-			translatorId: '',
+			translatorId: defaultTranslatorInput,
 			proofreaderId: ''
 		};
 		showAddTranslationModal = true;
@@ -238,7 +259,7 @@
 			version: '',
 			tversion: '',
 			status: 'in_progress',
-			ttype: 'manual',
+			ttype: 'auto',
 			gameType: 'other',
 			tlink: '',
 			tname: 'translation',
@@ -433,11 +454,17 @@
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired =
 			newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
-		if (!newTranslation.tversion || (!linkNotRequired && !newTranslation.tlink)) {
+		const requiresTranslationVersion = newTranslation.tname !== 'no_translation';
+		if (
+			(requiresTranslationVersion && !newTranslation.tversion) ||
+			(!linkNotRequired && !newTranslation.tlink)
+		) {
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
+					? requiresTranslationVersion
+						? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
+						: 'Veuillez remplir tous les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (version de traduction, lien, etc.)'
 			});
 			return;
@@ -567,8 +594,9 @@
 
 	const editTranslation = async () => {
 		const linkNotRequired = editTranslationLinkNotRequired;
+		const requiresTranslationVersion = editingTranslation.tname !== 'no_translation';
 		if (
-			!editingTranslation.tversion ||
+			(requiresTranslationVersion && !editingTranslation.tversion) ||
 			!editingTranslation.status ||
 			!editingTranslation.ttype ||
 			(!linkNotRequired && !editingTranslation.tlink)
@@ -576,7 +604,9 @@
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
+					? requiresTranslationVersion
+						? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
+						: 'Veuillez remplir les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (y compris le lien)'
 			});
 			return;

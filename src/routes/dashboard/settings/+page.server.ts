@@ -43,11 +43,26 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		})
 		.from(table.passkey)
 		.where(eq(table.passkey.userId, locals.user.id));
-
+	const [linkedTranslator] = await db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			pages: table.translator.pages
+		})
+		.from(table.translator)
+		.where(eq(table.translator.userId, locals.user.id))
+		.limit(1);
 	return {
 		user: locals.user,
 		devUsers,
 		passkeys,
+		linkedTranslator: linkedTranslator
+			? {
+					id: linkedTranslator.id,
+					name: linkedTranslator.name,
+					pages: JSON.parse(linkedTranslator.pages || '[]') as Array<{ name: string; link: string }>
+				}
+			: null,
 		canReturnToOwnAccount: Boolean(canReturnToOwnAccount && devOriginUser),
 		devOriginUsername: devOriginUser?.username ?? null
 	};
@@ -123,6 +138,74 @@ export const actions: Actions = {
 			console.error('Erreur lors de la mise à jour du thème:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du thème' });
 		}
+	},
+
+	unlinkDiscord: async ({ locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		try {
+			await db.update(table.user).set({ discordId: null }).where(eq(table.user.id, locals.user.id));
+			return { success: true, message: 'Compte Discord délié.' };
+		} catch (error: unknown) {
+			console.error('Erreur lors du délien Discord:', error);
+			return fail(500, { message: 'Erreur lors du délien Discord.' });
+		}
+	},
+
+	requestTranslatorPagesUpdate: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const translatorId = String(formData.get('translatorId') ?? '').trim();
+		const pagesRaw = String(formData.get('pages') ?? '');
+		if (!translatorId) {
+			return fail(400, { message: 'Traducteur introuvable' });
+		}
+
+		let pagesParsed: Array<{ name: string; link: string }> = [];
+		try {
+			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
+			if (Array.isArray(raw)) {
+				pagesParsed = raw.map((p) => ({
+					name: String(p.name ?? '').trim(),
+					link: String(p.link ?? '').trim()
+				}));
+			}
+		} catch {
+			return fail(400, { message: 'Format des pages invalide' });
+		}
+		if (pagesParsed.some((p) => !p.name || !p.link)) {
+			return fail(400, { message: 'Chaque page doit avoir un nom et un lien.' });
+		}
+
+		const [translatorRow] = await db
+			.select({
+				id: table.translator.id,
+				userId: table.translator.userId
+			})
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+
+		if (!translatorRow || translatorRow.userId !== locals.user.id) {
+			return fail(403, { message: 'Vous pouvez modifier uniquement votre profil traducteur lié.' });
+		}
+
+		await db.insert(table.submission).values({
+			userId: locals.user.id,
+			type: 'translator_pages',
+			status: 'pending',
+			data: JSON.stringify({
+				translatorId,
+				pages: pagesParsed
+			})
+		});
+
+		return { success: true, message: 'Demande envoyée. Un admin doit la valider.' };
 	},
 
 	changePassword: async ({ request, locals }) => {

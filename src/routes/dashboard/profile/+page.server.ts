@@ -16,6 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.select({
 			id: table.user.id,
 			username: table.user.username,
+			discordId: table.user.discordId,
 			email: table.user.email,
 			avatar: table.user.avatar,
 			role: table.user.role,

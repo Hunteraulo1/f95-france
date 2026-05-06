@@ -1,16 +1,16 @@
 import { getUserById } from '$lib/server/auth';
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
+import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import { createGameUpdateRow } from '$lib/server/game-updates';
-import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -50,11 +50,19 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Validation des données requises
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired = tname === 'integrated' || tname === 'no_translation';
-		if (!tversion || !status || !ttype || (!linkNotRequired && !tlink)) {
+		const requiresTranslationVersion = tname !== 'no_translation';
+		if (
+			(requiresTranslationVersion && !tversion) ||
+			!status ||
+			!ttype ||
+			(!linkNotRequired && !tlink)
+		) {
 			return json(
 				{
 					error: linkNotRequired
-						? 'Les champs Version de traduction, Statut et Type sont requis'
+						? requiresTranslationVersion
+							? 'Les champs Version de traduction, Statut et Type sont requis'
+							: 'Les champs Statut et Type sont requis'
 						: 'Tous les champs sont requis'
 				},
 				{ status: 400 }

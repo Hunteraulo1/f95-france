@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
@@ -12,6 +13,10 @@
 	type DevUserLite = Pick<User, 'id' | 'username' | 'role'>;
 	let users = $state<DevUserLite[]>([]);
 	let profileError = $state<string | null>(null);
+	let translatorPagesError = $state<string | null>(null);
+	let translatorPagesInfo = $state<string | null>(null);
+	let discordError = $state<string | null>(null);
+	let discordInfo = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
@@ -30,6 +35,8 @@
 	let passkeyBusy = $state(false);
 	let selectedTheme = $state($user?.theme || 'system');
 	let targetUserId = $state('');
+	let oauthDiscordFeedbackApplied = $state(false);
+	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
@@ -46,11 +53,33 @@
 	});
 
 	$effect(() => {
+		if (data.linkedTranslator?.pages?.length) {
+			translatorPages = data.linkedTranslator.pages;
+		}
+	});
+
+	$effect(() => {
 		// Nettoyer les données de setup si la 2FA est active
 		if ($user?.twoFactorEnabled) {
 			qrCodeDataUrl = null;
 			manualEntryKey = null;
 			verificationCode = '';
+		}
+	});
+
+	$effect(() => {
+		if (oauthDiscordFeedbackApplied) return;
+		const oauthDiscordError = page.url.searchParams.get('discord_error');
+		const oauthDiscordSuccess = page.url.searchParams.get('discord_success');
+
+		if (oauthDiscordError) {
+			discordError = oauthDiscordError;
+			discordInfo = null;
+			oauthDiscordFeedbackApplied = true;
+		} else if (oauthDiscordSuccess) {
+			discordInfo = oauthDiscordSuccess;
+			discordError = null;
+			oauthDiscordFeedbackApplied = true;
 		}
 	});
 
@@ -118,6 +147,14 @@
 			passkeyBusy = false;
 		}
 	};
+
+	const addTranslatorPage = () => {
+		translatorPages = [...translatorPages, { name: '', link: '' }];
+	};
+
+	const removeTranslatorPage = (index: number) => {
+		translatorPages = translatorPages.filter((_, i) => i !== index);
+	};
 </script>
 
 <section class="flex flex-col gap-8">
@@ -183,6 +220,57 @@
 					<button type="submit" class="btn btn-primary"> Enregistrer </button>
 				</div>
 			</form>
+
+			<div class="divider my-2">Discord</div>
+
+			{#if discordError}
+				<div class="alert w-full alert-error">
+					<span>{discordError}</span>
+				</div>
+			{/if}
+			{#if discordInfo}
+				<div class="alert w-full alert-success">
+					<span>{discordInfo}</span>
+				</div>
+			{/if}
+
+			<div
+				class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
+			>
+				<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+				{#if $user?.discordId}
+					<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
+				{/if}
+			</div>
+
+			{#if $user?.discordId}
+				<form
+					class="w-full"
+					method="POST"
+					action="?/unlinkDiscord"
+					use:enhance={() => {
+						discordError = null;
+						discordInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								await loadUserData();
+								discordInfo = 'Compte Discord délié avec succès.';
+							} else if (result.type === 'failure' && result.data) {
+								const message =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: 'Erreur lors du déliage Discord';
+								discordError = message;
+							}
+						};
+					}}
+				>
+					<div class="flex justify-end">
+						<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+					</div>
+				</form>
+			{/if}
 		</div>
 	</div>
 
@@ -248,6 +336,95 @@
 			</form>
 		</div>
 	</div>
+
+	{#if data.linkedTranslator}
+		<div class="flex flex-col gap-4">
+			<h2 class="text-lg font-semibold text-base-content">Mes pages traducteur</h2>
+
+			<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
+				{#if translatorPagesError}
+					<div class="mb-4 alert w-full alert-error">
+						<span>{translatorPagesError}</span>
+					</div>
+				{/if}
+				{#if translatorPagesInfo}
+					<div class="mb-4 alert w-full alert-success">
+						<span>{translatorPagesInfo}</span>
+					</div>
+				{/if}
+
+				<form
+					method="POST"
+					action="?/requestTranslatorPagesUpdate"
+					class="w-full"
+					use:enhance={() => {
+						translatorPagesError = null;
+						translatorPagesInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								translatorPagesInfo = 'Demande envoyée. En attente de validation admin.';
+							} else if (result.type === 'failure' && result.data) {
+								const message =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: "Erreur lors de l'envoi de la demande";
+								translatorPagesError = message;
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="translatorId" value={data.linkedTranslator.id} />
+					<div class="mb-3 text-sm opacity-80">
+						Traducteur lié: <strong>{data.linkedTranslator.name}</strong>
+					</div>
+					<div class="space-y-2">
+						{#each translatorPages as pageEntry, index (index)}
+							<div class="flex items-center gap-2">
+								<input
+									type="text"
+									placeholder="Nom de la page"
+									class="input-bordered input flex-1"
+									bind:value={pageEntry.name}
+								/>
+								<input
+									type="url"
+									placeholder="Lien"
+									class="input-bordered input flex-1"
+									bind:value={pageEntry.link}
+								/>
+								<button
+									type="button"
+									class="btn btn-sm btn-error"
+									onclick={() => removeTranslatorPage(index)}
+								>
+									✕
+								</button>
+							</div>
+						{/each}
+						{#if translatorPages.length === 0}
+							<div class="text-sm opacity-70">
+								Aucune page (la liste sera vide après validation).
+							</div>
+						{/if}
+						<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPage}>
+							+ Ajouter une page
+						</button>
+					</div>
+					<input
+						type="hidden"
+						name="pages"
+						value={JSON.stringify(
+							translatorPages.filter((p) => p.name.trim() !== '' || p.link.trim() !== '')
+						)}
+					/>
+					<div class="mt-4 flex justify-end">
+						<button type="submit" class="btn btn-primary">Soumettre pour validation</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{/if}
 
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Changer le mot de passe</h2>

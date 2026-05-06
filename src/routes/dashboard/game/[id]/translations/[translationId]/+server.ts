@@ -1,18 +1,18 @@
 import { getUserById } from '$lib/server/auth';
-import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
+import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
+import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
@@ -79,12 +79,20 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			: before.tname;
 
 		const linkNotRequired = effectiveTname === 'integrated' || effectiveTname === 'no_translation';
+		const requiresTranslationVersion = effectiveTname !== 'no_translation';
 		const tlinkStored = linkNotRequired ? '' : typeof tlink === 'string' ? tlink : '';
-		if (!tversion || !status || !ttype || (!linkNotRequired && !tlinkStored.trim())) {
+		if (
+			(requiresTranslationVersion && !tversion) ||
+			!status ||
+			!ttype ||
+			(!linkNotRequired && !tlinkStored.trim())
+		) {
 			return json(
 				{
 					error: linkNotRequired
-						? 'Version de traduction, statut et type sont requis'
+						? requiresTranslationVersion
+							? 'Version de traduction, statut et type sont requis'
+							: 'Statut et type sont requis'
 						: 'Tous les champs sont requis (y compris le lien de traduction)'
 				},
 				{ status: 400 }

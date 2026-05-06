@@ -7,6 +7,7 @@ export const user = pgTable('user', {
 	id: varchar('id', { length: 255 }).primaryKey(),
 	email: varchar('email', { length: 255 }).notNull().unique(),
 	username: varchar('username', { length: 32 }).notNull().unique(),
+	discordId: varchar('discord_id', { length: 255 }).unique(),
 	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),

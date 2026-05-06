@@ -12,6 +12,10 @@ node_modules
 /scripts/*.csv
 /scripts/*.md
 
+# Docker
+docker/postgres/init/
+*.dump
+
 # OS
 .DS_Store
 Thumbs.db

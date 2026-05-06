@@ -10,6 +10,81 @@ import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
+const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
+
+const formDataToSubmissionPayload = (
+	submissionType: string,
+	formData: FormData
+): Record<string, unknown> | null => {
+	if (submissionType === 'translator_pages') {
+		const translatorId = normalizeMaybeString(formData.get('translatorId'));
+		const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
+		const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
+		const max = Math.max(names.length, links.length);
+		const pages = Array.from({ length: max })
+			.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
+			.filter((p) => p.name !== '' || p.link !== '');
+
+		return {
+			translatorId: translatorId ?? '',
+			pages
+		};
+	}
+
+	if (submissionType === 'translation') {
+		return {
+			translation: {
+				translationName: normalizeMaybeString(formData.get('editTranslationTranslationName')),
+				version: normalizeMaybeString(formData.get('editTranslationVersion')),
+				tversion: normalizeMaybeString(formData.get('editTranslationTversion')) ?? '',
+				status: normalizeMaybeString(formData.get('editTranslationStatus')) ?? 'in_progress',
+				ttype: normalizeMaybeString(formData.get('editTranslationTtype')) ?? 'manual',
+				gameType: normalizeMaybeString(formData.get('editTranslationGameType')) ?? 'other',
+				tlink: normalizeMaybeString(formData.get('editTranslationTlink')),
+				tname: normalizeMaybeString(formData.get('editTranslationTname')) ?? 'translation',
+				translatorId: normalizeMaybeString(formData.get('editTranslationTranslatorId')),
+				proofreaderId: normalizeMaybeString(formData.get('editTranslationProofreaderId')),
+				ac: formData.get('editTranslationAc') !== null
+			}
+		};
+	}
+
+	return {
+		game: {
+			name: normalizeMaybeString(formData.get('editGameName')) ?? '',
+			description: normalizeMaybeString(formData.get('editGameDescription')),
+			website: normalizeMaybeString(formData.get('editGameWebsite')) ?? 'f95z',
+			threadId: normalizeMaybeString(formData.get('editGameThreadId')),
+			tags: normalizeMaybeString(formData.get('editGameTags')),
+			link: normalizeMaybeString(formData.get('editGameLink')),
+			image: normalizeMaybeString(formData.get('editGameImage')) ?? '',
+			gameAutoCheck: formData.get('editGameAutoCheck') !== null,
+			gameVersion: normalizeMaybeString(formData.get('editGameGameVersion'))
+		},
+		...(formData.get('editTranslationStatus')
+			? {
+					translation: {
+						translationName: normalizeMaybeString(formData.get('editTranslationTranslationName')),
+						version: normalizeMaybeString(formData.get('editTranslationVersion')),
+						tversion: normalizeMaybeString(formData.get('editTranslationTversion')) ?? '',
+						status: normalizeMaybeString(formData.get('editTranslationStatus')) ?? 'in_progress',
+						ttype: normalizeMaybeString(formData.get('editTranslationTtype')) ?? 'manual',
+						gameType: normalizeMaybeString(formData.get('editTranslationGameType')) ?? 'other',
+						tlink: normalizeMaybeString(formData.get('editTranslationTlink')),
+						tname: normalizeMaybeString(formData.get('editTranslationTname')) ?? 'translation',
+						translatorId: normalizeMaybeString(formData.get('editTranslationTranslatorId')),
+						proofreaderId: normalizeMaybeString(formData.get('editTranslationProofreaderId')),
+						ac: formData.get('editTranslationAc') !== null
+					}
+				}
+			: {})
+	};
+};
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
@@ -71,6 +146,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				let parsedData = null;
 				let currentGame = null;
 				let currentTranslation = null;
+				let currentTranslator = null;
 
 				if (sub.data) {
 					try {
@@ -109,11 +185,50 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					}
 				}
 
+				// Pour les pages traducteur, récupérer le traducteur actuel
+				if (sub.type === 'translator_pages' && parsedData?.translatorId) {
+					const currentTranslatorResult = await db
+						.select({
+							id: table.translator.id,
+							name: table.translator.name,
+							pages: table.translator.pages
+						})
+						.from(table.translator)
+						.where(eq(table.translator.id, String(parsedData.translatorId)))
+						.limit(1);
+
+					if (currentTranslatorResult.length > 0) {
+						const row = currentTranslatorResult[0];
+						let pages: Array<{ name: string; link: string }> = [];
+						try {
+							const parsed = JSON.parse(row.pages || '[]') as Array<{
+								name?: string;
+								link?: string;
+							}>;
+							if (Array.isArray(parsed)) {
+								pages = parsed.map((p) => ({
+									name: String(p.name ?? ''),
+									link: String(p.link ?? '')
+								}));
+							}
+						} catch {
+							pages = [];
+						}
+
+						currentTranslator = {
+							id: row.id,
+							name: row.name,
+							pages
+						};
+					}
+				}
+
 				return {
 					...sub,
 					parsedData,
 					currentGame,
-					currentTranslation
+					currentTranslation,
+					currentTranslator
 				};
 			})
 		);
@@ -233,9 +348,6 @@ export const actions: Actions = {
 			return fail(400, { message: 'ID de soumission requis' });
 		}
 
-		const parsed = parseSubmissionPayloadJson(submissionDataJson);
-		if (!parsed.ok) return fail(400, { message: parsed.message });
-
 		const [sub] = await db
 			.select({
 				id: table.submission.id,
@@ -262,6 +374,15 @@ export const actions: Actions = {
 			return fail(403, {
 				message: 'Seules les soumissions en attente ou refusées sont modifiables'
 			});
+		}
+
+		let parsed = parseSubmissionPayloadJson(submissionDataJson);
+		if (!parsed.ok) {
+			const rebuiltPayload = formDataToSubmissionPayload(sub.type, formData);
+			if (!rebuiltPayload) {
+				return fail(400, { message: parsed.message });
+			}
+			parsed = { ok: true, data: rebuiltPayload };
 		}
 
 		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);

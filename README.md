@@ -36,3 +36,36 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Base de données de dev (Docker)
+
+Lancer Postgres local:
+
+```sh
+npm run db:dev:up
+```
+
+Voir les logs:
+
+```sh
+npm run db:dev:logs
+```
+
+Arrêter la DB:
+
+```sh
+npm run db:dev:down
+```
+
+URL locale à utiliser dans `.env`:
+
+```env
+DATABASE_URL="postgresql://f95france:f95france@localhost:5433/f95france"
+DRIZZLE_DATABASE_URL="postgresql://f95france:f95france@localhost:5433/f95france"
+```
+
+Puis pousser le schéma:
+
+```sh
+npm run db:push
+```

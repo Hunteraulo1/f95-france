@@ -1,7 +1,7 @@
 {
   "name": "f95-france",
   "private": true,
-  "version": "4.0.0",
+  "version": "4.0.1",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -22,6 +22,9 @@
     "db:migrate": "tsx src/lib/server/db/migrate.ts",
     "db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
     "db:studio": "drizzle-kit studio",
+    "db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:dev:down": "docker compose -f docker-compose.dev.yml down",
+    "db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
     "sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
   },
   "devDependencies": {
@@ -31,7 +34,7 @@
     "@oslojs/encoding": "^1.1.0",
     "@sveltejs/adapter-vercel": "^6.3.3",
     "@sveltejs/kit": "^2.59.1",
-    "@sveltejs/vite-plugin-svelte": "^7.1.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^25.6.0",

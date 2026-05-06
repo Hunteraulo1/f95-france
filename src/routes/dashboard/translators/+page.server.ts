@@ -5,43 +5,101 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
-	const [translator, users] = await Promise.all([
-		db
-			.select({
-				id: table.translator.id,
-				name: table.translator.name,
-				discordId: table.translator.discordId,
-				pages: table.translator.pages,
-				tradCount: table.translator.tradCount,
-				readCount: table.translator.readCount,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.orderBy(table.translator.name),
-		db
-			.select({
-				id: table.user.id,
-				username: table.user.username,
-				email: table.user.email
-			})
-			.from(table.user)
-			.orderBy(table.user.username)
-	]);
+const DISCORD_AVATAR_API_BASE_URL = 'https://avatar-cyan.vercel.app/api';
 
-	const translatorsWithPages = translator.map((translator) => ({
+async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: string | null) {
+	const normalizedDiscordId = discordId?.trim();
+	if (!normalizedDiscordId) return;
+
+	const [currentUser] = await db
+		.select({ avatar: table.user.avatar })
+		.from(table.user)
+		.where(eq(table.user.id, userId))
+		.limit(1);
+
+	if (!currentUser || currentUser.avatar.trim() !== '') return;
+
+	try {
+		const response = await fetch(
+			`${DISCORD_AVATAR_API_BASE_URL}/${encodeURIComponent(normalizedDiscordId)}`
+		);
+		if (!response.ok) return;
+
+		const data = (await response.json()) as { avatarUrl?: string };
+		const avatarUrl = typeof data.avatarUrl === 'string' ? data.avatarUrl.trim() : '';
+		if (!avatarUrl) return;
+
+		await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, userId));
+	} catch (error: unknown) {
+		console.error("Erreur lors de la récupération de l'avatar Discord:", error);
+	}
+}
+
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user) {
+		throw new Error('Non authentifié');
+	}
+
+	const isAdmin = locals.user.role === 'admin' || locals.user.role === 'superadmin';
+
+	const translatorQuery = db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			discordId: table.translator.discordId,
+			pages: table.translator.pages,
+			tradCount: table.translator.tradCount,
+			readCount: table.translator.readCount,
+			userId: table.translator.userId
+		})
+		.from(table.translator)
+		.orderBy(table.translator.name);
+
+	const translators = isAdmin
+		? await translatorQuery
+		: await db
+				.select({
+					id: table.translator.id,
+					name: table.translator.name,
+					discordId: table.translator.discordId,
+					pages: table.translator.pages,
+					tradCount: table.translator.tradCount,
+					readCount: table.translator.readCount,
+					userId: table.translator.userId
+				})
+				.from(table.translator)
+				.where(eq(table.translator.userId, locals.user.id))
+				.orderBy(table.translator.name);
+
+	const users = isAdmin
+		? await db
+				.select({
+					id: table.user.id,
+					username: table.user.username,
+					email: table.user.email
+				})
+				.from(table.user)
+				.orderBy(table.user.username)
+		: [];
+
+	const translatorsWithPages = translators.map((translator) => ({
 		...translator,
 		pages: JSON.parse(translator.pages || '[]')
 	}));
 
 	return {
 		translator: translatorsWithPages,
-		users
+		users,
+		isAdmin,
+		currentUserId: locals.user.id
 	};
 };
 
 export const actions: Actions = {
-	addTranslator: async ({ request }) => {
+	addTranslator: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return fail(403, { message: 'Accès non autorisé' });
+		}
 		const formData = await request.formData();
 		const name = formData.get('name') as string;
 		const discordId = formData.get('discordId') as string;
@@ -79,6 +137,7 @@ export const actions: Actions = {
 
 			if (created && linkUserId) {
 				await assignTranslatorUser(created.id, linkUserId);
+				await setUserAvatarFromDiscordIdIfMissing(linkUserId, discordId || null);
 			}
 
 			return { success: true, message: 'Traducteur ajouté avec succès' };
@@ -105,7 +164,10 @@ export const actions: Actions = {
 		}
 	},
 
-	editTranslator: async ({ request }) => {
+	editTranslator: async ({ request, locals }) => {
+		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
+			return fail(403, { message: 'Accès non autorisé' });
+		}
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 		const name = formData.get('name') as string;
@@ -143,6 +205,9 @@ export const actions: Actions = {
 				.where(eq(table.translator.id, id));
 
 			await assignTranslatorUser(id, linkUserId);
+			if (linkUserId) {
+				await setUserAvatarFromDiscordIdIfMissing(linkUserId, discordId || null);
+			}
 
 			return { success: true, message: 'Traducteur modifié avec succès' };
 		} catch (error: unknown) {
@@ -166,5 +231,54 @@ export const actions: Actions = {
 
 			return fail(500, { message: 'Erreur lors de la modification du traducteur' });
 		}
+	},
+	requestTranslatorPagesUpdate: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const translatorId = String(formData.get('translatorId') ?? '').trim();
+		const pagesRaw = String(formData.get('pages') ?? '');
+		if (!translatorId) {
+			return fail(400, { message: 'Traducteur introuvable' });
+		}
+
+		let pagesParsed: Array<{ name: string; link: string }> = [];
+		try {
+			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
+			if (Array.isArray(raw)) {
+				pagesParsed = raw
+					.map((p) => ({ name: String(p.name ?? '').trim(), link: String(p.link ?? '').trim() }))
+					.filter((p) => p.name !== '' || p.link !== '');
+			}
+		} catch {
+			return fail(400, { message: 'Format des pages invalide' });
+		}
+
+		const [translatorRow] = await db
+			.select({
+				id: table.translator.id,
+				userId: table.translator.userId
+			})
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+
+		if (!translatorRow || translatorRow.userId !== locals.user.id) {
+			return fail(403, { message: 'Vous pouvez modifier uniquement votre profil traducteur lié.' });
+		}
+
+		await db.insert(table.submission).values({
+			userId: locals.user.id,
+			type: 'translator_pages',
+			status: 'pending',
+			data: JSON.stringify({
+				translatorId,
+				pages: pagesParsed
+			})
+		});
+
+		return { success: true, message: 'Demande envoyée. Un admin doit la valider.' };
 	}
 };
