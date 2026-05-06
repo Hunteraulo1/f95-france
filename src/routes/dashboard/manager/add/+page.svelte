@@ -55,11 +55,11 @@
 		version: null,
 		status: 'in_progress',
 		tversion: '',
-		tname: 'no_translation',
+		tname: 'translation',
 		tlink: '',
 		translatorId: null,
 		proofreaderId: null,
-		ttype: 'hs',
+		ttype: 'auto',
 		ac: false
 	});
 
