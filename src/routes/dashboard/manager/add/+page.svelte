@@ -417,9 +417,7 @@
 				const translationName =
 					game.translationName?.trim().length && game.translationName?.trim().length > 0
 						? game.translationName.trim()
-						: game.translatorId?.trim().length && game.translatorId?.trim().length > 0
-							? game.translatorId.trim()
-							: `${payload.game.name} - traduction`;
+						: `${payload.game.name} - traduction`;
 
 				payload.translation = {
 					translationName,

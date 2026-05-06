@@ -1,19 +1,19 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	clampTranslationAc,
-	clearAllTranslationAutoCheckForGame,
-	getGameAllowsTranslationAutoCheck,
-	resolveGameAutoCheckForWebsite
+    clampTranslationAc,
+    clearAllTranslationAutoCheckForGame,
+    getGameAllowsTranslationAutoCheck,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	deleteTranslationFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+    deleteGameTranslationsFromGoogleSheet,
+    deleteTranslationFromGoogleSheet,
+    syncGameTranslationsToGoogleSheet,
+    syncTranslationToGoogleSheet,
+    syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
@@ -41,6 +41,8 @@ export async function createGameSubmission(
 		status: string;
 		ttype: string;
 		tlink: string | null;
+		tname?: string | null;
+		gameType?: string | null;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
 		ac?: boolean | null;
@@ -283,7 +285,49 @@ export async function applySubmission(submissionId: string) {
 	}
 
 	// Appliquer les changements selon le type
-	if (sub.type === 'game') {
+	if (sub.type === 'translator_pages') {
+		const translatorId = parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
+		const pagesRaw = (parsedData as { pages?: unknown }).pages;
+		if (!translatorId || !Array.isArray(pagesRaw)) {
+			throw new Error('Données traducteur invalides');
+		}
+		const pages = pagesRaw
+			.filter(
+				(item): item is { name?: string; link?: string } =>
+					typeof item === 'object' && item !== null
+			)
+			.map((item) => ({
+				name: String(item.name ?? '').trim(),
+				link: String(item.link ?? '').trim()
+			}))
+			.filter((item) => item.name !== '' || item.link !== '');
+
+		const [translatorRow] = await db
+			.select({ pages: table.translator.pages })
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+		if (!translatorRow) throw new Error('Traducteur introuvable');
+
+		await db
+			.update(table.submission)
+			.set({
+				data: JSON.stringify({
+					...parsedData,
+					originalPages: translatorRow.pages
+				})
+			})
+			.where(eq(table.submission.id, submissionId));
+
+		await db
+			.update(table.translator)
+			.set({ pages: JSON.stringify(pages), updatedAt: new Date() })
+			.where(eq(table.translator.id, translatorId));
+
+		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
+			console.warn('[google-sheets-sync] submission translator pages failed:', err);
+		});
+	} else if (sub.type === 'game') {
 		// Créer un nouveau jeu
 		const gameData = parsedData.game;
 		if (!gameData) {
@@ -300,8 +344,6 @@ export async function applySubmission(submissionId: string) {
 		if (existingGame.length > 0) {
 			throw new Error('Un jeu avec ce nom existe déjà');
 		}
-
-		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
 		// Créer le jeu
 		await db.insert(table.game).values({
@@ -348,7 +390,15 @@ export async function applySubmission(submissionId: string) {
 				translationData.gameType !== null &&
 				String(translationData.gameType).trim() !== ''
 					? coerceGameEngineType(translationData.gameType)
-					: engineFromGamePayload;
+					: 'other';
+			const tnameNewTr =
+				translationData.tname != null && String(translationData.tname).trim().length > 0
+					? (translationData.tname as
+							| 'no_translation'
+							| 'integrated'
+							| 'translation'
+							| 'translation_with_mods')
+					: 'translation';
 			const allowsNewGameAc = await getGameAllowsTranslationAutoCheck(gameId!);
 			const [createdTranslation] = await db
 				.insert(table.gameTranslation)
@@ -368,6 +418,7 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
+					tname: tnameNewTr,
 					gameType: engineNewTr,
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
@@ -493,18 +544,6 @@ export async function applySubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
-
-		if (
-			gameData.type !== undefined &&
-			gameData.type !== null &&
-			String(gameData.type).trim() !== ''
-		) {
-			const nextEngine = coerceGameEngineType(gameData.type);
-			await db
-				.update(table.gameTranslation)
-				.set({ gameType: nextEngine, updatedAt: new Date() })
-				.where(eq(table.gameTranslation.gameId, sub.gameId));
-		}
 
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(sub.gameId);
@@ -1039,7 +1078,20 @@ export async function revertSubmission(submissionId: string) {
 	}
 
 	// Annuler les changements selon le type
-	if (sub.type === 'game') {
+	if (sub.type === 'translator_pages') {
+		const translatorId = parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
+		const originalPages = (parsedData as { originalPages?: string }).originalPages;
+		if (!translatorId || typeof originalPages !== 'string') {
+			throw new Error("Données originales du traducteur manquantes");
+		}
+		await db
+			.update(table.translator)
+			.set({ pages: originalPages, updatedAt: new Date() })
+			.where(eq(table.translator.id, translatorId));
+		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
+			console.warn('[google-sheets-sync] revert translator pages failed:', err);
+		});
+	} else if (sub.type === 'game') {
 		// Supprimer le jeu créé (et sa traduction si créée)
 		if (!sub.gameId) {
 			throw new Error("ID de jeu manquant pour l'annulation");

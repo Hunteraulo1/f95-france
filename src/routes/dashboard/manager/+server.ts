@@ -1,16 +1,16 @@
 import { getUserById } from '$lib/server/auth';
-import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { db } from '$lib/server/db';
+import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
-import { createGameUpdateRow } from '$lib/server/game-updates';
-import { createGameSubmission } from '$lib/server/submissions';
-import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
-} from '$lib/server/google-sheets-sync';
+import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { createGameUpdateRow } from '$lib/server/game-updates';
+import {
+    syncTranslationToGoogleSheet,
+    syncTranslatorToGoogleSheet
+} from '$lib/server/google-sheets-sync';
+import { createGameSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -209,6 +209,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							status: translation.status,
 							ttype: translation.ttype,
 							tlink: translation.tlink || null,
+							tname: translation.tname || null,
+							gameType:
+								typeof translation.gameType === 'string' && translation.gameType.trim()
+									? translation.gameType.trim()
+									: String(type),
 							translatorId: translation.translatorId || null,
 							proofreaderId: translation.proofreaderId || null,
 							ac: computedTranslationAc
@@ -270,7 +275,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tversion: translation.tversion,
 					status: translation.status,
 					ttype: translation.ttype,
-					gameType: coerceGameEngineType(type),
+					tname:
+						(translation.tname as
+							| 'no_translation'
+							| 'integrated'
+							| 'translation'
+							| 'translation_with_mods') || 'translation',
+					gameType: coerceGameEngineType(
+						typeof translation.gameType === 'string' && translation.gameType.trim()
+							? translation.gameType
+							: type
+					),
 					tlink: translation.tlink || '',
 					translatorId: translation.translatorId || null,
 					proofreaderId: translation.proofreaderId || null,

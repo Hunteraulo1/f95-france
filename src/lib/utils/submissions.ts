@@ -27,6 +27,8 @@ export const getTypeLabel = (type: string) => {
 			return 'Mise à jour';
 		case 'delete':
 			return 'Suppression';
+		case 'translator_pages':
+			return 'Pages traducteur';
 		default:
 			return type;
 	}
@@ -36,7 +38,8 @@ export const getTypeBadge = (type: string, translationId?: string | null) => {
 	const badgeMap: Record<string, string> = {
 		delete: 'badge-error',
 		game: 'badge-success',
-		update: 'badge-warning'
+		update: 'badge-warning',
+		translator_pages: 'badge-info'
 	};
 
 	if (type === 'translation') {

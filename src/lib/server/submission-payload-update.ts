@@ -28,6 +28,15 @@ export function validateSubmissionPayloadForType(
 	type: string,
 	data: Record<string, unknown>
 ): string | null {
+	if (type === 'translator_pages') {
+		if (typeof data.translatorId !== 'string' || !data.translatorId.trim()) {
+			return 'Données invalides: `translatorId` manquant';
+		}
+		if (!Array.isArray(data.pages)) {
+			return 'Données invalides: `pages` doit être un tableau';
+		}
+		return null;
+	}
 	if (type === 'translation') {
 		if (!('translation' in data) || data.translation === null) {
 			return 'Données invalides: clé `translation` manquante';

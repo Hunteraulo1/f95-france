@@ -59,9 +59,11 @@
 		placeholder="Rechercher un traducteur"
 		bind:value={searchQuery}
 	/>
-	<button class="btn btn-primary" onclick={() => (showAddModal = true)}>
-		Ajouter un traducteur
-	</button>
+	{#if data.isAdmin}
+		<button class="btn btn-primary" onclick={() => (showAddModal = true)}>
+			Ajouter un traducteur
+		</button>
+	{/if}
 </div>
 
 <div class="overflow-x-auto">
@@ -115,16 +117,18 @@
 						{/each}
 					</td>
 					<td>
-						<button
-							class="btn btn-sm btn-primary"
-							onclick={() => {
-								selectedTranslator = translator;
-								initializePagesForEdit(translator);
-								showEditModal = true;
-							}}
-						>
-							Modifier
-						</button>
+						{#if data.isAdmin || translator.userId === data.currentUserId}
+							<button
+								class="btn btn-sm btn-primary"
+								onclick={() => {
+									selectedTranslator = translator;
+									initializePagesForEdit(translator);
+									showEditModal = true;
+								}}
+							>
+								{data.isAdmin ? 'Modifier' : 'Proposer pages'}
+							</button>
+						{/if}
 					</td>
 				</tr>
 			{/each}
@@ -133,7 +137,7 @@
 </div>
 
 <!-- Modal d'ajout de traducteur -->
-{#if showAddModal}
+{#if data.isAdmin && showAddModal}
 	<div class="modal-open modal">
 		<div class="modal-box">
 			<h3 class="text-lg font-bold">Ajouter un traducteur</h3>
@@ -264,7 +268,7 @@
 			{/if}
 			<form
 				method="POST"
-				action="?/editTranslator"
+				action={data.isAdmin ? '?/editTranslator' : '?/requestTranslatorPagesUpdate'}
 				use:enhance={() => {
 					editError = null;
 					return async function ({ result, update }) {
@@ -284,45 +288,52 @@
 				}}
 			>
 				<input type="hidden" name="id" value={selectedTranslator.id} />
-				<div class="form-control w-full">
-					<label for="edit-name" class="label">
-						<span class="label-text">Nom du traducteur</span>
-					</label>
-					<input
-						id="edit-name"
-						type="text"
-						name="name"
-						class="input-bordered input w-full"
-						class:input-error={editError}
-						value={selectedTranslator.name}
-						required
-					/>
-				</div>
-				<div class="form-control w-full">
-					<label for="edit-discord" class="label">
-						<span class="label-text">ID Discord</span>
-					</label>
-					<input
-						id="edit-discord"
-						type="number"
-						name="discordId"
-						class="input-bordered input w-full"
-						value={selectedTranslator.discordId || ''}
-					/>
-				</div>
-				<div class="form-control w-full">
-					<label for="edit-user-link" class="label">
-						<span class="label-text">Compte utilisateur lié</span>
-					</label>
-					<select id="edit-user-link" name="userId" class="select-bordered select w-full">
-						<option value="" selected={!selectedTranslator.userId}>Aucun</option>
-						{#each data.users as u (u.id)}
-							<option value={u.id} selected={selectedTranslator.userId === u.id}>
-								{u.username} ({u.email})
-							</option>
-						{/each}
-					</select>
-				</div>
+				{#if data.isAdmin}
+					<div class="form-control w-full">
+						<label for="edit-name" class="label">
+							<span class="label-text">Nom du traducteur</span>
+						</label>
+						<input
+							id="edit-name"
+							type="text"
+							name="name"
+							class="input-bordered input w-full"
+							class:input-error={editError}
+							value={selectedTranslator.name}
+							required
+						/>
+					</div>
+					<div class="form-control w-full">
+						<label for="edit-discord" class="label">
+							<span class="label-text">ID Discord</span>
+						</label>
+						<input
+							id="edit-discord"
+							type="number"
+							name="discordId"
+							class="input-bordered input w-full"
+							value={selectedTranslator.discordId || ''}
+						/>
+					</div>
+					<div class="form-control w-full">
+						<label for="edit-user-link" class="label">
+							<span class="label-text">Compte utilisateur lié</span>
+						</label>
+						<select id="edit-user-link" name="userId" class="select-bordered select w-full">
+							<option value="" selected={!selectedTranslator.userId}>Aucun</option>
+							{#each data.users as u (u.id)}
+								<option value={u.id} selected={selectedTranslator.userId === u.id}>
+									{u.username} ({u.email})
+								</option>
+							{/each}
+						</select>
+					</div>
+				{:else}
+					<input type="hidden" name="translatorId" value={selectedTranslator.id} />
+					<p class="mb-2 text-sm opacity-80">
+						La modification des pages sera soumise à validation admin.
+					</p>
+				{/if}
 				<div class="form-control w-full">
 					<label class="label" for="pages">
 						<span class="label-text">Pages</span>
@@ -367,7 +378,9 @@
 					<button type="button" class="btn" onclick={() => (showEditModal = false)}>
 						Annuler
 					</button>
-					<button type="submit" class="btn btn-primary"> Modifier </button>
+					<button type="submit" class="btn btn-primary">
+						{data.isAdmin ? 'Modifier' : 'Soumettre'}
+					</button>
 				</div>
 			</form>
 		</div>

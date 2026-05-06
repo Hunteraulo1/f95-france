@@ -75,7 +75,6 @@
 	// Champs "réels" pour modifier la soumission (au lieu d'un JSON visible)
 	let editGameName = $state<string>('');
 	let editGameDescription = $state<string>('');
-	let editGameType = $state<string>('other');
 	let editGameWebsite = $state<string>('f95z');
 	let editGameThreadId = $state<string>('');
 	let editGameTags = $state<string>('');
@@ -109,7 +108,6 @@
 
 			editGameName = game?.name ?? '';
 			editGameDescription = (game?.description ?? '') as string;
-			editGameType = (game?.type ?? 'other') as string;
 			editGameWebsite = (game?.website ?? 'f95z') as string;
 			editGameThreadId = game?.threadId != null ? String(game.threadId) : '';
 			editGameTags = (game?.tags ?? '') as string;
@@ -118,17 +116,27 @@
 			editGameGameVersion = (game?.gameVersion ?? '') as string;
 			editGameAutoCheck = typeof game?.gameAutoCheck === 'boolean' ? game?.gameAutoCheck : true;
 
-			editTranslationTranslationName = tr?.translationName ?? '';
-			editTranslationVersion = (tr?.version ?? '') as string;
-			editTranslationTname = (tr?.tname ?? 'translation') as string;
-			editTranslationTversion = (tr?.tversion ?? '') as string;
-			editTranslationStatus = (tr?.status ?? 'in_progress') as string;
-			editTranslationTtype = (tr?.ttype ?? 'manual') as string;
-			editTranslationGameType = (tr?.gameType ?? 'other') as string;
-			editTranslationTlink = (tr?.tlink ?? '') as string;
-			editTranslationAc = typeof tr?.ac === 'boolean' ? tr?.ac : false;
-			editTranslationTranslatorId = resolveTranslatorSelectValue(tr?.translatorId);
-			editTranslationProofreaderId = resolveTranslatorSelectValue(tr?.proofreaderId);
+			const currentTr = submission.currentTranslation;
+			const fallbackGameType =
+				tr?.gameType ?? currentTr?.gameType ?? submission.parsedData?.game?.type ?? 'other';
+			const fallbackTname = tr?.tname ?? currentTr?.tname ?? 'translation';
+			const fallbackStatus = tr?.status ?? currentTr?.status ?? 'in_progress';
+			const fallbackTtype = tr?.ttype ?? currentTr?.ttype ?? 'manual';
+			const fallbackAc = typeof tr?.ac === 'boolean' ? tr.ac : (currentTr?.ac ?? false);
+			const fallbackTranslatorId = tr?.translatorId ?? currentTr?.translatorId ?? '';
+			const fallbackProofreaderId = tr?.proofreaderId ?? currentTr?.proofreaderId ?? '';
+
+			editTranslationTranslationName = tr?.translationName ?? currentTr?.translationName ?? '';
+			editTranslationVersion = (tr?.version ?? currentTr?.version ?? '') as string;
+			editTranslationTname = fallbackTname as string;
+			editTranslationTversion = (tr?.tversion ?? currentTr?.tversion ?? '') as string;
+			editTranslationStatus = fallbackStatus as string;
+			editTranslationTtype = fallbackTtype as string;
+			editTranslationGameType = fallbackGameType as string;
+			editTranslationTlink = (tr?.tlink ?? currentTr?.tlink ?? '') as string;
+			editTranslationAc = fallbackAc;
+			editTranslationTranslatorId = resolveTranslatorSelectValue(fallbackTranslatorId);
+			editTranslationProofreaderId = resolveTranslatorSelectValue(fallbackProofreaderId);
 		}
 	});
 
@@ -154,10 +162,9 @@
 		}
 
 		// game | update
-		const gameObj = {
+		const gameObj: Record<string, unknown> = {
 			name: editGameName,
 			description: editGameDescription.trim() || null,
-			type: editGameType,
 			website: editGameWebsite,
 			threadId: editGameThreadId.trim() || null,
 			tags: editGameTags.trim() || null,
@@ -166,7 +173,6 @@
 			gameAutoCheck: editGameAutoCheck,
 			gameVersion: editGameGameVersion.trim() || null
 		};
-
 		const includeTranslation = Boolean(submission.parsedData?.translation);
 		const out: Record<string, unknown> = { game: gameObj };
 
@@ -212,7 +218,6 @@
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
 		{ key: 'name', label: 'Nom' },
 		{ key: 'description', label: 'Description', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'type', label: 'Moteur (toutes les lignes si renseigné)' },
 		{ key: 'website', label: 'Site web' },
 		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
 		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
@@ -771,30 +776,6 @@
 											bind:value={editGameName}
 											required
 										/>
-									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editGameType">
-											<span class="label-text"
-												>Moteur — appliqué à toutes les lignes (fiche jeu)</span
-											>
-										</label>
-										<select
-											id="editGameType"
-											name="editGameType"
-											class="select-bordered select w-full"
-											bind:value={editGameType}
-											required
-										>
-											<option value="renpy">Ren'Py</option>
-											<option value="rpgm">RPGM</option>
-											<option value="unity">Unity</option>
-											<option value="unreal">Unreal</option>
-											<option value="flash">Flash</option>
-											<option value="html">HTML</option>
-											<option value="qsp">QSP</option>
-											<option value="other">Autre</option>
-										</select>
 									</div>
 
 									<div class="form-control">

@@ -1,19 +1,18 @@
 import { getUserById } from '$lib/server/auth';
-import {
-	clearAllTranslationAutoCheckForGame,
-	resolveGameAutoCheckForWebsite
-} from '$lib/server/game-auto-check';
-import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
-import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import {
+    clearAllTranslationAutoCheckForGame,
+    resolveGameAutoCheckForWebsite
+} from '$lib/server/game-auto-check';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import {
+    deleteGameTranslationsFromGoogleSheet,
+    syncGameTranslationsToGoogleSheet
+} from '$lib/server/google-sheets-sync';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -103,7 +102,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const {
 			name,
 			description,
-			type,
 			website,
 			threadId,
 			tags,
@@ -144,19 +142,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const existingGame = existingGameRows[0];
 
-		const translationRows = await db
-			.select({ gameType: table.gameTranslation.gameType })
-			.from(table.gameTranslation)
-			.where(eq(table.gameTranslation.gameId, gameId))
-			.orderBy(asc(table.gameTranslation.createdAt));
-
-		const typeProvided = type !== undefined && type !== null && String(type).trim() !== '';
-		const nextEngine = typeProvided ? coerceGameEngineType(type) : null;
-		const typeChanged = typeProvided
-			? translationRows.length === 0
-				? nextEngine !== 'other'
-				: translationRows.some((r) => coerceGameEngineType(r.gameType) !== nextEngine!)
-			: false;
 		const prevGameAutoCheck = existingGame.gameAutoCheck;
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -179,7 +164,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const hasNonVersionChanges =
 			(name ?? '') !== (existingGame.name ?? '') ||
 			(description || null) !== (existingGame.description ?? null) ||
-			typeChanged ||
 			(website ?? '') !== (existingGame.website ?? '') ||
 			nextThreadId !== (existingGame.threadId ?? null) ||
 			(tags || null) !== (existingGame.tags ?? null) ||
@@ -204,7 +188,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			await createGameUpdateSubmission(currentUser.id, gameId, {
 				name,
 				description: description || null,
-				...(typeProvided ? { type: String(type).trim() } : {}),
 				website,
 				threadId: nextThreadId,
 				tags: tags || null,
@@ -245,13 +228,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
-
-		if (typeProvided && nextEngine !== null) {
-			await db
-				.update(table.gameTranslation)
-				.set({ gameType: nextEngine, updatedAt: new Date() })
-				.where(eq(table.gameTranslation.gameId, gameId));
-		}
 
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(gameId);

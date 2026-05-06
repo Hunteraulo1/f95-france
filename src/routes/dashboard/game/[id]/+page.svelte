@@ -207,6 +207,26 @@
 		return null;
 	};
 
+	/** Valeur par défaut du champ traducteur pour l'utilisateur connecté (nom affiché attendu par le formulaire). */
+	const getCurrentUserDefaultTranslatorInput = (): string => {
+		const currentUserId = currentUser?.id ?? null;
+		if (!currentUserId) return '';
+
+		// Cas principal : traducteur lié au user via translator.userId
+		const byUserId = translators.find((t) => t.userId != null && t.userId === currentUserId);
+		if (byUserId?.name) return byUserId.name;
+
+		// Compat legacy: si un champ translatorId/traductorId est présent sur l'objet user, l'accepter aussi.
+		const linkedTranslatorRaw = (currentUser as { translatorId?: unknown; traductorId?: unknown })
+			?.translatorId ??
+			(currentUser as { traductorId?: unknown })?.traductorId;
+		if (typeof linkedTranslatorRaw === 'string' && linkedTranslatorRaw.trim().length > 0) {
+			return getTranslatorDisplayName(linkedTranslatorRaw);
+		}
+
+		return '';
+	};
+
 	const normalizeTranslationProgressStatus = (
 		s: string | undefined | null
 	): 'in_progress' | 'completed' | 'abandoned' => {
@@ -215,6 +235,7 @@
 	};
 
 	const openAddTranslationModal = () => {
+		const defaultTranslatorInput = getCurrentUserDefaultTranslatorInput();
 		newTranslation = {
 			translationName: '',
 			version: '',
@@ -225,7 +246,7 @@
 			tlink: '',
 			tname: 'translation',
 			ac: false,
-			translatorId: '',
+			translatorId: defaultTranslatorInput,
 			proofreaderId: ''
 		};
 		showAddTranslationModal = true;
