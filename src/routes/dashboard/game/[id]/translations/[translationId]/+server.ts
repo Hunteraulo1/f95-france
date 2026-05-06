@@ -2,20 +2,20 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookAdminNewSubmission,
-    sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-    deleteTranslationFromGoogleSheet,
-    syncTranslationToGoogleSheet,
-    syncTranslatorToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import {
-    createTranslationDeleteSubmission,
-    createTranslationUpdateSubmission
+	createTranslationDeleteSubmission,
+	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';

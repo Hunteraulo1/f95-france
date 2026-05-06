@@ -3,13 +3,13 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import {
-    clearAllTranslationAutoCheckForGame,
-    resolveGameAutoCheckForWebsite
+	clearAllTranslationAutoCheckForGame,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-    deleteGameTranslationsFromGoogleSheet,
-    syncGameTranslationsToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';

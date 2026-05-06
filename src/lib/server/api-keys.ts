@@ -108,13 +108,12 @@ export type ApiKeyValidateFailure =
 	| 'quota_disabled';
 
 /** Valide la clé (hash, révocation, expiration) et le quota ; met à jour `last_used_at`. */
-export async function validateApiKeyRequest(
-	request: Request
-): Promise<
-	{ ok: true; keyId: string; ownerUserId: string; routeScope: string | null } | {
-		ok: false;
-		failure: ApiKeyValidateFailure;
-	}
+export async function validateApiKeyRequest(request: Request): Promise<
+	| { ok: true; keyId: string; ownerUserId: string; routeScope: string | null }
+	| {
+			ok: false;
+			failure: ApiKeyValidateFailure;
+	  }
 > {
 	const raw = extractApiKeyFromRequest(request);
 	if (!raw) {

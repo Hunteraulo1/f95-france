@@ -48,17 +48,17 @@
 		parsedData?: {
 			game?: GameSubmissionJson;
 			translation?: GameTranslation;
-		translatorId?: string;
-		pages?: Array<{ name?: string; link?: string }>;
-		originalPages?: Array<{ name?: string; link?: string }>;
+			translatorId?: string;
+			pages?: Array<{ name?: string; link?: string }>;
+			originalPages?: Array<{ name?: string; link?: string }>;
 		} | null;
 		currentGame?: GameSubmissionJson | null;
 		currentTranslation?: GameTranslation | null;
-	currentTranslator?: {
-		id: string;
-		name: string;
-		pages: Array<{ name: string; link: string }>;
-	} | null;
+		currentTranslator?: {
+			id: string;
+			name: string;
+			pages: Array<{ name: string; link: string }>;
+		} | null;
 	}
 
 	interface Translator {
@@ -102,7 +102,7 @@
 	let editTranslationAc = $state<boolean>(false);
 	let editTranslationTranslatorId = $state<string>('');
 	let editTranslationProofreaderId = $state<string>('');
-let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
+	let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
 	$effect(() => {
 		if (submission) {
@@ -159,7 +159,8 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 
 		if (submission.type === 'translator_pages') {
 			return JSON.stringify({
-				translatorId: submission.parsedData?.translatorId ?? submission.currentTranslator?.id ?? null,
+				translatorId:
+					submission.parsedData?.translatorId ?? submission.currentTranslator?.id ?? null,
 				pages: normalizeTranslatorPages(editTranslatorPages)
 			});
 		}
@@ -223,7 +224,7 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-				submission?.type !== 'translator_pages' &&
+			submission?.type !== 'translator_pages' &&
 			submission?.type !== 'delete' &&
 			(submission?.status === 'pending' || submission?.status === 'rejected')
 		)
@@ -473,7 +474,11 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 					{@const currentPages = submission.currentTranslator?.pages ?? []}
 					{@const fallbackOldPages = normalizeTranslatorPages(submission.parsedData?.originalPages)}
 					{@const oldPages =
-						currentPages.length > 0 ? currentPages : submission.status === 'accepted' ? fallbackOldPages : []}
+						currentPages.length > 0
+							? currentPages
+							: submission.status === 'accepted'
+								? fallbackOldPages
+								: []}
 					{@const maxRows = Math.max(oldPages.length, proposedPages.length, 1)}
 
 					<div class="space-y-4">
@@ -496,7 +501,7 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 									</tr>
 								</thead>
 								<tbody>
-									{#each Array.from({ length: maxRows }) as _, index (index)}
+									{#each Array.from({ length: maxRows }, (_unused, i) => i) as index (index)}
 										{@const oldEntry = oldPages[index] ?? { name: '', link: '' }}
 										{@const newEntry = proposedPages[index] ?? { name: '', link: '' }}
 										{@const isChanged =
@@ -506,7 +511,9 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 											<td>
 												<div class="space-y-1">
 													<div class="font-medium">{oldEntry.name || '(vide)'}</div>
-													<div class="text-xs break-all opacity-70">{oldEntry.link || '(vide)'}</div>
+													<div class="text-xs break-all opacity-70">
+														{oldEntry.link || '(vide)'}
+													</div>
 												</div>
 											</td>
 											<td>
@@ -859,7 +866,9 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 							<input
 								type="hidden"
 								name="translatorId"
-								value={submission.parsedData?.translatorId ?? submission.currentTranslator?.id ?? ''}
+								value={submission.parsedData?.translatorId ??
+									submission.currentTranslator?.id ??
+									''}
 							/>
 						{/if}
 

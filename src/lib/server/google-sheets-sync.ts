@@ -1115,15 +1115,17 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		const err = await appendRes.text().catch(() => '');
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 	}
-	let appendedRowNumber: number | null = null;
-	try {
-		const appendBody = (await appendRes.json()) as { updates?: { updatedRange?: string } };
-		const updatedRange = appendBody.updates?.updatedRange ?? '';
-		const m = updatedRange.match(/![A-Z]+(\d+):/);
-		appendedRowNumber = m ? Number.parseInt(m[1] ?? '', 10) : null;
-	} catch {
-		appendedRowNumber = null;
-	}
+	const appendedRowNumberFromResponse = await (async (): Promise<number | null> => {
+		try {
+			const appendBody = (await appendRes.json()) as { updates?: { updatedRange?: string } };
+			const updatedRange = appendBody.updates?.updatedRange ?? '';
+			const m = updatedRange.match(/![A-Z]+(\d+):/);
+			return m ? Number.parseInt(m[1] ?? '', 10) : null;
+		} catch {
+			return null;
+		}
+	})();
+	let appendedRowNumber: number | null = appendedRowNumberFromResponse;
 	if (!appendedRowNumber) {
 		const snap = await getSheetSnapshot(auth, SHEET_TAB_TR);
 		appendedRowNumber = snap.rowNumberById.get(tr.id) ?? null;

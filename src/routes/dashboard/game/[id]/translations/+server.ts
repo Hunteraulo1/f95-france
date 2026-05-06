@@ -2,14 +2,14 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookAdminNewSubmission,
-    sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-    syncTranslationToGoogleSheet,
-    syncTranslatorToGoogleSheet
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';
@@ -51,7 +51,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired = tname === 'integrated' || tname === 'no_translation';
 		const requiresTranslationVersion = tname !== 'no_translation';
-		if ((requiresTranslationVersion && !tversion) || !status || !ttype || (!linkNotRequired && !tlink)) {
+		if (
+			(requiresTranslationVersion && !tversion) ||
+			!status ||
+			!ttype ||
+			(!linkNotRequired && !tlink)
+		) {
 			return json(
 				{
 					error: linkNotRequired

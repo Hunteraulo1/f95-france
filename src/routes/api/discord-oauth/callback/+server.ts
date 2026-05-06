@@ -1,11 +1,11 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    exchangeDiscordCode,
-    getDiscordAvatarUrl,
-    getDiscordGuildMemberRoles,
-    getDiscordIdentity,
-    getDiscordOAuthConfig
+	exchangeDiscordCode,
+	getDiscordAvatarUrl,
+	getDiscordGuildMemberRoles,
+	getDiscordIdentity,
+	getDiscordOAuthConfig
 } from '$lib/server/discord-oauth';
 import { isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -59,7 +59,10 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 			.from(table.translator)
 			.where(eq(table.translator.discordId, discordId))
 			.limit(1);
-		if (matchingTranslator && (!matchingTranslator.userId || matchingTranslator.userId === locals.user.id)) {
+		if (
+			matchingTranslator &&
+			(!matchingTranslator.userId || matchingTranslator.userId === locals.user.id)
+		) {
 			await db
 				.update(table.translator)
 				.set({ userId: locals.user.id })
@@ -69,18 +72,27 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 		if ((currentUser?.avatar ?? '').trim() === '') {
 			const avatarUrl = await getDiscordAvatarUrl(discordId);
 			if (avatarUrl) {
-				await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, locals.user.id));
+				await db
+					.update(table.user)
+					.set({ avatar: avatarUrl })
+					.where(eq(table.user.id, locals.user.id));
 			}
 		}
 
 		if (guildId && translatorRoleId) {
-			const roleIds = await getDiscordGuildMemberRoles({ accessToken: token.access_token, guildId });
+			const roleIds = await getDiscordGuildMemberRoles({
+				accessToken: token.access_token,
+				guildId
+			});
 			const hasTranslatorRole = roleIds.includes(translatorRoleId);
 			const currentRole = currentUser?.role ?? 'user';
 			const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
 
 			if (!isAdminLike && hasTranslatorRole && currentRole === 'user') {
-				await db.update(table.user).set({ role: 'translator' }).where(eq(table.user.id, locals.user.id));
+				await db
+					.update(table.user)
+					.set({ role: 'translator' })
+					.where(eq(table.user.id, locals.user.id));
 			}
 			if (!isAdminLike && !hasTranslatorRole && currentRole === 'translator') {
 				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, locals.user.id));

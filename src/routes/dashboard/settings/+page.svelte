@@ -234,7 +234,9 @@
 				</div>
 			{/if}
 
-			<div class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+			<div
+				class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
+			>
 				<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
 				{#if $user?.discordId}
 					<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
@@ -401,7 +403,9 @@
 							</div>
 						{/each}
 						{#if translatorPages.length === 0}
-							<div class="text-sm opacity-70">Aucune page (la liste sera vide après validation).</div>
+							<div class="text-sm opacity-70">
+								Aucune page (la liste sera vide après validation).
+							</div>
 						{/if}
 						<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPage}>
 							+ Ajouter une page

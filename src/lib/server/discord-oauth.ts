@@ -81,10 +81,7 @@ export async function getDiscordIdentity(accessToken: string) {
 	return (await response.json()) as DiscordIdentity;
 }
 
-export async function getDiscordGuildMemberRoles(params: {
-	accessToken: string;
-	guildId: string;
-}) {
+export async function getDiscordGuildMemberRoles(params: { accessToken: string; guildId: string }) {
 	const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${params.guildId}/member`, {
 		headers: { authorization: `Bearer ${params.accessToken}` }
 	});
@@ -97,7 +94,9 @@ export async function getDiscordGuildMemberRoles(params: {
 }
 
 export async function getDiscordAvatarUrl(discordId: string) {
-	const response = await fetch(`https://avatar-cyan.vercel.app/api/${encodeURIComponent(discordId)}`);
+	const response = await fetch(
+		`https://avatar-cyan.vercel.app/api/${encodeURIComponent(discordId)}`
+	);
 	if (!response.ok) return null;
 
 	const data = (await response.json()) as { avatarUrl?: string };

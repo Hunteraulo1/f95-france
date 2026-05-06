@@ -217,8 +217,8 @@
 		if (byUserId?.name) return byUserId.name;
 
 		// Compat legacy: si un champ translatorId/traductorId est présent sur l'objet user, l'accepter aussi.
-		const linkedTranslatorRaw = (currentUser as { translatorId?: unknown; traductorId?: unknown })
-			?.translatorId ??
+		const linkedTranslatorRaw =
+			(currentUser as { translatorId?: unknown; traductorId?: unknown })?.translatorId ??
 			(currentUser as { traductorId?: unknown })?.traductorId;
 		if (typeof linkedTranslatorRaw === 'string' && linkedTranslatorRaw.trim().length > 0) {
 			return getTranslatorDisplayName(linkedTranslatorRaw);

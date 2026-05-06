@@ -7,8 +7,8 @@ import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-    syncTranslationToGoogleSheet,
-    syncTranslatorToGoogleSheet
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameSubmission } from '$lib/server/submissions';
 import { json } from '@sveltejs/kit';

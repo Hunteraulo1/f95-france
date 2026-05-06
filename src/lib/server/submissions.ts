@@ -1,20 +1,20 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    clampTranslationAc,
-    clearAllTranslationAutoCheckForGame,
-    getGameAllowsTranslationAutoCheck,
-    resolveGameAutoCheckForWebsite
+	clampTranslationAc,
+	clearAllTranslationAutoCheckForGame,
+	getGameAllowsTranslationAutoCheck,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-    deleteGameTranslationsFromGoogleSheet,
-    deleteTranslationFromGoogleSheet,
-    syncGameTranslationsToGoogleSheet,
-    syncTranslationToGoogleSheet,
-    syncTranslatorLinksInJeuxSheet,
-    syncTranslatorToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	deleteTranslationFromGoogleSheet,
+	syncGameTranslationsToGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorLinksInJeuxSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
@@ -287,7 +287,8 @@ export async function applySubmission(submissionId: string) {
 
 	// Appliquer les changements selon le type
 	if (sub.type === 'translator_pages') {
-		const translatorIdCandidate = (parsedData as { translatorId?: unknown; gameId?: unknown }).translatorId;
+		const translatorIdCandidate = (parsedData as { translatorId?: unknown; gameId?: unknown })
+			.translatorId;
 		const translatorId =
 			typeof translatorIdCandidate === 'string' && translatorIdCandidate.trim() !== ''
 				? translatorIdCandidate.trim()
@@ -306,7 +307,7 @@ export async function applySubmission(submissionId: string) {
 			}
 		}
 
-		if (!translatorId || pagesRaw.length === 0 && pagesValue !== undefined) {
+		if (!translatorId || (pagesRaw.length === 0 && pagesValue !== undefined)) {
 			// Autorise explicitement une liste vide [] (suppression de toutes les pages),
 			// mais refuse les payloads invalides.
 			if (!translatorId || !Array.isArray(pagesValue)) {
@@ -1111,10 +1112,11 @@ export async function revertSubmission(submissionId: string) {
 
 	// Annuler les changements selon le type
 	if (sub.type === 'translator_pages') {
-		const translatorId = parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
+		const translatorId =
+			parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
 		const originalPages = (parsedData as { originalPages?: string }).originalPages;
 		if (!translatorId || typeof originalPages !== 'string') {
-			throw new Error("Données originales du traducteur manquantes");
+			throw new Error('Données originales du traducteur manquantes');
 		}
 		await db
 			.update(table.translator)

@@ -2,9 +2,9 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    parseSubmissionPayloadJson,
-    persistSubmissionPayload,
-    validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -201,7 +201,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						const row = currentTranslatorResult[0];
 						let pages: Array<{ name: string; link: string }> = [];
 						try {
-							const parsed = JSON.parse(row.pages || '[]') as Array<{ name?: string; link?: string }>;
+							const parsed = JSON.parse(row.pages || '[]') as Array<{
+								name?: string;
+								link?: string;
+							}>;
 							if (Array.isArray(parsed)) {
 								pages = parsed.map((p) => ({
 									name: String(p.name ?? ''),
