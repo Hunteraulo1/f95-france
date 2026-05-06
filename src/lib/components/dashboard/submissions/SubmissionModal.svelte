@@ -978,14 +978,28 @@
 										<label class="label" for="editGameLink">
 											<span class="label-text">Lien</span>
 										</label>
-										<input
-											id="editGameLink"
-											name="editGameLink"
-											class="input-bordered input w-full"
-											type="url"
-											placeholder="https://..."
-											bind:value={editGameLink}
-										/>
+										<div class="join join-horizontal w-full">
+											<input
+												id="editGameLink"
+												name="editGameLink"
+												class="join-item input-bordered input min-w-0 flex-1"
+												type="url"
+												placeholder="https://..."
+												bind:value={editGameLink}
+											/>
+											<button
+												type="button"
+												class="btn join-item btn-outline shrink-0"
+												disabled={!editGameLink?.trim()}
+												aria-label="Ouvrir le lien dans un nouvel onglet"
+												onclick={() => {
+													const u = editGameLink?.trim();
+													if (u) window.open(u, '_blank', 'noopener,noreferrer');
+												}}
+											>
+												Ouvrir
+											</button>
+										</div>
 									</div>
 
 									<div class="form-control md:col-span-2">
@@ -1159,14 +1173,28 @@
 										<label class="label" for="editTranslationTlink">
 											<span class="label-text">Lien de traduction</span>
 										</label>
-										<input
-											id="editTranslationTlink"
-											name="editTranslationTlink"
-											class="input-bordered input w-full"
-											type="url"
-											placeholder="(vide)"
-											bind:value={editTranslationTlink}
-										/>
+										<div class="join join-horizontal w-full">
+											<input
+												id="editTranslationTlink"
+												name="editTranslationTlink"
+												class="join-item input-bordered input min-w-0 flex-1"
+												type="url"
+												placeholder="(vide)"
+												bind:value={editTranslationTlink}
+											/>
+											<button
+												type="button"
+												class="btn join-item btn-outline shrink-0"
+												disabled={!editTranslationTlink?.trim()}
+												aria-label="Ouvrir le lien de traduction dans un nouvel onglet"
+												onclick={() => {
+													const u = editTranslationTlink?.trim();
+													if (u) window.open(u, '_blank', 'noopener,noreferrer');
+												}}
+											>
+												Ouvrir
+											</button>
+										</div>
 									</div>
 
 									<div class="form-control md:col-span-2">
