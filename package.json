@@ -22,6 +22,9 @@
     "db:migrate": "tsx src/lib/server/db/migrate.ts",
     "db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
     "db:studio": "drizzle-kit studio",
+    "db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:dev:down": "docker compose -f docker-compose.dev.yml down",
+    "db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
     "sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
   },
   "devDependencies": {
