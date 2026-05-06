@@ -1,5 +1,7 @@
+import { env } from '$env/dynamic/private';
+
 const DISCORD_API_BASE = 'https://discord.com/api';
-const DISCORD_OAUTH_SCOPES = ['identify'];
+const DISCORD_OAUTH_SCOPES = ['identify', 'guilds.members.read'];
 
 type DiscordTokenResponse = {
 	access_token: string;
@@ -18,9 +20,11 @@ export type DiscordIdentity = {
 };
 
 export function getDiscordOAuthConfig() {
-	const clientId = process.env.DISCORD_OAUTH_CLIENT_ID?.trim() ?? '';
-	const clientSecret = process.env.DISCORD_OAUTH_CLIENT_SECRET?.trim() ?? '';
-	return { clientId, clientSecret };
+	const clientId = env.DISCORD_OAUTH_CLIENT_ID?.trim() ?? '';
+	const clientSecret = env.DISCORD_OAUTH_CLIENT_SECRET?.trim() ?? '';
+	const guildId = env.DISCORD_OAUTH_GUILD_ID?.trim() ?? '';
+	const translatorRoleId = env.DISCORD_OAUTH_TRANSLATOR_ROLE_ID?.trim() ?? '';
+	return { clientId, clientSecret, guildId, translatorRoleId };
 }
 
 export function getDiscordAuthorizeUrl(params: {
@@ -75,6 +79,21 @@ export async function getDiscordIdentity(accessToken: string) {
 		throw new Error(`Récupération profil Discord échouée (${response.status}): ${text}`);
 	}
 	return (await response.json()) as DiscordIdentity;
+}
+
+export async function getDiscordGuildMemberRoles(params: {
+	accessToken: string;
+	guildId: string;
+}) {
+	const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${params.guildId}/member`, {
+		headers: { authorization: `Bearer ${params.accessToken}` }
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(`Récupération rôles Discord échouée (${response.status}): ${text}`);
+	}
+	const data = (await response.json()) as { roles?: string[] };
+	return Array.isArray(data.roles) ? data.roles : [];
 }
 
 export async function getDiscordAvatarUrl(discordId: string) {

@@ -3,6 +3,7 @@ import * as table from '$lib/server/db/schema';
 import {
     exchangeDiscordCode,
     getDiscordAvatarUrl,
+    getDiscordGuildMemberRoles,
     getDiscordIdentity,
     getDiscordOAuthConfig
 } from '$lib/server/discord-oauth';
@@ -30,7 +31,7 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 		throw redirect(302, '/dashboard/settings?discord_error=invalid_state');
 	}
 
-	const { clientId, clientSecret } = getDiscordOAuthConfig();
+	const { clientId, clientSecret, guildId, translatorRoleId } = getDiscordOAuthConfig();
 	if (!clientId || !clientSecret) {
 		throw redirect(302, '/dashboard/settings?discord_error=oauth_not_configured');
 	}
@@ -46,7 +47,7 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 		}
 
 		const [currentUser] = await db
-			.select({ avatar: table.user.avatar })
+			.select({ avatar: table.user.avatar, role: table.user.role })
 			.from(table.user)
 			.where(eq(table.user.id, locals.user.id))
 			.limit(1);
@@ -69,6 +70,20 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 			const avatarUrl = await getDiscordAvatarUrl(discordId);
 			if (avatarUrl) {
 				await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, locals.user.id));
+			}
+		}
+
+		if (guildId && translatorRoleId) {
+			const roleIds = await getDiscordGuildMemberRoles({ accessToken: token.access_token, guildId });
+			const hasTranslatorRole = roleIds.includes(translatorRoleId);
+			const currentRole = currentUser?.role ?? 'user';
+			const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
+
+			if (!isAdminLike && hasTranslatorRole && currentRole === 'user') {
+				await db.update(table.user).set({ role: 'translator' }).where(eq(table.user.id, locals.user.id));
+			}
+			if (!isAdminLike && !hasTranslatorRole && currentRole === 'translator') {
+				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, locals.user.id));
 			}
 		}
 
