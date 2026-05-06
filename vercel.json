@@ -1,4 +1,4 @@
 {
-	"buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then bun run db:migrate; fi && bun run build",
-	"crons": []
+  "buildCommand": "bash scripts/vercel-build.sh",
+  "crons": []
 }

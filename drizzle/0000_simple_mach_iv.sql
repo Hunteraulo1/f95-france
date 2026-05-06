@@ -4,7 +4,7 @@ EXCEPTION
 	WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
-CREATE TABLE "api_log" (
+CREATE TABLE IF NOT EXISTS "api_log" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "user_id" varchar(255),
     "method" varchar(16) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE "api_log" (
     "created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "config" (
+CREATE TABLE IF NOT EXISTS "config" (
     "id" varchar(255) PRIMARY KEY DEFAULT 'main' NOT NULL,
     "app_name" varchar(255) DEFAULT 'F95 France' NOT NULL,
     "discord_webhook_updates" text,
@@ -37,7 +37,7 @@ CREATE TABLE "config" (
     "updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "game" (
+CREATE TABLE IF NOT EXISTS "game" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "name" varchar(255) NOT NULL,
     "tags" text NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE "game" (
     "game_version" varchar(100)
 );
 --> statement-breakpoint
-CREATE TABLE "game_translation" (
+CREATE TABLE IF NOT EXISTS "game_translation" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "game_id" varchar(255) NOT NULL,
     "translation_name" varchar(255),
@@ -70,7 +70,7 @@ CREATE TABLE "game_translation" (
     "updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "notification" (
+CREATE TABLE IF NOT EXISTS "notification" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "user_id" varchar(255) NOT NULL,
     "type" varchar(64) NOT NULL,
@@ -82,13 +82,13 @@ CREATE TABLE "notification" (
     "created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "session" (
+CREATE TABLE IF NOT EXISTS "session" (
     "id" varchar(255) PRIMARY KEY NOT NULL,
     "user_id" varchar(255) NOT NULL,
     "expires_at" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "submission" (
+CREATE TABLE IF NOT EXISTS "submission" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "user_id" varchar(255) NOT NULL,
     "status" varchar(32) DEFAULT 'pending' NOT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE "submission" (
     "updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "translator" (
+CREATE TABLE IF NOT EXISTS "translator" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "name" varchar(255) NOT NULL,
     "user_id" varchar(255),
@@ -115,7 +115,7 @@ CREATE TABLE "translator" (
     CONSTRAINT "translator_discord_id_unique" UNIQUE ("discord_id")
 );
 --> statement-breakpoint
-CREATE TABLE "update" (
+CREATE TABLE IF NOT EXISTS "update" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
     "game_id" varchar(255) NOT NULL,
     "status" varchar(16) DEFAULT 'update' NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE "update" (
     "updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user" (
+CREATE TABLE IF NOT EXISTS "user" (
     "id" varchar(255) PRIMARY KEY NOT NULL,
     "email" varchar(255) NOT NULL,
     "username" varchar(32) NOT NULL,
@@ -143,29 +143,65 @@ CREATE TABLE "user" (
     CONSTRAINT "user_username_unique" UNIQUE ("username")
 );
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "api_log"
 ADD CONSTRAINT "api_log_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE set null ON UPDATE cascade;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "game_translation"
 ADD CONSTRAINT "game_translation_game_id_game_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."game" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "notification"
 ADD CONSTRAINT "notification_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE cascade ON UPDATE cascade;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "session"
 ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "submission"
 ADD CONSTRAINT "submission_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "submission"
 ADD CONSTRAINT "submission_game_id_game_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."game" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "submission"
 ADD CONSTRAINT "submission_translation_id_game_translation_id_fk" FOREIGN KEY ("translation_id") REFERENCES "public"."game_translation" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "translator"
 ADD CONSTRAINT "translator_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
+DO $$ BEGIN
 ALTER TABLE "update"
 ADD CONSTRAINT "update_game_id_game_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."game" ("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
