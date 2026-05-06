@@ -1,8 +1,8 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { config } from 'dotenv';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { resolve } from 'path';
+import postgres from 'postgres';
 import { getPostgresConfig } from './connection';
 
 // Charger les variables d'environnement depuis .env
@@ -25,6 +25,11 @@ async function runMigrations() {
 		process.exit(0);
 	} catch (error) {
 		console.error('Erreur lors des migrations:', error);
+		if (error && typeof error === 'object') {
+			const e = error as Record<string, unknown>;
+			if (typeof e.message === 'string') console.error('Détail:', e.message);
+			if (typeof e.code === 'string') console.error('Code:', e.code);
+		}
 		await client.end({ timeout: 5 });
 		process.exit(1);
 	}
