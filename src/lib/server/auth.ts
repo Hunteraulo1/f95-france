@@ -152,6 +152,7 @@ export async function createUser(username: string, email: string, password: stri
 		id: userId,
 		email,
 		username,
+		discordId: null,
 		avatar: '', // Default avatar
 		passwordHash: hashedPassword,
 		twoFactorEnabled: false,

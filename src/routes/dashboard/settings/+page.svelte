@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, user } from '$lib/stores';
 	import { checkRole } from '$lib/utils';
@@ -12,6 +13,8 @@
 	type DevUserLite = Pick<User, 'id' | 'username' | 'role'>;
 	let users = $state<DevUserLite[]>([]);
 	let profileError = $state<string | null>(null);
+	let discordError = $state<string | null>(null);
+	let discordInfo = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
@@ -30,6 +33,8 @@
 	let passkeyBusy = $state(false);
 	let selectedTheme = $state($user?.theme || 'system');
 	let targetUserId = $state('');
+	let discordId = $state($user?.discordId || '');
+	let oauthDiscordFeedbackApplied = $state(false);
 
 	$effect(() => {
 		if ($user && checkRole(['superadmin'])) {
@@ -51,6 +56,22 @@
 			qrCodeDataUrl = null;
 			manualEntryKey = null;
 			verificationCode = '';
+		}
+	});
+
+	$effect(() => {
+		if (oauthDiscordFeedbackApplied) return;
+		const oauthDiscordError = $page.url.searchParams.get('discord_error');
+		const oauthDiscordSuccess = $page.url.searchParams.get('discord_success');
+
+		if (oauthDiscordError) {
+			discordError = oauthDiscordError;
+			discordInfo = null;
+			oauthDiscordFeedbackApplied = true;
+		} else if (oauthDiscordSuccess) {
+			discordInfo = oauthDiscordSuccess;
+			discordError = null;
+			oauthDiscordFeedbackApplied = true;
 		}
 	});
 
@@ -183,6 +204,96 @@
 					<button type="submit" class="btn btn-primary"> Enregistrer </button>
 				</div>
 			</form>
+
+			<div class="divider my-2">Discord</div>
+
+			{#if discordError}
+				<div class="alert w-full alert-error">
+					<span>{discordError}</span>
+				</div>
+			{/if}
+			{#if discordInfo}
+				<div class="alert w-full alert-success">
+					<span>{discordInfo}</span>
+				</div>
+			{/if}
+
+			<form
+				class="w-full"
+				method="POST"
+				action="?/linkDiscord"
+				use:enhance={() => {
+					discordError = null;
+					discordInfo = null;
+					return async ({ result, update }) => {
+						if (result.type === 'success') {
+							await update();
+							await loadUserData();
+							discordInfo = 'Compte Discord lié avec succès.';
+						} else if (result.type === 'failure' && result.data) {
+							const message =
+								typeof result.data === 'object' && 'message' in result.data
+									? String(result.data.message)
+									: 'Erreur lors du lien Discord';
+							discordError = message;
+						}
+					};
+				}}
+			>
+				<div class="flex w-full flex-col gap-3">
+					<div class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+						<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+						{#if $user?.discordId}
+							<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
+						{/if}
+					</div>
+
+					<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
+						<label class="input flex w-full">
+							ID Discord
+							<input
+								type="text"
+								name="discordId"
+								class="grow ring-0"
+								placeholder="123456789012345678"
+								bind:value={discordId}
+								required
+							/>
+						</label>
+						<button type="submit" class="btn btn-secondary">Lier manuellement</button>
+					</div>
+				</div>
+			</form>
+
+			{#if $user?.discordId}
+				<form
+					class="w-full"
+					method="POST"
+					action="?/unlinkDiscord"
+					use:enhance={() => {
+						discordError = null;
+						discordInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								await loadUserData();
+								discordId = '';
+								discordInfo = 'Compte Discord délié avec succès.';
+							} else if (result.type === 'failure' && result.data) {
+								const message =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: 'Erreur lors du déliage Discord';
+								discordError = message;
+							}
+						};
+					}}
+				>
+					<div class="flex justify-end">
+						<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+					</div>
+				</form>
+			{/if}
 		</div>
 	</div>
 

@@ -2,6 +2,7 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import { getDiscordAvatarUrl } from '$lib/server/discord-oauth';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
@@ -43,7 +44,6 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		})
 		.from(table.passkey)
 		.where(eq(table.passkey.userId, locals.user.id));
-
 	return {
 		user: locals.user,
 		devUsers,
@@ -122,6 +122,85 @@ export const actions: Actions = {
 		} catch (error: unknown) {
 			console.error('Erreur lors de la mise à jour du thème:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du thème' });
+		}
+	},
+
+	linkDiscord: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const discordId = String(formData.get('discordId') ?? '').trim();
+
+		if (!/^\d{17,20}$/.test(discordId)) {
+			return fail(400, { message: 'ID Discord invalide (17 à 20 chiffres).' });
+		}
+
+		try {
+			const [currentUser] = await db
+				.select({ avatar: table.user.avatar })
+				.from(table.user)
+				.where(eq(table.user.id, locals.user.id))
+				.limit(1);
+
+			await db.update(table.user).set({ discordId }).where(eq(table.user.id, locals.user.id));
+
+			const [matchingTranslator] = await db
+				.select({ id: table.translator.id, userId: table.translator.userId })
+				.from(table.translator)
+				.where(eq(table.translator.discordId, discordId))
+				.limit(1);
+
+			let translatorLinked = false;
+			if (matchingTranslator && (!matchingTranslator.userId || matchingTranslator.userId === locals.user.id)) {
+				await db
+					.update(table.translator)
+					.set({ userId: locals.user.id })
+					.where(eq(table.translator.id, matchingTranslator.id));
+				translatorLinked = true;
+			}
+
+			if ((currentUser?.avatar ?? '').trim() === '') {
+				const avatarUrl = await getDiscordAvatarUrl(discordId);
+				if (avatarUrl) {
+					await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, locals.user.id));
+				}
+			}
+
+			return {
+				success: true,
+				message: translatorLinked
+					? 'Compte Discord lié et profil traducteur associé.'
+					: 'Compte Discord lié avec succès.'
+			};
+		} catch (error: unknown) {
+			console.error('Erreur lors du lien Discord:', error);
+
+			const dbError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
+			if (dbError && (dbError.code === 'ER_DUP_ENTRY' || dbError.errno === 1062)) {
+				return fail(409, { message: 'Cet ID Discord est déjà utilisé par un autre compte.' });
+			}
+
+			return fail(500, { message: 'Erreur lors du lien Discord.' });
+		}
+	},
+
+	unlinkDiscord: async ({ locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		try {
+			await db.update(table.user).set({ discordId: null }).where(eq(table.user.id, locals.user.id));
+			return { success: true, message: 'Compte Discord délié.' };
+		} catch (error: unknown) {
+			console.error('Erreur lors du délien Discord:', error);
+			return fail(500, { message: 'Erreur lors du délien Discord.' });
 		}
 	},
 
