@@ -138,7 +138,12 @@
 	$effect(() => {
 		if (prefilledTranslatorApplied) return;
 		const prefilled = data.prefilledTranslatorName;
-		if (typeof prefilled === 'string' && prefilled.trim().length > 0 && !game.translatorId) {
+		if (
+			!isAdmin &&
+			typeof prefilled === 'string' &&
+			prefilled.trim().length > 0 &&
+			!game.translatorId
+		) {
 			game.translatorId = prefilled.trim();
 		}
 		prefilledTranslatorApplied = true;
