@@ -1,4 +1,8 @@
-CREATE TYPE "public"."theme_enum" AS ENUM('system', 'light', 'dark') IF NOT EXISTS;
+DO $$ BEGIN
+	CREATE TYPE "public"."theme_enum" AS ENUM('system', 'light', 'dark');
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
 CREATE TABLE "api_log" (
     "id" varchar(255) PRIMARY KEY DEFAULT gen_random_uuid () NOT NULL,
