@@ -5,6 +5,36 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
+const DISCORD_AVATAR_API_BASE_URL = 'https://avatar-cyan.vercel.app/api';
+
+async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: string | null) {
+	const normalizedDiscordId = discordId?.trim();
+	if (!normalizedDiscordId) return;
+
+	const [currentUser] = await db
+		.select({ avatar: table.user.avatar })
+		.from(table.user)
+		.where(eq(table.user.id, userId))
+		.limit(1);
+
+	if (!currentUser || currentUser.avatar.trim() !== '') return;
+
+	try {
+		const response = await fetch(
+			`${DISCORD_AVATAR_API_BASE_URL}/${encodeURIComponent(normalizedDiscordId)}`
+		);
+		if (!response.ok) return;
+
+		const data = (await response.json()) as { avatarUrl?: string };
+		const avatarUrl = typeof data.avatarUrl === 'string' ? data.avatarUrl.trim() : '';
+		if (!avatarUrl) return;
+
+		await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, userId));
+	} catch (error: unknown) {
+		console.error("Erreur lors de la récupération de l'avatar Discord:", error);
+	}
+}
+
 export const load: PageServerLoad = async () => {
 	const [translator, users] = await Promise.all([
 		db
@@ -79,6 +109,7 @@ export const actions: Actions = {
 
 			if (created && linkUserId) {
 				await assignTranslatorUser(created.id, linkUserId);
+				await setUserAvatarFromDiscordIdIfMissing(linkUserId, discordId || null);
 			}
 
 			return { success: true, message: 'Traducteur ajouté avec succès' };
@@ -143,6 +174,9 @@ export const actions: Actions = {
 				.where(eq(table.translator.id, id));
 
 			await assignTranslatorUser(id, linkUserId);
+			if (linkUserId) {
+				await setUserAvatarFromDiscordIdIfMissing(linkUserId, discordId || null);
+			}
 
 			return { success: true, message: 'Traducteur modifié avec succès' };
 		} catch (error: unknown) {
