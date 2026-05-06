@@ -454,11 +454,17 @@
 		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
 		const linkNotRequired =
 			newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
-		if (!newTranslation.tversion || (!linkNotRequired && !newTranslation.tlink)) {
+		const requiresTranslationVersion = newTranslation.tname !== 'no_translation';
+		if (
+			(requiresTranslationVersion && !newTranslation.tversion) ||
+			(!linkNotRequired && !newTranslation.tlink)
+		) {
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
+					? requiresTranslationVersion
+						? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
+						: 'Veuillez remplir tous les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (version de traduction, lien, etc.)'
 			});
 			return;
@@ -588,8 +594,9 @@
 
 	const editTranslation = async () => {
 		const linkNotRequired = editTranslationLinkNotRequired;
+		const requiresTranslationVersion = editingTranslation.tname !== 'no_translation';
 		if (
-			!editingTranslation.tversion ||
+			(requiresTranslationVersion && !editingTranslation.tversion) ||
 			!editingTranslation.status ||
 			!editingTranslation.ttype ||
 			(!linkNotRequired && !editingTranslation.tlink)
@@ -597,7 +604,9 @@
 			newToast({
 				alertType: 'error',
 				message: linkNotRequired
-					? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
+					? requiresTranslationVersion
+						? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
+						: 'Veuillez remplir les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (y compris le lien)'
 			});
 			return;
