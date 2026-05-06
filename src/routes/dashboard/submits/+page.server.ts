@@ -12,6 +12,31 @@ import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
+const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
+
+const formDataToSubmissionPayload = (
+	submissionType: string,
+	formData: FormData
+): Record<string, unknown> | null => {
+	if (submissionType !== 'translator_pages') return null;
+	const translatorId = normalizeMaybeString(formData.get('translatorId'));
+	const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
+	const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
+	const max = Math.max(names.length, links.length);
+	const pages = Array.from({ length: max })
+		.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
+		.filter((p) => p.name !== '' || p.link !== '');
+
+	return {
+		translatorId: translatorId ?? '',
+		pages
+	};
+};
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Vérifier que l'utilisateur est admin
 	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
@@ -264,9 +289,6 @@ export const actions: Actions = {
 			return fail(400, { message: 'ID de soumission requis' });
 		}
 
-		const parsed = parseSubmissionPayloadJson(submissionDataJson);
-		if (!parsed.ok) return fail(400, { message: parsed.message });
-
 		const [sub] = await db
 			.select({
 				id: table.submission.id,
@@ -282,6 +304,13 @@ export const actions: Actions = {
 			return fail(400, {
 				message: 'Seules les soumissions en attente, ouvertes ou refusées peuvent être modifiées'
 			});
+		}
+
+		let parsed = parseSubmissionPayloadJson(submissionDataJson);
+		if (!parsed.ok) {
+			const rebuiltPayload = formDataToSubmissionPayload(sub.type, formData);
+			if (!rebuiltPayload) return fail(400, { message: parsed.message });
+			parsed = { ok: true, data: rebuiltPayload };
 		}
 
 		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);

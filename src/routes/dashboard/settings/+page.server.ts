@@ -170,12 +170,16 @@ export const actions: Actions = {
 		try {
 			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
 			if (Array.isArray(raw)) {
-				pagesParsed = raw
-					.map((p) => ({ name: String(p.name ?? '').trim(), link: String(p.link ?? '').trim() }))
-					.filter((p) => p.name !== '' || p.link !== '');
+				pagesParsed = raw.map((p) => ({
+					name: String(p.name ?? '').trim(),
+					link: String(p.link ?? '').trim()
+				}));
 			}
 		} catch {
 			return fail(400, { message: 'Format des pages invalide' });
+		}
+		if (pagesParsed.some((p) => !p.name || !p.link)) {
+			return fail(400, { message: 'Chaque page doit avoir un nom et un lien.' });
 		}
 
 		const [translatorRow] = await db

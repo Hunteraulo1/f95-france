@@ -35,6 +35,16 @@ export function validateSubmissionPayloadForType(
 		if (!Array.isArray(data.pages)) {
 			return 'Données invalides: `pages` doit être un tableau';
 		}
+		for (const page of data.pages) {
+			if (!page || typeof page !== 'object') {
+				return 'Données invalides: chaque page doit être un objet';
+			}
+			const name = String((page as { name?: unknown }).name ?? '').trim();
+			const link = String((page as { link?: unknown }).link ?? '').trim();
+			if (!name || !link) {
+				return 'Chaque page doit avoir un nom et un lien';
+			}
+		}
 		return null;
 	}
 	if (type === 'translation') {

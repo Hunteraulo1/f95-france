@@ -855,6 +855,13 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 
 						<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 						<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+						{#if submission.type === 'translator_pages'}
+							<input
+								type="hidden"
+								name="translatorId"
+								value={submission.parsedData?.translatorId ?? submission.currentTranslator?.id ?? ''}
+							/>
+						{/if}
 
 						{#if submission.type === 'translator_pages'}
 							<div class="mt-2 space-y-4">
@@ -866,12 +873,14 @@ let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name:
 												type="text"
 												class="input-bordered input flex-1"
 												placeholder="Nom de la page"
+												name="editTranslatorPageName"
 												bind:value={page.name}
 											/>
 											<input
 												type="url"
 												class="input-bordered input flex-1"
 												placeholder="Lien"
+												name="editTranslatorPageLink"
 												bind:value={page.link}
 											/>
 											<button

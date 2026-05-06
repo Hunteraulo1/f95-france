@@ -350,12 +350,10 @@ export async function applySubmission(submissionId: string) {
 			.set({ pages: JSON.stringify(pages), updatedAt: new Date() })
 			.where(eq(table.translator.id, translatorId));
 
-		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
-			console.warn('[google-sheets-sync] submission translator pages failed:', err);
-		});
-		void syncTranslatorLinksInJeuxSheet(translatorId).catch((err) => {
-			console.warn('[google-sheets-sync] submission translator links in Jeux failed:', err);
-		});
+		// Important: en environnement serverless, le fire-and-forget peut être interrompu
+		// à la fin de la requête. On attend explicitement la sync Sheets.
+		await syncTranslatorToGoogleSheet(translatorId);
+		await syncTranslatorLinksInJeuxSheet(translatorId);
 	} else if (sub.type === 'game') {
 		// Créer un nouveau jeu
 		const gameData = parsedData.game;
@@ -1122,12 +1120,9 @@ export async function revertSubmission(submissionId: string) {
 			.update(table.translator)
 			.set({ pages: originalPages, updatedAt: new Date() })
 			.where(eq(table.translator.id, translatorId));
-		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
-			console.warn('[google-sheets-sync] revert translator pages failed:', err);
-		});
-		void syncTranslatorLinksInJeuxSheet(translatorId).catch((err) => {
-			console.warn('[google-sheets-sync] revert translator links in Jeux failed:', err);
-		});
+		// Même logique qu'à l'application: on attend la sync pour garantir la cohérence.
+		await syncTranslatorToGoogleSheet(translatorId);
+		await syncTranslatorLinksInJeuxSheet(translatorId);
 	} else if (sub.type === 'game') {
 		// Supprimer le jeu créé (et sa traduction si créée)
 		if (!sub.gameId) {

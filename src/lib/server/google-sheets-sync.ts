@@ -360,7 +360,7 @@ function buildPagesRichTextPayload(pagesRaw: string | null | undefined): {
 	text: string;
 	runs: Array<{
 		startIndex: number;
-		format: { link: { uri: string } | null; underline: boolean };
+		format: { link?: { uri: string }; underline: boolean };
 	}>;
 } {
 	const pages = parsePages(pagesRaw)
@@ -373,13 +373,13 @@ function buildPagesRichTextPayload(pagesRaw: string | null | undefined): {
 	let text = '';
 	const runs: Array<{
 		startIndex: number;
-		format: { link: { uri: string } | null; underline: boolean };
+		format: { link?: { uri: string }; underline: boolean };
 	}> = [];
 	for (let i = 0; i < pages.length; i++) {
 		const page = pages[i];
 		if (i > 0) {
 			// Run neutre explicite pour casser lien + soulignement sur le séparateur.
-			runs.push({ startIndex: text.length, format: { link: null, underline: false } });
+			runs.push({ startIndex: text.length, format: { underline: false } });
 			text += '    ';
 		}
 		const label = page.name || page.link;
@@ -388,7 +388,7 @@ function buildPagesRichTextPayload(pagesRaw: string | null | undefined): {
 		if (page.link) {
 			runs.push({ startIndex, format: { link: { uri: page.link }, underline: true } });
 		} else {
-			runs.push({ startIndex, format: { link: null, underline: false } });
+			runs.push({ startIndex, format: { underline: false } });
 		}
 	}
 	return { text, runs };
@@ -1042,13 +1042,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		throw new Error(`Colonne "Id Db" introuvable dans la feuille "${SHEET_TAB_TR}".`);
 	}
 	const pagesColIdx = findHeaderIndex(headersRow, ['Pages']);
-	if (pagesColIdx === -1) {
-		throw new Error(`Colonne "Pages" introuvable dans la feuille "${SHEET_TAB_TR}".`);
-	}
 	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
-	if (sheetId == null) {
-		throw new Error(`Feuille "${SHEET_TAB_TR}" introuvable.`);
-	}
 
 	const lastCol = toColA1(headersRow.length - 1);
 	const dataRows = rows.slice(1);
@@ -1091,11 +1085,17 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 			const err = await res.text().catch(() => '');
 			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
 		}
-		await applyPagesRichTextInRows(auth, {
-			sheetId,
-			pagesColIdx,
-			rows: [{ rowNumber, pagesRaw: tr.pages }]
-		});
+		if (pagesColIdx !== -1 && sheetId != null) {
+			try {
+				await applyPagesRichTextInRows(auth, {
+					sheetId,
+					pagesColIdx,
+					rows: [{ rowNumber, pagesRaw: tr.pages }]
+				});
+			} catch (err) {
+				console.warn('[google-sheets-sync] rich text pages update failed:', err);
+			}
+		}
 		return;
 	}
 
@@ -1129,11 +1129,17 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		appendedRowNumber = snap.rowNumberById.get(tr.id) ?? null;
 	}
 	if (appendedRowNumber) {
-		await applyPagesRichTextInRows(auth, {
-			sheetId,
-			pagesColIdx,
-			rows: [{ rowNumber: appendedRowNumber, pagesRaw: tr.pages }]
-		});
+		if (pagesColIdx !== -1 && sheetId != null) {
+			try {
+				await applyPagesRichTextInRows(auth, {
+					sheetId,
+					pagesColIdx,
+					rows: [{ rowNumber: appendedRowNumber, pagesRaw: tr.pages }]
+				});
+			} catch (err) {
+				console.warn('[google-sheets-sync] rich text pages append failed:', err);
+			}
+		}
 	}
 }
 
@@ -1415,11 +1421,17 @@ export async function syncDbToSpreadsheetBulk(
 						pagesRaw: tr.pages
 					}))
 					.filter((entry) => entry.rowNumber > 0);
-				await applyPagesRichTextInRows(auth, {
-					sheetId,
-					pagesColIdx,
-					rows: rowsForRichText
-				});
+				try {
+					await applyPagesRichTextInRows(auth, {
+						sheetId,
+						pagesColIdx,
+						rows: rowsForRichText
+					});
+				} catch (err) {
+					errors.push(
+						`bulk TR rich text pages: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
+				}
 			}
 		}
 	} catch (err) {

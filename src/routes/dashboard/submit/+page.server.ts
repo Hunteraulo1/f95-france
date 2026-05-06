@@ -20,6 +20,21 @@ const formDataToSubmissionPayload = (
 	submissionType: string,
 	formData: FormData
 ): Record<string, unknown> | null => {
+	if (submissionType === 'translator_pages') {
+		const translatorId = normalizeMaybeString(formData.get('translatorId'));
+		const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
+		const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
+		const max = Math.max(names.length, links.length);
+		const pages = Array.from({ length: max })
+			.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
+			.filter((p) => p.name !== '' || p.link !== '');
+
+		return {
+			translatorId: translatorId ?? '',
+			pages
+		};
+	}
+
 	if (submissionType === 'translation') {
 		return {
 			translation: {
