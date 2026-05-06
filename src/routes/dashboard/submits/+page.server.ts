@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
@@ -88,6 +88,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				let parsedData = null;
 				let currentGame = null;
 				let currentTranslation = null;
+				let currentTranslator = null;
 
 				if (sub.data) {
 					try {
@@ -126,12 +127,48 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					}
 				}
 
+				// Pour les pages traducteur, récupérer le traducteur actuel
+				if (sub.type === 'translator_pages' && parsedData?.translatorId) {
+					const currentTranslatorResult = await db
+						.select({
+							id: table.translator.id,
+							name: table.translator.name,
+							pages: table.translator.pages
+						})
+						.from(table.translator)
+						.where(eq(table.translator.id, String(parsedData.translatorId)))
+						.limit(1);
+
+					if (currentTranslatorResult.length > 0) {
+						const row = currentTranslatorResult[0];
+						let pages: Array<{ name: string; link: string }> = [];
+						try {
+							const parsed = JSON.parse(row.pages || '[]') as Array<{ name?: string; link?: string }>;
+							if (Array.isArray(parsed)) {
+								pages = parsed.map((p) => ({
+									name: String(p.name ?? ''),
+									link: String(p.link ?? '')
+								}));
+							}
+						} catch {
+							pages = [];
+						}
+
+						currentTranslator = {
+							id: row.id,
+							name: row.name,
+							pages
+						};
+					}
+				}
+
 				return {
 					...sub,
 					adminNotes: sub.adminNotes || '',
 					parsedData,
 					currentGame,
-					currentTranslation
+					currentTranslation,
+					currentTranslator
 				};
 			})
 		);

@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { getValidAccessToken } from '$lib/server/google-oauth';
-import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, or, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
 const SHEET_TAB_TR = 'Traducteurs/Relecteurs';
@@ -1016,6 +1016,26 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 	if (!appendRes.ok) {
 		const err = await appendRes.text().catch(() => '');
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
+	}
+}
+
+/**
+ * Resynchronise les lignes "Jeux" où un traducteur/relecteur est présent
+ * afin de mettre à jour le lien basé sur sa première page.
+ */
+export async function syncTranslatorLinksInJeuxSheet(translatorId: string): Promise<void> {
+	const refs = await db
+		.select({ id: table.gameTranslation.id })
+		.from(table.gameTranslation)
+		.where(
+			or(
+				eq(table.gameTranslation.translatorId, translatorId),
+				eq(table.gameTranslation.proofreaderId, translatorId)
+			)
+		);
+
+	for (const row of refs) {
+		await syncTranslationToGoogleSheet(row.id);
 	}
 }
 

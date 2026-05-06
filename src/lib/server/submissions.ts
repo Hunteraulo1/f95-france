@@ -13,6 +13,7 @@ import {
     deleteTranslationFromGoogleSheet,
     syncGameTranslationsToGoogleSheet,
     syncTranslationToGoogleSheet,
+    syncTranslatorLinksInJeuxSheet,
     syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
@@ -286,9 +287,34 @@ export async function applySubmission(submissionId: string) {
 
 	// Appliquer les changements selon le type
 	if (sub.type === 'translator_pages') {
-		const translatorId = parsedData.gameId ?? (parsedData as { translatorId?: string }).translatorId;
-		const pagesRaw = (parsedData as { pages?: unknown }).pages;
-		if (!translatorId || !Array.isArray(pagesRaw)) {
+		const translatorIdCandidate = (parsedData as { translatorId?: unknown; gameId?: unknown }).translatorId;
+		const translatorId =
+			typeof translatorIdCandidate === 'string' && translatorIdCandidate.trim() !== ''
+				? translatorIdCandidate.trim()
+				: null;
+
+		const pagesValue = (parsedData as { pages?: unknown }).pages;
+		let pagesRaw: unknown[] = [];
+		if (Array.isArray(pagesValue)) {
+			pagesRaw = pagesValue;
+		} else if (typeof pagesValue === 'string') {
+			try {
+				const parsedPages = JSON.parse(pagesValue);
+				if (Array.isArray(parsedPages)) pagesRaw = parsedPages;
+			} catch {
+				pagesRaw = [];
+			}
+		}
+
+		if (!translatorId || pagesRaw.length === 0 && pagesValue !== undefined) {
+			// Autorise explicitement une liste vide [] (suppression de toutes les pages),
+			// mais refuse les payloads invalides.
+			if (!translatorId || !Array.isArray(pagesValue)) {
+				throw new Error('Données traducteur invalides');
+			}
+		}
+
+		if (!translatorId || (!Array.isArray(pagesValue) && typeof pagesValue !== 'string')) {
 			throw new Error('Données traducteur invalides');
 		}
 		const pages = pagesRaw
@@ -327,6 +353,9 @@ export async function applySubmission(submissionId: string) {
 		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
 			console.warn('[google-sheets-sync] submission translator pages failed:', err);
 		});
+		void syncTranslatorLinksInJeuxSheet(translatorId).catch((err) => {
+			console.warn('[google-sheets-sync] submission translator links in Jeux failed:', err);
+		});
 	} else if (sub.type === 'game') {
 		// Créer un nouveau jeu
 		const gameData = parsedData.game;
@@ -344,6 +373,8 @@ export async function applySubmission(submissionId: string) {
 		if (existingGame.length > 0) {
 			throw new Error('Un jeu avec ce nom existe déjà');
 		}
+
+		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
 		// Créer le jeu
 		await db.insert(table.game).values({
@@ -390,15 +421,7 @@ export async function applySubmission(submissionId: string) {
 				translationData.gameType !== null &&
 				String(translationData.gameType).trim() !== ''
 					? coerceGameEngineType(translationData.gameType)
-					: 'other';
-			const tnameNewTr =
-				translationData.tname != null && String(translationData.tname).trim().length > 0
-					? (translationData.tname as
-							| 'no_translation'
-							| 'integrated'
-							| 'translation'
-							| 'translation_with_mods')
-					: 'translation';
+					: engineFromGamePayload;
 			const allowsNewGameAc = await getGameAllowsTranslationAutoCheck(gameId!);
 			const [createdTranslation] = await db
 				.insert(table.gameTranslation)
@@ -418,7 +441,6 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
-					tname: tnameNewTr,
 					gameType: engineNewTr,
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
@@ -544,6 +566,18 @@ export async function applySubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+
+		if (
+			gameData.type !== undefined &&
+			gameData.type !== null &&
+			String(gameData.type).trim() !== ''
+		) {
+			const nextEngine = coerceGameEngineType(gameData.type);
+			await db
+				.update(table.gameTranslation)
+				.set({ gameType: nextEngine, updatedAt: new Date() })
+				.where(eq(table.gameTranslation.gameId, sub.gameId));
+		}
 
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(sub.gameId);
@@ -1090,6 +1124,9 @@ export async function revertSubmission(submissionId: string) {
 			.where(eq(table.translator.id, translatorId));
 		void syncTranslatorToGoogleSheet(translatorId).catch((err) => {
 			console.warn('[google-sheets-sync] revert translator pages failed:', err);
+		});
+		void syncTranslatorLinksInJeuxSheet(translatorId).catch((err) => {
+			console.warn('[google-sheets-sync] revert translator links in Jeux failed:', err);
 		});
 	} else if (sub.type === 'game') {
 		// Supprimer le jeu créé (et sa traduction si créée)
