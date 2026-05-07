@@ -231,6 +231,14 @@
 		}
 	};
 
+	const requiresThreadIdForNextStep = $derived(
+		step === 1 && (game.website === 'f95z' || game.website === 'lc')
+	);
+	const hasValidThreadIdForNextStep = $derived(threadIdForDuplicateCheck(game.threadId) !== null);
+	const blockNextStepForMissingThread = $derived(
+		requiresThreadIdForNextStep && !hasValidThreadIdForNextStep
+	);
+
 	const scrapeData = async ({
 		threadId,
 		website
@@ -671,21 +679,21 @@
 </script>
 
 {#if !$isLoading}
-	<div class="mx-auto mt-0 flex w-full max-w-7xl flex-col gap-4 px-3 py-2 sm:px-5 lg:px-8">
+	<div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 sm:px-5 lg:px-8">
 		<div class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-1">
 					<h1 class="text-xl font-semibold sm:text-2xl">Ajouter un jeu</h1>
 				</div>
+        <ul class="steps steps-horizontal mt-4 hidden overflow-x-auto xl:flex">
+          {#each stepLabels as label, index (label)}
+            <li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
+          {/each}
+        </ul>
 				<div class="badge badge-outline badge-lg badge-primary">
 					Étape {step + 1} / {maxStep + 1}
 				</div>
 			</div>
-			<ul class="steps steps-horizontal mt-4 hidden w-full overflow-x-auto lg:flex">
-				{#each stepLabels as label, index (label)}
-					<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
-				{/each}
-			</ul>
 		</div>
 
 		<form
@@ -797,7 +805,7 @@
 			>
 				{#if step < maxStep}
 					<button
-						class="btn w-full btn-outline btn-primary sm:w-44"
+						class="btn w-full btn-outline btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(-1)}
 						disabled={step <= 0}
@@ -805,15 +813,17 @@
 						Précédent
 					</button>
 					<button
-						class="btn w-full btn-primary sm:w-44"
+						class="btn w-full btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(1)}
+						disabled={blockNextStepForMissingThread}
+						title={blockNextStepForMissingThread ? 'Thread ID requis' : undefined}
 					>
 						Suivant
 					</button>
 				{:else}
 					<button
-						class="btn w-full btn-primary sm:w-52"
+						class="btn w-full btn-primary md:w-38"
 						type="submit"
 						disabled={blockFinalSubmit}
 						title={blockFinalSubmit

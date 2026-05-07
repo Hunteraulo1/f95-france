@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
-	// import { ScrapeGame } from '$types/schemas';
+// import { ScrapeGame } from '$types/schemas';
 	import type { ChangeEventHandler } from 'svelte/elements';
 	import Modal from '../Modal.svelte';
 
@@ -38,7 +38,7 @@
 </script>
 
 <button
-	class="btn w-full btn-info sm:w-48"
+	class="btn w-full btn-info md:w-38"
 	type="button"
 	onclick={() => {
 		insertModal = true;
@@ -63,7 +63,7 @@
 
 		<p class="py-4">Veuillez coller les données de LC Extractor ?</p>
 		<textarea
-			placeholder="Données de LC Extractor"
+			placeholder="Données de l'Extractor"
 			class="textarea-bordered textarea max-h-32 w-full"
 			oninput={handleInput}
 			bind:value={insertObject}
