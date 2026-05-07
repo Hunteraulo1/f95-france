@@ -136,7 +136,23 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (timeoutResult.kind === 'error') {
 			// On évite de faire échouer le cron provider (500) sur une dépendance externe instable.
 			console.error('[cron/check-version] runAutoCheckVersions a échoué:', timeoutResult.error);
-			return json({ ok: false, error: 'Auto-check failed' }, { status: 200 });
+			return json(
+				{
+					ok: false,
+					error: 'Auto-check failed',
+					errorReport: [
+						{
+							stage: 'run',
+							message: 'Exécution check-version échouée',
+							detail:
+								timeoutResult.error instanceof Error
+									? timeoutResult.error.message
+									: String(timeoutResult.error)
+						}
+					]
+				},
+				{ status: 200 }
+			);
 		}
 
 		const finishedAt = new Date();
@@ -148,6 +164,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({
 			ok: true,
 			...timeoutResult.result,
+			errorCount: timeoutResult.result.issues.length,
 			durationMs: finishedAt.getTime() - now.getTime(),
 			forced: isForcedRun
 		});
