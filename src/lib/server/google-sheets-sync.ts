@@ -793,6 +793,56 @@ async function sortJeuxSheetByGameName(auth: {
 	}
 }
 
+function parseCountCell(value: string | undefined): number {
+	const raw = (value ?? '').trim();
+	if (!raw) return 0;
+	const n = Number.parseInt(raw, 10);
+	return Number.isFinite(n) ? n : 0;
+}
+
+async function sortTranslatorSheetByActivityDesc(auth: {
+	spreadsheetId: string;
+	headers: HeadersInit;
+	apiKey?: string;
+}): Promise<void> {
+	const tab = encodeURIComponent(SHEET_TAB_TR);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length <= 2) return;
+
+	const headersRow = rows[0] ?? [];
+	const tradIdx = findHeaderIndex(headersRow, ['Traduction']);
+	const readIdx = findHeaderIndex(headersRow, ['Relecture']);
+	const nameIdx = findHeaderIndex(headersRow, ['Nom']);
+	if (tradIdx === -1 || readIdx === -1) return;
+
+	const dataRows = rows.slice(1);
+	const sortedRows = [...dataRows].sort((a, b) => {
+		const aTotal = parseCountCell(a[tradIdx]) + parseCountCell(a[readIdx]);
+		const bTotal = parseCountCell(b[tradIdx]) + parseCountCell(b[readIdx]);
+		if (aTotal !== bTotal) return bTotal - aTotal; // Z→A sur (Traduction + Relecture)
+
+		const aName = nameIdx === -1 ? '' : (a[nameIdx] ?? '').trim();
+		const bName = nameIdx === -1 ? '' : (b[nameIdx] ?? '').trim();
+		return aName.localeCompare(bName, 'fr', { sensitivity: 'base' });
+	});
+
+	const lastCol = toColA1(headersRow.length - 1);
+	await sheetsBatchUpdate(auth, [
+		{
+			range: `'${SHEET_TAB_TR}'!A2:${lastCol}${sortedRows.length + 1}`,
+			values: sortedRows
+		}
+	]);
+}
+
 /**
  * Réapplique un format "Automatique / Général" sur la plage utile d'un onglet.
  * Permet de corriger les feuilles passées en "Texte brut" après des opérations d'édition.
@@ -1103,7 +1153,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', tr.discordId ?? '');
+	set('Id Discord', '');
 	set('Traduction', String(tr.tradCount ?? 0));
 	set('Relecture', String(tr.readCount ?? 0));
 	set('Id Db', tr.id);
@@ -1137,6 +1187,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 				console.warn('[google-sheets-sync] rich text pages update failed:', err);
 			}
 		}
+		await sortTranslatorSheetByActivityDesc(auth);
 		await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		return;
 	}
@@ -1185,6 +1236,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 			}
 		}
 	}
+	await sortTranslatorSheetByActivityDesc(auth);
 	await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 }
 
@@ -1233,7 +1285,7 @@ function buildTranslatorRow(
 	};
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', tr.discordId ?? '');
+	set('Id Discord', '');
 	set('Traduction', String(tr.tradCount ?? 0));
 	set('Relecture', String(tr.readCount ?? 0));
 	set(['Id Db', 'ID DB'], tr.id);
@@ -1480,6 +1532,8 @@ export async function syncDbToSpreadsheetBulk(
 					);
 				}
 			}
+			onProgress?.('Sheets TR : tri Z→A sur (Traduction + Relecture)…');
+			await sortTranslatorSheetByActivityDesc(auth);
 			onProgress?.('Sheets TR : normalisation du format des cellules…');
 			await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		}
