@@ -163,6 +163,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.where(whereCondition)
 			.orderBy(
 				statusFilter === 'pending'
+					? sql`CASE
+						WHEN ${table.submission.status} = 'pending' THEN 0
+						WHEN ${table.submission.status} = 'opened' THEN 1
+						ELSE 2
+					END`
+					: sql`0`,
+				statusFilter === 'pending'
 					? asc(table.submission.createdAt)
 					: desc(table.submission.createdAt)
 			);
@@ -395,6 +402,7 @@ export const actions: Actions = {
 		const submissionId = formData.get('submissionId') as string;
 		const status = formData.get('status') as string;
 		const adminNotes = formData.get('adminNotes') as string;
+		const submissionDataJson = formData.get('submissionDataJson');
 
 		if (!submissionId || !status) {
 			return fail(400, { message: 'ID de soumission et statut requis' });
@@ -431,6 +439,22 @@ export const actions: Actions = {
 			const currentStatus = currentSubmission[0].status;
 			const submissionUserId = currentSubmission[0].userId;
 			const submissionType = currentSubmission[0].type;
+
+			// Si des modifications de payload sont présentes dans le formulaire,
+			// les persister avant la mise à jour du statut (enregistrement unique).
+			if (submissionDataJson !== null) {
+				let parsed = parseSubmissionPayloadJson(submissionDataJson);
+				if (!parsed.ok) {
+					const rebuiltPayload = formDataToSubmissionPayload(submissionType, formData);
+					if (!rebuiltPayload) return fail(400, { message: parsed.message });
+					parsed = { ok: true, data: rebuiltPayload };
+				}
+				const shapeError = validateSubmissionPayloadForType(submissionType, parsed.data);
+				if (shapeError) {
+					return fail(400, { message: shapeError });
+				}
+				await persistSubmissionPayload(submissionId, parsed.data);
+			}
 
 			// Autoriser le retour à "pending" sauf depuis "accepted" (workflow protégé).
 			if (status === 'pending' && currentStatus === 'accepted') {

@@ -231,7 +231,9 @@
 			!canEditStatus &&
 			submission?.type !== 'translator_pages' &&
 			submission?.type !== 'delete' &&
-			(submission?.status === 'pending' || submission?.status === 'rejected')
+			(submission?.status === 'pending' ||
+				submission?.status === 'opened' ||
+				submission?.status === 'rejected')
 		)
 	);
 	/** Admin : en attente ou ouverte, avant acceptation / refus. */
@@ -241,6 +243,7 @@
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
+	const isOpenedReadOnlyForUser = $derived(Boolean(!canEditStatus && submission?.status === 'opened'));
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
@@ -859,12 +862,30 @@
 							<span>{submissionEditError}</span>
 						</div>
 					{/if}
+					{#if isOpenedReadOnlyForUser}
+						<div class="mb-4 alert alert-warning">
+							<span>
+								Cette soumission n’est plus modifiable : un listeur est actuellement en train de la
+								traiter.
+							</span>
+						</div>
+					{/if}
 
 					<form
+						id="submission-save-form"
 						method="POST"
-						action="?/updateSubmissionData"
-						use:enhance={() => {
+						action={canEditStatus ? '?/updateStatus' : '?/updateSubmissionData'}
+						use:enhance={(e) => {
 							submissionEditError = null;
+							statusError = null;
+							if (canEditStatus) {
+								const validationError = validateStatusChange(selectedStatus, adminNotesText);
+								if (validationError) {
+									statusError = validationError;
+									e.cancel();
+									return;
+								}
+							}
 							return async function ({ result, update }) {
 								if (result.type === 'success') {
 									await update({ invalidateAll: true });
@@ -874,7 +895,11 @@
 										typeof result.data === 'object' && 'message' in result.data
 											? String(result.data.message)
 											: 'Erreur lors de la mise à jour';
-									submissionEditError = message;
+									if (canEditStatus) {
+										statusError = message;
+									} else {
+										submissionEditError = message;
+									}
 								}
 							};
 						}}
@@ -883,6 +908,10 @@
 
 						<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 						<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+						{#if canEditStatus}
+							<input type="hidden" name="status" value={selectedStatus} />
+							<input type="hidden" name="adminNotes" value={adminNotesText} />
+						{/if}
 						{#if submission.type === 'translator_pages'}
 							<input
 								type="hidden"
@@ -893,6 +922,7 @@
 							/>
 						{/if}
 
+						<fieldset disabled={isOpenedReadOnlyForUser}>
 						{#if submission.type === 'translator_pages'}
 							<div class="mt-2 space-y-4">
 								<h5 class="text-md font-semibold">Pages traducteur</h5>
@@ -1266,11 +1296,15 @@
 								</div>
 							</div>
 						{/if}
+						</fieldset>
 
-						<div class="modal-action mt-4">
-							<button type="button" class="btn" onclick={onClose}> Annuler </button>
-							<button type="submit" class="btn btn-primary"> Enregistrer </button>
-						</div>
+						{#if !canEditStatus && submission?.status !== 'opened'}
+							<div class="modal-action mt-4">
+								<button type="button" class="btn" onclick={onClose}>Annuler</button>
+								<button type="submit" class="btn btn-primary">Enregistrer</button>
+							</div>
+						{/if}
+
 					</form>
 				</div>
 			{/if}
@@ -1315,36 +1349,7 @@
 						</div>
 					{/if}
 
-					<form
-						method="POST"
-						action="?/updateStatus"
-						use:enhance={(e) => {
-							statusError = null;
-
-							const validationError = validateStatusChange(selectedStatus, adminNotesText);
-							if (validationError) {
-								e.cancel();
-								statusError = validationError;
-								return;
-							}
-
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update({ invalidateAll: true });
-									onClose();
-								} else if (result.type === 'failure' && result.data) {
-									const message =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: 'Erreur lors de la mise à jour';
-									statusError = message;
-								}
-							};
-						}}
-					>
-						<input type="hidden" name="submissionId" value={submission.id} />
-
-						<div class="form-control w-full">
+					<div class="form-control w-full">
 							<label for="status" class="label">
 								<span class="label-text">Statut</span>
 							</label>
@@ -1392,12 +1397,11 @@
 								</div>
 							{/if}
 						</div>
-
-						<div class="modal-action mt-4">
-							<button type="button" class="btn" onclick={onClose}> Annuler </button>
-							<button type="submit" class="btn btn-primary"> Enregistrer </button>
-						</div>
-					</form>
+					<div class="modal-action mt-4">
+						<button type="submit" form="submission-save-form" class="btn btn-primary">
+							Enregistrer
+						</button>
+					</div>
 				</div>
 			{:else}
 				<div class="modal-action mt-4">
