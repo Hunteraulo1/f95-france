@@ -225,7 +225,10 @@
 			amount > 0 && previousStep === 1 && step > previousStep && game.website === 'f95z';
 
 		// Compat query param: garder le déclenchement différé si nécessaire.
-		if ((pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') || movedForwardFromThreadStep) {
+		if (
+			(pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') ||
+			movedForwardFromThreadStep
+		) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
@@ -685,11 +688,11 @@
 				<div class="space-y-1">
 					<h1 class="text-xl font-semibold sm:text-2xl">Ajouter un jeu</h1>
 				</div>
-        <ul class="steps steps-horizontal mt-4 hidden overflow-x-auto xl:flex">
-          {#each stepLabels as label, index (label)}
-            <li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
-          {/each}
-        </ul>
+				<ul class="steps steps-horizontal mt-4 hidden overflow-x-auto xl:flex">
+					{#each stepLabels as label, index (label)}
+						<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
+					{/each}
+				</ul>
 				<div class="badge badge-outline badge-lg badge-primary">
 					Étape {step + 1} / {maxStep + 1}
 				</div>
@@ -739,7 +742,7 @@
 				<div class="flex flex-wrap items-start justify-between gap-2">
 					<h2 class="text-sm font-semibold text-base-content">Jeu en cours</h2>
 					{#if hasThreadConflict}
-						<span class="badge badge-warning badge-sm">Conflit thread</span>
+						<span class="badge badge-sm badge-warning">Conflit thread</span>
 					{/if}
 				</div>
 				<div class="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">

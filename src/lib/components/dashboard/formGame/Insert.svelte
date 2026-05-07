@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
-// import { ScrapeGame } from '$types/schemas';
+	// import { ScrapeGame } from '$types/schemas';
 	import type { ChangeEventHandler } from 'svelte/elements';
 	import Modal from '../Modal.svelte';
 
