@@ -44,6 +44,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tname,
 			gameType: gameTypeBody,
 			directMode,
+			silentMode,
 			translatorId,
 			proofreaderId
 		} = body;
@@ -103,6 +104,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
+		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission =
@@ -126,10 +129,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 			// La table update/MAJ doit refléter l'action dès l'ajout.
 			await createGameUpdateRow(gameId, 'adding');
-			void sendDiscordWebhookAdminNewSubmission({
-				submitterName: currentUser.username,
-				gameId
-			});
+			if (!isSilentMode) {
+				void sendDiscordWebhookAdminNewSubmission({
+					submitterName: currentUser.username,
+					gameId
+				});
+			}
 
 			return json(
 				{
@@ -183,13 +188,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				ac: acValue
 			}
 		});
-		void sendDiscordWebhookUpdatesSubmissionApplied({
-			submissionId: created?.id ?? 'direct-translation',
-			submissionType: 'translation',
-			dataJson,
-			translationWasUpdate: false,
-			adminNotes: null
-		});
+		if (!isSilentMode) {
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: created?.id ?? 'direct-translation',
+				submissionType: 'translation',
+				dataJson,
+				translationWasUpdate: false,
+				adminNotes: null
+			});
+		}
 		if (created?.id) {
 			void syncTranslationToGoogleSheet(created.id).catch((err) => {
 				console.warn('[google-sheets-sync] add translation failed:', err);

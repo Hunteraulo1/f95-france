@@ -63,7 +63,6 @@
 		ac: false
 	});
 
-	let silentMode = $state(false);
 	let scraping = $state(false);
 	let savedId = $state<number | null>(null);
 
@@ -703,19 +702,6 @@
 					<span class="font-medium">Section active :</span>
 					{stepLabels[step]}
 				</div>
-				{#if isAdmin}
-					<label class="label cursor-pointer gap-2 p-0">
-						<span class="label-text">Mode silencieux</span>
-						<input
-							type="checkbox"
-							class="toggle toggle-primary toggle-sm"
-							checked={silentMode}
-							onchange={() => {
-								silentMode = !silentMode;
-							}}
-						/>
-					</label>
-				{/if}
 			</div>
 
 			<div
