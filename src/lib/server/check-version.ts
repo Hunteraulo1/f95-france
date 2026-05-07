@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookProofreadersVersionBumps,
-    sendDiscordWebhookTranslatorsVersionBumps,
-    sendDiscordWebhookUpdatesAutoCheckVersionBump,
-    type TranslatorVersionBumpLine
+	sendDiscordWebhookProofreadersVersionBumps,
+	sendDiscordWebhookTranslatorsVersionBumps,
+	sendDiscordWebhookUpdatesAutoCheckVersionBump,
+	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';

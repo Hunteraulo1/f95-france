@@ -98,10 +98,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
 		const runPromise = runAutoCheckVersions();
 		const timeoutResult = await Promise.race([
-			runPromise.then((result) => ({ kind: 'done' as const, result })).catch((error) => ({
-				kind: 'error' as const,
-				error
-			})),
+			runPromise
+				.then((result) => ({ kind: 'done' as const, result }))
+				.catch((error) => ({
+					kind: 'error' as const,
+					error
+				})),
 			new Promise<{ kind: 'timeout' }>((resolve) => {
 				setTimeout(() => resolve({ kind: 'timeout' }), maxWaitMs);
 			})

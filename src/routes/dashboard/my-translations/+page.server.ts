@@ -19,7 +19,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const statusFilterRaw = (url.searchParams.get('status') ?? 'all').trim();
 	const statusFilter =
-		statusFilterRaw === 'in_progress' || statusFilterRaw === 'completed' || statusFilterRaw === 'abandoned'
+		statusFilterRaw === 'in_progress' ||
+		statusFilterRaw === 'completed' ||
+		statusFilterRaw === 'abandoned'
 			? statusFilterRaw
 			: 'all';
 

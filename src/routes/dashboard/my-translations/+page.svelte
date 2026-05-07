@@ -30,7 +30,7 @@
 				{#if data.linkedTranslator}
 					Filtré sur <strong>{data.linkedTranslator.name}</strong> (traducteur ou relecteur).
 					{#if data.outdatedCount > 0}
-						<span class="ml-2 badge badge-warning badge-sm">
+						<span class="ml-2 badge badge-sm badge-warning">
 							{data.outdatedCount} non à jour
 						</span>
 					{/if}
@@ -44,23 +44,25 @@
 			<div class="join">
 				<a
 					class="btn join-item btn-sm {data.statusFilter === 'all' ? 'btn-active' : 'btn-outline'}"
-					href="/dashboard/my-translations?status=all"
-					>Toutes</a
+					href="/dashboard/my-translations?status=all">Toutes</a
 				>
 				<a
-					class="btn join-item btn-sm {data.statusFilter === 'in_progress' ? 'btn-active' : 'btn-outline'}"
-					href="/dashboard/my-translations?status=in_progress"
-					>En cours</a
+					class="btn join-item btn-sm {data.statusFilter === 'in_progress'
+						? 'btn-active'
+						: 'btn-outline'}"
+					href="/dashboard/my-translations?status=in_progress">En cours</a
 				>
 				<a
-					class="btn join-item btn-sm {data.statusFilter === 'completed' ? 'btn-active' : 'btn-outline'}"
-					href="/dashboard/my-translations?status=completed"
-					>Terminées</a
+					class="btn join-item btn-sm {data.statusFilter === 'completed'
+						? 'btn-active'
+						: 'btn-outline'}"
+					href="/dashboard/my-translations?status=completed">Terminées</a
 				>
 				<a
-					class="btn join-item btn-sm {data.statusFilter === 'abandoned' ? 'btn-active' : 'btn-outline'}"
-					href="/dashboard/my-translations?status=abandoned"
-					>Abandonnées</a
+					class="btn join-item btn-sm {data.statusFilter === 'abandoned'
+						? 'btn-active'
+						: 'btn-outline'}"
+					href="/dashboard/my-translations?status=abandoned">Abandonnées</a
 				>
 			</div>
 		{/if}
@@ -74,7 +76,7 @@
 					Demande à un admin de lier ton compte à ton entrée « Traducteur/Relecteur ».
 				</div>
 			</div>
-			<a class="btn btn-sm btn-outline" href="/dashboard/settings">Paramètres</a>
+			<a class="btn btn-outline btn-sm" href="/dashboard/settings">Paramètres</a>
 		</div>
 	{:else if data.translations.length === 0}
 		<div class="card bg-base-100 shadow">
@@ -113,13 +115,15 @@
 							</td>
 							<td>
 								{#if t.isOutdated}
-									<span class="badge badge-warning badge-sm text-nowrap">Non à jour</span>
+									<span class="badge badge-sm text-nowrap badge-warning">Non à jour</span>
 								{:else}
-									<span class="badge badge-success badge-sm text-nowrap">À jour</span>
+									<span class="badge badge-sm text-nowrap badge-success">À jour</span>
 								{/if}
 							</td>
 							<td>
-								<span class={`badge badge-sm ${statusBadge(t.status)}`}>{labelStatus(t.status)}</span>
+								<span class={`badge badge-sm ${statusBadge(t.status)}`}
+									>{labelStatus(t.status)}</span
+								>
 							</td>
 							<td class="text-sm">
 								<div class="flex flex-col">
@@ -151,10 +155,7 @@
 									<div class="text-xs opacity-70">
 										Traducteur :
 										{#if translator?.username}
-											<a
-												class="link link-hover"
-												href={`/dashboard/profile/${translator.username}`}
-											>
+											<a class="link link-hover" href={`/dashboard/profile/${translator.username}`}>
 												{translator.name}
 											</a>
 										{:else}

@@ -7,8 +7,8 @@ import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-    syncTranslationToGoogleSheet,
-    syncTranslatorToGoogleSheet
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
@@ -125,8 +125,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			computedGameAutoCheck &&
 			(isNoTranslation ||
 				isIntegratedTranslation ||
-				normVersion(translation?.version).length > 0 &&
-					normVersion(translation?.version) === normVersion(gameVersion));
+				(normVersion(translation?.version).length > 0 &&
+					normVersion(translation?.version) === normVersion(gameVersion)));
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {

@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    parseSubmissionPayloadJson,
-    persistSubmissionPayload,
-    validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
@@ -22,7 +22,8 @@ const formDataToSubmissionPayload = (
 	submissionType: string,
 	formData: FormData
 ): Record<string, unknown> | null => {
-	const maybeTrim = (v: FormDataEntryValue | null): string => (typeof v === 'string' ? v.trim() : '');
+	const maybeTrim = (v: FormDataEntryValue | null): string =>
+		typeof v === 'string' ? v.trim() : '';
 	const boolFromForm = (v: FormDataEntryValue | null, defaultValue: boolean): boolean => {
 		// HTML checkboxes submit "on" when checked, or are absent when unchecked.
 		if (v === null) return defaultValue;

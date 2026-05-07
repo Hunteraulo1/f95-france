@@ -243,7 +243,9 @@
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
-	const isOpenedReadOnlyForUser = $derived(Boolean(!canEditStatus && submission?.status === 'opened'));
+	const isOpenedReadOnlyForUser = $derived(
+		Boolean(!canEditStatus && submission?.status === 'opened')
+	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
 	const gameFields: FieldConfig<GameSubmissionJson>[] = [
@@ -923,379 +925,383 @@
 						{/if}
 
 						<fieldset disabled={isOpenedReadOnlyForUser}>
-						{#if submission.type === 'translator_pages'}
-							<div class="mt-2 space-y-4">
-								<h5 class="text-md font-semibold">Pages traducteur</h5>
-								<div class="space-y-2">
-									{#each editTranslatorPages as page, index (index)}
-										<div class="flex items-center gap-2">
-											<input
-												type="text"
-												class="input-bordered input flex-1"
-												placeholder="Nom de la page"
-												name="editTranslatorPageName"
-												bind:value={page.name}
-											/>
-											<input
-												type="url"
-												class="input-bordered input flex-1"
-												placeholder="Lien"
-												name="editTranslatorPageLink"
-												bind:value={page.link}
-											/>
-											<button
-												type="button"
-												class="btn btn-sm btn-error"
-												onclick={() => removeTranslatorPageRow(index)}
-											>
-												✕
-											</button>
-										</div>
-									{/each}
-									{#if editTranslatorPages.length === 0}
-										<div class="text-sm opacity-70">
-											Aucune page (la liste sera vide après enregistrement).
-										</div>
-									{/if}
+							{#if submission.type === 'translator_pages'}
+								<div class="mt-2 space-y-4">
+									<h5 class="text-md font-semibold">Pages traducteur</h5>
+									<div class="space-y-2">
+										{#each editTranslatorPages as page, index (index)}
+											<div class="flex items-center gap-2">
+												<input
+													type="text"
+													class="input-bordered input flex-1"
+													placeholder="Nom de la page"
+													name="editTranslatorPageName"
+													bind:value={page.name}
+												/>
+												<input
+													type="url"
+													class="input-bordered input flex-1"
+													placeholder="Lien"
+													name="editTranslatorPageLink"
+													bind:value={page.link}
+												/>
+												<button
+													type="button"
+													class="btn btn-sm btn-error"
+													onclick={() => removeTranslatorPageRow(index)}
+												>
+													✕
+												</button>
+											</div>
+										{/each}
+										{#if editTranslatorPages.length === 0}
+											<div class="text-sm opacity-70">
+												Aucune page (la liste sera vide après enregistrement).
+											</div>
+										{/if}
+									</div>
+									<button
+										type="button"
+										class="btn btn-outline btn-sm"
+										onclick={addTranslatorPageRow}
+									>
+										+ Ajouter une ligne
+									</button>
 								</div>
-								<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPageRow}>
-									+ Ajouter une ligne
-								</button>
-							</div>
-						{:else if submission.type !== 'translation' && submission.type !== 'translator_pages'}
-							<div class="mt-2 space-y-4">
-								<h5 class="text-md font-semibold">Détails du jeu</h5>
+							{:else if submission.type !== 'translation' && submission.type !== 'translator_pages'}
+								<div class="mt-2 space-y-4">
+									<h5 class="text-md font-semibold">Détails du jeu</h5>
 
-								<div class="grid gap-4 md:grid-cols-2">
-									<div class="form-control">
-										<label class="label" for="editGameName">
-											<span class="label-text">Nom</span>
-										</label>
-										<input
-											id="editGameName"
-											name="editGameName"
-											class="input-bordered input w-full"
-											type="text"
-											bind:value={editGameName}
-											required
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editGameWebsite">
-											<span class="label-text">Site web</span>
-										</label>
-										<select
-											id="editGameWebsite"
-											name="editGameWebsite"
-											class="select-bordered select w-full"
-											bind:value={editGameWebsite}
-											required
-										>
-											<option value="f95z">F95Zone</option>
-											<option value="lc">LewdCorner</option>
-											<option value="other">Autre</option>
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editGameThreadId">
-											<span class="label-text">Thread ID</span>
-										</label>
-										<input
-											id="editGameThreadId"
-											name="editGameThreadId"
-											class="input-bordered input w-full"
-											type="text"
-											placeholder="(vide)"
-											bind:value={editGameThreadId}
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editGameGameVersion">
-											<span class="label-text">Version jeu</span>
-										</label>
-										<input
-											id="editGameGameVersion"
-											name="editGameGameVersion"
-											class="input-bordered input w-full"
-											type="text"
-											bind:value={editGameGameVersion}
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editGameLink">
-											<span class="label-text">Lien</span>
-										</label>
-										<div class="join join-horizontal w-full">
+									<div class="grid gap-4 md:grid-cols-2">
+										<div class="form-control">
+											<label class="label" for="editGameName">
+												<span class="label-text">Nom</span>
+											</label>
 											<input
-												id="editGameLink"
-												name="editGameLink"
-												class="join-item input-bordered input min-w-0 flex-1"
+												id="editGameName"
+												name="editGameName"
+												class="input-bordered input w-full"
+												type="text"
+												bind:value={editGameName}
+												required
+											/>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editGameWebsite">
+												<span class="label-text">Site web</span>
+											</label>
+											<select
+												id="editGameWebsite"
+												name="editGameWebsite"
+												class="select-bordered select w-full"
+												bind:value={editGameWebsite}
+												required
+											>
+												<option value="f95z">F95Zone</option>
+												<option value="lc">LewdCorner</option>
+												<option value="other">Autre</option>
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editGameThreadId">
+												<span class="label-text">Thread ID</span>
+											</label>
+											<input
+												id="editGameThreadId"
+												name="editGameThreadId"
+												class="input-bordered input w-full"
+												type="text"
+												placeholder="(vide)"
+												bind:value={editGameThreadId}
+											/>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editGameGameVersion">
+												<span class="label-text">Version jeu</span>
+											</label>
+											<input
+												id="editGameGameVersion"
+												name="editGameGameVersion"
+												class="input-bordered input w-full"
+												type="text"
+												bind:value={editGameGameVersion}
+											/>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editGameLink">
+												<span class="label-text">Lien</span>
+											</label>
+											<div class="join join-horizontal w-full">
+												<input
+													id="editGameLink"
+													name="editGameLink"
+													class="input-bordered input join-item min-w-0 flex-1"
+													type="url"
+													placeholder="https://..."
+													bind:value={editGameLink}
+												/>
+												<button
+													type="button"
+													class="btn join-item shrink-0 btn-outline"
+													disabled={!editGameLink?.trim()}
+													aria-label="Ouvrir le lien dans un nouvel onglet"
+													onclick={() => {
+														const u = editGameLink?.trim();
+														if (u) window.open(u, '_blank', 'noopener,noreferrer');
+													}}
+												>
+													Ouvrir
+												</button>
+											</div>
+										</div>
+
+										<div class="form-control md:col-span-2">
+											<label class="label" for="editGameImage">
+												<span class="label-text">Image</span>
+											</label>
+											<input
+												id="editGameImage"
+												name="editGameImage"
+												class="input-bordered input w-full"
 												type="url"
 												placeholder="https://..."
-												bind:value={editGameLink}
+												bind:value={editGameImage}
+												required
 											/>
-											<button
-												type="button"
-												class="btn join-item btn-outline shrink-0"
-												disabled={!editGameLink?.trim()}
-												aria-label="Ouvrir le lien dans un nouvel onglet"
-												onclick={() => {
-													const u = editGameLink?.trim();
-													if (u) window.open(u, '_blank', 'noopener,noreferrer');
-												}}
-											>
-												Ouvrir
-											</button>
+										</div>
+
+										<div class="form-control md:col-span-2">
+											<label class="label" for="editGameTags">
+												<span class="label-text">Tags</span>
+											</label>
+											<textarea
+												id="editGameTags"
+												name="editGameTags"
+												class="textarea-bordered textarea w-full"
+												rows="3"
+												bind:value={editGameTags}
+											></textarea>
+										</div>
+
+										<div class="form-control md:col-span-2">
+											<label class="label" for="editGameDescription">
+												<span class="label-text">Description</span>
+											</label>
+											<textarea
+												id="editGameDescription"
+												name="editGameDescription"
+												class="textarea-bordered textarea w-full"
+												rows="3"
+												bind:value={editGameDescription}
+											></textarea>
 										</div>
 									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editGameImage">
-											<span class="label-text">Image</span>
-										</label>
-										<input
-											id="editGameImage"
-											name="editGameImage"
-											class="input-bordered input w-full"
-											type="url"
-											placeholder="https://..."
-											bind:value={editGameImage}
-											required
-										/>
-									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editGameTags">
-											<span class="label-text">Tags</span>
-										</label>
-										<textarea
-											id="editGameTags"
-											name="editGameTags"
-											class="textarea-bordered textarea w-full"
-											rows="3"
-											bind:value={editGameTags}
-										></textarea>
-									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editGameDescription">
-											<span class="label-text">Description</span>
-										</label>
-										<textarea
-											id="editGameDescription"
-											name="editGameDescription"
-											class="textarea-bordered textarea w-full"
-											rows="3"
-											bind:value={editGameDescription}
-										></textarea>
-									</div>
 								</div>
-							</div>
-						{/if}
+							{/if}
 
-						{#if submission.type === 'translation' || submission.parsedData?.translation}
-							<div class="mt-6 space-y-4">
-								<h5 class="text-md font-semibold">Détails de la traduction</h5>
+							{#if submission.type === 'translation' || submission.parsedData?.translation}
+								<div class="mt-6 space-y-4">
+									<h5 class="text-md font-semibold">Détails de la traduction</h5>
 
-								<div class="grid gap-4 md:grid-cols-2">
-									<div class="form-control md:col-span-2">
-										<label class="label" for="editTranslationTranslationName">
-											<span class="label-text">Nom de traduction</span>
-										</label>
-										<input
-											id="editTranslationTranslationName"
-											name="editTranslationTranslationName"
-											class="input-bordered input w-full"
-											type="text"
-											placeholder="(vide)"
-											bind:value={editTranslationTranslationName}
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationVersion">
-											<span class="label-text">Version de référence</span>
-										</label>
-										<input
-											id="editTranslationVersion"
-											name="editTranslationVersion"
-											class="input-bordered input w-full"
-											type="text"
-											bind:value={editTranslationVersion}
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationTversion">
-											<span class="label-text">Version traduction</span>
-										</label>
-										<input
-											id="editTranslationTversion"
-											name="editTranslationTversion"
-											class="input-bordered input w-full"
-											type="text"
-											bind:value={editTranslationTversion}
-											required
-										/>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationTname">
-											<span class="label-text">Statut de traduction</span>
-										</label>
-										<select
-											id="editTranslationTname"
-											name="editTranslationTname"
-											class="select-bordered select w-full"
-											bind:value={editTranslationTname}
-											required
-										>
-											<option value="no_translation">Pas de traduction</option>
-											<option value="integrated">Intégrée</option>
-											<option value="translation">Traduction</option>
-											<option value="translation_with_mods">Traduction avec mods</option>
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationStatus">
-											<span class="label-text">Statut</span>
-										</label>
-										<select
-											id="editTranslationStatus"
-											name="editTranslationStatus"
-											class="select-bordered select w-full"
-											bind:value={editTranslationStatus}
-											required
-										>
-											<option value="in_progress">En cours</option>
-											<option value="completed">Terminé</option>
-											<option value="abandoned">Abandonné</option>
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationGameType">
-											<span class="label-text">Moteur (cette ligne)</span>
-										</label>
-										<select
-											id="editTranslationGameType"
-											name="editTranslationGameType"
-											class="select-bordered select w-full"
-											bind:value={editTranslationGameType}
-											required
-										>
-											<option value="renpy">Ren'Py</option>
-											<option value="rpgm">RPGM</option>
-											<option value="unity">Unity</option>
-											<option value="unreal">Unreal</option>
-											<option value="flash">Flash</option>
-											<option value="html">HTML</option>
-											<option value="qsp">QSP</option>
-											<option value="other">Autre</option>
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationTtype">
-											<span class="label-text">Type de traduction</span>
-										</label>
-										<select
-											id="editTranslationTtype"
-											name="editTranslationTtype"
-											class="select-bordered select w-full"
-											bind:value={editTranslationTtype}
-											required
-										>
-											<option value="auto">Auto</option>
-											<option value="vf">VF</option>
-											<option value="manual">Manual</option>
-											<option value="semi-auto">Semi-auto</option>
-											<option value="to_tested">À tester</option>
-											<option value="hs">HS</option>
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationTlink">
-											<span class="label-text">Lien de traduction</span>
-										</label>
-										<div class="join join-horizontal w-full">
+									<div class="grid gap-4 md:grid-cols-2">
+										<div class="form-control md:col-span-2">
+											<label class="label" for="editTranslationTranslationName">
+												<span class="label-text">Nom de traduction</span>
+											</label>
 											<input
-												id="editTranslationTlink"
-												name="editTranslationTlink"
-												class="join-item input-bordered input min-w-0 flex-1"
-												type="url"
+												id="editTranslationTranslationName"
+												name="editTranslationTranslationName"
+												class="input-bordered input w-full"
+												type="text"
 												placeholder="(vide)"
-												bind:value={editTranslationTlink}
+												bind:value={editTranslationTranslationName}
 											/>
-											<button
-												type="button"
-												class="btn join-item btn-outline shrink-0"
-												disabled={!editTranslationTlink?.trim()}
-												aria-label="Ouvrir le lien de traduction dans un nouvel onglet"
-												onclick={() => {
-													const u = editTranslationTlink?.trim();
-													if (u) window.open(u, '_blank', 'noopener,noreferrer');
-												}}
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationVersion">
+												<span class="label-text">Version de référence</span>
+											</label>
+											<input
+												id="editTranslationVersion"
+												name="editTranslationVersion"
+												class="input-bordered input w-full"
+												type="text"
+												bind:value={editTranslationVersion}
+											/>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationTversion">
+												<span class="label-text">Version traduction</span>
+											</label>
+											<input
+												id="editTranslationTversion"
+												name="editTranslationTversion"
+												class="input-bordered input w-full"
+												type="text"
+												bind:value={editTranslationTversion}
+												required
+											/>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationTname">
+												<span class="label-text">Statut de traduction</span>
+											</label>
+											<select
+												id="editTranslationTname"
+												name="editTranslationTname"
+												class="select-bordered select w-full"
+												bind:value={editTranslationTname}
+												required
 											>
-												Ouvrir
-											</button>
+												<option value="no_translation">Pas de traduction</option>
+												<option value="integrated">Intégrée</option>
+												<option value="translation">Traduction</option>
+												<option value="translation_with_mods">Traduction avec mods</option>
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationStatus">
+												<span class="label-text">Statut</span>
+											</label>
+											<select
+												id="editTranslationStatus"
+												name="editTranslationStatus"
+												class="select-bordered select w-full"
+												bind:value={editTranslationStatus}
+												required
+											>
+												<option value="in_progress">En cours</option>
+												<option value="completed">Terminé</option>
+												<option value="abandoned">Abandonné</option>
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationGameType">
+												<span class="label-text">Moteur (cette ligne)</span>
+											</label>
+											<select
+												id="editTranslationGameType"
+												name="editTranslationGameType"
+												class="select-bordered select w-full"
+												bind:value={editTranslationGameType}
+												required
+											>
+												<option value="renpy">Ren'Py</option>
+												<option value="rpgm">RPGM</option>
+												<option value="unity">Unity</option>
+												<option value="unreal">Unreal</option>
+												<option value="flash">Flash</option>
+												<option value="html">HTML</option>
+												<option value="qsp">QSP</option>
+												<option value="other">Autre</option>
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationTtype">
+												<span class="label-text">Type de traduction</span>
+											</label>
+											<select
+												id="editTranslationTtype"
+												name="editTranslationTtype"
+												class="select-bordered select w-full"
+												bind:value={editTranslationTtype}
+												required
+											>
+												<option value="auto">Auto</option>
+												<option value="vf">VF</option>
+												<option value="manual">Manual</option>
+												<option value="semi-auto">Semi-auto</option>
+												<option value="to_tested">À tester</option>
+												<option value="hs">HS</option>
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationTlink">
+												<span class="label-text">Lien de traduction</span>
+											</label>
+											<div class="join join-horizontal w-full">
+												<input
+													id="editTranslationTlink"
+													name="editTranslationTlink"
+													class="input-bordered input join-item min-w-0 flex-1"
+													type="url"
+													placeholder="(vide)"
+													bind:value={editTranslationTlink}
+												/>
+												<button
+													type="button"
+													class="btn join-item shrink-0 btn-outline"
+													disabled={!editTranslationTlink?.trim()}
+													aria-label="Ouvrir le lien de traduction dans un nouvel onglet"
+													onclick={() => {
+														const u = editTranslationTlink?.trim();
+														if (u) window.open(u, '_blank', 'noopener,noreferrer');
+													}}
+												>
+													Ouvrir
+												</button>
+											</div>
+										</div>
+
+										<div class="form-control md:col-span-2">
+											<label class="label cursor-pointer justify-start gap-3">
+												<input
+													type="checkbox"
+													name="editTranslationAc"
+													class="checkbox checkbox-sm"
+													bind:checked={editTranslationAc}
+												/>
+												<span class="label-text">Auto-Check</span>
+											</label>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationTranslatorId">
+												<span class="label-text">Traducteur</span>
+											</label>
+											<select
+												id="editTranslationTranslatorId"
+												name="editTranslationTranslatorId"
+												class="select-bordered select w-full"
+												bind:value={editTranslationTranslatorId}
+											>
+												<option value="">(vide)</option>
+												{#each translators as translator (translator.id)}
+													<option value={translator.id}>{translator.name}</option>
+												{/each}
+											</select>
+										</div>
+
+										<div class="form-control">
+											<label class="label" for="editTranslationProofreaderId">
+												<span class="label-text">Relecteur</span>
+											</label>
+											<select
+												id="editTranslationProofreaderId"
+												name="editTranslationProofreaderId"
+												class="select-bordered select w-full"
+												bind:value={editTranslationProofreaderId}
+											>
+												<option value="">(vide)</option>
+												{#each translators as translator (translator.id)}
+													<option value={translator.id}>{translator.name}</option>
+												{/each}
+											</select>
 										</div>
 									</div>
-
-									<div class="form-control md:col-span-2">
-										<label class="label cursor-pointer justify-start gap-3">
-											<input
-												type="checkbox"
-												name="editTranslationAc"
-												class="checkbox checkbox-sm"
-												bind:checked={editTranslationAc}
-											/>
-											<span class="label-text">Auto-Check</span>
-										</label>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationTranslatorId">
-											<span class="label-text">Traducteur</span>
-										</label>
-										<select
-											id="editTranslationTranslatorId"
-											name="editTranslationTranslatorId"
-											class="select-bordered select w-full"
-											bind:value={editTranslationTranslatorId}
-										>
-											<option value="">(vide)</option>
-											{#each translators as translator (translator.id)}
-												<option value={translator.id}>{translator.name}</option>
-											{/each}
-										</select>
-									</div>
-
-									<div class="form-control">
-										<label class="label" for="editTranslationProofreaderId">
-											<span class="label-text">Relecteur</span>
-										</label>
-										<select
-											id="editTranslationProofreaderId"
-											name="editTranslationProofreaderId"
-											class="select-bordered select w-full"
-											bind:value={editTranslationProofreaderId}
-										>
-											<option value="">(vide)</option>
-											{#each translators as translator (translator.id)}
-												<option value={translator.id}>{translator.name}</option>
-											{/each}
-										</select>
-									</div>
 								</div>
-							</div>
-						{/if}
+							{/if}
 						</fieldset>
 
 						{#if !canEditStatus && submission?.status !== 'opened'}
@@ -1304,7 +1310,6 @@
 								<button type="submit" class="btn btn-primary">Enregistrer</button>
 							</div>
 						{/if}
-
 					</form>
 				</div>
 			{/if}
@@ -1350,53 +1355,53 @@
 					{/if}
 
 					<div class="form-control w-full">
-							<label for="status" class="label">
-								<span class="label-text">Statut</span>
-							</label>
-							<select
-								id="status"
-								name="status"
-								class="select-bordered select w-full"
-								class:select-error={statusError}
-								bind:value={selectedStatus}
-								required
-							>
-								<option value="pending">En attente</option>
-								<option value="opened">Ouverte</option>
-								<option value="accepted">Acceptée</option>
-								<option value="rejected">Refusée</option>
-							</select>
-						</div>
+						<label for="status" class="label">
+							<span class="label-text">Statut</span>
+						</label>
+						<select
+							id="status"
+							name="status"
+							class="select-bordered select w-full"
+							class:select-error={statusError}
+							bind:value={selectedStatus}
+							required
+						>
+							<option value="pending">En attente</option>
+							<option value="opened">Ouverte</option>
+							<option value="accepted">Acceptée</option>
+							<option value="rejected">Refusée</option>
+						</select>
+					</div>
 
-						<div class="form-control mt-4 w-full">
-							<label for="adminNotes" class="label">
-								<span class="label-text">Notes admin</span>
-								{#if isRejected}
-									<span class="label-text-alt text-error">* Obligatoire</span>
-								{:else}
-									<span class="label-text-alt">(optionnel)</span>
-								{/if}
-							</label>
-							<textarea
-								id="adminNotes"
-								name="adminNotes"
-								class="textarea-bordered textarea w-full"
-								class:textarea-error={hasNotesError}
-								placeholder={isRejected
-									? 'Vous devez expliquer pourquoi cette soumission est refusée...'
-									: 'Ajouter des notes pour cette soumission...'}
-								rows="3"
-								required={isRejected}
-								bind:value={adminNotesText}
-							></textarea>
+					<div class="form-control mt-4 w-full">
+						<label for="adminNotes" class="label">
+							<span class="label-text">Notes admin</span>
 							{#if isRejected}
-								<div class="label">
-									<span class="label-text-alt text-error"
-										>Une note est obligatoire pour refuser une soumission</span
-									>
-								</div>
+								<span class="label-text-alt text-error">* Obligatoire</span>
+							{:else}
+								<span class="label-text-alt">(optionnel)</span>
 							{/if}
-						</div>
+						</label>
+						<textarea
+							id="adminNotes"
+							name="adminNotes"
+							class="textarea-bordered textarea w-full"
+							class:textarea-error={hasNotesError}
+							placeholder={isRejected
+								? 'Vous devez expliquer pourquoi cette soumission est refusée...'
+								: 'Ajouter des notes pour cette soumission...'}
+							rows="3"
+							required={isRejected}
+							bind:value={adminNotesText}
+						></textarea>
+						{#if isRejected}
+							<div class="label">
+								<span class="label-text-alt text-error"
+									>Une note est obligatoire pour refuser une soumission</span
+								>
+							</div>
+						{/if}
+					</div>
 					<div class="modal-action mt-4">
 						<button type="submit" form="submission-save-form" class="btn btn-primary">
 							Enregistrer
