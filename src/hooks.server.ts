@@ -1,10 +1,10 @@
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+  EXTENSION_ONLY_API_ROUTE,
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -82,6 +82,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
 
 	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
+	const isSessionQuotaMeteredApiPath =
+		pathname.startsWith('/api/extension-api') ||
+		pathname.startsWith('/api/extension') ||
+		pathname.startsWith('/api/games') ||
+		pathname.startsWith('/api/translations') ||
+		pathname.startsWith('/api/translators') ||
+		pathname.startsWith('/api/updates');
 	const apiKeyExemptPath =
 		pathname === '/api' ||
 		pathname === '/api/' ||
@@ -90,7 +97,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/api/google-oauth/');
 
 	// Routes /api/* : si en-tête Bearer / X-Api-Key → auth par clé ; sinon session cookie (quota `kind=session`).
-	if (isApiPath && method !== 'OPTIONS' && method !== 'HEAD' && !apiKeyExemptPath) {
+	if (
+		isApiPath &&
+		method !== 'OPTIONS' &&
+		method !== 'HEAD' &&
+		!apiKeyExemptPath &&
+		isSessionQuotaMeteredApiPath
+	) {
 		const wantsApiKey = extractApiKeyFromRequest(event.request) !== null;
 		if (wantsApiKey) {
 			const keyResult = await validateApiKeyRequest(event.request);
