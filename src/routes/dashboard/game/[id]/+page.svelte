@@ -117,6 +117,7 @@
 	// État pour le modal de modification du jeu
 	let showEditGameModal = $state(false);
 	let showEditGameImagePreview = $state(false);
+	let showGameImagePopup = $state(false);
 	let editingGame = $state({
 		name: '',
 		description: '',
@@ -935,13 +936,22 @@
 				<div class="flex flex-col gap-6 lg:flex-row">
 					<!-- Image du jeu -->
 					<div class="flex shrink-0 flex-col gap-4">
-						<img
-							src={gameCoverSrc}
-							alt={game.name}
-							class="h-64 w-48 rounded-lg object-cover shadow-md"
-							loading="lazy"
-							referrerpolicy="no-referrer"
-						/>
+						<button
+							type="button"
+							class="rounded-lg outline-none transition hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-primary/60"
+							aria-label="Ouvrir l'image du jeu en grand"
+							onclick={() => {
+								showGameImagePopup = true;
+							}}
+						>
+							<img
+								src={gameCoverSrc}
+								alt={game.name}
+								class="h-64 w-48 rounded-lg object-cover shadow-md"
+								loading="lazy"
+								referrerpolicy="no-referrer"
+							/>
+						</button>
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
 							<SquarePen size={16} />
 							Modifier le jeu
@@ -2087,6 +2097,25 @@
 				<button class="btn btn-primary" onclick={editGame}>Modifier</button>
 			</div>
 		</div>
+	</div>
+{/if}
+
+{#if showGameImagePopup}
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Aperçu image du jeu">
+		<div class="modal-box max-h-[90vh] max-w-5xl p-2 sm:p-4">
+			<img
+				src={gameCoverSrc}
+				alt={game.name}
+				class="mx-auto max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
+				referrerpolicy="no-referrer"
+			/>
+			<div class="modal-action mt-3">
+				<button class="btn btn-ghost" onclick={() => (showGameImagePopup = false)}>Fermer</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button onclick={() => (showGameImagePopup = false)}>close</button>
+		</form>
 	</div>
 {/if}
 
