@@ -83,8 +83,12 @@
 		gameExists: boolean;
 		pendingSubmission: boolean;
 	} | null>(null);
+	let hasThreadConflict = $derived(
+		Boolean(threadDuplicateCheck?.gameExists || threadDuplicateCheck?.pendingSubmission)
+	);
 	let checkingDuplicateThread = $state(false);
 	let pendingQueryThreadIdAutoScrape = $state(false);
+	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
 	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
@@ -120,6 +124,7 @@
 		if (game.threadId === null || game.threadId === 0) {
 			game.threadId = parsed;
 		}
+		skipThreadStepFromQueryParam = true;
 		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
 		// On garde le déclenchement automatique pour plus tard.
 		pendingQueryThreadIdAutoScrape = true;
@@ -204,7 +209,11 @@
 		const previousStep = step;
 
 		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
-		if (step === 1 && game.website === 'other') step += amount;
+		if (
+			step === 1 &&
+			(game.website === 'other' || (game.website === 'f95z' && skipThreadStepFromQueryParam))
+		)
+			step += amount;
 		if (step === 2 && game.website === 'f95z') step += amount;
 
 		// Clamp final après sauts conditionnels
@@ -667,16 +676,11 @@
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-1">
 					<h1 class="text-xl font-semibold sm:text-2xl">Ajouter un jeu</h1>
-					<p class="text-sm text-base-content/70">
-						Formulaire repensé en plusieurs étapes pour réduire les erreurs et accélérer la saisie.
-					</p>
 				</div>
 				<div class="badge badge-outline badge-lg badge-primary">
 					Étape {step + 1} / {maxStep + 1}
 				</div>
 			</div>
-			<progress class="progress mt-4 w-full progress-primary" value={step + 1} max={maxStep + 1}
-			></progress>
 			<ul class="steps steps-horizontal mt-4 hidden w-full overflow-x-auto lg:flex">
 				{#each stepLabels as label, index (label)}
 					<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
@@ -698,7 +702,7 @@
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
-			{#if threadDuplicateCheck && (threadDuplicateCheck.gameExists || threadDuplicateCheck.pendingSubmission)}
+			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">
 						<span class="font-medium">Attention — conflit possible</span>
@@ -720,6 +724,33 @@
 				<div class="text-sm text-base-content/80">
 					<span class="font-medium">Section active :</span>
 					{stepLabels[step]}
+				</div>
+			</div>
+
+			<div class="rounded-box border border-base-300 bg-base-200/40 px-4 py-3">
+				<div class="flex flex-wrap items-start justify-between gap-2">
+					<h2 class="text-sm font-semibold text-base-content">Jeu en cours</h2>
+					{#if hasThreadConflict}
+						<span class="badge badge-warning badge-sm">Conflit thread</span>
+					{/if}
+				</div>
+				<div class="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Site</p>
+						<p class="truncate font-medium">{game.website}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Thread ID</p>
+						<p class="truncate font-medium">{game.threadId ?? '—'}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Nom</p>
+						<p class="truncate font-medium">{game.name?.trim() ? game.name : '—'}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Version</p>
+						<p class="truncate font-medium">{game.gameVersion?.trim() ? game.gameVersion : '—'}</p>
+					</div>
 				</div>
 			</div>
 
