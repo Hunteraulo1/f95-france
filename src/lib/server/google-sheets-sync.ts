@@ -882,6 +882,69 @@ async function normalizeSheetCellFormat(
 	await sheetsSpreadsheetBatchUpdate(auth, requests);
 }
 
+async function normalizeMajSheetFormats(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	headersRow: string[],
+	rowCount: number
+): Promise<void> {
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_MAJ);
+	if (sheetId == null) return;
+
+	const dateIdx =
+		findHeaderIndex(headersRow, ['Date', 'Jour']) !== -1
+			? findHeaderIndex(headersRow, ['Date', 'Jour'])
+			: 0;
+	const colCount = Math.max(headersRow.length, 1);
+	const safeRowCount = Math.max(rowCount, 1);
+
+	const requests: unknown[] = [];
+	for (let col = 0; col < colCount; col++) {
+		if (col === dateIdx) continue;
+		requests.push({
+			repeatCell: {
+				range: {
+					sheetId,
+					startRowIndex: 0,
+					endRowIndex: safeRowCount,
+					startColumnIndex: col,
+					endColumnIndex: col + 1
+				},
+				cell: {
+					userEnteredFormat: {
+						numberFormat: {
+							type: 'TEXT'
+						}
+					}
+				},
+				fields: 'userEnteredFormat.numberFormat'
+			}
+		});
+	}
+
+	requests.push({
+		repeatCell: {
+			range: {
+				sheetId,
+				startRowIndex: 0,
+				endRowIndex: safeRowCount,
+				startColumnIndex: dateIdx,
+				endColumnIndex: dateIdx + 1
+			},
+			cell: {
+				userEnteredFormat: {
+					numberFormat: {
+						type: 'DATE',
+						pattern: 'dd/mm/yyyy'
+					}
+				}
+			},
+			fields: 'userEnteredFormat.numberFormat'
+		}
+	});
+
+	await sheetsSpreadsheetBatchUpdate(auth, requests);
+}
+
 async function deleteRowsByTranslationIds(translationIds: string[]): Promise<void> {
 	if (!translationIds.length) return;
 	const auth = await getSheetsAuth();
@@ -1730,5 +1793,18 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 				body: JSON.stringify({ requests })
 			});
 		}
+	}
+
+	const refreshed = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (refreshed.ok) {
+		const refreshedBody = (await refreshed.json()) as SheetsApiResponse;
+		const refreshedRows = refreshedBody.values ?? [];
+		const refreshedHeaders = refreshedRows[0] ?? headers;
+		await normalizeMajSheetFormats(auth, refreshedHeaders, refreshedRows.length);
 	}
 }
