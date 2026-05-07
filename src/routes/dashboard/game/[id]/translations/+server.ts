@@ -2,16 +2,17 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+    syncTranslationToGoogleSheet,
+    syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createTranslationSubmission } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -206,6 +207,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		await createGameUpdateRow(gameId, 'adding');
+		await incrementUserGameCounter(currentUser.id, 'add', 1);
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {

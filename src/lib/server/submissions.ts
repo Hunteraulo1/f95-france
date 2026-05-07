@@ -1,21 +1,22 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	clampTranslationAc,
-	clearAllTranslationAutoCheckForGame,
-	getGameAllowsTranslationAutoCheck,
-	resolveGameAutoCheckForWebsite
+    clampTranslationAc,
+    clearAllTranslationAutoCheckForGame,
+    getGameAllowsTranslationAutoCheck,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	deleteTranslationFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorLinksInJeuxSheet,
-	syncTranslatorToGoogleSheet
+    deleteGameTranslationsFromGoogleSheet,
+    deleteTranslationFromGoogleSheet,
+    syncGameTranslationsToGoogleSheet,
+    syncTranslationToGoogleSheet,
+    syncTranslatorLinksInJeuxSheet,
+    syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
@@ -245,6 +246,8 @@ export async function applySubmission(submissionId: string) {
 	}
 
 	const sub = submission[0];
+	let addCount = 0;
+	let editCount = 0;
 
 	// Parser les données JSON
 	let parsedData: {
@@ -465,6 +468,7 @@ export async function applySubmission(submissionId: string) {
 					console.warn('[google-sheets-sync] submission game proofreader failed:', err);
 				});
 			}
+			addCount += 1;
 		}
 
 		// Mettre à jour la soumission avec le gameId
@@ -475,6 +479,7 @@ export async function applySubmission(submissionId: string) {
 				.where(eq(table.submission.id, submissionId));
 			await createGameUpdateRow(gameId, 'adding');
 		}
+		addCount += 1;
 	} else if (sub.type === 'update') {
 		// Mettre à jour un jeu existant
 		if (!sub.gameId) {
@@ -585,6 +590,7 @@ export async function applySubmission(submissionId: string) {
 			console.warn('[google-sheets-sync] submission game update rows failed:', err);
 		});
 		await touchGameUpdatedToday(sub.gameId);
+		editCount += 1;
 	} else if (sub.type === 'translation') {
 		// Créer ou mettre à jour une traduction
 		if (!sub.gameId) {
@@ -690,6 +696,7 @@ export async function applySubmission(submissionId: string) {
 					.set(trSet)
 					.where(eq(table.gameTranslation.id, sub.translationId));
 				syncedTranslationId = sub.translationId;
+				editCount += 1;
 			} else {
 				// La traduction a été supprimée (probablement lors d'un revert), créer une nouvelle traduction
 				const insertTname =
@@ -742,6 +749,7 @@ export async function applySubmission(submissionId: string) {
 						.where(eq(table.submission.id, submissionId));
 					syncedTranslationId = translationId;
 				}
+				addCount += 1;
 			}
 		} else {
 			// Créer une nouvelle traduction
@@ -795,6 +803,7 @@ export async function applySubmission(submissionId: string) {
 					.where(eq(table.submission.id, submissionId));
 				syncedTranslationId = translationId;
 			}
+			addCount += 1;
 		}
 		if (syncedTranslationId) {
 			void syncTranslationToGoogleSheet(syncedTranslationId).catch((err) => {
@@ -896,6 +905,7 @@ export async function applySubmission(submissionId: string) {
 			void deleteTranslationFromGoogleSheet(sub.translationId).catch((err) => {
 				console.warn('[google-sheets-sync] submission delete translation row failed:', err);
 			});
+			editCount += 1;
 		} else if (sub.gameId) {
 			// Supprimer un jeu
 			// Récupérer le jeu complet pour sauvegarder les données
@@ -1013,9 +1023,17 @@ export async function applySubmission(submissionId: string) {
 
 			// Supprimer le jeu
 			await db.delete(table.game).where(eq(table.game.id, sub.gameId));
+			editCount += 1;
 		} else {
 			throw new Error('ID de jeu ou de traduction manquant pour la suppression');
 		}
+	}
+
+	if (addCount > 0) {
+		await incrementUserGameCounter(sub.userId, 'add', addCount);
+	}
+	if (editCount > 0) {
+		await incrementUserGameCounter(sub.userId, 'edit', editCount);
 	}
 }
 

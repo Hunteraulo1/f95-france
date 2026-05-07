@@ -42,6 +42,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.where(
 				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'accepted'))
 			);
+		const [userCounters] = await db
+			.select({
+				gameAdd: table.user.gameAdd,
+				gameEdit: table.user.gameEdit
+			})
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
 
 		const [linkedTranslator] = await db
 			.select({ id: table.translator.id })
@@ -97,8 +105,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			totalSubmissions: toCount(userSubmissionsResult[0]?.count),
 			pendingSubmissions: toCount(userPendingSubmissionsResult[0]?.count),
 			acceptedSubmissions: toCount(userAcceptedSubmissionsResult[0]?.count),
-			gameAdd: locals.user.gameAdd || 0,
-			gameEdit: locals.user.gameEdit || 0,
+			gameAdd: toCount(userCounters?.gameAdd),
+			gameEdit: toCount(userCounters?.gameEdit),
 			translations: translationStats
 		};
 	} catch (error: unknown) {
@@ -107,8 +115,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			totalSubmissions: 0,
 			pendingSubmissions: 0,
 			acceptedSubmissions: 0,
-			gameAdd: locals.user.gameAdd || 0,
-			gameEdit: locals.user.gameEdit || 0,
+			gameAdd: 0,
+			gameEdit: 0,
 			translations: {
 				upToDate: 0,
 				outdated: 0,

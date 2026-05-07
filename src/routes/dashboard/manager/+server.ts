@@ -7,10 +7,11 @@ import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+    syncTranslationToGoogleSheet,
+    syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameSubmission } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -311,6 +312,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 			}
 		}
+		await incrementUserGameCounter(currentUser.id, 'add', translation && gameId ? 2 : 1);
 		return json({
 			message: translation ? 'Jeu et traduction ajoutés avec succès' : 'Jeu ajouté avec succès',
 			gameId: gameId
