@@ -460,7 +460,7 @@ export async function sendDiscordWebhookAdminNewSubmission(args: {
 						value: gameName || '—'
 					},
 					{
-						name: 'Nom du traducteur',
+						name: 'Soumis par',
 						value: submitter
 					}
 				],
