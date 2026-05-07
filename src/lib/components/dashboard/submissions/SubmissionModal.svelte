@@ -1201,6 +1201,7 @@
 										<label class="label cursor-pointer justify-start gap-3">
 											<input
 												type="checkbox"
+												name="editTranslationAc"
 												class="checkbox checkbox-sm"
 												bind:checked={editTranslationAc}
 											/>

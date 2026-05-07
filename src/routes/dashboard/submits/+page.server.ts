@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
@@ -22,19 +22,79 @@ const formDataToSubmissionPayload = (
 	submissionType: string,
 	formData: FormData
 ): Record<string, unknown> | null => {
-	if (submissionType !== 'translator_pages') return null;
-	const translatorId = normalizeMaybeString(formData.get('translatorId'));
-	const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
-	const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
-	const max = Math.max(names.length, links.length);
-	const pages = Array.from({ length: max })
-		.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
-		.filter((p) => p.name !== '' || p.link !== '');
-
-	return {
-		translatorId: translatorId ?? '',
-		pages
+	const maybeTrim = (v: FormDataEntryValue | null): string => (typeof v === 'string' ? v.trim() : '');
+	const boolFromForm = (v: FormDataEntryValue | null, defaultValue: boolean): boolean => {
+		// HTML checkboxes submit "on" when checked, or are absent when unchecked.
+		if (v === null) return defaultValue;
+		if (typeof v !== 'string') return Boolean(v);
+		const s = v.trim().toLowerCase();
+		if (s === '' || s === 'on' || s === 'true' || s === '1' || s === 'yes') return true;
+		if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false;
+		return defaultValue;
 	};
+
+	const buildTranslation = (): Record<string, unknown> => ({
+		translationName: maybeTrim(formData.get('editTranslationTranslationName')) || null,
+		version: maybeTrim(formData.get('editTranslationVersion')) || null,
+		tversion: maybeTrim(formData.get('editTranslationTversion')),
+		status: maybeTrim(formData.get('editTranslationStatus')),
+		ttype: maybeTrim(formData.get('editTranslationTtype')),
+		gameType: maybeTrim(formData.get('editTranslationGameType')),
+		tlink: maybeTrim(formData.get('editTranslationTlink')) || null,
+		tname: maybeTrim(formData.get('editTranslationTname')),
+		translatorId: maybeTrim(formData.get('editTranslationTranslatorId')) || null,
+		proofreaderId: maybeTrim(formData.get('editTranslationProofreaderId')) || null,
+		ac: boolFromForm(formData.get('editTranslationAc'), false)
+	});
+
+	const buildGame = (): Record<string, unknown> => ({
+		name: maybeTrim(formData.get('editGameName')),
+		description: maybeTrim(formData.get('editGameDescription')) || null,
+		website: maybeTrim(formData.get('editGameWebsite')),
+		threadId: maybeTrim(formData.get('editGameThreadId')) || null,
+		tags: maybeTrim(formData.get('editGameTags')) || null,
+		link: maybeTrim(formData.get('editGameLink')) || null,
+		image: maybeTrim(formData.get('editGameImage')),
+		gameAutoCheck: boolFromForm(formData.get('editGameAutoCheck'), true),
+		gameVersion: maybeTrim(formData.get('editGameGameVersion')) || null
+	});
+
+	if (submissionType === 'translator_pages') {
+		const translatorId = normalizeMaybeString(formData.get('translatorId'));
+		const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
+		const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
+		const max = Math.max(names.length, links.length);
+		const pages = Array.from({ length: max })
+			.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
+			.filter((p) => p.name !== '' || p.link !== '');
+
+		return {
+			translatorId: translatorId ?? '',
+			pages
+		};
+	}
+
+	if (submissionType === 'translation') {
+		return { translation: buildTranslation() };
+	}
+
+	if (submissionType === 'game' || submissionType === 'update') {
+		const payload: Record<string, unknown> = { game: buildGame() };
+
+		// Inclure la traduction si le formulaire la contient (soumission "game" avec traduction incluse).
+		const hasAnyTranslationField =
+			typeof formData.get('editTranslationTname') === 'string' ||
+			typeof formData.get('editTranslationTranslationName') === 'string' ||
+			typeof formData.get('editTranslationTversion') === 'string' ||
+			typeof formData.get('editTranslationStatus') === 'string';
+		if (hasAnyTranslationField) {
+			payload.translation = buildTranslation();
+		}
+
+		return payload;
+	}
+
+	return null;
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
