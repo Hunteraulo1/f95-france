@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -90,8 +91,10 @@
 								type="button"
 								class="link text-left font-medium link-primary"
 								onclick={() => {
-									// eslint-disable-next-line svelte/no-navigation-without-resolve
-									void goto(`/dashboard/profile/${translator.userId}`, { invalidateAll: true });
+									const username = data.users.find((u) => u.id === translator.userId)?.username;
+									if (username) {
+										void goto(resolve(`/dashboard/profile/${username}`), { invalidateAll: true });
+									}
 								}}
 							>
 								{data.users.find((u) => u.id === translator.userId)?.username ?? translator.userId}

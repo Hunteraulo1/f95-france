@@ -11,6 +11,7 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameSubmission } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -117,10 +118,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
 		const computedGameAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
+		const translationTname = typeof translation?.tname === 'string' ? translation.tname.trim() : '';
+		const isIntegratedTranslation = translationTname === 'integrated';
+		const isNoTranslation = translationTname === 'no_translation';
 		const computedTranslationAc =
 			computedGameAutoCheck &&
-			normVersion(translation?.tversion).length > 0 &&
-			normVersion(translation?.tversion) === normVersion(gameVersion);
+			(isNoTranslation ||
+				isIntegratedTranslation ||
+				(normVersion(translation?.version).length > 0 &&
+					normVersion(translation?.version) === normVersion(gameVersion)));
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {
@@ -311,6 +317,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 			}
 		}
+		await incrementUserGameCounter(currentUser.id, 'add', translation && gameId ? 2 : 1);
 		return json({
 			message: translation ? 'Jeu et traduction ajoutés avec succès' : 'Jeu ajouté avec succès',
 			gameId: gameId

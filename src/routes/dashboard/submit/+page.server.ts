@@ -100,10 +100,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (statusFilter === 'all') {
 			whereCondition = eq(table.submission.userId, locals.user.id); // Pas de filtre de statut, toutes les soumissions de l'utilisateur
 		} else {
-			whereCondition = and(
-				eq(table.submission.userId, locals.user.id),
-				eq(table.submission.status, statusFilter as 'pending' | 'opened' | 'accepted' | 'rejected')
-			);
+			if (statusFilter === 'pending') {
+				// Règle UI: afficher aussi les soumissions ouvertes dans "En attente".
+				whereCondition = and(
+					eq(table.submission.userId, locals.user.id),
+					sql`${table.submission.status} IN ('pending', 'opened')`
+				);
+			} else {
+				whereCondition = and(
+					eq(table.submission.userId, locals.user.id),
+					eq(
+						table.submission.status,
+						statusFilter as 'pending' | 'opened' | 'accepted' | 'rejected'
+					)
+				);
+			}
 		}
 
 		// Charger les soumissions de l'utilisateur connecté avec le filtre
@@ -135,6 +146,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
 			.orderBy(
+				statusFilter === 'pending'
+					? sql`CASE
+						WHEN ${table.submission.status} = 'pending' THEN 0
+						WHEN ${table.submission.status} = 'opened' THEN 1
+						ELSE 2
+					END`
+					: sql`0`,
 				statusFilter === 'pending'
 					? asc(table.submission.createdAt)
 					: desc(table.submission.createdAt)
@@ -272,9 +290,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.select({
 				id: table.translator.id,
 				name: table.translator.name,
-				userId: table.translator.userId
+				userId: table.translator.userId,
+				username: table.user.username
 			})
-			.from(table.translator);
+			.from(table.translator)
+			.leftJoin(table.user, eq(table.user.id, table.translator.userId));
 
 		return {
 			submissions: submissionsWithData,
@@ -368,11 +388,11 @@ export const actions: Actions = {
 			});
 		}
 
-		// Autoriser la correction d'une soumission refusée :
-		// l'utilisateur peut modifier tant qu'elle est "pending" ou "rejected".
-		if (sub.status !== 'pending' && sub.status !== 'rejected') {
+		// Autoriser la correction tant que la soumission n'est pas finalisée :
+		// l'utilisateur peut modifier si elle est "pending", "opened" ou "rejected".
+		if (sub.status !== 'pending' && sub.status !== 'opened' && sub.status !== 'rejected') {
 			return fail(403, {
-				message: 'Seules les soumissions en attente ou refusées sont modifiables'
+				message: 'Seules les soumissions en attente, ouvertes ou refusées sont modifiables'
 			});
 		}
 

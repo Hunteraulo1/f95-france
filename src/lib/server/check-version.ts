@@ -6,10 +6,10 @@ import {
 	sendDiscordWebhookUpdatesAutoCheckVersionBump,
 	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
-import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
-import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
+import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -18,29 +18,73 @@ type CheckerResponse = {
 	msg: Record<string, string> | string;
 };
 
+export type AutoCheckIssue = {
+	stage:
+		| 'checker_fetch'
+		| 'checker_payload'
+		| 'scrape'
+		| 'webhook_translators'
+		| 'webhook_proofreaders'
+		| 'webhook_updates'
+		| 'google_sheets';
+	message: string;
+	gameId?: string;
+	gameName?: string;
+	threadId?: number;
+	detail?: string;
+};
+
 const CHECKER_URL = 'https://f95zone.to/sam/checker.php?threads=';
 const USER_AGENT =
 	'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) f95-france/1.0';
 
-async function fetchF95Versions(threadIds: number[]): Promise<Map<number, string>> {
+async function fetchF95Versions(
+	threadIds: number[],
+	issues: AutoCheckIssue[]
+): Promise<Map<number, string>> {
 	const versions = new Map<number, string>();
 	if (threadIds.length === 0) return versions;
 
 	for (let i = 0; i < threadIds.length; i += 100) {
 		const batch = threadIds.slice(i, i + 100);
 		const url = `${CHECKER_URL}${batch.join(',')}`;
-		const res = await fetch(url, {
-			headers: { 'User-Agent': USER_AGENT }
-		});
-		if (!res.ok) continue;
+		try {
+			const res = await fetch(url, {
+				headers: { 'User-Agent': USER_AGENT }
+			});
+			if (!res.ok) {
+				issues.push({
+					stage: 'checker_fetch',
+					message: `Réponse HTTP ${res.status} du checker`,
+					detail: `batch=${batch.join(',')}`
+				});
+				continue;
+			}
 
-		const json = (await res.json()) as CheckerResponse;
-		if (json.status !== 'ok' || typeof json.msg !== 'object' || json.msg === null) continue;
+			const json = (await res.json()) as CheckerResponse;
+			if (json.status !== 'ok' || typeof json.msg !== 'object' || json.msg === null) {
+				issues.push({
+					stage: 'checker_payload',
+					message: 'Payload checker invalide',
+					detail: `batch=${batch.join(',')}`
+				});
+				continue;
+			}
 
-		for (const [threadIdRaw, version] of Object.entries(json.msg)) {
-			const threadId = Number.parseInt(threadIdRaw, 10);
-			if (!Number.isFinite(threadId) || typeof version !== 'string') continue;
-			versions.set(threadId, version);
+			for (const [threadIdRaw, version] of Object.entries(json.msg)) {
+				const threadId = Number.parseInt(threadIdRaw, 10);
+				if (!Number.isFinite(threadId) || typeof version !== 'string') continue;
+				versions.set(threadId, version);
+			}
+		} catch (error) {
+			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout le cron.
+			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
+			issues.push({
+				stage: 'checker_fetch',
+				message: 'Erreur réseau/JSON checker',
+				detail: error instanceof Error ? error.message : String(error)
+			});
+			continue;
 		}
 	}
 
@@ -51,6 +95,7 @@ type AutoCheckResult = {
 	scannedGames: number;
 	updatedGames: number;
 	updatedTranslations: number;
+	issues: AutoCheckIssue[];
 };
 
 /**
@@ -67,6 +112,7 @@ function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
 
 /** Cron / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
 export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
+	const issues: AutoCheckIssue[] = [];
 	const rows = await db
 		.select({
 			gameId: table.game.id,
@@ -94,7 +140,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		);
 
 	if (rows.length === 0) {
-		return { scannedGames: 0, updatedGames: 0, updatedTranslations: 0 };
+		return { scannedGames: 0, updatedGames: 0, updatedTranslations: 0, issues };
 	}
 
 	const uniqueByGame = new Map<
@@ -111,7 +157,10 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		});
 	}
 
-	const versions = await fetchF95Versions(Array.from(uniqueByGame.values()).map((g) => g.threadId));
+	const versions = await fetchF95Versions(
+		Array.from(uniqueByGame.values()).map((g) => g.threadId),
+		issues
+	);
 
 	type UniqueGameRow = {
 		gameId: string;
@@ -137,7 +186,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	const changedGames = Array.from(uniqueByGame.values()).filter(gameNeedsCheckerBump);
 
 	if (changedGames.length === 0) {
-		return { scannedGames: uniqueByGame.size, updatedGames: 0, updatedTranslations: 0 };
+		return { scannedGames: uniqueByGame.size, updatedGames: 0, updatedTranslations: 0, issues };
 	}
 
 	const changedGameIds = changedGames.map((g) => g.gameId);
@@ -199,6 +248,14 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			}
 		} catch (error) {
 			console.warn('[auto-check] scrape non bloquant échoué:', error);
+			issues.push({
+				stage: 'scrape',
+				message: 'Scrape F95 non bloquant échoué',
+				gameId: game.gameId,
+				gameName: game.gameName,
+				threadId: game.threadId,
+				detail: error instanceof Error ? error.message : String(error)
+			});
 		}
 
 		for (const t of impactedTranslations.filter((r) => r.gameId === game.gameId)) {
@@ -236,12 +293,22 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			(t) => t.gameId === game.gameId && t.tname === 'integrated'
 		);
 		for (const t of integratedRows) {
-			await sendDiscordWebhookUpdatesAutoCheckVersionBump({
-				gameName: game.gameName,
-				translationName: t.translationName,
-				oldVersion: game.gameVersion,
-				newVersion
-			});
+			try {
+				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
+					gameName: game.gameName,
+					translationName: t.translationName,
+					oldVersion: game.gameVersion,
+					newVersion
+				});
+			} catch (error) {
+				issues.push({
+					stage: 'webhook_updates',
+					message: 'Webhook updates auto-check échoué',
+					gameId: game.gameId,
+					gameName: game.gameName,
+					detail: error instanceof Error ? error.message : String(error)
+				});
+			}
 		}
 
 		// Table `update` : seulement si une traduction intégrée avec auto-check actif suit cette version
@@ -254,20 +321,44 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	}
 
 	if (translatorWebhookLines.length > 0) {
-		await sendDiscordWebhookTranslatorsVersionBumps(translatorWebhookLines);
+		try {
+			await sendDiscordWebhookTranslatorsVersionBumps(translatorWebhookLines);
+		} catch (error) {
+			issues.push({
+				stage: 'webhook_translators',
+				message: 'Webhook traducteurs échoué',
+				detail: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 	if (proofreaderWebhookLines.length > 0) {
-		await sendDiscordWebhookProofreadersVersionBumps(proofreaderWebhookLines);
+		try {
+			await sendDiscordWebhookProofreadersVersionBumps(proofreaderWebhookLines);
+		} catch (error) {
+			issues.push({
+				stage: 'webhook_proofreaders',
+				message: 'Webhook relecteurs échoué',
+				detail: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 
 	// Une seule synchro bulk évite les lectures répétées (et les 429 quota/minute).
-	void syncDbToSpreadsheetBulk().catch((err) => {
+	try {
+		await syncDbToSpreadsheetBulk();
+	} catch (err) {
 		console.warn('[google-sheets-sync] auto-check bulk sync failed:', err);
-	});
+		issues.push({
+			stage: 'google_sheets',
+			message: 'Sync Google Sheets bulk échouée',
+			detail: err instanceof Error ? err.message : String(err)
+		});
+	}
 
 	return {
 		scannedGames: uniqueByGame.size,
 		updatedGames: changedGames.length,
-		updatedTranslations: impactedTranslations.length
+		updatedTranslations: impactedTranslations.length,
+		issues
 	};
 }

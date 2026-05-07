@@ -17,6 +17,7 @@ import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -245,6 +246,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (!isSilentMode) {
 			await touchGameUpdatedToday(gameId);
 		}
+		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
@@ -353,6 +355,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});
+		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression de la traduction:', error);

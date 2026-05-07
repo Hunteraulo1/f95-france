@@ -67,9 +67,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.select({
 				id: table.translator.id,
 				name: table.translator.name,
-				userId: table.translator.userId
+				userId: table.translator.userId,
+				username: table.user.username
 			})
 			.from(table.translator)
+			.leftJoin(table.user, eq(table.user.id, table.translator.userId))
 			.orderBy(asc(table.translator.name));
 
 		return {

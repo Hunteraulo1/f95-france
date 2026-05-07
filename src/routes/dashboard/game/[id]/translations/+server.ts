@@ -12,6 +12,7 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createTranslationSubmission } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -43,6 +44,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tname,
 			gameType: gameTypeBody,
 			directMode,
+			silentMode,
 			translatorId,
 			proofreaderId
 		} = body;
@@ -85,15 +87,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const gv = normVersion(game[0].gameVersion);
-		const tv = normVersion(tversion);
 		const vv = normVersion(version);
 		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
-		/** Intégrée : Trad. Ver. fixe (« Intégrée ») — l’auto-check suit la colonne version (réf.) vs jeu, pas tversion. */
+		/** Règle auto-check: true si version ref = version jeu, ou traduction intégrée, ou pas de traduction. */
 		const acValue =
 			game[0].gameAutoCheck === true &&
-			tnameNorm !== 'no_translation' &&
-			gv.length > 0 &&
-			(tnameNorm === 'integrated' ? vv === gv && tv.length > 0 : tv === gv);
+			(tnameNorm === 'integrated' ||
+				tnameNorm === 'no_translation' ||
+				(gv.length > 0 && vv === gv));
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);
@@ -103,6 +104,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
+		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission =
@@ -126,10 +129,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 			// La table update/MAJ doit refléter l'action dès l'ajout.
 			await createGameUpdateRow(gameId, 'adding');
-			void sendDiscordWebhookAdminNewSubmission({
-				submitterName: currentUser.username,
-				gameId
-			});
+			if (!isSilentMode) {
+				void sendDiscordWebhookAdminNewSubmission({
+					submitterName: currentUser.username,
+					gameId
+				});
+			}
 
 			return json(
 				{
@@ -183,13 +188,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				ac: acValue
 			}
 		});
-		void sendDiscordWebhookUpdatesSubmissionApplied({
-			submissionId: created?.id ?? 'direct-translation',
-			submissionType: 'translation',
-			dataJson,
-			translationWasUpdate: false,
-			adminNotes: null
-		});
+		if (!isSilentMode) {
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: created?.id ?? 'direct-translation',
+				submissionType: 'translation',
+				dataJson,
+				translationWasUpdate: false,
+				adminNotes: null
+			});
+		}
 		if (created?.id) {
 			void syncTranslationToGoogleSheet(created.id).catch((err) => {
 				console.warn('[google-sheets-sync] add translation failed:', err);
@@ -206,6 +213,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		await createGameUpdateRow(gameId, 'adding');
+		await incrementUserGameCounter(currentUser.id, 'add', 1);
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {

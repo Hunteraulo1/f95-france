@@ -22,19 +22,80 @@ const formDataToSubmissionPayload = (
 	submissionType: string,
 	formData: FormData
 ): Record<string, unknown> | null => {
-	if (submissionType !== 'translator_pages') return null;
-	const translatorId = normalizeMaybeString(formData.get('translatorId'));
-	const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
-	const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
-	const max = Math.max(names.length, links.length);
-	const pages = Array.from({ length: max })
-		.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
-		.filter((p) => p.name !== '' || p.link !== '');
-
-	return {
-		translatorId: translatorId ?? '',
-		pages
+	const maybeTrim = (v: FormDataEntryValue | null): string =>
+		typeof v === 'string' ? v.trim() : '';
+	const boolFromForm = (v: FormDataEntryValue | null, defaultValue: boolean): boolean => {
+		// HTML checkboxes submit "on" when checked, or are absent when unchecked.
+		if (v === null) return defaultValue;
+		if (typeof v !== 'string') return Boolean(v);
+		const s = v.trim().toLowerCase();
+		if (s === '' || s === 'on' || s === 'true' || s === '1' || s === 'yes') return true;
+		if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false;
+		return defaultValue;
 	};
+
+	const buildTranslation = (): Record<string, unknown> => ({
+		translationName: maybeTrim(formData.get('editTranslationTranslationName')) || null,
+		version: maybeTrim(formData.get('editTranslationVersion')) || null,
+		tversion: maybeTrim(formData.get('editTranslationTversion')),
+		status: maybeTrim(formData.get('editTranslationStatus')),
+		ttype: maybeTrim(formData.get('editTranslationTtype')),
+		gameType: maybeTrim(formData.get('editTranslationGameType')),
+		tlink: maybeTrim(formData.get('editTranslationTlink')) || null,
+		tname: maybeTrim(formData.get('editTranslationTname')),
+		translatorId: maybeTrim(formData.get('editTranslationTranslatorId')) || null,
+		proofreaderId: maybeTrim(formData.get('editTranslationProofreaderId')) || null,
+		ac: boolFromForm(formData.get('editTranslationAc'), false)
+	});
+
+	const buildGame = (): Record<string, unknown> => ({
+		name: maybeTrim(formData.get('editGameName')),
+		description: maybeTrim(formData.get('editGameDescription')) || null,
+		website: maybeTrim(formData.get('editGameWebsite')),
+		threadId: maybeTrim(formData.get('editGameThreadId')) || null,
+		tags: maybeTrim(formData.get('editGameTags')) || null,
+		link: maybeTrim(formData.get('editGameLink')) || null,
+		image: maybeTrim(formData.get('editGameImage')),
+		gameAutoCheck: boolFromForm(formData.get('editGameAutoCheck'), true),
+		gameVersion: maybeTrim(formData.get('editGameGameVersion')) || null
+	});
+
+	if (submissionType === 'translator_pages') {
+		const translatorId = normalizeMaybeString(formData.get('translatorId'));
+		const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
+		const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
+		const max = Math.max(names.length, links.length);
+		const pages = Array.from({ length: max })
+			.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
+			.filter((p) => p.name !== '' || p.link !== '');
+
+		return {
+			translatorId: translatorId ?? '',
+			pages
+		};
+	}
+
+	if (submissionType === 'translation') {
+		return { translation: buildTranslation() };
+	}
+
+	if (submissionType === 'game' || submissionType === 'update') {
+		const payload: Record<string, unknown> = { game: buildGame() };
+
+		// Inclure la traduction si le formulaire la contient (soumission "game" avec traduction incluse).
+		const hasAnyTranslationField =
+			typeof formData.get('editTranslationTname') === 'string' ||
+			typeof formData.get('editTranslationTranslationName') === 'string' ||
+			typeof formData.get('editTranslationTversion') === 'string' ||
+			typeof formData.get('editTranslationStatus') === 'string';
+		if (hasAnyTranslationField) {
+			payload.translation = buildTranslation();
+		}
+
+		return payload;
+	}
+
+	return null;
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -102,6 +163,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
 			.orderBy(
+				statusFilter === 'pending'
+					? sql`CASE
+						WHEN ${table.submission.status} = 'pending' THEN 0
+						WHEN ${table.submission.status} = 'opened' THEN 1
+						ELSE 2
+					END`
+					: sql`0`,
 				statusFilter === 'pending'
 					? asc(table.submission.createdAt)
 					: desc(table.submission.createdAt)
@@ -232,9 +300,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.select({
 				id: table.translator.id,
 				name: table.translator.name,
-				userId: table.translator.userId
+				userId: table.translator.userId,
+				username: table.user.username
 			})
-			.from(table.translator);
+			.from(table.translator)
+			.leftJoin(table.user, eq(table.user.id, table.translator.userId));
 
 		return {
 			submissions: submissionsWithData,
@@ -333,6 +403,7 @@ export const actions: Actions = {
 		const submissionId = formData.get('submissionId') as string;
 		const status = formData.get('status') as string;
 		const adminNotes = formData.get('adminNotes') as string;
+		const submissionDataJson = formData.get('submissionDataJson');
 
 		if (!submissionId || !status) {
 			return fail(400, { message: 'ID de soumission et statut requis' });
@@ -369,6 +440,22 @@ export const actions: Actions = {
 			const currentStatus = currentSubmission[0].status;
 			const submissionUserId = currentSubmission[0].userId;
 			const submissionType = currentSubmission[0].type;
+
+			// Si des modifications de payload sont présentes dans le formulaire,
+			// les persister avant la mise à jour du statut (enregistrement unique).
+			if (submissionDataJson !== null) {
+				let parsed = parseSubmissionPayloadJson(submissionDataJson);
+				if (!parsed.ok) {
+					const rebuiltPayload = formDataToSubmissionPayload(submissionType, formData);
+					if (!rebuiltPayload) return fail(400, { message: parsed.message });
+					parsed = { ok: true, data: rebuiltPayload };
+				}
+				const shapeError = validateSubmissionPayloadForType(submissionType, parsed.data);
+				if (shapeError) {
+					return fail(400, { message: shapeError });
+				}
+				await persistSubmissionPayload(submissionId, parsed.data);
+			}
 
 			// Autoriser le retour à "pending" sauf depuis "accepted" (workflow protégé).
 			if (status === 'pending' && currentStatus === 'accepted') {

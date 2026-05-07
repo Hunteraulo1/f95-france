@@ -12,6 +12,7 @@ import {
 	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
+import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -238,6 +239,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		if (!isSilentMode) {
 			await touchGameUpdatedToday(gameId);
 		}
+		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
 		return json({
 			message: 'Jeu modifié avec succès'
@@ -389,6 +391,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] delete game rows failed:', err);
 			});
 		}
+		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression du jeu:', error);
