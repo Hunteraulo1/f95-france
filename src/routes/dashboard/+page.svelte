@@ -50,28 +50,54 @@
 					</div>
 				</div>
 
-				<!-- Jeux ajoutés -->
+				<!-- Soumissions acceptées -->
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-base-content">Jeux ajoutés</h3>
-								<p class="text-3xl font-bold text-primary">{data.userStats.gameAdd}</p>
+								<h3 class="card-title text-base-content">Soumissions acceptées</h3>
+								<p class="text-3xl font-bold text-primary">
+									{data.userStats.gameAdd + data.userStats.gameEdit}
+								</p>
 							</div>
-							<CirclePlus class="h-12 w-12 text-primary" />
+							<CircleCheck class="h-12 w-12 text-primary" />
+						</div>
+						<div class="mt-4 flex flex-wrap gap-4 text-sm">
+							<div class="flex items-center gap-2">
+								<CirclePlus class="h-4 w-4 text-success" />
+								<span class="text-base-content/70">{data.userStats.gameAdd} ajoutées</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<Pencil class="h-4 w-4 text-info" />
+								<span class="text-base-content/70">{data.userStats.gameEdit} modifiées</span>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Jeux modifiés -->
+				<!-- Mes traductions -->
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-base-content">Jeux modifiés</h3>
-								<p class="text-3xl font-bold text-primary">{data.userStats.gameEdit}</p>
+								<h3 class="card-title text-base-content">Mes traductions</h3>
+								<p class="text-3xl font-bold text-primary">{data.userStats.translations.total}</p>
 							</div>
-							<Pencil class="h-12 w-12 text-primary" />
+							<Languages class="h-12 w-12 text-primary" />
+						</div>
+						<div class="mt-4 flex flex-wrap gap-4 text-sm">
+							<div class="flex items-center gap-2">
+								<CircleCheck class="h-4 w-4 text-success" />
+								<span class="text-base-content/70"
+									>{data.userStats.translations.upToDate} à jour</span
+								>
+							</div>
+							<div class="flex items-center gap-2">
+								<CircleX class="h-4 w-4 text-warning" />
+								<span class="text-base-content/70"
+									>{data.userStats.translations.outdated} pas à jour</span
+								>
+							</div>
 						</div>
 					</div>
 				</div>

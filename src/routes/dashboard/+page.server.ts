@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -42,12 +43,63 @@ export const load: PageServerLoad = async ({ locals }) => {
 				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'accepted'))
 			);
 
+		const [linkedTranslator] = await db
+			.select({ id: table.translator.id })
+			.from(table.translator)
+			.where(eq(table.translator.userId, locals.user.id))
+			.limit(1);
+
+		let translationStats = {
+			upToDate: 0,
+			outdated: 0,
+			total: 0
+		};
+
+		if (linkedTranslator) {
+			const myTranslations = await db
+				.select({
+					version: table.gameTranslation.version,
+					tversion: table.gameTranslation.tversion,
+					tname: table.gameTranslation.tname,
+					gameVersion: table.game.gameVersion
+				})
+				.from(table.gameTranslation)
+				.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId))
+				.where(
+					sql`${table.gameTranslation.translatorId} = ${linkedTranslator.id}
+						 OR ${table.gameTranslation.proofreaderId} = ${linkedTranslator.id}`
+				);
+
+			let outdated = 0;
+			for (const tr of myTranslations) {
+				const checkerVersion = (tr.gameVersion ?? '').trim();
+				const isOutdated =
+					checkerVersion.length > 0 &&
+					shouldNotifyTranslatorOnAutoCheckVersionBump(
+						{
+							version: tr.version,
+							tversion: tr.tversion,
+							tname: tr.tname
+						},
+						checkerVersion
+					);
+				if (isOutdated) outdated += 1;
+			}
+
+			translationStats = {
+				total: myTranslations.length,
+				outdated,
+				upToDate: Math.max(0, myTranslations.length - outdated)
+			};
+		}
+
 		userStats = {
 			totalSubmissions: toCount(userSubmissionsResult[0]?.count),
 			pendingSubmissions: toCount(userPendingSubmissionsResult[0]?.count),
 			acceptedSubmissions: toCount(userAcceptedSubmissionsResult[0]?.count),
 			gameAdd: locals.user.gameAdd || 0,
-			gameEdit: locals.user.gameEdit || 0
+			gameEdit: locals.user.gameEdit || 0,
+			translations: translationStats
 		};
 	} catch (error: unknown) {
 		console.warn('Erreur lors du chargement des statistiques utilisateur:', error);
@@ -56,7 +108,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			pendingSubmissions: 0,
 			acceptedSubmissions: 0,
 			gameAdd: locals.user.gameAdd || 0,
-			gameEdit: locals.user.gameEdit || 0
+			gameEdit: locals.user.gameEdit || 0,
+			translations: {
+				upToDate: 0,
+				outdated: 0,
+				total: 0
+			}
 		};
 	}
 
