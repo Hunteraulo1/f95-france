@@ -985,7 +985,20 @@
 
 						<div class="mb-4 flex flex-wrap gap-2">
 							{#if game.threadId}
-								<span class="badge badge-outline badge-lg">Thread #{game.threadId}</span>
+								<button
+									type="button"
+									class="badge max-w-52 overflow-hidden badge-outline badge-lg hover:bg-base-200 sm:max-w-none"
+									title="Copier l’ID du thread"
+									onclick={() => {
+										navigator.clipboard.writeText(String(game.threadId));
+										newToast({
+											alertType: 'success',
+											message: 'ID du thread copié dans le presse-papiers'
+										});
+									}}
+								>
+									Thread #{game.threadId}
+								</button>
 							{/if}
 
 							<span class="badge badge-lg badge-secondary">{game.website}</span>
