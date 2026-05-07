@@ -2,9 +2,9 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    parseSubmissionPayloadJson,
-    persistSubmissionPayload,
-    validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -105,7 +105,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const whereCondition =
 			statusFilter === 'all'
 				? eq(table.submission.userId, locals.user.id)
-				: and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, statusFilter));
+				: and(
+						eq(table.submission.userId, locals.user.id),
+						eq(table.submission.status, statusFilter)
+					);
 
 		// Charger les soumissions de l'utilisateur connecté avec le filtre
 		const submissions = await db

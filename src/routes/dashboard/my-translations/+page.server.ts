@@ -33,11 +33,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 			? statusFilterRaw
 			: 'all';
 
-	const roleFilterRaw = (
-		url.searchParams.get('role') ??
-		cookies.get('mt_role') ??
-		'all'
-	).trim();
+	const roleFilterRaw = (url.searchParams.get('role') ?? cookies.get('mt_role') ?? 'all').trim();
 	const roleFilter =
 		roleFilterRaw === 'translator' || roleFilterRaw === 'proofreader' ? roleFilterRaw : 'all';
 
@@ -111,11 +107,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 		.from(table.gameTranslation)
 		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId))
 		.where(
-			and(
-				whereRole,
-				...(whereStatus ? [whereStatus] : []),
-				...(whereSearch ? [whereSearch] : [])
-			)
+			and(whereRole, ...(whereStatus ? [whereStatus] : []), ...(whereSearch ? [whereSearch] : []))
 		)
 		.orderBy(desc(table.gameTranslation.updatedAt));
 

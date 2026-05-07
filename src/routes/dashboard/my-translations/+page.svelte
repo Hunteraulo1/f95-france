@@ -42,9 +42,7 @@
 	};
 
 	const buildHref = (overrides: { status?: string; role?: string; q?: string; page?: number }) =>
-		resolve(
-			`/dashboard/my-translations${buildQuery(overrides)}` as '/dashboard/my-translations'
-		);
+		resolve(`/dashboard/my-translations${buildQuery(overrides)}` as '/dashboard/my-translations');
 
 	const navigateSearch = (value: string) => {
 		goto(
@@ -152,7 +150,7 @@
 		</div>
 
 		{#if data.linkedTranslator}
-			<div class="flex flex-wrap justify-between w-full">
+			<div class="flex w-full flex-wrap justify-between">
 				<label class="input input-sm w-full sm:w-64">
 					<Search size={16} class="opacity-60" />
 					<input
@@ -173,31 +171,31 @@
 					{/if}
 				</label>
 				<div class="flex gap-2">
-          <div class="join bg-base-100 rounded-sm">
-            {#each roleOptions as option (option.value)}
-              <a
-                class="btn join-item btn-sm text-nowrap {data.roleFilter === option.value
-                  ? 'btn-outline btn-primary bg-base-300'
-                  : 'btn-ghost'}"
-                href={buildHref({ role: option.value })}
-              >
-                {option.label}
-              </a>
-            {/each}
-          </div>
-          <div class="join bg-base-100 rounded-sm">
-            {#each statusOptions as option (option.value)}
-              <a
-                class="btn join-item btn-sm text-nowrap {data.statusFilter === option.value
-                  ? 'btn-outline btn-primary bg-base-300'
-                  : 'btn-ghost'}"
-                href={buildHref({ status: option.value })}
-              >
-                {option.label}
-              </a>
-            {/each}
-          </div>
-        </div>
+					<div class="join rounded-sm bg-base-100">
+						{#each roleOptions as option (option.value)}
+							<a
+								class="btn join-item text-nowrap btn-sm {data.roleFilter === option.value
+									? 'bg-base-300 btn-outline btn-primary'
+									: 'btn-ghost'}"
+								href={buildHref({ role: option.value })}
+							>
+								{option.label}
+							</a>
+						{/each}
+					</div>
+					<div class="join rounded-sm bg-base-100">
+						{#each statusOptions as option (option.value)}
+							<a
+								class="btn join-item text-nowrap btn-sm {data.statusFilter === option.value
+									? 'bg-base-300 btn-outline btn-primary'
+									: 'btn-ghost'}"
+								href={buildHref({ status: option.value })}
+							>
+								{option.label}
+							</a>
+						{/each}
+					</div>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -221,7 +219,7 @@
 						Aucune traduction ne correspond à « <strong>{data.q}</strong> ».
 					</p>
 					<div class="card-actions">
-						<button class="btn btn-sm btn-outline" onclick={clearSearch}>
+						<button class="btn btn-outline btn-sm" onclick={clearSearch}>
 							Effacer la recherche
 						</button>
 					</div>
@@ -264,19 +262,21 @@
 									</span>
 								</div>
 							</td>
-							<td class="text-nowrap text-center">
+							<td class="text-center text-nowrap">
 								{#if t.isOutdated}
 									<span class="badge badge-sm badge-warning">Pas à jour</span>
 								{:else}
 									<span class="badge badge-sm badge-success">À jour</span>
 								{/if}
 							</td>
-							<td class="text-nowrap text-center">
+							<td class="text-center text-nowrap">
 								<span class={`badge badge-sm ${statusBadge(t.status)}`}
 									>{labelStatus(t.status)}</span
 								>
 							</td>
-							<td class="text-sm text-ellipsis text-nowrap max-w-40 overflow-hidden hover:overflow-visible">
+							<td
+								class="max-w-40 overflow-hidden text-sm text-nowrap text-ellipsis hover:overflow-visible"
+							>
 								<div class="flex flex-col">
 									<span>Ref: {t.version || '—'}</span>
 									<span>Trad: {t.tversion || '—'}</span>
@@ -344,7 +344,7 @@
 				</p>
 				<div class="join">
 					<a
-						class="btn btn-sm join-item"
+						class="btn join-item btn-sm"
 						class:btn-disabled={data.page <= 1}
 						aria-label="Page précédente"
 						href={buildHref({ page: Math.max(1, data.page - 1) })}
@@ -353,7 +353,7 @@
 					</a>
 					{#each visiblePages as p, i (i)}
 						{#if p === 'ellipsis'}
-							<span class="btn btn-sm join-item btn-disabled">…</span>
+							<span class="btn btn-disabled join-item btn-sm">…</span>
 						{:else}
 							<a
 								class="btn join-item btn-sm {p === data.page
@@ -366,7 +366,7 @@
 						{/if}
 					{/each}
 					<a
-						class="btn btn-sm join-item"
+						class="btn join-item btn-sm"
 						class:btn-disabled={data.page >= data.totalPages}
 						aria-label="Page suivante"
 						href={buildHref({ page: Math.min(data.totalPages, data.page + 1) })}
