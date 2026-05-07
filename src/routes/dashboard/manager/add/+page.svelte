@@ -201,6 +201,7 @@
 
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
+		const previousStep = step;
 
 		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
 		if (step === 1 && game.website === 'other') step += amount;
@@ -210,8 +211,12 @@
 		if (step < 0) step = 0;
 		if (step > maxStep) step = maxStep;
 
-		// Si l'ID vient de ?threadId, on attend l'étape 3 pour lancer le scrape auto.
-		if (pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') {
+		// Lancer le scrape une seule fois au passage à l'étape suivante (depuis l'étape Thread).
+		const movedForwardFromThreadStep =
+			amount > 0 && previousStep === 1 && step > previousStep && game.website === 'f95z';
+
+		// Compat query param: garder le déclenchement différé si nécessaire.
+		if ((pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') || movedForwardFromThreadStep) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
@@ -317,7 +322,7 @@
 		}
 	};
 
-	/** Vérif doublon + scrape F95 : uniquement après blur sur l’ID du thread */
+	/** Vérif doublon + scrape F95 (déclenché au passage d'étape). */
 	const handleThreadIdFieldBlur = async () => {
 		const tid = threadIdForDuplicateCheck(game.threadId);
 		await runThreadDuplicateCheckForTid(tid);
@@ -333,7 +338,10 @@
 	};
 
 	const onInputBlurCommit = async (field: keyof FormGameType) => {
-		if (field === 'threadId') await handleThreadIdFieldBlur();
+		// Ne pas scraper au blur: seulement vérifier les doublons pendant la saisie.
+		if (field === 'threadId') {
+			await runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
+		}
 	};
 
 	const handleSubmit = async (event: SubmitEvent): Promise<void> => {
@@ -577,6 +585,17 @@
 			title: 'Version de la traduction',
 			name: 'tversion',
 			type: 'text'
+		},
+		{
+			Component: Select,
+			active: [3, 5],
+			title: 'Statut de progression',
+			name: 'status',
+			selectOptions: [
+				{ value: 'in_progress', label: 'En cours' },
+				{ value: 'completed', label: 'Terminé' },
+				{ value: 'abandoned', label: 'Abandonné' }
+			]
 		},
 		{
 			Component: Select,
