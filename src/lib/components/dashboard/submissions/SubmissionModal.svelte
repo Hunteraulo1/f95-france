@@ -59,6 +59,10 @@
 			name: string;
 			pages: Array<{ name: string; link: string }>;
 		} | null;
+		user?: {
+			id: string;
+			username: string;
+		} | null;
 	}
 
 	interface Translator {
@@ -399,6 +403,21 @@
 							Détails du nouveau jeu
 						{/if}
 					</h3>
+					{#if submission.user?.username}
+						<div class="mt-1 text-sm text-base-content/70">
+							Soumis par :
+							<a
+								class="link link-hover"
+								href={resolve(`/dashboard/profile/${submission.user.username}`)}
+								onclick={async (event) => {
+									event.preventDefault();
+									await goto(resolve(`/dashboard/profile/${submission.user?.username}`));
+								}}
+							>
+								{submission.user.username}
+							</a>
+						</div>
+					{/if}
 					<div class="mt-2 flex flex-wrap items-center gap-2">
 						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
 							{getTypeLabel(submission.type)}
