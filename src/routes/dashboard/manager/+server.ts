@@ -118,10 +118,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
 		const computedGameAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
+		const translationTname = typeof translation?.tname === 'string' ? translation.tname.trim() : '';
+		const isIntegratedTranslation = translationTname === 'integrated';
+		const isNoTranslation = translationTname === 'no_translation';
 		const computedTranslationAc =
 			computedGameAutoCheck &&
-			normVersion(translation?.tversion).length > 0 &&
-			normVersion(translation?.tversion) === normVersion(gameVersion);
+			(isNoTranslation ||
+				isIntegratedTranslation ||
+				normVersion(translation?.version).length > 0 &&
+					normVersion(translation?.version) === normVersion(gameVersion));
 
 		// Valider les données requises
 		if (!name || !type || !website || !image) {

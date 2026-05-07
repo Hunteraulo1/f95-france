@@ -86,15 +86,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const gv = normVersion(game[0].gameVersion);
-		const tv = normVersion(tversion);
 		const vv = normVersion(version);
 		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
-		/** Intégrée : Trad. Ver. fixe (« Intégrée ») — l’auto-check suit la colonne version (réf.) vs jeu, pas tversion. */
+		/** Règle auto-check: true si version ref = version jeu, ou traduction intégrée, ou pas de traduction. */
 		const acValue =
 			game[0].gameAutoCheck === true &&
-			tnameNorm !== 'no_translation' &&
-			gv.length > 0 &&
-			(tnameNorm === 'integrated' ? vv === gv && tv.length > 0 : tv === gv);
+			(tnameNorm === 'integrated' ||
+				tnameNorm === 'no_translation' ||
+				(gv.length > 0 && vv === gv));
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
 		const currentUser = await getUserById(locals.user.id);

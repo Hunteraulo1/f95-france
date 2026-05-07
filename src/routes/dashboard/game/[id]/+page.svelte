@@ -27,13 +27,7 @@
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
-	const canUseSilentMode = $derived(
-		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
-	);
-	const canManageGameAutoCheck = $derived(
-		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
-	);
-	const canShowRefreshButton = $derived(
+	const isAdmin = $derived(
 		currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
 	);
 	/** Actualisation manuelle depuis le thread : réservée aux jeux F95Zone */
@@ -44,9 +38,9 @@
 	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
-	const canManuallyEditTranslationAc = $derived(canUseSilentMode && game.gameAutoCheck === true);
+	const canManuallyEditTranslationAc = $derived(isAdmin && game.gameAutoCheck === true);
 	/** Admins : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
-	const canShowTranslationAcCheckbox = $derived(canUseSilentMode && game.website === 'f95z');
+	const canShowTranslationAcCheckbox = $derived(isAdmin && game.website === 'f95z');
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -103,6 +97,15 @@
 	const addTranslationTversionLocked = $derived(
 		newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation'
 	);
+	const addTranslationAutoCheckPreview = $derived.by(() => {
+		const gv = (game.gameVersion ?? '').trim();
+		const vv = (newTranslation.version ?? '').trim();
+		const tname = (newTranslation.tname ?? 'translation').trim();
+
+		if (game.website !== 'f95z' || game.gameAutoCheck === false) return false;
+
+		return tname === 'integrated' || tname === 'no_translation' || (gv.length > 0 && vv === gv);
+	});
 
 	// État pour la suppression
 	let translationToDelete = $state<(typeof translations)[number] | null>(null);
@@ -248,7 +251,7 @@
 	};
 
 	const openAddTranslationModal = () => {
-		const defaultTranslatorInput = canUseSilentMode
+		const defaultTranslatorInput = isAdmin
 			? ''
 			: getCurrentUserDefaultTranslatorInput();
 		newTranslation = {
@@ -667,7 +670,7 @@
 				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
-				silentMode: canUseSilentMode ? editTranslationSilentMode : false
+				silentMode: isAdmin ? editTranslationSilentMode : false
 			};
 
 			const response = await fetch(
@@ -888,7 +891,7 @@
 				},
 				body: JSON.stringify({
 					...editingGame,
-					silentMode: canUseSilentMode ? editGameSilentMode : false
+					silentMode: isAdmin ? editGameSilentMode : false
 				})
 			});
 
@@ -940,7 +943,7 @@
 							<SquarePen size={16} />
 							Modifier le jeu
 						</button>
-						{#if canShowRefreshButton}
+						{#if isAdmin}
 							<button
 								class="btn btn-sm btn-secondary"
 								onclick={refreshGame}
@@ -1199,19 +1202,27 @@
 <!-- Modal d'ajout de traduction -->
 {#if showAddTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box max-h-[90vh] max-w-3xl overflow-y-auto">
+		<div class="modal-box max-h-[90vh] max-w-5xl overflow-y-auto">
 			<div class="mb-5">
 				<h3 class="text-lg font-bold">Ajouter une traduction</h3>
 				<p class="mt-1 text-sm text-base-content/70">
 					Même structure que la modification : renseignez le type de traduction en premier — certains
 					champs se désactivent seuls (intégrée, pas de traduction).
 				</p>
+				<div class="mt-3 flex flex-wrap gap-2">
+					<span class="badge badge-outline">Statut: {getStatusText(newTranslation.status)}</span>
+					<span class="badge badge-outline">Type: {getTtypeText(newTranslation.ttype)}</span>
+					<span class="badge badge-outline">
+						Moteur: {getGameEngineLabel(newTranslation.gameType)}
+					</span>
+				</div>
 			</div>
 
-			<div class="mb-3">
-				<h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
-			</div>
-			<div class="grid gap-4 md:grid-cols-2">
+			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+				<div class="mb-3">
+					<h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
+				</div>
+				<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control w-full md:col-span-2">
 					<label class="input" for="add-tr-translationName">
 						Nom de la traduction
@@ -1224,6 +1235,9 @@
 							required
 						/>
 					</label>
+					<p class="mt-1 text-xs text-base-content/60">
+						Nom court et reconnaissable (Épisode 2, Saison 2, Chapitre 2, etc.).
+					</p>
 				</div>
 
 				<div class="form-control w-full">
@@ -1279,7 +1293,7 @@
 					</select>
 				</div>
 
-				<div class="form-control w-full">
+					<div class="form-control w-full">
 					<label class="label" for="add-tr-game-type">
 						<span class="label-text">Moteur du jeu</span>
 					</label>
@@ -1293,22 +1307,41 @@
 							<option value={v}>{getGameEngineLabel(v)}</option>
 						{/each}
 					</select>
+					</div>
 				</div>
 			</div>
 
 			<div class="divider my-5">Versions et lien</div>
-			<div class="grid gap-4 md:grid-cols-2">
+			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+				<div class="grid gap-4 md:grid-cols-2">
 				<div class="form-control w-full">
-					<label class="input" for="add-tr-version">
-						Version de référence
+					<label class="label" for="add-tr-version">
+						<span class="label-text">Version de référence</span>
+					</label>
+					<div class="join join-horizontal w-full">
 						<input
 							id="add-tr-version"
 							type="text"
 							placeholder="Ex: 1.2"
-							class="w-full input-ghost"
+							class="join-item input-bordered input min-w-0 flex-1"
 							bind:value={newTranslation.version}
 						/>
-					</label>
+						<button
+							type="button"
+							class="btn join-item btn-outline shrink-0"
+							disabled={!(game.gameVersion ?? '').trim()}
+							onclick={() => {
+								const latest = (game.gameVersion ?? '').trim();
+								if (!latest) return;
+								newTranslation.version = latest;
+							}}
+						>
+							Copier
+						</button>
+					</div>
+					<p class="mt-1 text-xs text-base-content/60">
+						Dernière version de la Saison/Épisode/Chapitre/... sortie.
+					</p>
 					{#if newTranslation.tname === 'integrated' && translationAcUiAllowed && (game.gameVersion ?? '').trim()}
 						<p class="mt-1 text-xs text-base-content/60">
 							Intégrée : l’auto-check à la création s’active si cette version est identique à la
@@ -1318,21 +1351,24 @@
 				</div>
 
 				<div class="form-control w-full">
-					<label class="input" for="add-tr-tversion">
-						Version de traduction
-						<input
-							id="add-tr-tversion"
-							type="text"
-							placeholder="Ex: 1.0"
-							class="w-full input-ghost"
-							bind:value={newTranslation.tversion}
-							disabled={addTranslationTversionLocked}
-							required
-						/>
+					<label class="label" for="add-tr-tversion">
+						<span class="label-text">Version de traduction</span>
 					</label>
+					<input
+						id="add-tr-tversion"
+						type="text"
+						placeholder="Ex: 1.0"
+						class="input-bordered input w-full"
+						bind:value={newTranslation.tversion}
+						disabled={addTranslationTversionLocked}
+						required
+					/>
+					<p class="mt-1 text-xs text-base-content/60">
+						Version de la traduction. Doit être identique à la version de référence pour être à jour.
+					</p>
 				</div>
 
-				<div class="form-control w-full md:col-span-2">
+					<div class="form-control w-full md:col-span-2">
 					<label class="label" for="add-tr-tlink">
 						<span class="label-text">Lien de traduction</span>
 					</label>
@@ -1363,24 +1399,35 @@
 							Ouvrir
 						</button>
 					</div>
+					<p class="mt-1 text-xs text-base-content/60">
+						Lien direct vers la publication/source de la traduction.
+					</p>
+					</div>
 				</div>
 			</div>
 
-			<div class="form-control mt-4 w-full">
-				<div
-					class="rounded-box border border-base-300 bg-base-200/30 p-4 text-sm text-base-content/80"
-				>
-					<p>
-						<strong>Auto-check</strong> (cette ligne) : calculé à l’enregistrement si l’auto-check jeu
-						est actif, le jeu est F95, et la version de traduction correspond à la règle métier (dont
-						« intégrée »).
-					</p>
-				</div>
-			</div>
+      {#if isAdmin}
+        <div class="form-control mt-4 w-full flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="checkbox checkbox-sm"
+            checked={addTranslationAutoCheckPreview}
+            disabled
+          />
+          <div
+            class="rounded-box border border-base-300 bg-base-200/30 p-4 text-sm text-base-content/80"
+          >
+            <p>
+              <strong>Auto-check</strong>: Cette valeur est calculée automatiquement.
+            </p>
+          </div>
+        </div>
+      {/if}
 
 			<div class="divider my-5">Contributeurs</div>
-			<div class="grid gap-4 md:grid-cols-2">
-				<div class="form-control w-full">
+			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+				<div class="grid gap-4 md:grid-cols-2">
+					<div class="form-control w-full">
 					<label class="label" for="add-tr-translator">
 						<span class="label-text">Traducteur</span>
 					</label>
@@ -1397,6 +1444,9 @@
 							<option value={translator.name}>{translator.name}</option>
 						{/each}
 					</datalist>
+					<p class="mt-1 text-xs text-base-content/60">
+						Tape quelques lettres pour filtrer rapidement la liste.
+					</p>
 				</div>
 				<div class="form-control w-full">
 					<label class="label" for="add-tr-proofreader">
@@ -1415,10 +1465,14 @@
 							<option value={translator.name}>{translator.name}</option>
 						{/each}
 					</datalist>
+					<p class="mt-1 text-xs text-base-content/60">
+						Optionnel: personne en charge de la relecture/QA.
+					</p>
+					</div>
 				</div>
 			</div>
 
-			<div class="modal-action">
+			<div class="modal-action sticky bottom-0 mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur">
 				<button type="button" class="btn btn-ghost" onclick={closeAddTranslationModal}>
 					Annuler
 				</button>
@@ -1619,7 +1673,7 @@
 							<strong>false</strong>
 							(même si la ligne était marquée en auto-check auparavant).
 						</p>
-						{#if canManageGameAutoCheck}
+						{#if isAdmin}
 							<p class="mt-2 text-base-content/70">
 								Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la page),
 								puis cochez l’auto-check jeu pour ce thread F95.
@@ -1699,7 +1753,7 @@
 					</datalist>
 				</div>
 			</div>
-			{#if canUseSilentMode}
+			{#if isAdmin}
 				<div class="form-control mt-4">
 					<label class="label cursor-pointer">
 						<span class="label-text">Mode silencieux (sans notification Discord)</span>
@@ -1833,7 +1887,7 @@
 						></textarea>
 					</div>
 				</div>
-				{#if canManageGameAutoCheck}
+				{#if isAdmin}
 					<div class="form-control col-span-2 w-full">
 						<div
 							class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
@@ -1874,7 +1928,7 @@
 						{/if}
 					</div>
 				{/if}
-				{#if canUseSilentMode}
+				{#if isAdmin}
 					<div class="form-control col-span-2 w-full">
 						<div
 							class="rounded-box border border-base-300 bg-base-200/30 p-3 text-sm text-base-content/80"
