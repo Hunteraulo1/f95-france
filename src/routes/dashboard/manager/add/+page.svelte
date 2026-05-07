@@ -83,8 +83,12 @@
 		gameExists: boolean;
 		pendingSubmission: boolean;
 	} | null>(null);
+	let hasThreadConflict = $derived(
+		Boolean(threadDuplicateCheck?.gameExists || threadDuplicateCheck?.pendingSubmission)
+	);
 	let checkingDuplicateThread = $state(false);
 	let pendingQueryThreadIdAutoScrape = $state(false);
+	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
 	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
@@ -120,6 +124,7 @@
 		if (game.threadId === null || game.threadId === 0) {
 			game.threadId = parsed;
 		}
+		skipThreadStepFromQueryParam = true;
 		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
 		// On garde le déclenchement automatique pour plus tard.
 		pendingQueryThreadIdAutoScrape = true;
@@ -201,21 +206,41 @@
 
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
+		const previousStep = step;
 
 		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
-		if (step === 1 && game.website === 'other') step += amount;
+		if (
+			step === 1 &&
+			(game.website === 'other' || (game.website === 'f95z' && skipThreadStepFromQueryParam))
+		)
+			step += amount;
 		if (step === 2 && game.website === 'f95z') step += amount;
 
 		// Clamp final après sauts conditionnels
 		if (step < 0) step = 0;
 		if (step > maxStep) step = maxStep;
 
-		// Si l'ID vient de ?threadId, on attend l'étape 3 pour lancer le scrape auto.
-		if (pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') {
+		// Lancer le scrape une seule fois au passage à l'étape suivante (depuis l'étape Thread).
+		const movedForwardFromThreadStep =
+			amount > 0 && previousStep === 1 && step > previousStep && game.website === 'f95z';
+
+		// Compat query param: garder le déclenchement différé si nécessaire.
+		if (
+			(pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') ||
+			movedForwardFromThreadStep
+		) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
 	};
+
+	const requiresThreadIdForNextStep = $derived(
+		step === 1 && (game.website === 'f95z' || game.website === 'lc')
+	);
+	const hasValidThreadIdForNextStep = $derived(threadIdForDuplicateCheck(game.threadId) !== null);
+	const blockNextStepForMissingThread = $derived(
+		requiresThreadIdForNextStep && !hasValidThreadIdForNextStep
+	);
 
 	const scrapeData = async ({
 		threadId,
@@ -317,7 +342,7 @@
 		}
 	};
 
-	/** Vérif doublon + scrape F95 : uniquement après blur sur l’ID du thread */
+	/** Vérif doublon + scrape F95 (déclenché au passage d'étape). */
 	const handleThreadIdFieldBlur = async () => {
 		const tid = threadIdForDuplicateCheck(game.threadId);
 		await runThreadDuplicateCheckForTid(tid);
@@ -333,7 +358,10 @@
 	};
 
 	const onInputBlurCommit = async (field: keyof FormGameType) => {
-		if (field === 'threadId') await handleThreadIdFieldBlur();
+		// Ne pas scraper au blur: seulement vérifier les doublons pendant la saisie.
+		if (field === 'threadId') {
+			await runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
+		}
 	};
 
 	const handleSubmit = async (event: SubmitEvent): Promise<void> => {
@@ -581,6 +609,17 @@
 		{
 			Component: Select,
 			active: [3, 5],
+			title: 'Statut de progression',
+			name: 'status',
+			selectOptions: [
+				{ value: 'in_progress', label: 'En cours' },
+				{ value: 'completed', label: 'Terminé' },
+				{ value: 'abandoned', label: 'Abandonné' }
+			]
+		},
+		{
+			Component: Select,
+			active: [3, 5],
 			title: 'Status de la traduction',
 			name: 'tname',
 			selectOptions: [
@@ -618,8 +657,8 @@
 			name: 'ttype',
 			selectOptions: [
 				{ value: 'vf', label: 'VO Française' },
-				{ value: 'manual', label: 'Traduction Humaine' },
-				{ value: 'semi-auto', label: 'Traduction Semi-Automatique' },
+				{ value: 'manual', label: 'Relecture complète' },
+				{ value: 'semi-auto', label: 'Relecture Partielle' },
 				{ value: 'auto', label: 'Traduction Automatique' },
 				{ value: 'to_tested', label: 'À tester' },
 				{ value: 'hs', label: 'Lien Trad HS' }
@@ -643,26 +682,21 @@
 </script>
 
 {#if !$isLoading}
-	<div class="mx-auto mt-0 flex w-full max-w-7xl flex-col gap-4 px-3 py-2 sm:px-5 lg:px-8">
+	<div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 sm:px-5 lg:px-8">
 		<div class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="space-y-1">
 					<h1 class="text-xl font-semibold sm:text-2xl">Ajouter un jeu</h1>
-					<p class="text-sm text-base-content/70">
-						Formulaire repensé en plusieurs étapes pour réduire les erreurs et accélérer la saisie.
-					</p>
 				</div>
+				<ul class="steps steps-horizontal mt-4 hidden overflow-x-auto xl:flex">
+					{#each stepLabels as label, index (label)}
+						<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
+					{/each}
+				</ul>
 				<div class="badge badge-outline badge-lg badge-primary">
 					Étape {step + 1} / {maxStep + 1}
 				</div>
 			</div>
-			<progress class="progress mt-4 w-full progress-primary" value={step + 1} max={maxStep + 1}
-			></progress>
-			<ul class="steps steps-horizontal mt-4 hidden w-full overflow-x-auto lg:flex">
-				{#each stepLabels as label, index (label)}
-					<li class="step {index <= step ? 'step-primary' : ''} text-xs">{label}</li>
-				{/each}
-			</ul>
 		</div>
 
 		<form
@@ -679,7 +713,7 @@
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
-			{#if threadDuplicateCheck && (threadDuplicateCheck.gameExists || threadDuplicateCheck.pendingSubmission)}
+			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">
 						<span class="font-medium">Attention — conflit possible</span>
@@ -701,6 +735,33 @@
 				<div class="text-sm text-base-content/80">
 					<span class="font-medium">Section active :</span>
 					{stepLabels[step]}
+				</div>
+			</div>
+
+			<div class="rounded-box border border-base-300 bg-base-200/40 px-4 py-3">
+				<div class="flex flex-wrap items-start justify-between gap-2">
+					<h2 class="text-sm font-semibold text-base-content">Jeu en cours</h2>
+					{#if hasThreadConflict}
+						<span class="badge badge-sm badge-warning">Conflit thread</span>
+					{/if}
+				</div>
+				<div class="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Site</p>
+						<p class="truncate font-medium">{game.website}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Thread ID</p>
+						<p class="truncate font-medium">{game.threadId ?? '—'}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Nom</p>
+						<p class="truncate font-medium">{game.name?.trim() ? game.name : '—'}</p>
+					</div>
+					<div class="rounded-box bg-base-100 px-3 py-2">
+						<p class="text-base-content/60">Version</p>
+						<p class="truncate font-medium">{game.gameVersion?.trim() ? game.gameVersion : '—'}</p>
+					</div>
 				</div>
 			</div>
 
@@ -747,7 +808,7 @@
 			>
 				{#if step < maxStep}
 					<button
-						class="btn w-full btn-outline btn-primary sm:w-44"
+						class="btn w-full btn-outline btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(-1)}
 						disabled={step <= 0}
@@ -755,15 +816,17 @@
 						Précédent
 					</button>
 					<button
-						class="btn w-full btn-primary sm:w-44"
+						class="btn w-full btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(1)}
+						disabled={blockNextStepForMissingThread}
+						title={blockNextStepForMissingThread ? 'Thread ID requis' : undefined}
 					>
 						Suivant
 					</button>
 				{:else}
 					<button
-						class="btn w-full btn-primary sm:w-52"
+						class="btn w-full btn-primary md:w-38"
 						type="submit"
 						disabled={blockFinalSubmit}
 						title={blockFinalSubmit

@@ -37,11 +37,11 @@
 	};
 </script>
 
-<button class="btn w-full btn-info sm:w-48" type="button" onclick={handleClick}> Dev data </button>
+<button class="btn w-full btn-info md:w-38" type="button" onclick={handleClick}> Dev data </button>
 
 {#if game && game.website === 'f95z'}
 	<button
-		class="btn w-full btn-info sm:w-48"
+		class="btn w-full btn-info md:w-38"
 		type="button"
 		onclick={() => {
 			if (!game) throw new Error('no game data');

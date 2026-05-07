@@ -25,10 +25,10 @@
 	let { pendingSubmissionsCount = 0 }: Pick<Props, 'pendingSubmissionsCount'> = $props();
 	let isDrawerOpen = $state(true);
 
-	const isDesktop = () => window.matchMedia('(min-width: 640px)').matches;
+	const isDesktop = () => window.matchMedia('(min-width: 840px)').matches;
 
 	onMount(() => {
-		const desktopMediaQuery = window.matchMedia('(min-width: 640px)');
+		const desktopMediaQuery = window.matchMedia('(min-width: 840px)');
 
 		isDrawerOpen = desktopMediaQuery.matches;
 
@@ -172,7 +172,7 @@
 <aside class="drawer-side max-h-[calc(100vh-4rem)] is-drawer-close:overflow-visible">
 	<label for="my-drawer-4" aria-label="close sidebar" class="drawer-overlay"></label>
 	<div
-		class="flex min-h-full flex-col items-start bg-base-100 max-sm:w-64 is-drawer-close:w-14 is-drawer-open:w-64"
+		class="flex min-h-full flex-col items-start bg-base-100 max-md:w-64 is-drawer-close:w-14 is-drawer-open:w-64"
 	>
 		<!-- Sidebar content here -->
 		<ul class="menu w-full grow">

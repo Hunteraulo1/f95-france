@@ -118,9 +118,33 @@
 
 	onMount(() => {
 		fetchNotifications();
-		// Rafraîchir les notifications toutes les 30 secondes
-		const interval = setInterval(fetchNotifications, 30000);
-		return () => clearInterval(interval);
+
+		/** @type {EventSource | null} */
+		let source = null;
+		/** @type {ReturnType<typeof setInterval> | null} */
+		let fallbackInterval = null;
+
+		if (typeof EventSource !== 'undefined') {
+			source = new EventSource('/api/notifications/stream');
+			source.addEventListener('unread_count', (event) => {
+				try {
+					const parsed = JSON.parse(event.data);
+					if (typeof parsed?.unreadCount === 'number') {
+						unreadCount = parsed.unreadCount;
+					}
+				} catch {
+					// no-op
+				}
+			});
+		} else {
+			// Fallback legacy navigateur: polling léger.
+			fallbackInterval = setInterval(fetchNotifications, 30000);
+		}
+
+		return () => {
+			if (source) source.close();
+			if (fallbackInterval) clearInterval(fallbackInterval);
+		};
 	});
 
 	$effect(() => {

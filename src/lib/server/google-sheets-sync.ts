@@ -793,6 +793,217 @@ async function sortJeuxSheetByGameName(auth: {
 	}
 }
 
+function parseCountCell(value: string | undefined): number {
+	const raw = (value ?? '').trim();
+	if (!raw) return 0;
+	const n = Number.parseInt(raw, 10);
+	return Number.isFinite(n) ? n : 0;
+}
+
+async function sortTranslatorSheetByActivityDesc(auth: {
+	spreadsheetId: string;
+	headers: HeadersInit;
+	apiKey?: string;
+}): Promise<void> {
+	const tab = encodeURIComponent(SHEET_TAB_TR);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length <= 2) return;
+
+	const headersRow = rows[0] ?? [];
+	const tradIdx = findHeaderIndex(headersRow, ['Traduction']);
+	const readIdx = findHeaderIndex(headersRow, ['Relecture']);
+	const nameIdx = findHeaderIndex(headersRow, ['Nom']);
+	if (tradIdx === -1 || readIdx === -1) return;
+
+	const dataRows = rows.slice(1);
+	const sortedRows = [...dataRows].sort((a, b) => {
+		const aTotal = parseCountCell(a[tradIdx]) + parseCountCell(a[readIdx]);
+		const bTotal = parseCountCell(b[tradIdx]) + parseCountCell(b[readIdx]);
+		if (aTotal !== bTotal) return bTotal - aTotal; // Z→A sur (Traduction + Relecture)
+
+		const aName = nameIdx === -1 ? '' : (a[nameIdx] ?? '').trim();
+		const bName = nameIdx === -1 ? '' : (b[nameIdx] ?? '').trim();
+		return aName.localeCompare(bName, 'fr', { sensitivity: 'base' });
+	});
+
+	const lastCol = toColA1(headersRow.length - 1);
+	await sheetsBatchUpdate(auth, [
+		{
+			range: `'${SHEET_TAB_TR}'!A2:${lastCol}${sortedRows.length + 1}`,
+			values: sortedRows
+		}
+	]);
+}
+
+async function reapplyTranslatorPagesRichText(auth: {
+	spreadsheetId: string;
+	headers: HeadersInit;
+	apiKey?: string;
+}): Promise<void> {
+	const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
+	const pagesColIdx = findHeaderIndex(trSnap.headersRow, ['Pages']);
+	if (pagesColIdx === -1) return;
+
+	const idDbIdx =
+		findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db']) !== -1
+			? findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db'])
+			: findHeaderIndexByTokens(trSnap.headersRow, ['id'], ['db']);
+	if (idDbIdx === -1) return;
+
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${trSnap.tabEncoded}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const valuesBody = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = valuesBody.values ?? [];
+	if (rows.length <= 1) return;
+
+	const ids = rows
+		.slice(1)
+		.map((row) => (row[idDbIdx] ?? '').trim())
+		.filter((id) => id.length > 0);
+	if (ids.length === 0) return;
+
+	const translators = await db
+		.select({ id: table.translator.id, pages: table.translator.pages })
+		.from(table.translator)
+		.where(inArray(table.translator.id, ids));
+	const pagesByTranslatorId = new Map(translators.map((t) => [t.id, t.pages]));
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
+	if (sheetId == null) return;
+
+	const rowsForRichText = rows
+		.slice(1)
+		.map((row, i) => {
+			const id = (row[idDbIdx] ?? '').trim();
+			return {
+				rowNumber: i + 2,
+				pagesRaw: pagesByTranslatorId.get(id) ?? null
+			};
+		})
+		.filter((entry) => entry.pagesRaw != null);
+	if (rowsForRichText.length === 0) return;
+
+	await applyPagesRichTextInRows(auth, {
+		sheetId,
+		pagesColIdx,
+		rows: rowsForRichText
+	});
+}
+
+/**
+ * Réapplique un format "Automatique / Général" sur la plage utile d'un onglet.
+ * Permet de corriger les feuilles passées en "Texte brut" après des opérations d'édition.
+ */
+async function normalizeSheetCellFormat(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	tabName: string
+): Promise<void> {
+	const snap = await getSheetSnapshot(auth, tabName, { includeDataRows: true });
+	const sheetId = await getSheetIdByTitle(auth, tabName);
+	if (sheetId == null) return;
+
+	const rowCount = Math.max(snap.dataRows?.length ?? 0, 1);
+	const colCount = Math.max(snap.headersRow.length, 1);
+	const requests = [
+		{
+			repeatCell: {
+				range: {
+					sheetId,
+					startRowIndex: 0,
+					endRowIndex: rowCount,
+					startColumnIndex: 0,
+					endColumnIndex: colCount
+				},
+				cell: {
+					userEnteredFormat: {
+						numberFormat: {
+							type: 'NUMBER',
+							pattern: 'General'
+						}
+					}
+				},
+				fields: 'userEnteredFormat.numberFormat'
+			}
+		}
+	];
+	await sheetsSpreadsheetBatchUpdate(auth, requests);
+}
+
+async function normalizeMajSheetFormats(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	headersRow: string[],
+	rowCount: number
+): Promise<void> {
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_MAJ);
+	if (sheetId == null) return;
+
+	const dateIdx =
+		findHeaderIndex(headersRow, ['Date', 'Jour']) !== -1
+			? findHeaderIndex(headersRow, ['Date', 'Jour'])
+			: 0;
+	const colCount = Math.max(headersRow.length, 1);
+	const safeRowCount = Math.max(rowCount, 1);
+
+	const requests: unknown[] = [];
+	for (let col = 0; col < colCount; col++) {
+		if (col === dateIdx) continue;
+		requests.push({
+			repeatCell: {
+				range: {
+					sheetId,
+					startRowIndex: 0,
+					endRowIndex: safeRowCount,
+					startColumnIndex: col,
+					endColumnIndex: col + 1
+				},
+				cell: {
+					userEnteredFormat: {
+						numberFormat: {
+							type: 'TEXT'
+						}
+					}
+				},
+				fields: 'userEnteredFormat.numberFormat'
+			}
+		});
+	}
+
+	requests.push({
+		repeatCell: {
+			range: {
+				sheetId,
+				startRowIndex: 0,
+				endRowIndex: safeRowCount,
+				startColumnIndex: dateIdx,
+				endColumnIndex: dateIdx + 1
+			},
+			cell: {
+				userEnteredFormat: {
+					numberFormat: {
+						type: 'DATE',
+						pattern: 'dd/mm/yyyy'
+					}
+				}
+			},
+			fields: 'userEnteredFormat.numberFormat'
+		}
+	});
+
+	await sheetsSpreadsheetBatchUpdate(auth, requests);
+}
+
 async function deleteRowsByTranslationIds(translationIds: string[]): Promise<void> {
 	if (!translationIds.length) return;
 	const auth = await getSheetsAuth();
@@ -958,6 +1169,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
 		}
 		await sortJeuxSheetByGameName(auth);
+		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		return;
 	}
 
@@ -978,6 +1190,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 	}
 	await sortJeuxSheetByGameName(auth);
+	await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 }
 
 export async function deleteTranslationFromGoogleSheet(translationId: string): Promise<void> {
@@ -1062,7 +1275,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', tr.discordId ?? '');
+	set('Id Discord', '');
 	set('Traduction', String(tr.tradCount ?? 0));
 	set('Relecture', String(tr.readCount ?? 0));
 	set('Id Db', tr.id);
@@ -1096,6 +1309,9 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 				console.warn('[google-sheets-sync] rich text pages update failed:', err);
 			}
 		}
+		await sortTranslatorSheetByActivityDesc(auth);
+		await reapplyTranslatorPagesRichText(auth);
+		await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		return;
 	}
 
@@ -1143,6 +1359,9 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 			}
 		}
 	}
+	await sortTranslatorSheetByActivityDesc(auth);
+	await reapplyTranslatorPagesRichText(auth);
+	await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 }
 
 /**
@@ -1190,7 +1409,7 @@ function buildTranslatorRow(
 	};
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', tr.discordId ?? '');
+	set('Id Discord', '');
 	set('Traduction', String(tr.tradCount ?? 0));
 	set('Relecture', String(tr.readCount ?? 0));
 	set(['Id Db', 'ID DB'], tr.id);
@@ -1342,6 +1561,8 @@ export async function syncDbToSpreadsheetBulk(
 			} else {
 				onProgress?.('Sheets Jeux : pas de tri (mises à jour in-place seulement)');
 			}
+			onProgress?.('Sheets Jeux : normalisation du format des cellules…');
+			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
@@ -1435,6 +1656,12 @@ export async function syncDbToSpreadsheetBulk(
 					);
 				}
 			}
+			onProgress?.('Sheets TR : tri Z→A sur (Traduction + Relecture)…');
+			await sortTranslatorSheetByActivityDesc(auth);
+			onProgress?.('Sheets TR : restauration des liens rich text colonne Pages…');
+			await reapplyTranslatorPagesRichText(auth);
+			onProgress?.('Sheets TR : normalisation du format des cellules…');
+			await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		}
 	} catch (err) {
 		errors.push(
@@ -1629,5 +1856,18 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 				body: JSON.stringify({ requests })
 			});
 		}
+	}
+
+	const refreshed = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (refreshed.ok) {
+		const refreshedBody = (await refreshed.json()) as SheetsApiResponse;
+		const refreshedRows = refreshedBody.values ?? [];
+		const refreshedHeaders = refreshedRows[0] ?? headers;
+		await normalizeMajSheetFormats(auth, refreshedHeaders, refreshedRows.length);
 	}
 }
