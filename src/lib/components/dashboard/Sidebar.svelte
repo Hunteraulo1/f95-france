@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { user } from '$lib/stores';
 	import { checkRole, type checkRoleType } from '$lib/utils';
+	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
 	import Inbox from '@lucide/svelte/icons/inbox';
@@ -69,6 +70,12 @@
 			href: '/dashboard/',
 			icon: MonitorCog,
 			roles: ['all']
+		},
+		{
+			label: 'Mes traductions',
+			href: '/dashboard/my-translations',
+			icon: BookType,
+			roles: ['translator', 'admin', 'superadmin']
 		},
 		{
 			label: 'Gestion des jeux',
