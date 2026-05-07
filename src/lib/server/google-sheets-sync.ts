@@ -793,6 +793,45 @@ async function sortJeuxSheetByGameName(auth: {
 	}
 }
 
+/**
+ * Réapplique un format "Automatique / Général" sur la plage utile d'un onglet.
+ * Permet de corriger les feuilles passées en "Texte brut" après des opérations d'édition.
+ */
+async function normalizeSheetCellFormat(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	tabName: string
+): Promise<void> {
+	const snap = await getSheetSnapshot(auth, tabName, { includeDataRows: true });
+	const sheetId = await getSheetIdByTitle(auth, tabName);
+	if (sheetId == null) return;
+
+	const rowCount = Math.max(snap.dataRows?.length ?? 0, 1);
+	const colCount = Math.max(snap.headersRow.length, 1);
+	const requests = [
+		{
+			repeatCell: {
+				range: {
+					sheetId,
+					startRowIndex: 0,
+					endRowIndex: rowCount,
+					startColumnIndex: 0,
+					endColumnIndex: colCount
+				},
+				cell: {
+					userEnteredFormat: {
+						numberFormat: {
+							type: 'NUMBER',
+							pattern: 'General'
+						}
+					}
+				},
+				fields: 'userEnteredFormat.numberFormat'
+			}
+		}
+	];
+	await sheetsSpreadsheetBatchUpdate(auth, requests);
+}
+
 async function deleteRowsByTranslationIds(translationIds: string[]): Promise<void> {
 	if (!translationIds.length) return;
 	const auth = await getSheetsAuth();
@@ -958,6 +997,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
 		}
 		await sortJeuxSheetByGameName(auth);
+		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		return;
 	}
 
@@ -978,6 +1018,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 	}
 	await sortJeuxSheetByGameName(auth);
+	await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 }
 
 export async function deleteTranslationFromGoogleSheet(translationId: string): Promise<void> {
@@ -1096,6 +1137,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 				console.warn('[google-sheets-sync] rich text pages update failed:', err);
 			}
 		}
+		await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		return;
 	}
 
@@ -1143,6 +1185,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 			}
 		}
 	}
+	await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 }
 
 /**
@@ -1342,6 +1385,8 @@ export async function syncDbToSpreadsheetBulk(
 			} else {
 				onProgress?.('Sheets Jeux : pas de tri (mises à jour in-place seulement)');
 			}
+			onProgress?.('Sheets Jeux : normalisation du format des cellules…');
+			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
@@ -1435,6 +1480,8 @@ export async function syncDbToSpreadsheetBulk(
 					);
 				}
 			}
+			onProgress?.('Sheets TR : normalisation du format des cellules…');
+			await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		}
 	} catch (err) {
 		errors.push(
