@@ -637,8 +637,8 @@
 			name: 'ttype',
 			selectOptions: [
 				{ value: 'vf', label: 'VO Française' },
-				{ value: 'manual', label: 'Traduction Humaine' },
-				{ value: 'semi-auto', label: 'Traduction Semi-Automatique' },
+				{ value: 'manual', label: 'Relecture complète' },
+				{ value: 'semi-auto', label: 'Relecture Partielle' },
 				{ value: 'auto', label: 'Traduction Automatique' },
 				{ value: 'to_tested', label: 'À tester' },
 				{ value: 'hs', label: 'Lien Trad HS' }
