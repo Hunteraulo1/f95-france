@@ -1,8 +1,98 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import Search from '@lucide/svelte/icons/search';
+	import X from '@lucide/svelte/icons/x';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	let searchQuery = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const roleOptions = [
+		{ value: 'all', label: 'Toutes' },
+		{ value: 'translator', label: 'Traductions' },
+		{ value: 'proofreader', label: 'Relectures' }
+	] as const;
+
+	const statusOptions = [
+		{ value: 'all', label: 'Toutes' },
+		{ value: 'in_progress', label: 'En cours' },
+		{ value: 'completed', label: 'Terminées' },
+		{ value: 'abandoned', label: 'Abandonnées' }
+	] as const;
+
+	const buildQuery = (overrides: { status?: string; role?: string; q?: string; page?: number }) => {
+		const status = overrides.status ?? data.statusFilter;
+		const role = overrides.role ?? data.roleFilter;
+		const q = overrides.q ?? data.q ?? '';
+		const page = overrides.page ?? 1;
+		const params = [
+			`status=${encodeURIComponent(status)}`,
+			`role=${encodeURIComponent(role)}`,
+			...(q ? [`q=${encodeURIComponent(q)}`] : []),
+			...(page > 1 ? [`page=${page}`] : [])
+		];
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { status?: string; role?: string; q?: string; page?: number }) =>
+		resolve(`/dashboard/my-translations${buildQuery(overrides)}` as '/dashboard/my-translations');
+
+	const navigateSearch = (value: string) => {
+		goto(
+			resolve(
+				`/dashboard/my-translations${buildQuery({ q: value, page: 1 })}` as '/dashboard/my-translations'
+			),
+			{
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			}
+		);
+	};
+
+	const onSearchInput = (value: string) => {
+		searchQuery = value;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
+	};
+
+	const clearSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchQuery = '';
+		navigateSearch('');
+	};
+
+	$effect(() => {
+		const incoming = data.q ?? '';
+		untrack(() => {
+			if (incoming !== searchQuery) {
+				searchQuery = incoming;
+			}
+		});
+	});
+
+	const visiblePages = $derived.by(() => {
+		const pages: (number | 'ellipsis')[] = [];
+		const total = data.totalPages ?? 1;
+		const cur = data.page ?? 1;
+		if (total <= 7) {
+			for (let i = 1; i <= total; i++) pages.push(i);
+			return pages;
+		}
+		pages.push(1);
+		if (cur > 3) pages.push('ellipsis');
+		for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
+		if (cur < total - 2) pages.push('ellipsis');
+		pages.push(total);
+		return pages;
+	});
 
 	const labelStatus = (s: string) => {
 		if (s === 'completed') return 'Terminé';
@@ -16,6 +106,25 @@
 		return 'badge-warning';
 	};
 
+	const tnameLabels: Record<string, string> = {
+		no_translation: 'Pas de traduction',
+		integrated: 'Intégrée',
+		translation: 'Traduction',
+		translation_with_mods: 'Traduction (avec mods)'
+	};
+
+	const ttypeLabels: Record<string, string> = {
+		vf: 'VO Française',
+		manual: 'Relecture complète',
+		'semi-auto': 'Relecture partielle',
+		auto: 'Traduction automatique',
+		to_tested: 'À tester',
+		hs: 'Lien HS'
+	};
+
+	const labelTname = (s: string | null | undefined) => (s ? (tnameLabels[s] ?? s) : '—');
+	const labelTtype = (s: string | null | undefined) => (s ? (ttypeLabels[s] ?? s) : '—');
+
 	const staff = (id: string | null) => {
 		if (!id) return null;
 		return data.staffById?.[id] ?? { name: id, username: null };
@@ -28,10 +137,10 @@
 			<h1 class="text-3xl font-bold text-base-content">Mes traductions</h1>
 			<p class="mt-1 text-sm text-base-content/70">
 				{#if data.linkedTranslator}
-					Filtré sur <strong>{data.linkedTranslator.name}</strong> (traducteur ou relecteur).
+					Filtré sur <strong>{data.linkedTranslator.name}</strong>
 					{#if data.outdatedCount > 0}
 						<span class="ml-2 badge badge-sm badge-warning">
-							{data.outdatedCount} non à jour
+							{data.outdatedCount} traduction(s) plus à jour
 						</span>
 					{/if}
 				{:else}
@@ -41,29 +150,52 @@
 		</div>
 
 		{#if data.linkedTranslator}
-			<div class="join">
-				<a
-					class="btn join-item btn-sm {data.statusFilter === 'all' ? 'btn-active' : 'btn-outline'}"
-					href="/dashboard/my-translations?status=all">Toutes</a
-				>
-				<a
-					class="btn join-item btn-sm {data.statusFilter === 'in_progress'
-						? 'btn-active'
-						: 'btn-outline'}"
-					href="/dashboard/my-translations?status=in_progress">En cours</a
-				>
-				<a
-					class="btn join-item btn-sm {data.statusFilter === 'completed'
-						? 'btn-active'
-						: 'btn-outline'}"
-					href="/dashboard/my-translations?status=completed">Terminées</a
-				>
-				<a
-					class="btn join-item btn-sm {data.statusFilter === 'abandoned'
-						? 'btn-active'
-						: 'btn-outline'}"
-					href="/dashboard/my-translations?status=abandoned">Abandonnées</a
-				>
+			<div class="flex w-full flex-wrap justify-between">
+				<label class="input input-sm w-full sm:w-64">
+					<Search size={16} class="opacity-60" />
+					<input
+						type="search"
+						placeholder="Rechercher un jeu…"
+						value={searchQuery}
+						oninput={(e) => onSearchInput(e.currentTarget.value)}
+					/>
+					{#if searchQuery}
+						<button
+							type="button"
+							class="opacity-60 hover:opacity-100"
+							aria-label="Effacer la recherche"
+							onclick={clearSearch}
+						>
+							<X size={14} />
+						</button>
+					{/if}
+				</label>
+				<div class="flex gap-2">
+					<div class="join rounded-sm bg-base-100">
+						{#each roleOptions as option (option.value)}
+							<a
+								class="btn join-item text-nowrap btn-sm {data.roleFilter === option.value
+									? 'bg-base-300 btn-outline btn-primary'
+									: 'btn-ghost'}"
+								href={buildHref({ role: option.value })}
+							>
+								{option.label}
+							</a>
+						{/each}
+					</div>
+					<div class="join rounded-sm bg-base-100">
+						{#each statusOptions as option (option.value)}
+							<a
+								class="btn join-item text-nowrap btn-sm {data.statusFilter === option.value
+									? 'bg-base-300 btn-outline btn-primary'
+									: 'btn-ghost'}"
+								href={buildHref({ status: option.value })}
+							>
+								{option.label}
+							</a>
+						{/each}
+					</div>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -78,13 +210,25 @@
 			</div>
 			<a class="btn btn-outline btn-sm" href="/dashboard/settings">Paramètres</a>
 		</div>
-	{:else if data.translations.length === 0}
+	{:else if data.totalCount === 0}
 		<div class="card bg-base-100 shadow">
 			<div class="card-body">
-				<h2 class="card-title">Aucune traduction trouvée</h2>
-				<p class="text-base-content/70">
-					Sur ce filtre, aucune ligne ne correspond à ton rôle (traducteur / relecteur).
-				</p>
+				{#if data.q}
+					<h2 class="card-title">Aucun résultat</h2>
+					<p class="text-base-content/70">
+						Aucune traduction ne correspond à « <strong>{data.q}</strong> ».
+					</p>
+					<div class="card-actions">
+						<button class="btn btn-outline btn-sm" onclick={clearSearch}>
+							Effacer la recherche
+						</button>
+					</div>
+				{:else}
+					<h2 class="card-title">Aucune traduction trouvée</h2>
+					<p class="text-base-content/70">
+						Sur ces filtres, aucune ligne ne correspond à ton rôle (traducteur / relecteur).
+					</p>
+				{/if}
 			</div>
 		</div>
 	{:else}
@@ -110,22 +254,29 @@
 							<td>
 								<div class="flex flex-col">
 									<span>{t.translationName || '—'}</span>
-									<span class="text-xs opacity-70">{t.tname} · {t.ttype}</span>
+									<span class="text-xs opacity-70">
+										{labelTname(t.tname)}
+										{#if t.tname && t.tname !== 'no_translation' && t.ttype}
+											· {labelTtype(t.ttype)}
+										{/if}
+									</span>
 								</div>
 							</td>
-							<td>
+							<td class="text-center text-nowrap">
 								{#if t.isOutdated}
-									<span class="badge badge-sm text-nowrap badge-warning">Non à jour</span>
+									<span class="badge badge-sm badge-warning">Pas à jour</span>
 								{:else}
-									<span class="badge badge-sm text-nowrap badge-success">À jour</span>
+									<span class="badge badge-sm badge-success">À jour</span>
 								{/if}
 							</td>
-							<td>
+							<td class="text-center text-nowrap">
 								<span class={`badge badge-sm ${statusBadge(t.status)}`}
 									>{labelStatus(t.status)}</span
 								>
 							</td>
-							<td class="text-sm">
+							<td
+								class="max-w-40 overflow-hidden text-sm text-nowrap text-ellipsis hover:overflow-visible"
+							>
 								<div class="flex flex-col">
 									<span>Ref: {t.version || '—'}</span>
 									<span>Trad: {t.tversion || '—'}</span>
@@ -135,7 +286,7 @@
 							<td class="text-sm">
 								{#if t.translatorId === data.linkedTranslator.id}
 									{@const proofreader = staff(t.proofreaderId)}
-									<div>Mon rôle : Traducteur</div>
+									<div class="text-nowrap">Mon rôle : Traducteur</div>
 									<div class="text-xs opacity-70">
 										Relecteur :
 										{#if proofreader?.username}
@@ -184,5 +335,46 @@
 				</tbody>
 			</table>
 		</div>
+
+		{#if data.totalPages > 1}
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<p class="text-sm text-base-content/70">
+					Page <strong>{data.page}</strong> sur <strong>{data.totalPages}</strong>
+					· {data.totalCount} résultat{data.totalCount > 1 ? 's' : ''}
+				</p>
+				<div class="join">
+					<a
+						class="btn join-item btn-sm"
+						class:btn-disabled={data.page <= 1}
+						aria-label="Page précédente"
+						href={buildHref({ page: Math.max(1, data.page - 1) })}
+					>
+						<ChevronLeft size={16} />
+					</a>
+					{#each visiblePages as p, i (i)}
+						{#if p === 'ellipsis'}
+							<span class="btn btn-disabled join-item btn-sm">…</span>
+						{:else}
+							<a
+								class="btn join-item btn-sm {p === data.page
+									? 'btn-outline btn-primary'
+									: 'btn-ghost'}"
+								href={buildHref({ page: p })}
+							>
+								{p}
+							</a>
+						{/if}
+					{/each}
+					<a
+						class="btn join-item btn-sm"
+						class:btn-disabled={data.page >= data.totalPages}
+						aria-label="Page suivante"
+						href={buildHref({ page: Math.min(data.totalPages, data.page + 1) })}
+					>
+						<ChevronRight size={16} />
+					</a>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
