@@ -72,16 +72,16 @@
 			roles: ['all']
 		},
 		{
-			label: 'Mes traductions',
-			href: '/dashboard/my-translations',
-			icon: BookType,
-			roles: ['translator', 'admin', 'superadmin']
-		},
-		{
 			label: 'Gestion des jeux',
 			href: '/dashboard/manager',
 			icon: Library,
 			roles: ['translator', 'admin']
+		},
+		{
+			label: 'Mes traductions',
+			href: '/dashboard/my-translations',
+			icon: BookType,
+			roles: ['translator', 'admin', 'superadmin']
 		},
 		{
 			label: 'Mes soumissions',
