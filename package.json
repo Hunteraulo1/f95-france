@@ -25,6 +25,7 @@
     "db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:dev:down": "docker compose -f docker-compose.dev.yml down",
     "db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
+    "db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh",
     "sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
   },
   "devDependencies": {
