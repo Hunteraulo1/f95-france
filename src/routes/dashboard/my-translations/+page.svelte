@@ -142,7 +142,7 @@
 					Filtré sur <strong>{data.linkedTranslator.name}</strong>
 					{#if data.outdatedCount > 0}
 						<span class="ml-2 badge badge-sm badge-warning">
-							{data.outdatedCount} non à jour
+							{data.outdatedCount} traduction(s) plus à jour
 						</span>
 					{/if}
 				{:else}
@@ -176,7 +176,7 @@
           <div class="join bg-base-100 rounded-sm">
             {#each roleOptions as option (option.value)}
               <a
-                class="btn join-item btn-sm {data.roleFilter === option.value
+                class="btn join-item btn-sm text-nowrap {data.roleFilter === option.value
                   ? 'btn-outline btn-primary bg-base-300'
                   : 'btn-ghost'}"
                 href={buildHref({ role: option.value })}
@@ -188,7 +188,7 @@
           <div class="join bg-base-100 rounded-sm">
             {#each statusOptions as option (option.value)}
               <a
-                class="btn join-item btn-sm {data.statusFilter === option.value
+                class="btn join-item btn-sm text-nowrap {data.statusFilter === option.value
                   ? 'btn-outline btn-primary bg-base-300'
                   : 'btn-ghost'}"
                 href={buildHref({ status: option.value })}
@@ -264,19 +264,19 @@
 									</span>
 								</div>
 							</td>
-							<td>
+							<td class="text-nowrap text-center">
 								{#if t.isOutdated}
-									<span class="badge badge-sm text-nowrap badge-warning">Pas à jour</span>
+									<span class="badge badge-sm badge-warning">Pas à jour</span>
 								{:else}
-									<span class="badge badge-sm text-nowrap badge-success">À jour</span>
+									<span class="badge badge-sm badge-success">À jour</span>
 								{/if}
 							</td>
-							<td>
+							<td class="text-nowrap text-center">
 								<span class={`badge badge-sm ${statusBadge(t.status)}`}
 									>{labelStatus(t.status)}</span
 								>
 							</td>
-							<td class="text-sm">
+							<td class="text-sm text-ellipsis text-nowrap max-w-40 overflow-hidden hover:overflow-visible">
 								<div class="flex flex-col">
 									<span>Ref: {t.version || '—'}</span>
 									<span>Trad: {t.tversion || '—'}</span>
