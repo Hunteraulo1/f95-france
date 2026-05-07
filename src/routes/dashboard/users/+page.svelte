@@ -71,7 +71,7 @@
 										</div>
 									</div>
 									<a
-										href={`/dashboard/profile/${user.id}`}
+										href={`/dashboard/profile/${user.username}`}
 										class="link font-bold text-nowrap link-hover"
 									>
 										{user.username}

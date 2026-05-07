@@ -75,8 +75,8 @@
 								type="button"
 								class="text-sm text-primary opacity-70 hover:opacity-100"
 								onclick={() => {
-									if (submission.user?.id) {
-										goto(resolve(`/dashboard/profile/${submission.user.id}`));
+									if (submission.user?.username) {
+										goto(resolve(`/dashboard/profile/${submission.user.username}`));
 									}
 								}}
 							>

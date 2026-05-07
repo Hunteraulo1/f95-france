@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -75,6 +75,15 @@ export const actions: Actions = {
 		}
 
 		try {
+			const duplicateUsername = await db
+				.select({ id: table.user.id })
+				.from(table.user)
+				.where(and(eq(table.user.username, username), ne(table.user.id, userId)))
+				.limit(1);
+			if (duplicateUsername[0]) {
+				return fail(409, { message: `Un utilisateur avec le nom "${username}" existe déjà` });
+			}
+
 			const currentUser = await db
 				.select({
 					role: table.user.role

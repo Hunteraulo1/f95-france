@@ -194,6 +194,19 @@
 		return key;
 	};
 
+	/** Retourne le username de profil si le traducteur est lié à un compte. */
+	const getTranslatorProfileRef = (raw: string | null | undefined): string | null => {
+		const key = raw == null ? '' : String(raw).trim();
+		if (!key) return null;
+		const byId = translators.find((t) => t.id === key);
+		if (byId?.username) return byId.username;
+		const byName = translators.find((t) => t.name === key);
+		if (byName?.username) return byName.username;
+		const byUserId = translators.find((t) => t.userId != null && t.userId === key);
+		if (byUserId?.username) return byUserId.username;
+		return null;
+	};
+
 	/** Saisie traducteur/relecteur (nom affiché, id ou userId) → id en base. */
 	const resolveTranslatorFormInputToId = (raw: string): string | null => {
 		const key = raw.trim();
@@ -1073,15 +1086,39 @@
 											{#if translation.translatorId || translation.proofreaderId}
 												<div class="mt-2 space-y-1 text-xs font-normal text-base-content/60">
 													{#if translation.translatorId}
+														{@const translatorProfileRef = getTranslatorProfileRef(
+															translation.translatorId
+														)}
 														<p>
 															<strong>Traducteur :</strong>
-															{getTranslatorDisplayName(translation.translatorId)}
+															{#if translatorProfileRef}
+																<a
+																	class="link link-hover"
+																	href={`/dashboard/profile/${translatorProfileRef}`}
+																>
+																	{getTranslatorDisplayName(translation.translatorId)}
+																</a>
+															{:else}
+																{getTranslatorDisplayName(translation.translatorId)}
+															{/if}
 														</p>
 													{/if}
 													{#if translation.proofreaderId}
+														{@const proofreaderProfileRef = getTranslatorProfileRef(
+															translation.proofreaderId
+														)}
 														<p>
 															<strong>Relecteur :</strong>
-															{getTranslatorDisplayName(translation.proofreaderId)}
+															{#if proofreaderProfileRef}
+																<a
+																	class="link link-hover"
+																	href={`/dashboard/profile/${proofreaderProfileRef}`}
+																>
+																	{getTranslatorDisplayName(translation.proofreaderId)}
+																</a>
+															{:else}
+																{getTranslatorDisplayName(translation.proofreaderId)}
+															{/if}
 														</p>
 													{/if}
 												</div>

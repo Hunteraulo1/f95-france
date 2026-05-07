@@ -2,9 +2,9 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { fail } from '@sveltejs/kit';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -272,9 +272,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.select({
 				id: table.translator.id,
 				name: table.translator.name,
-				userId: table.translator.userId
+				userId: table.translator.userId,
+				username: table.user.username
 			})
-			.from(table.translator);
+			.from(table.translator)
+			.leftJoin(table.user, eq(table.user.id, table.translator.userId));
 
 		return {
 			submissions: submissionsWithData,

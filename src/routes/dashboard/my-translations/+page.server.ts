@@ -101,16 +101,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	);
 	const staffRows = staffIds.length
 		? await db
-				.select({ id: table.translator.id, name: table.translator.name })
+				.select({
+					id: table.translator.id,
+					name: table.translator.name,
+					username: table.user.username
+				})
 				.from(table.translator)
+				.leftJoin(table.user, eq(table.user.id, table.translator.userId))
 				.where(inArray(table.translator.id, staffIds))
 		: [];
-	const staffNameById = Object.fromEntries(staffRows.map((r) => [r.id, r.name]));
+	const staffById = Object.fromEntries(
+		staffRows.map((r) => [r.id, { name: r.name, username: r.username ?? null }])
+	);
 
 	return {
 		linkedTranslator,
 		statusFilter,
-		staffNameById,
+		staffById,
 		outdatedCount: translationsWithFlags.filter((t) => t.isOutdated).length,
 		translations: translationsWithFlags
 	};

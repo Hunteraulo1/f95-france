@@ -16,9 +16,9 @@
 		return 'badge-warning';
 	};
 
-	const staffName = (id: string | null) => {
-		if (!id) return '—';
-		return data.staffNameById?.[id] ?? id;
+	const staff = (id: string | null) => {
+		if (!id) return null;
+		return data.staffById?.[id] ?? { name: id, username: null };
 	};
 </script>
 
@@ -130,11 +130,37 @@
 							</td>
 							<td class="text-sm">
 								{#if t.translatorId === data.linkedTranslator.id}
+									{@const proofreader = staff(t.proofreaderId)}
 									<div>Mon rôle : Traducteur</div>
-									<div class="text-xs opacity-70">Relecteur : {staffName(t.proofreaderId)}</div>
+									<div class="text-xs opacity-70">
+										Relecteur :
+										{#if proofreader?.username}
+											<a
+												class="link link-hover"
+												href={`/dashboard/profile/${proofreader.username}`}
+											>
+												{proofreader.name}
+											</a>
+										{:else}
+											{proofreader?.name ?? '—'}
+										{/if}
+									</div>
 								{:else}
+									{@const translator = staff(t.translatorId)}
 									<div>Mon rôle : Relecteur</div>
-									<div class="text-xs opacity-70">Traducteur : {staffName(t.translatorId)}</div>
+									<div class="text-xs opacity-70">
+										Traducteur :
+										{#if translator?.username}
+											<a
+												class="link link-hover"
+												href={`/dashboard/profile/${translator.username}`}
+											>
+												{translator.name}
+											</a>
+										{:else}
+											{translator?.name ?? '—'}
+										{/if}
+									</div>
 								{/if}
 							</td>
 							<td class="text-right">

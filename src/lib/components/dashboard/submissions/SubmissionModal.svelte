@@ -65,6 +65,7 @@
 		id: string;
 		name: string;
 		userId?: string | null;
+		username?: string | null;
 	}
 
 	interface Props {
@@ -316,8 +317,9 @@
 
 	const handleTranslatorClick = async (translatorId: unknown) => {
 		const translator = getTranslator(translatorId);
-		if (translator?.userId) {
-			await goto(resolve(`/dashboard/profile/${translator.userId}`));
+		const profileRef = translator?.username ?? translator?.userId ?? null;
+		if (profileRef) {
+			await goto(resolve(`/dashboard/profile/${profileRef}`));
 		}
 	};
 
