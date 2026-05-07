@@ -1,15 +1,15 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+    sendDiscordWebhookProofreadersVersionBumps,
+    sendDiscordWebhookTranslatorsVersionBumps,
+    sendDiscordWebhookUpdatesAutoCheckVersionBump,
+    type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
-import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
-import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
+import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -29,18 +29,24 @@ async function fetchF95Versions(threadIds: number[]): Promise<Map<number, string
 	for (let i = 0; i < threadIds.length; i += 100) {
 		const batch = threadIds.slice(i, i + 100);
 		const url = `${CHECKER_URL}${batch.join(',')}`;
-		const res = await fetch(url, {
-			headers: { 'User-Agent': USER_AGENT }
-		});
-		if (!res.ok) continue;
+		try {
+			const res = await fetch(url, {
+				headers: { 'User-Agent': USER_AGENT }
+			});
+			if (!res.ok) continue;
 
-		const json = (await res.json()) as CheckerResponse;
-		if (json.status !== 'ok' || typeof json.msg !== 'object' || json.msg === null) continue;
+			const json = (await res.json()) as CheckerResponse;
+			if (json.status !== 'ok' || typeof json.msg !== 'object' || json.msg === null) continue;
 
-		for (const [threadIdRaw, version] of Object.entries(json.msg)) {
-			const threadId = Number.parseInt(threadIdRaw, 10);
-			if (!Number.isFinite(threadId) || typeof version !== 'string') continue;
-			versions.set(threadId, version);
+			for (const [threadIdRaw, version] of Object.entries(json.msg)) {
+				const threadId = Number.parseInt(threadIdRaw, 10);
+				if (!Number.isFinite(threadId) || typeof version !== 'string') continue;
+				versions.set(threadId, version);
+			}
+		} catch (error) {
+			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout le cron.
+			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
+			continue;
 		}
 	}
 

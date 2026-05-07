@@ -1162,63 +1162,57 @@
 <!-- Modal d'ajout de traduction -->
 {#if showAddTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="mb-4 text-lg font-bold">Ajouter une traduction</h3>
-
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="translationName">
-					Nom de la traduction
-					<input
-						id="translationName"
-						type="text"
-						placeholder="Ex: Traduction française"
-						class="w-full input-ghost"
-						bind:value={newTranslation.translationName}
-						required
-					/>
-				</label>
+		<div class="modal-box max-h-[90vh] max-w-3xl overflow-y-auto">
+			<div class="mb-5">
+				<h3 class="text-lg font-bold">Ajouter une traduction</h3>
+				<p class="mt-1 text-sm text-base-content/70">
+					Même structure que la modification : renseignez le type de traduction en premier — certains
+					champs se désactivent seuls (intégrée, pas de traduction).
+				</p>
 			</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="version">
-					Version de référence
-					<input
-						id="version"
-						type="text"
-						placeholder="Ex: 1.2"
-						class="w-full input-ghost"
-						bind:value={newTranslation.version}
-					/>
-				</label>
-				{#if newTranslation.tname === 'integrated' && translationAcUiAllowed && (game.gameVersion ?? '').trim()}
-					<p class="mt-1 text-xs text-base-content/60">
-						Traduction intégrée : l’auto-check à la création s’active si cette version est identique
-						à la version du jeu sur la fiche ({(game.gameVersion ?? '').trim()}).
-					</p>
-				{/if}
+			<div class="mb-3">
+				<h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
 			</div>
+			<div class="grid gap-4 md:grid-cols-2">
+				<div class="form-control w-full md:col-span-2">
+					<label class="input" for="add-tr-translationName">
+						Nom de la traduction
+						<input
+							id="add-tr-translationName"
+							type="text"
+							placeholder="Ex: Saison 1, VF communauté…"
+							class="w-full input-ghost"
+							bind:value={newTranslation.translationName}
+							required
+						/>
+					</label>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input" for="tversion">
-					Version de traduction
-					<input
-						id="tversion"
-						type="text"
-						placeholder="Ex: 1.0"
-						class="w-full input-ghost"
-						bind:value={newTranslation.tversion}
-						disabled={addTranslationTversionLocked}
-						required
-					/>
-				</label>
-			</div>
-
-			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="status">
-					Statut
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-tname">
+						<span class="label-text">Statut de traduction</span>
+					</label>
 					<select
-						id="status"
-						class="w-full select-ghost"
+						id="add-tr-tname"
+						class="select-bordered select w-full"
+						bind:value={newTranslation.tname}
+						required
+					>
+						<option value="no_translation">Pas de traduction</option>
+						<option value="integrated">Intégrée</option>
+						<option value="translation">Traduction</option>
+						<option value="translation_with_mods">Traduction avec mods</option>
+					</select>
+				</div>
+
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-status">
+						<span class="label-text">Progression</span>
+					</label>
+					<select
+						id="add-tr-status"
+						class="select-bordered select w-full"
 						bind:value={newTranslation.status}
 						required
 					>
@@ -1226,27 +1220,35 @@
 						<option value="completed">Terminé</option>
 						<option value="abandoned">Abandonné</option>
 					</select>
-				</label>
-			</div>
+				</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="tname">
-					Statut de traduction
-					<select id="tname" class="w-full select-ghost" bind:value={newTranslation.tname} required>
-						<option value="no_translation">Pas de traduction</option>
-						<option value="integrated">Intégrée</option>
-						<option value="translation">Traduction</option>
-						<option value="translation_with_mods">Traduction avec mods</option>
-					</select>
-				</label>
-			</div>
-
-			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="new-game-type">
-					Moteur du jeu
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-ttype">
+						<span class="label-text">Type de traduction</span>
+					</label>
 					<select
-						id="new-game-type"
-						class="w-full select-ghost"
+						id="add-tr-ttype"
+						class="select-bordered select w-full"
+						bind:value={newTranslation.ttype}
+						disabled={newTranslation.tname === 'no_translation'}
+						required
+					>
+						<option value="vf">VO Française</option>
+						<option value="manual">Traduction humaine</option>
+						<option value="semi-auto">Traduction semi-automatique</option>
+						<option value="auto">Traduction automatique</option>
+						<option value="to_tested">À tester</option>
+						<option value="hs">Lien trad HS</option>
+					</select>
+				</div>
+
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-game-type">
+						<span class="label-text">Moteur du jeu</span>
+					</label>
+					<select
+						id="add-tr-game-type"
+						class="select-bordered select w-full"
 						bind:value={newTranslation.gameType}
 						required
 					>
@@ -1254,85 +1256,124 @@
 							<option value={v}>{getGameEngineLabel(v)}</option>
 						{/each}
 					</select>
-				</label>
+				</div>
 			</div>
 
-			<div class="form-control mb-4 w-full">
-				<label class="input pr-0" for="ttype">
-					Type de traduction
-					<select
-						id="ttype"
-						class="w-full select-ghost"
-						bind:value={newTranslation.ttype}
-						disabled={newTranslation.tname === 'no_translation'}
-						required
-					>
-						<option value="manual">Manuelle</option>
-						<option value="auto">Automatique</option>
-						<option value="semi-auto">Semi-Automatique</option>
-						<option value="vf">VO Française</option>
-						<option value="to_tested">À tester</option>
-						<option value="hs">Lien HS</option>
-					</select>
-				</label>
-			</div>
-
-			<div class="form-control mb-6 w-full">
-				<label class="input" for="tlink">
-					Lien de traduction
-					<input
-						id="tlink"
-						type="url"
-						placeholder="https://..."
-						class="w-full input-ghost"
-						bind:value={newTranslation.tlink}
-						disabled={newTranslation.tname === 'integrated' ||
-							newTranslation.tname === 'no_translation'}
-						required={newTranslation.tname !== 'integrated' &&
-							newTranslation.tname !== 'no_translation'}
-					/>
-				</label>
-			</div>
-
-			<div class="form-control mb-6 w-full">
-				<p class="mt-1 text-xs text-base-content/60">
-					Auto-check traduction déterminé automatiquement à l’ajout (version trad = version jeu et
-					auto-check jeu actif).
-				</p>
-			</div>
-
+			<div class="divider my-5">Versions et lien</div>
 			<div class="grid gap-4 md:grid-cols-2">
-				<div class="form-control">
-					<label class="label" for="translation-translator">
+				<div class="form-control w-full">
+					<label class="input" for="add-tr-version">
+						Version de référence
+						<input
+							id="add-tr-version"
+							type="text"
+							placeholder="Ex: 1.2"
+							class="w-full input-ghost"
+							bind:value={newTranslation.version}
+						/>
+					</label>
+					{#if newTranslation.tname === 'integrated' && translationAcUiAllowed && (game.gameVersion ?? '').trim()}
+						<p class="mt-1 text-xs text-base-content/60">
+							Intégrée : l’auto-check à la création s’active si cette version est identique à la
+							version du jeu sur la fiche ({(game.gameVersion ?? '').trim()}).
+						</p>
+					{/if}
+				</div>
+
+				<div class="form-control w-full">
+					<label class="input" for="add-tr-tversion">
+						Version de traduction
+						<input
+							id="add-tr-tversion"
+							type="text"
+							placeholder="Ex: 1.0"
+							class="w-full input-ghost"
+							bind:value={newTranslation.tversion}
+							disabled={addTranslationTversionLocked}
+							required
+						/>
+					</label>
+				</div>
+
+				<div class="form-control w-full md:col-span-2">
+					<label class="label" for="add-tr-tlink">
+						<span class="label-text">Lien de traduction</span>
+					</label>
+					<div class="join join-horizontal w-full">
+						<input
+							id="add-tr-tlink"
+							type="url"
+							placeholder="https://…"
+							class="join-item input-bordered input min-w-0 flex-1"
+							bind:value={newTranslation.tlink}
+							disabled={newTranslation.tname === 'integrated' ||
+								newTranslation.tname === 'no_translation'}
+							required={newTranslation.tname !== 'integrated' &&
+								newTranslation.tname !== 'no_translation'}
+						/>
+						<button
+							type="button"
+							class="btn join-item btn-outline shrink-0"
+							disabled={newTranslation.tname === 'integrated' ||
+								newTranslation.tname === 'no_translation' ||
+								!newTranslation.tlink?.trim()}
+							aria-label="Ouvrir le lien dans un nouvel onglet"
+							onclick={() => {
+								const u = newTranslation.tlink?.trim();
+								if (u) window.open(u, '_blank', 'noopener,noreferrer');
+							}}
+						>
+							Ouvrir
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="form-control mt-4 w-full">
+				<div
+					class="rounded-box border border-base-300 bg-base-200/30 p-4 text-sm text-base-content/80"
+				>
+					<p>
+						<strong>Auto-check</strong> (cette ligne) : calculé à l’enregistrement si l’auto-check jeu
+						est actif, le jeu est F95, et la version de traduction correspond à la règle métier (dont
+						« intégrée »).
+					</p>
+				</div>
+			</div>
+
+			<div class="divider my-5">Contributeurs</div>
+			<div class="grid gap-4 md:grid-cols-2">
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-translator">
 						<span class="label-text">Traducteur</span>
 					</label>
 					<input
-						id="translation-translator"
-						class="input-bordered input"
+						id="add-tr-translator"
+						class="input-bordered input w-full"
 						type="text"
-						list="translation-translators"
+						list="add-tr-translators-list"
 						bind:value={newTranslation.translatorId}
-						placeholder="Nom du traducteur"
+						placeholder="Nom ou liste déroulante"
 					/>
-					<datalist id="translation-translators">
+					<datalist id="add-tr-translators-list">
 						{#each translators as translator (translator.id)}
 							<option value={translator.name}>{translator.name}</option>
 						{/each}
 					</datalist>
 				</div>
-				<div class="form-control">
-					<label class="label" for="translation-proofreader">
+				<div class="form-control w-full">
+					<label class="label" for="add-tr-proofreader">
 						<span class="label-text">Relecteur</span>
 					</label>
 					<input
-						id="translation-proofreader"
-						class="input-bordered input"
+						id="add-tr-proofreader"
+						class="input-bordered input w-full"
 						type="text"
-						list="translation-proofreaders"
+						list="add-tr-proofreaders-list"
 						bind:value={newTranslation.proofreaderId}
-						placeholder="Nom du relecteur"
+						placeholder="Optionnel"
 					/>
-					<datalist id="translation-proofreaders">
+					<datalist id="add-tr-proofreaders-list">
 						{#each translators as translator (translator.id)}
 							<option value={translator.name}>{translator.name}</option>
 						{/each}
@@ -1341,8 +1382,10 @@
 			</div>
 
 			<div class="modal-action">
-				<button class="btn btn-ghost" onclick={closeAddTranslationModal}>Annuler</button>
-				<button class="btn btn-primary" onclick={addTranslation}>Ajouter</button>
+				<button type="button" class="btn btn-ghost" onclick={closeAddTranslationModal}>
+					Annuler
+				</button>
+				<button type="button" class="btn btn-primary" onclick={addTranslation}>Ajouter</button>
 			</div>
 		</div>
 	</div>

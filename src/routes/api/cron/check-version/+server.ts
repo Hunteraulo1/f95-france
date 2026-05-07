@@ -98,7 +98,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
 		const runPromise = runAutoCheckVersions();
 		const timeoutResult = await Promise.race([
-			runPromise.then((result) => ({ kind: 'done' as const, result })),
+			runPromise.then((result) => ({ kind: 'done' as const, result })).catch((error) => ({
+				kind: 'error' as const,
+				error
+			})),
 			new Promise<{ kind: 'timeout' }>((resolve) => {
 				setTimeout(() => resolve({ kind: 'timeout' }), maxWaitMs);
 			})
@@ -128,6 +131,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				},
 				{ status: 202 }
 			);
+		}
+
+		if (timeoutResult.kind === 'error') {
+			// On évite de faire échouer le cron provider (500) sur une dépendance externe instable.
+			console.error('[cron/check-version] runAutoCheckVersions a échoué:', timeoutResult.error);
+			return json({ ok: false, error: 'Auto-check failed' }, { status: 200 });
 		}
 
 		const finishedAt = new Date();
