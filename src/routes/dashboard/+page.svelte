@@ -28,24 +28,31 @@
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-base-content">Mes soumissions</h3>
+								<a
+									href="/dashboard/submit"
+									class="card-title link link-hover text-base-content focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								>
+									Mes soumissions
+								</a>
 								<p class="text-3xl font-bold text-primary">{data.userStats.totalSubmissions}</p>
 							</div>
 							<Inbox class="h-12 w-12 text-primary" />
 						</div>
 						<div class="mt-4 flex gap-4 text-sm">
-							<div class="flex items-center gap-2">
+							<a
+								href="/dashboard/submit?status=pending"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<Clock class="h-4 w-4 text-warning" />
-								<span class="text-base-content/70"
-									>{data.userStats.pendingSubmissions} en attente</span
-								>
-							</div>
-							<div class="flex items-center gap-2">
+								<span>{data.userStats.pendingSubmissions} en attente</span>
+							</a>
+							<a
+								href="/dashboard/submit?status=accepted"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<CircleCheck class="h-4 w-4 text-success" />
-								<span class="text-base-content/70"
-									>{data.userStats.acceptedSubmissions} acceptées</span
-								>
-							</div>
+								<span>{data.userStats.acceptedSubmissions} acceptées</span>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -56,24 +63,31 @@
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-base-content">Mes traductions</h3>
+								<a
+									href="/dashboard/my-translations"
+									class="card-title link link-hover text-base-content focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								>
+									Mes traductions
+								</a>
 								<p class="text-3xl font-bold text-primary">{data.userStats.translations.total}</p>
 							</div>
 							<Languages class="h-12 w-12 text-primary" />
 						</div>
 						<div class="mt-4 flex flex-wrap gap-4 text-sm">
-							<div class="flex items-center gap-2">
+							<a
+								href="/dashboard/my-translations?status=completed"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<CircleCheck class="h-4 w-4 text-success" />
-								<span class="text-base-content/70"
-									>{data.userStats.translations.upToDate} à jour</span
-								>
-							</div>
-							<div class="flex items-center gap-2">
+								<span>{data.userStats.translations.upToDate} à jour</span>
+							</a>
+							<a
+								href="/dashboard/my-translations"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<CircleX class="h-4 w-4 text-warning" />
-								<span class="text-base-content/70"
-									>{data.userStats.translations.outdated} pas à jour</span
-								>
-							</div>
+								<span>{data.userStats.translations.outdated} pas à jour</span>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -83,7 +97,12 @@
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-base-content">Mes actions traduction</h3>
+								<a
+									href="/dashboard/submit?status=accepted"
+									class="card-title link link-hover text-base-content focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								>
+									Mes actions traduction
+								</a>
 								<p class="text-3xl font-bold text-primary">
 									{data.userStats.gameAdd + data.userStats.gameEdit}
 								</p>
@@ -91,14 +110,20 @@
 							<Languages class="h-12 w-12 text-primary" />
 						</div>
 						<div class="mt-4 flex flex-wrap gap-4 text-sm">
-							<div class="flex items-center gap-2">
+							<a
+								href="/dashboard/submit?status=accepted"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<CirclePlus class="h-4 w-4 text-success" />
-								<span class="text-base-content/70">{data.userStats.gameAdd} ajoutées</span>
-							</div>
-							<div class="flex items-center gap-2">
+								<span>{data.userStats.gameAdd} ajoutées</span>
+							</a>
+							<a
+								href="/dashboard/submit?status=accepted"
+								class="flex items-center gap-2 link link-hover text-base-content/70"
+							>
 								<Pencil class="h-4 w-4 text-info" />
-								<span class="text-base-content/70">{data.userStats.gameEdit} modifiées</span>
-							</div>
+								<span>{data.userStats.gameEdit} modifiées</span>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -114,7 +139,10 @@
 			<!-- Cartes principales -->
 			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
 				<!-- Total jeux -->
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/manager"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -124,10 +152,13 @@
 							<Gamepad2 class="h-10 w-10 text-primary" />
 						</div>
 					</div>
-				</div>
+				</a>
 
 				<!-- Total traductions -->
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/manager"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -137,10 +168,13 @@
 							<Languages class="h-10 w-10 text-primary" />
 						</div>
 					</div>
-				</div>
+				</a>
 
 				<!-- Total utilisateurs -->
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/manager"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -150,10 +184,13 @@
 							<Users class="h-10 w-10 text-primary" />
 						</div>
 					</div>
-				</div>
+				</a>
 
 				<!-- Total traducteurs -->
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/submits?status=pending"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -163,12 +200,15 @@
 							<UserCheck class="h-10 w-10 text-primary" />
 						</div>
 					</div>
-				</div>
+				</a>
 			</div>
 
 			<!-- Détails des traductions -->
 			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/submits?status=accepted"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -178,9 +218,12 @@
 							<Clock class="h-8 w-8 text-warning" />
 						</div>
 					</div>
-				</div>
+				</a>
 
-				<div class="card bg-base-200 shadow-xl">
+				<a
+					href="/dashboard/submits?status=rejected"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
 					<div class="card-body rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
@@ -190,7 +233,7 @@
 							<CircleCheck class="h-8 w-8 text-success" />
 						</div>
 					</div>
-				</div>
+				</a>
 
 				<div class="card bg-base-200 shadow-xl">
 					<div class="card-body rounded-lg bg-base-100">
@@ -248,7 +291,10 @@
 					Activité récente (7 derniers jours)
 				</h3>
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-					<div class="card bg-base-200 shadow-xl">
+					<a
+						href="/dashboard/manager"
+						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+					>
 						<div class="card-body rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
@@ -258,9 +304,12 @@
 								<Gamepad2 class="h-8 w-8 text-primary" />
 							</div>
 						</div>
-					</div>
+					</a>
 
-					<div class="card bg-base-200 shadow-xl">
+					<a
+						href="/dashboard/manager"
+						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+					>
 						<div class="card-body rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
@@ -270,9 +319,12 @@
 								<Languages class="h-8 w-8 text-primary" />
 							</div>
 						</div>
-					</div>
+					</a>
 
-					<div class="card bg-base-200 shadow-xl">
+					<a
+						href="/dashboard/users"
+						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+					>
 						<div class="card-body rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
@@ -282,7 +334,7 @@
 								<Users class="h-8 w-8 text-primary" />
 							</div>
 						</div>
-					</div>
+					</a>
 				</div>
 			</div>
 		</div>
