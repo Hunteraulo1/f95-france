@@ -843,6 +843,65 @@ async function sortTranslatorSheetByActivityDesc(auth: {
 	]);
 }
 
+async function reapplyTranslatorPagesRichText(auth: {
+	spreadsheetId: string;
+	headers: HeadersInit;
+	apiKey?: string;
+}): Promise<void> {
+	const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
+	const pagesColIdx = findHeaderIndex(trSnap.headersRow, ['Pages']);
+	if (pagesColIdx === -1) return;
+
+	const idDbIdx =
+		findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db']) !== -1
+			? findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db'])
+			: findHeaderIndexByTokens(trSnap.headersRow, ['id'], ['db']);
+	if (idDbIdx === -1) return;
+
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${trSnap.tabEncoded}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const valuesBody = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = valuesBody.values ?? [];
+	if (rows.length <= 1) return;
+
+	const ids = rows
+		.slice(1)
+		.map((row) => (row[idDbIdx] ?? '').trim())
+		.filter((id) => id.length > 0);
+	if (ids.length === 0) return;
+
+	const translators = await db
+		.select({ id: table.translator.id, pages: table.translator.pages })
+		.from(table.translator)
+		.where(inArray(table.translator.id, ids));
+	const pagesByTranslatorId = new Map(translators.map((t) => [t.id, t.pages]));
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
+	if (sheetId == null) return;
+
+	const rowsForRichText = rows
+		.slice(1)
+		.map((row, i) => {
+			const id = (row[idDbIdx] ?? '').trim();
+			return {
+				rowNumber: i + 2,
+				pagesRaw: pagesByTranslatorId.get(id) ?? null
+			};
+		})
+		.filter((entry) => entry.pagesRaw != null);
+	if (rowsForRichText.length === 0) return;
+
+	await applyPagesRichTextInRows(auth, {
+		sheetId,
+		pagesColIdx,
+		rows: rowsForRichText
+	});
+}
+
 /**
  * Réapplique un format "Automatique / Général" sur la plage utile d'un onglet.
  * Permet de corriger les feuilles passées en "Texte brut" après des opérations d'édition.
@@ -1251,6 +1310,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 			}
 		}
 		await sortTranslatorSheetByActivityDesc(auth);
+		await reapplyTranslatorPagesRichText(auth);
 		await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		return;
 	}
@@ -1300,6 +1360,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		}
 	}
 	await sortTranslatorSheetByActivityDesc(auth);
+	await reapplyTranslatorPagesRichText(auth);
 	await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 }
 
@@ -1597,6 +1658,8 @@ export async function syncDbToSpreadsheetBulk(
 			}
 			onProgress?.('Sheets TR : tri Z→A sur (Traduction + Relecture)…');
 			await sortTranslatorSheetByActivityDesc(auth);
+			onProgress?.('Sheets TR : restauration des liens rich text colonne Pages…');
+			await reapplyTranslatorPagesRichText(auth);
 			onProgress?.('Sheets TR : normalisation du format des cellules…');
 			await normalizeSheetCellFormat(auth, SHEET_TAB_TR);
 		}
