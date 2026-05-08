@@ -62,13 +62,13 @@
 	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
 			<div class="text-center">
-				<div class="bg-primary/10 text-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
+				<div
+					class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+				>
 					<LogIn size={28} strokeWidth={1.75} aria-hidden="true" />
 				</div>
 				<h1 class="text-2xl font-bold tracking-tight">Connexion</h1>
-				<p class="mt-2 text-sm text-base-content/70">
-					Accédez au tableau de bord F95 France
-				</p>
+				<p class="mt-2 text-sm text-base-content/70">Accédez au tableau de bord F95 France</p>
 			</div>
 
 			<form method="post" action="?/login" use:enhance class="flex flex-col gap-4">
@@ -80,7 +80,7 @@
 						id="login-username"
 						name="username"
 						type="text"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						autocomplete="username webauthn"
 						placeholder="Votre pseudo"
 						bind:value={username}
@@ -95,7 +95,7 @@
 						id="login-password"
 						type="password"
 						name="password"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						autocomplete="current-password"
 						placeholder="••••••••"
 					/>
@@ -109,7 +109,7 @@
 					<input
 						id="login-2fa"
 						name="twoFactorCode"
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						inputmode="numeric"
 						maxlength="6"
 						autocomplete="one-time-code"
@@ -118,13 +118,13 @@
 				</div>
 
 				{#if form?.message}
-					<div role="alert" class="alert alert-error alert-soft text-sm">
+					<div role="alert" class="alert alert-soft text-sm alert-error">
 						<span>{form.message}</span>
 					</div>
 				{/if}
 
-				<div class="card-actions mt-2 flex-col gap-3 px-0">
-					<button type="submit" class="btn btn-primary btn-block gap-2">
+				<div class="mt-2 card-actions flex-col gap-3 px-0">
+					<button type="submit" class="btn btn-block gap-2 btn-primary">
 						<LogIn size={18} aria-hidden="true" />
 						Se connecter
 					</button>
@@ -136,7 +136,7 @@
 			<div class="flex flex-col gap-3">
 				<button
 					type="button"
-					class="btn btn-outline btn-secondary btn-block gap-2"
+					class="btn btn-block gap-2 btn-outline btn-secondary"
 					onclick={loginWithPasskey}
 					disabled={passkeyLoading}
 				>
@@ -144,7 +144,7 @@
 					{passkeyLoading ? 'Connexion…' : "Clé d'accès (passkey)"}
 				</button>
 				{#if passkeyError}
-					<div role="alert" class="alert alert-error alert-soft text-sm">
+					<div role="alert" class="alert alert-soft text-sm alert-error">
 						<span>{passkeyError}</span>
 					</div>
 				{/if}
@@ -152,7 +152,7 @@
 
 			<p class="text-center text-sm text-base-content/70">
 				Pas encore de compte ?
-				<a href="/dashboard/register" class="link link-primary font-medium">Créer un compte</a>
+				<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
 			</p>
 		</div>
 	</div>

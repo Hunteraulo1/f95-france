@@ -401,11 +401,7 @@
 	};
 
 	const normalizeTranslatorPages = (
-		pages:
-			| Array<{ name?: string; link?: string }>
-			| string
-			| null
-			| undefined
+		pages: Array<{ name?: string; link?: string }> | string | null | undefined
 	): Array<{ name: string; link: string }> => {
 		let source: Array<{ name?: string; link?: string }> = [];
 
@@ -544,7 +540,7 @@
 			{/if}
 
 			<!-- Section des détails (scrollable) -->
-			<div class="flex-1 overflow-y-auto pr-2 min-h-60">
+			<div class="min-h-60 flex-1 overflow-y-auto pr-2">
 				{#if submission.type === 'translator_pages'}
 					{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
 					{@const currentPages = submission.currentTranslator?.pages ?? []}

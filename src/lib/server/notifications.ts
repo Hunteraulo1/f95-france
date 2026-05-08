@@ -86,9 +86,9 @@ export async function notifySubmissionStatusChange(
 			? 'Soumission acceptée'
 			: newStatus === 'to_fix'
 				? 'Soumission à corriger'
-			: newStatus === 'rejected'
-				? 'Soumission refusée'
-				: 'Statut de soumission modifié';
+				: newStatus === 'rejected'
+					? 'Soumission refusée'
+					: 'Statut de soumission modifié';
 
 	const reason = adminNotes?.trim();
 	const messageBase = `Votre soumission de ${typeLabels[submissionType] || submissionType} est maintenant ${statusLabels[newStatus] || newStatus}.`;
@@ -106,9 +106,9 @@ export async function notifySubmissionStatusChange(
 				? 'submission_accepted'
 				: newStatus === 'to_fix'
 					? 'submission_to_fix'
-				: newStatus === 'rejected'
-					? 'submission_rejected'
-					: 'submission_status_changed',
+					: newStatus === 'rejected'
+						? 'submission_rejected'
+						: 'submission_status_changed',
 		title,
 		message,
 		link: `/dashboard/submit`,

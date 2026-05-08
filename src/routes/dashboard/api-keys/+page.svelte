@@ -11,10 +11,10 @@
 			? form.createdKey
 			: null
 	);
-let showNewKey = $state(false);
-const maskedNewKey = $derived(
-	newKey ? `${'•'.repeat(Math.max(8, newKey.length - 4))}${newKey.slice(-4)}` : ''
-);
+	let showNewKey = $state(false);
+	const maskedNewKey = $derived(
+		newKey ? `${'•'.repeat(Math.max(8, newKey.length - 4))}${newKey.slice(-4)}` : ''
+	);
 
 	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 </script>
@@ -73,7 +73,11 @@ const maskedNewKey = $derived(
 					>{showNewKey ? newKey : maskedNewKey}</code
 				>
 				<div class="flex flex-wrap items-center gap-2">
-					<button type="button" class="btn btn-ghost btn-sm" onclick={() => (showNewKey = !showNewKey)}>
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={() => (showNewKey = !showNewKey)}
+					>
 						{showNewKey ? 'Masquer' : 'Afficher'}
 					</button>
 					<button

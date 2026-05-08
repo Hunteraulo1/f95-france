@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-  parseSubmissionPayloadJson,
-  persistSubmissionPayload,
-  validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
@@ -409,7 +409,10 @@ export const actions: Actions = {
 		}
 
 		// Si le statut est "rejected", la note admin est obligatoire
-		if ((status === 'rejected' || status === 'to_fix') && (!adminNotes || adminNotes.trim() === '')) {
+		if (
+			(status === 'rejected' || status === 'to_fix') &&
+			(!adminNotes || adminNotes.trim() === '')
+		) {
 			return fail(400, {
 				message:
 					status === 'to_fix'

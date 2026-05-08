@@ -14,21 +14,17 @@
 	<title>Inscription — F95 France</title>
 </svelte:head>
 
-<div
-	class="flex h-full items-center justify-center bg-base-200 px-4"
->
+<div class="flex h-full items-center justify-center bg-base-200 px-4">
 	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
 			<div class="text-center">
 				<div
-					class="bg-primary/10 text-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+					class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
 				>
 					<UserPlus size={28} strokeWidth={1.75} aria-hidden="true" />
 				</div>
 				<h1 class="text-2xl font-bold tracking-tight">Créer un compte</h1>
-				<p class="mt-2 text-sm text-base-content/70">
-					Rejoignez la communauté F95 France
-				</p>
+				<p class="mt-2 text-sm text-base-content/70">Rejoignez la communauté F95 France</p>
 			</div>
 
 			<form method="post" action="?/register" use:enhance class="flex flex-col gap-4">
@@ -42,7 +38,7 @@
 						autocomplete="username"
 						type="text"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="Votre pseudo"
 					/>
 					{#if form?.errors?.username}
@@ -62,7 +58,7 @@
 						autocomplete="email"
 						type="email"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="vous@exemple.fr"
 					/>
 					{#if form?.errors?.email}
@@ -82,7 +78,7 @@
 						autocomplete="new-password"
 						type="password"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="••••••••"
 					/>
 					{#if form?.errors?.password}
@@ -102,7 +98,7 @@
 						autocomplete="new-password"
 						type="password"
 						required
-						class="input input-bordered w-full"
+						class="input-bordered input w-full"
 						placeholder="••••••••"
 					/>
 					{#if form?.errors?.confirmPassword}
@@ -113,13 +109,13 @@
 				</div>
 
 				{#if form?.message}
-					<div role="alert" class="alert alert-error alert-soft text-sm">
+					<div role="alert" class="alert alert-soft text-sm alert-error">
 						<span>{form.message}</span>
 					</div>
 				{/if}
 
-				<div class="card-actions mt-2 flex-col gap-3 px-0">
-					<button type="submit" class="btn btn-primary btn-block gap-2">
+				<div class="mt-2 card-actions flex-col gap-3 px-0">
+					<button type="submit" class="btn btn-block gap-2 btn-primary">
 						<UserPlus size={18} aria-hidden="true" />
 						Créer le compte
 					</button>
@@ -128,7 +124,7 @@
 
 			<p class="text-center text-sm text-base-content/70">
 				Déjà un compte ?
-				<a href="/dashboard/login" class="link link-primary font-medium">Se connecter</a>
+				<a href="/dashboard/login" class="link font-medium link-primary">Se connecter</a>
 			</p>
 		</div>
 	</div>
