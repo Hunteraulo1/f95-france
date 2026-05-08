@@ -37,17 +37,16 @@
 
 	const closeSubmissionModal = async () => {
 		selectedSubmission = null;
-		await goto(resolve(`/dashboard/submits?status=${data.statusFilter}`), {
-			noScroll: true,
-			invalidateAll: true
-		});
+		const q = new URLSearchParams({ status: data.statusFilter });
+		// La query ne doit pas être passée dans resolve() (sinon elle est traitée comme segment de chemin).
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
+		await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
 	};
 
 	const updateFilter = async (status: string) => {
-		await goto(resolve(`/dashboard/submits?status=${status}`), {
-			noScroll: true,
-			invalidateAll: true
-		});
+		const q = new URLSearchParams({ status });
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
+		await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
 	};
 </script>
 
@@ -73,10 +72,14 @@
 	/>
 
 	{#if data.submissions.length === 0}
-		<div class="card bg-base-100 p-8 shadow-sm">
-			<div class="text-center">
-				<p class="text-lg opacity-70">
-					Aucune soumission {getStatusFilterLabel(data.statusFilter) || ''}
+		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+			<div class="card-body gap-6 sm:p-8">
+				<p class="text-center text-lg opacity-70">
+					{#if data.statusFilter === 'all'}
+						Aucune soumission pour le moment
+					{:else}
+						Aucune soumission {getStatusFilterLabel(data.statusFilter)}
+					{/if}
 				</p>
 			</div>
 		</div>

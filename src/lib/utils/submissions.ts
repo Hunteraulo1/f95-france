@@ -72,11 +72,12 @@ export const validateStatusChange = (status: string, notes: string): string | nu
 
 export const getStatusFilterLabel = (status: string): string => {
 	const labels: Record<string, string> = {
+		all: '',
 		pending: 'en attente',
 		opened: 'ouverte',
 		to_fix: 'à corriger',
 		accepted: 'acceptée',
 		rejected: 'refusée'
 	};
-	return labels[status] || '';
+	return labels[status] ?? '';
 };

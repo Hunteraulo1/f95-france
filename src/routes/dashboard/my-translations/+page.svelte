@@ -171,7 +171,7 @@
 					{/if}
 				</label>
 				<div class="flex gap-2">
-					<div class="join rounded-sm bg-base-100">
+					<div class="join rounded-sm border border-base-300 bg-base-100">
 						{#each roleOptions as option (option.value)}
 							<a
 								class="btn join-item text-nowrap btn-sm {data.roleFilter === option.value
@@ -183,7 +183,7 @@
 							</a>
 						{/each}
 					</div>
-					<div class="join rounded-sm bg-base-100">
+					<div class="join rounded-sm border border-base-300 bg-base-100">
 						{#each statusOptions as option (option.value)}
 							<a
 								class="btn join-item text-nowrap btn-sm {data.statusFilter === option.value

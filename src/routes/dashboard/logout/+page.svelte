@@ -15,11 +15,11 @@
 	});
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-base-200">
-	<div class="card w-full max-w-md bg-base-100 shadow-xl">
-		<div class="card-body text-center">
+<div class="flex h-full items-center justify-center bg-base-200 px-4">
+	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 text-center sm:p-8">
 			<h2 class="card-title justify-center text-2xl font-bold text-error">Se déconnecter</h2>
-			<p class="mb-6 text-base-content/70">Êtes-vous sûr de vouloir vous déconnecter ?</p>
+			<p class="mb-4 text-base-content/70">Êtes-vous sûr de vouloir vous déconnecter ?</p>
 
 			{#if form?.message}
 				<div class="mb-4 alert alert-error">

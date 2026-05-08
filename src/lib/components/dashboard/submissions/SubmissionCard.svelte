@@ -51,8 +51,8 @@
 	let { submission, onClick }: Props = $props();
 </script>
 
-<div class="card bg-base-100 shadow-sm">
-	<div class="card-body">
+<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+	<div class="card-body gap-6">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div class="flex-1">
 				<div class="mb-2 flex flex-wrap items-center gap-3">

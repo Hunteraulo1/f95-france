@@ -41,8 +41,8 @@
 		>
 	</h2>
 
-	<div class="card bg-base-100 p-8 shadow-sm">
-		<div class="overflow-x-auto">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 overflow-x-auto sm:p-8">
 			<table class="table">
 				<thead>
 					<tr>

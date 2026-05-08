@@ -23,7 +23,7 @@
 	<title>Mes clés API — F95 France</title>
 </svelte:head>
 
-<div class="max-w-8xl mx-auto flex w-full flex-col gap-6 p-4">
+<div class="flex w-full flex-col gap-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div class="flex items-center gap-2">
 			<KeyRound class="size-8 text-primary" aria-hidden="true" />
@@ -98,8 +98,8 @@
 		</div>
 	{/if}
 
-	<div class="card bg-base-200">
-		<div class="card-body gap-4">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="card-title text-lg">Nouvelle clé</h2>
 			<form
 				method="post"
@@ -138,8 +138,8 @@
 		</div>
 	</div>
 
-	<div class="overflow-x-auto rounded-lg border border-base-300">
-		<table class="table table-zebra">
+	<div class="card w-full overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-xl">
+		<table class="table card-body gap-6 table-zebra sm:py-8">
 			<thead>
 				<tr>
 					<th>Préfixe</th>

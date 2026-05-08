@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { ConfigClientSafe } from '$lib/server/app-config';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Loader from '@lucide/svelte/icons/loader';
 	import Table2 from '@lucide/svelte/icons/table-2';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -198,11 +198,11 @@
 	const webhookChannelLabel = (c: string) => webhookChannelLabels[c] ?? c;
 </script>
 
-<div class="container mx-auto max-w-4xl p-2 md:p-6">
+<div class="container flex flex-col gap-6">
 	<h1 class="mb-6 text-3xl font-bold text-base-content">Page de développement</h1>
 
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Exécution manuelle Auto-check</h2>
 			<p class="mb-2 text-sm text-base-content/70">
 				Dernier auto-check :
@@ -283,8 +283,8 @@
 	</div>
 
 	<!-- Test de connexion Google Sheets -->
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Test de connexion Google Sheets</h2>
 
 			<p class="mb-4 text-base-content/70">
@@ -520,8 +520,8 @@
 	</div>
 
 	<!-- Test webhooks Discord -->
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Test des webhooks Discord</h2>
 			<p class="mb-4 text-base-content/70">
 				Envoie un embed de test sur l’URL enregistrée dans
@@ -672,8 +672,8 @@
 	</div>
 
 	<!-- Test de scraping F95 -->
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Test de récupération F95</h2>
 
 			<p class="mb-4 text-base-content/70">
@@ -877,8 +877,8 @@
 	</div>
 
 	<!-- Import JSON legacy -->
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Import JSON ancien systeme</h2>
 			<p class="mb-4 text-base-content/70">
 				Colle ici un JSON de l'ancien systeme (tableau ou objet contenant <code>games</code>). Le
@@ -985,8 +985,8 @@
 		</div>
 	</div>
 
-	<div class="card mb-6 bg-base-100 shadow-xl">
-		<div class="card-body">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="mb-4 card-title text-2xl">Synchronisation API legacy</h2>
 			<p class="mb-4 text-base-content/70">
 				Toutes les actions legacy sont regroupées ici (traducteurs + jeux/traductions).
