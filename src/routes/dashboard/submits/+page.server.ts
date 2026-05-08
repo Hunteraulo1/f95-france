@@ -3,13 +3,13 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
-import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
@@ -104,28 +104,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw new Error('Accès non autorisé');
 	}
 
-	// Récupérer le filtre de statut depuis l'URL
-	const statusFilter = url.searchParams.get('status') || 'pending';
+	const statusFilterRaw = url.searchParams.get('status') || 'pending';
+	const statusFilter =
+		statusFilterRaw === 'all' ||
+		statusFilterRaw === 'pending' ||
+		statusFilterRaw === 'opened' ||
+		statusFilterRaw === 'accepted' ||
+		statusFilterRaw === 'rejected'
+			? statusFilterRaw
+			: 'pending';
 
 	try {
-		// Construire la condition de filtre
-		let whereCondition;
-		if (statusFilter === 'all') {
-			whereCondition = undefined; // Pas de filtre, toutes les soumissions
-		} else {
-			if (statusFilter === 'pending') {
-				// Règle UI: afficher les soumissions ouvertes aussi dans "En attente"
-				whereCondition = or(
-					eq(table.submission.status, 'pending'),
-					eq(table.submission.status, 'opened')
-				);
-			} else {
-				whereCondition = eq(
-					table.submission.status,
-					statusFilter as 'pending' | 'opened' | 'accepted' | 'rejected'
-				);
-			}
-		}
+		const whereCondition =
+			statusFilter === 'all' ? undefined : eq(table.submission.status, statusFilter);
 
 		// Charger les soumissions avec les informations utilisateur
 		const submissions = await db
@@ -162,18 +153,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
-			.orderBy(
-				statusFilter === 'pending'
-					? sql`CASE
-						WHEN ${table.submission.status} = 'pending' THEN 0
-						WHEN ${table.submission.status} = 'opened' THEN 1
-						ELSE 2
-					END`
-					: sql`0`,
-				statusFilter === 'pending'
-					? asc(table.submission.createdAt)
-					: desc(table.submission.createdAt)
-			);
+			.orderBy(desc(table.submission.createdAt));
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(
@@ -273,7 +253,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const pendingCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
-			.where(or(eq(table.submission.status, 'pending'), eq(table.submission.status, 'opened')));
+			.where(eq(table.submission.status, 'pending'));
 
 		const acceptedCountResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
