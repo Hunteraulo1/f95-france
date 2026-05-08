@@ -21,17 +21,15 @@
 
 	const closeSubmissionModal = () => {
 		selectedSubmission = null;
-		void goto(resolve(`/dashboard/submit?status=${data.statusFilter}`), {
-			noScroll: true,
-			invalidateAll: true
-		});
+		const q = new URLSearchParams({ status: data.statusFilter });
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
+		void goto(`${resolve('/dashboard/submit')}?${q}`, { noScroll: true, invalidateAll: true });
 	};
 
 	const updateFilter = async (status: string) => {
-		await goto(resolve(`/dashboard/submit?status=${status}`), {
-			noScroll: true,
-			invalidateAll: true
-		});
+		const q = new URLSearchParams({ status });
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
+		await goto(`${resolve('/dashboard/submit')}?${q}`, { noScroll: true, invalidateAll: true });
 	};
 </script>
 
@@ -60,7 +58,11 @@
 		<div class="card bg-base-100 p-8 shadow-sm">
 			<div class="text-center">
 				<p class="text-lg opacity-70">
-					Aucune soumission {getStatusFilterLabel(data.statusFilter) || ''}
+					{#if data.statusFilter === 'all'}
+						Aucune soumission pour le moment
+					{:else}
+						Aucune soumission {getStatusFilterLabel(data.statusFilter)}
+					{/if}
 				</p>
 			</div>
 		</div>
