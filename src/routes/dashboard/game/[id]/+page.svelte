@@ -28,6 +28,25 @@
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
+	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
+
+	const submissionTypeLabel = (type: string, translationId: string | null): string => {
+		if (type === 'update') return 'Modification du jeu';
+		if (type === 'delete' && !translationId) return 'Suppression du jeu';
+		if (type === 'delete' && translationId) return 'Suppression d’une traduction';
+		if (type === 'translation' && translationId) return 'Modification d’une traduction';
+		if (type === 'translation') return 'Ajout d’une traduction';
+		return 'Soumission';
+	};
+
+	const formatSubmissionDate = (date: Date | string) =>
+		new Date(date).toLocaleDateString('fr-FR', {
+			day: '2-digit',
+			month: 'short',
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
 	/** Actualisation manuelle depuis le thread : réservée aux jeux F95Zone */
 	const refreshManualBlocked = $derived(game.website !== 'f95z');
 
@@ -929,6 +948,44 @@
 		<!-- En-tête du jeu -->
 		<div class="card mb-8 bg-base-100 shadow-xl">
 			<div class="card-body">
+				{#if pendingSubmissions.length > 0}
+					<div role="alert" class="mb-4 alert alert-warning">
+						<div class="flex-1">
+							<div class="font-semibold">
+								{pendingSubmissions.length} soumission{pendingSubmissions.length > 1 ? 's' : ''} en cours
+								sur ce jeu
+							</div>
+							<ul class="mt-1 list-disc space-y-1 pl-5 text-sm opacity-90">
+								{#each pendingSubmissions.slice(0, 3) as sub (sub.id)}
+									<li>
+										{submissionTypeLabel(sub.type, sub.translationId)}
+										{#if sub.userId === currentUser?.id}
+											· <span class="font-semibold">par toi</span>
+										{:else if sub.username}
+											· par <span class="font-semibold">{sub.username}</span>
+										{/if}
+										· {formatSubmissionDate(sub.createdAt)}
+										{#if sub.status === 'opened'}
+											· <span class="badge badge-xs badge-info">Ouverte</span>
+										{/if}
+									</li>
+								{/each}
+								{#if pendingSubmissions.length > 3}
+									<li class="opacity-70">
+										…et {pendingSubmissions.length - 3} autre{pendingSubmissions.length - 3 > 1
+											? 's'
+											: ''}
+									</li>
+								{/if}
+							</ul>
+						</div>
+						{#if isAdmin}
+							<a class="btn btn-outline btn-sm" href="/dashboard/submits?status=pending">
+								Voir les soumissions
+							</a>
+						{/if}
+					</div>
+				{/if}
 				<div class="flex flex-col gap-6 lg:flex-row">
 					<!-- Image du jeu -->
 					<div class="flex shrink-0 flex-col gap-4">

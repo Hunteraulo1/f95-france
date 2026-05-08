@@ -11,6 +11,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>F95 France - Dashboard</title>
+</svelte:head>
+
 <Header />
 
 <main class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open">
