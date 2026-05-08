@@ -72,9 +72,9 @@
 	/>
 
 	{#if data.submissions.length === 0}
-		<div class="card bg-base-100 p-8 shadow-sm">
-			<div class="text-center">
-				<p class="text-lg opacity-70">
+		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+			<div class="card-body gap-6 sm:p-8">
+				<p class="text-center text-lg opacity-70">
 					{#if data.statusFilter === 'all'}
 						Aucune soumission pour le moment
 					{:else}

@@ -53,8 +53,8 @@
 
 		<div class="mb-16 flex w-full flex-col gap-4">
 			{#if stats}
-				<div class="stats flex flex-col gap-4 bg-base-100 shadow lg:flex-row">
-					<div class="stat">
+				<div class="card w-full border border-base-300 bg-base-100 shadow-xl stats">
+					<div class="stat sm:px-8">
 						<div class="stat-figure text-primary">
 							<CirclePlus />
 						</div>
@@ -72,8 +72,8 @@
 				</div>
 			{/if}
 			{#if stats}
-				<div class="stats flex flex-col gap-4 bg-base-100 shadow lg:flex-row">
-					<div class="stat">
+				<div class="card w-full border border-base-300 bg-base-100 shadow-xl stats">
+					<div class="stat sm:px-8">
 						<div class="stat-figure text-primary">
 							<CirclePlus />
 						</div>

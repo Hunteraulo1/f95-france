@@ -25,7 +25,7 @@
 			<div class="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<!-- Mes soumissions -->
 				<div class="card col-span-1 bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<a
@@ -59,7 +59,7 @@
 
 				<!-- Mes traductions -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<a
@@ -93,7 +93,7 @@
 
 				<!-- Traductions ajoutées / modifiées -->
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<a
@@ -158,7 +158,7 @@
 					href="/dashboard/manager"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Total traductions</h3>
@@ -174,7 +174,7 @@
 					href="/dashboard/manager"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Total utilisateurs</h3>
@@ -190,7 +190,7 @@
 					href="/dashboard/submits?status=pending"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traducteurs</h3>
@@ -208,7 +208,7 @@
 					href="/dashboard/submits?status=accepted"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions en cours</h3>
@@ -223,7 +223,7 @@
 					href="/dashboard/submits?status=rejected"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions complétées</h3>
@@ -235,7 +235,7 @@
 				</a>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Traductions abandonnées</h3>
@@ -247,7 +247,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions en attente</h3>
@@ -259,7 +259,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions acceptées</h3>
@@ -271,7 +271,7 @@
 				</div>
 
 				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg bg-base-100">
+					<div class="card-body border border-base-300 rounded-lg bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
 								<h3 class="card-title text-sm text-base-content">Soumissions rejetées</h3>
@@ -294,7 +294,7 @@
 						href="/dashboard/manager"
 						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 					>
-						<div class="card-body rounded-lg bg-base-100">
+						<div class="card-body border border-base-300 rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Nouveaux jeux</h3>
@@ -309,7 +309,7 @@
 						href="/dashboard/manager"
 						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 					>
-						<div class="card-body rounded-lg bg-base-100">
+						<div class="card-body border border-base-300 rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Traductions mises à jour</h3>
@@ -324,7 +324,7 @@
 						href="/dashboard/users"
 						class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 					>
-						<div class="card-body rounded-lg bg-base-100">
+						<div class="card-body border border-base-300 rounded-lg bg-base-100">
 							<div class="flex items-center justify-between">
 								<div>
 									<h3 class="card-title text-sm text-base-content">Nouveaux utilisateurs</h3>

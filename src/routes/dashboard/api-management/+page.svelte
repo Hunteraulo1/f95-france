@@ -33,7 +33,7 @@
 	<title>Gestion API — F95 France</title>
 </svelte:head>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
+<div class="mx-auto flex w-full flex-col gap-6">
 	<div class="flex items-center gap-2">
 		<KeyRound class="size-8 text-primary" aria-hidden="true" />
 		<h1 class="text-2xl font-semibold">Gestion des clés API</h1>
@@ -86,8 +86,8 @@
 		</div>
 	{/if}
 
-	<div class="card bg-base-200">
-		<div class="card-body gap-4">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
 			<h2 class="card-title text-lg">Créer une clé pour un utilisateur</h2>
 			<form method="post" action="?/create" use:enhance class="flex flex-col gap-3">
 				<label class="flex max-w-md flex-col gap-1">
@@ -127,15 +127,15 @@
 		</div>
 	</div>
 
-	<div class="overflow-x-auto rounded-lg border border-base-300">
-		<table class="table table-zebra table-sm">
+	<div class="card w-full border border-base-300 bg-base-100 shadow-xl overflow-x-auto">
+		<table class="card-body gap-6 sm:py-y8 table table-zebra table-sm">
 			<thead>
 				<tr>
 					<th>Propriétaire</th>
 					<th>Préfixe</th>
 					<th>Libellé</th>
 					<th>Quota</th>
-					<th>Utilisations (total)</th>
+					<th>Utilisation</th>
 					<th>Créée</th>
 					<th>Expire</th>
 					<th>Dernière utilisation</th>
@@ -147,16 +147,13 @@
 				{#each data.keys as row (row.id)}
 					<tr>
 						<td>
-							<div class="flex flex-col">
+							<div class="flex flex-col max-w-32 overflow-hidden hover:overflow-visible">
 								<span class="font-medium">{row.ownerUsername}</span>
-								<span class="text-xs text-base-content/70">{row.ownerEmail}</span>
+								<span class="text-xs text-base-content/70 ">{row.ownerEmail}</span>
 							</div>
 						</td>
 						<td><code class="text-xs">{row.keyPrefix}{row.kind === 'session' ? '' : '…'}</code></td>
 						<td>
-							{#if row.kind === 'session'}
-								<span class="badge badge-ghost badge-sm">Session</span>
-							{/if}
 							{row.label || '—'}
 						</td>
 						<td>{row.requestsPerMinute}</td>
@@ -223,7 +220,7 @@
 								{:else if row.kind !== 'session'}
 									<form method="post" action="?/restoreRevoked" use:enhance>
 										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn w-fit btn-outline btn-xs btn-success">
+										<button type="submit" class="btn w-fit btn-outline btn-xs btn-success text-nowrap">
 											Rétablir la clé
 										</button>
 									</form>
