@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { eq, sql, and, desc } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 export type NotificationType =
 	| 'submission_status_changed'
@@ -67,6 +67,7 @@ export async function notifySubmissionStatusChange(
 ) {
 	const statusLabels: Record<string, string> = {
 		pending: 'en attente',
+		to_fix: 'à corriger',
 		accepted: 'acceptée',
 		rejected: 'refusée'
 	};
@@ -81,6 +82,8 @@ export async function notifySubmissionStatusChange(
 	const title =
 		newStatus === 'accepted'
 			? 'Soumission acceptée'
+			: newStatus === 'to_fix'
+				? 'Soumission à corriger'
 			: newStatus === 'rejected'
 				? 'Soumission refusée'
 				: 'Statut de soumission modifié';
@@ -89,7 +92,12 @@ export async function notifySubmissionStatusChange(
 
 	await createNotification({
 		userId: submissionUserId,
-		type: newStatus === 'accepted' ? 'submission_accepted' : 'submission_rejected',
+		type:
+			newStatus === 'accepted'
+				? 'submission_accepted'
+				: newStatus === 'rejected'
+					? 'submission_rejected'
+					: 'submission_status_changed',
 		title,
 		message,
 		link: `/dashboard/submit`,

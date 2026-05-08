@@ -222,8 +222,12 @@
 		return JSON.stringify(out);
 	});
 
-	const isRejected = $derived(selectedStatus === 'rejected');
-	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
+	const isStatusRequiringAdminNote = $derived(
+		selectedStatus === 'rejected' || selectedStatus === 'to_fix'
+	);
+	const hasNotesError = $derived(
+		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
+	);
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
 	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
@@ -233,6 +237,7 @@
 			submission?.type !== 'delete' &&
 			(submission?.status === 'pending' ||
 				submission?.status === 'opened' ||
+				submission?.status === 'to_fix' ||
 				submission?.status === 'rejected')
 		)
 	);
@@ -1414,6 +1419,7 @@
 							<option value="pending">En attente</option>
 							<option value="opened">Ouverte</option>
 							<option value="accepted">Acceptée</option>
+							<option value="to_fix">À corriger</option>
 							<option value="rejected">Refusée</option>
 						</select>
 					</div>
@@ -1421,7 +1427,7 @@
 					<div class="form-control mt-4 w-full">
 						<label for="adminNotes" class="label">
 							<span class="label-text">Notes admin</span>
-							{#if isRejected}
+							{#if isStatusRequiringAdminNote}
 								<span class="label-text-alt text-error">* Obligatoire</span>
 							{:else}
 								<span class="label-text-alt">(optionnel)</span>
@@ -1432,18 +1438,18 @@
 							name="adminNotes"
 							class="textarea-bordered textarea w-full"
 							class:textarea-error={hasNotesError}
-							placeholder={isRejected
-								? 'Vous devez expliquer pourquoi cette soumission est refusée...'
+							placeholder={isStatusRequiringAdminNote
+								? 'Vous devez expliquer pourquoi cette soumission est à corriger ou refusée...'
 								: 'Ajouter des notes pour cette soumission...'}
 							rows="3"
-							required={isRejected}
+							required={isStatusRequiringAdminNote}
 							bind:value={adminNotesText}
 						></textarea>
-						{#if isRejected}
+						{#if isStatusRequiringAdminNote}
 							<div class="label">
-								<span class="label-text-alt text-error"
-									>Une note est obligatoire pour refuser une soumission</span
-								>
+								<span class="label-text-alt text-error">
+									Une note est obligatoire pour "À corriger" ou "Refusée"
+								</span>
 							</div>
 						{/if}
 					</div>

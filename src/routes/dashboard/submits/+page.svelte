@@ -68,6 +68,7 @@
 		openedCount={data.openedCount ?? 0}
 		acceptedCount={data.acceptedCount}
 		rejectedCount={data.rejectedCount}
+		toFixCount={data.toFixCount ?? 0}
 		onFilterChange={updateFilter}
 	/>
 
