@@ -12,7 +12,7 @@
 
 <svelte:head>
 	<link rel="icon" href="/favicon.ico" />
-  <title>F95 France</title>
+	<title>F95 France</title>
 </svelte:head>
 
 {@render children()}

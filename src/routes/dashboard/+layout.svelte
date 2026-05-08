@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>F95 France - Dashboard</title>
+	<title>F95 France - Dashboard</title>
 </svelte:head>
 
 <Header />

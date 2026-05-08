@@ -949,11 +949,11 @@
 		<div class="card mb-8 bg-base-100 shadow-xl">
 			<div class="card-body">
 				{#if pendingSubmissions.length > 0}
-					<div role="alert" class="alert alert-warning mb-4">
+					<div role="alert" class="mb-4 alert alert-warning">
 						<div class="flex-1">
 							<div class="font-semibold">
-								{pendingSubmissions.length} soumission{pendingSubmissions.length > 1 ? 's' : ''} en
-								cours sur ce jeu
+								{pendingSubmissions.length} soumission{pendingSubmissions.length > 1 ? 's' : ''} en cours
+								sur ce jeu
 							</div>
 							<ul class="mt-1 list-disc space-y-1 pl-5 text-sm opacity-90">
 								{#each pendingSubmissions.slice(0, 3) as sub (sub.id)}
@@ -979,11 +979,8 @@
 								{/if}
 							</ul>
 						</div>
-            {#if isAdmin}
-							<a
-								class="btn btn-sm btn-outline"
-								href="/dashboard/submits?status=pending"
-							>
+						{#if isAdmin}
+							<a class="btn btn-outline btn-sm" href="/dashboard/submits?status=pending">
 								Voir les soumissions
 							</a>
 						{/if}

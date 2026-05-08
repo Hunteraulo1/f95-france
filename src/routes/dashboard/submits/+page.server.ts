@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    parseSubmissionPayloadJson,
-    persistSubmissionPayload,
-    validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
