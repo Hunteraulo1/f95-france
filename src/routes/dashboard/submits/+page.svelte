@@ -17,6 +17,12 @@
 	let pendingFilter = $state<string | null>(null);
 	let isFilterChanging = $state(false);
 	const activeFilter = $derived(pendingFilter ?? data.statusFilter);
+	$effect(() => {
+		if (pendingFilter && data.statusFilter === pendingFilter) {
+			pendingFilter = null;
+			isFilterChanging = false;
+		}
+	});
 
 	const openSubmissionModal = async (submission: (typeof data.submissions)[0]) => {
 		// Passer en "opened" une seule fois (pending) pour bloquer les modifications côté utilisateur.
@@ -57,7 +63,7 @@
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
 			await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
-		} finally {
+		} catch {
 			pendingFilter = null;
 			isFilterChanging = false;
 		}
