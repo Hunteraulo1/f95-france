@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
+import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -113,17 +113,13 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
 	const translationsWithFlags = translations
 		.map((t) => {
-			const gameVersion = typeof t.game.gameVersion === 'string' ? t.game.gameVersion.trim() : '';
-			const isOutdated =
-				gameVersion.length > 0 &&
-				shouldNotifyTranslatorOnAutoCheckVersionBump(
-					{
-						version: t.version,
-						tversion: t.tversion,
-						tname: t.tname
-					},
-					gameVersion
-				);
+			// Du point de vue traducteur : « à jour » si la version traduite correspond
+			// à la référence (tversion === version), ou si la traduction est intégrée.
+			// La version du jeu n'intervient pas ici : c'est l'auto-check qui notifie
+			// séparément lorsqu'il faut bumper la référence.
+			const isIntegrated = tradVerIndicatesIntegrated(t.tversion, t.tname);
+			const versionsMatch = strTrim(t.version) === strTrim(t.tversion);
+			const isOutdated = !isIntegrated && !versionsMatch;
 			return {
 				...t,
 				isOutdated
