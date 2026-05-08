@@ -11,6 +11,10 @@
 			? form.createdKey
 			: null
 	);
+let showNewKey = $state(false);
+const maskedNewKey = $derived(
+	newKey ? `${'•'.repeat(Math.max(8, newKey.length - 4))}${newKey.slice(-4)}` : ''
+);
 
 	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 </script>
@@ -66,15 +70,20 @@
 			<div class="flex flex-col gap-2">
 				<span class="font-medium">Copiez cette clé maintenant — elle ne sera plus affichée.</span>
 				<code class="rounded bg-base-100 p-2 text-sm break-all text-base-content select-all"
-					>{newKey}</code
+					>{showNewKey ? newKey : maskedNewKey}</code
 				>
-				<button
-					type="button"
-					class="btn btn-ghost btn-sm"
-					onclick={() => navigator.clipboard.writeText(newKey)}
-				>
-					Copier
-				</button>
+				<div class="flex flex-wrap items-center gap-2">
+					<button type="button" class="btn btn-ghost btn-sm" onclick={() => (showNewKey = !showNewKey)}>
+						{showNewKey ? 'Masquer' : 'Afficher'}
+					</button>
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						onclick={() => navigator.clipboard.writeText(newKey)}
+					>
+						Copier
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -208,10 +217,16 @@
 						</td>
 						<td>
 							{#if !row.revokedAt}
-								<form method="post" action="?/revoke" use:enhance>
-									<input type="hidden" name="id" value={row.id} />
-									<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
-								</form>
+								<div class="flex items-center gap-2">
+									<form method="post" action="?/rotate" use:enhance>
+										<input type="hidden" name="id" value={row.id} />
+										<button type="submit" class="btn btn-outline btn-sm">Régénérer</button>
+									</form>
+									<form method="post" action="?/revoke" use:enhance>
+										<input type="hidden" name="id" value={row.id} />
+										<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
+									</form>
+								</div>
 							{/if}
 						</td>
 					</tr>
