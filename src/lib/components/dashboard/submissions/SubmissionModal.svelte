@@ -1418,8 +1418,8 @@
 						>
 							<option value="pending">En attente</option>
 							<option value="opened">Ouverte</option>
-							<option value="accepted">Acceptée</option>
 							<option value="to_fix">À corriger</option>
+							<option value="accepted">Acceptée</option>
 							<option value="rejected">Refusée</option>
 						</select>
 					</div>

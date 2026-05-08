@@ -34,6 +34,12 @@
 			badgeClass: 'badge-warning'
 		},
 		{
+			value: 'to_fix',
+			label: 'À corriger',
+			count: toFixCount,
+			badgeClass: 'badge-secondary'
+		},
+		{
 			value: 'opened',
 			label: 'Ouvertes',
 			count: openedCount,
@@ -50,12 +56,6 @@
 			label: 'Refusées',
 			count: rejectedCount,
 			badgeClass: 'badge-error'
-		},
-		{
-			value: 'to_fix',
-			label: 'À corriger',
-			count: toFixCount,
-			badgeClass: 'badge-secondary'
 		},
 		{
 			value: 'all',
