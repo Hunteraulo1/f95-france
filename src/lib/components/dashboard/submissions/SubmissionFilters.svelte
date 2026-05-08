@@ -13,6 +13,7 @@
 		acceptedCount: number;
 		rejectedCount: number;
 		toFixCount: number;
+		disabled?: boolean;
 		onFilterChange: (status: string) => void;
 	}
 
@@ -23,6 +24,7 @@
 		acceptedCount,
 		rejectedCount,
 		toFixCount,
+		disabled = false,
 		onFilterChange
 	}: Props = $props();
 
@@ -81,7 +83,10 @@
 			type="button"
 			role="tab"
 			aria-selected={currentFilter === filter.value}
-			class="btn btn-sm {currentFilter === filter.value ? 'btn-primary' : 'btn-ghost'}"
+			disabled={disabled}
+			class="btn btn-sm {currentFilter === filter.value ? 'btn-primary' : 'btn-ghost'} {disabled
+				? 'pointer-events-none opacity-80'
+				: ''}"
 			onclick={() => onFilterChange(filter.value)}
 		>
 			{filter.label}
