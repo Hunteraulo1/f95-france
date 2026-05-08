@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -74,10 +74,38 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.leftJoin(table.user, eq(table.user.id, table.translator.userId))
 			.orderBy(asc(table.translator.name));
 
+		// Soumissions actives (en attente / ouvertes) liées au jeu ou à ses traductions.
+		const translationIds = translations.map((t) => t.id);
+		const pendingSubmissions = await db
+			.select({
+				id: table.submission.id,
+				type: table.submission.type,
+				status: table.submission.status,
+				translationId: table.submission.translationId,
+				createdAt: table.submission.createdAt,
+				userId: table.submission.userId,
+				username: table.user.username
+			})
+			.from(table.submission)
+			.leftJoin(table.user, eq(table.user.id, table.submission.userId))
+			.where(
+				and(
+					sql`${table.submission.status} IN ('pending', 'opened')`,
+					translationIds.length > 0
+						? or(
+								eq(table.submission.gameId, gameId),
+								inArray(table.submission.translationId, translationIds)
+							)
+						: eq(table.submission.gameId, gameId)
+				)
+			)
+			.orderBy(desc(table.submission.createdAt));
+
 		return {
 			game: game[0],
 			translations,
 			translators,
+			pendingSubmissions,
 			user: locals.user
 		};
 	} catch (err) {
