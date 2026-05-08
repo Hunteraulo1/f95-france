@@ -14,6 +14,9 @@
 	let { data }: Props = $props();
 
 	let selectedSubmission: (typeof data.submissions)[0] | null = $state(null);
+	let pendingFilter = $state<string | null>(null);
+	let isFilterChanging = $state(false);
+	const activeFilter = $derived(pendingFilter ?? data.statusFilter);
 
 	const openSubmissionModal = async (submission: (typeof data.submissions)[0]) => {
 		// Passer en "opened" une seule fois (pending) pour bloquer les modifications côté utilisateur.
@@ -44,9 +47,20 @@
 	};
 
 	const updateFilter = async (status: string) => {
+		if (isFilterChanging || status === activeFilter) {
+			return;
+		}
+
+		isFilterChanging = true;
+		pendingFilter = status;
 		const q = new URLSearchParams({ status });
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-		await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+		try {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
+			await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+		} finally {
+			pendingFilter = null;
+			isFilterChanging = false;
+		}
 	};
 </script>
 
@@ -62,12 +76,13 @@
 
 	<!-- Filtres -->
 	<SubmissionFilters
-		currentFilter={data.statusFilter}
+		currentFilter={activeFilter}
 		pendingCount={data.pendingCount}
 		openedCount={data.openedCount ?? 0}
 		acceptedCount={data.acceptedCount}
 		rejectedCount={data.rejectedCount}
 		toFixCount={data.toFixCount ?? 0}
+		disabled={isFilterChanging}
 		onFilterChange={updateFilter}
 	/>
 
@@ -75,10 +90,10 @@
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:p-8">
 				<p class="text-center text-lg opacity-70">
-					{#if data.statusFilter === 'all'}
+					{#if activeFilter === 'all'}
 						Aucune soumission pour le moment
 					{:else}
-						Aucune soumission {getStatusFilterLabel(data.statusFilter)}
+						Aucune soumission {getStatusFilterLabel(activeFilter)}
 					{/if}
 				</p>
 			</div>
