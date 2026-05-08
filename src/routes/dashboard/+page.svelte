@@ -74,7 +74,7 @@
 						</div>
 						<div class="mt-4 flex flex-wrap gap-4 text-sm">
 							<a
-								href="/dashboard/my-translations?status=completed"
+								href="/dashboard/my-translations"
 								class="flex link items-center gap-2 text-base-content/70 link-hover"
 							>
 								<CircleCheck class="h-4 w-4 text-success" />
