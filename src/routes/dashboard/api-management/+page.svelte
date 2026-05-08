@@ -127,8 +127,8 @@
 		</div>
 	</div>
 
-	<div class="card w-full border border-base-300 bg-base-100 shadow-xl overflow-x-auto">
-		<table class="card-body gap-6 sm:py-y8 table table-zebra table-sm">
+	<div class="card w-full overflow-x-auto border border-base-300 bg-base-100 shadow-xl">
+		<table class="sm:py-y8 table card-body gap-6 table-zebra table-sm">
 			<thead>
 				<tr>
 					<th>Propriétaire</th>
@@ -147,9 +147,9 @@
 				{#each data.keys as row (row.id)}
 					<tr>
 						<td>
-							<div class="flex flex-col max-w-32 overflow-hidden hover:overflow-visible">
+							<div class="flex max-w-32 flex-col overflow-hidden hover:overflow-visible">
 								<span class="font-medium">{row.ownerUsername}</span>
-								<span class="text-xs text-base-content/70 ">{row.ownerEmail}</span>
+								<span class="text-xs text-base-content/70">{row.ownerEmail}</span>
 							</div>
 						</td>
 						<td><code class="text-xs">{row.keyPrefix}{row.kind === 'session' ? '' : '…'}</code></td>
@@ -220,7 +220,10 @@
 								{:else if row.kind !== 'session'}
 									<form method="post" action="?/restoreRevoked" use:enhance>
 										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn w-fit btn-outline btn-xs btn-success text-nowrap">
+										<button
+											type="submit"
+											class="btn w-fit text-nowrap btn-outline btn-xs btn-success"
+										>
 											Rétablir la clé
 										</button>
 									</form>

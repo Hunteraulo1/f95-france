@@ -115,7 +115,9 @@
 	<h2 class="mb-4 text-lg font-semibold text-base-content">Ajouter/Modifier un jeu sur la liste</h2>
 
 	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
-		<div class="card-body gap-6 sm:p-8 flex w-full flex-col-reverse justify-between md:items-center lg:flex-row">
+		<div
+			class="card-body flex w-full flex-col-reverse justify-between gap-6 sm:p-8 md:items-center lg:flex-row"
+		>
 			<div class="relative w-full">
 				<label class="input w-full">
 					<Search size={20} class="min-w-5" />
@@ -187,7 +189,7 @@
 									{#if $user?.role === 'superadmin'}
 										<button
 											type="button"
-											class="mt-3 mr-2 badge shrink-0 self-start overflow-hidden badge-outline badge-sm hover:bg-base-200 text-nowrap absolute right-0"
+											class="absolute right-0 mt-3 mr-2 badge shrink-0 self-start overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200"
 											title="Copier l’ID du jeu"
 											onclick={(e) => {
 												e.preventDefault();

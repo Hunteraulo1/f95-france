@@ -936,7 +936,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-base-200">
-	<div class="container mx-auto gap-6 flex flex-col">
+	<div class="container mx-auto flex flex-col gap-6">
 		<!-- Bouton retour -->
 		<div class="absolute -mt-13">
 			<a href="/dashboard/manager" class="btn btn-ghost">
@@ -1215,13 +1215,13 @@
 										</td>
 										<td>
 											<span
-												class="badge border-0 text-white text-nowrap"
+												class="badge border-0 text-nowrap text-white"
 												style="background-color: {getGameEngineHexColor(translation.gameType)}"
 												>{getGameEngineLabel(translation.gameType)}</span
 											>
 										</td>
 										<td>
-											<span class="badge badge-info text-nowrap">
+											<span class="badge text-nowrap badge-info">
 												{getTtypeText(translation.ttype)}
 											</span>
 										</td>
@@ -1231,7 +1231,7 @@
 													href={translation.tlink}
 													target="_blank"
 													rel="noopener noreferrer"
-													class="btn btn-ghost btn-sm flex items-center justify-center"
+													class="btn flex items-center justify-center btn-ghost btn-sm"
 												>
 													<ExternalLink size={14} />
 													Lien
@@ -1240,24 +1240,24 @@
 										</td>
 										<td>
 											<div class="flex items-center justify-center">
-                        {#if translation.ac}
-                          <SquareCheckBig size={14} />
-                        {:else}
-                          <Square size={14} />
-                        {/if}
-                      </div>
+												{#if translation.ac}
+													<SquareCheckBig size={14} />
+												{:else}
+													<Square size={14} />
+												{/if}
+											</div>
 										</td>
 										<td>
 											<div class="flex gap-2">
-                        <button
-                          class="btn btn-sm btn-primary"
-                          onclick={() => openEditTranslationModal(translation)}>Modifier</button
-                        >
-                        <button
-                          class="btn btn-sm btn-error"
-                          onclick={() => confirmDeleteTranslation(translation)}>Supprimer</button
-                        >
-                      </div>
+												<button
+													class="btn btn-sm btn-primary"
+													onclick={() => openEditTranslationModal(translation)}>Modifier</button
+												>
+												<button
+													class="btn btn-sm btn-error"
+													onclick={() => confirmDeleteTranslation(translation)}>Supprimer</button
+												>
+											</div>
 										</td>
 									</tr>
 								{/each}
@@ -1618,345 +1618,344 @@
 <!-- Modal de modification de traduction -->
 {#if showEditTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box p-0 max-h-[90vh] max-w-4xl">
+		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
 			<div class="p-8">
-        <h3 class="text-lg font-bold">Modifier la traduction</h3>
-        <p class="mt-1 text-sm text-base-content/70">
-          Mettez à jour la ligne de traduction sans perdre les informations existantes.
-        </p>
+				<h3 class="text-lg font-bold">Modifier la traduction</h3>
+				<p class="mt-1 text-sm text-base-content/70">
+					Mettez à jour la ligne de traduction sans perdre les informations existantes.
+				</p>
 			</div>
 
-      <div class="space-y-5 overflow-y-auto px-8">
-        {#if isSuperAdmin}
-          <div class="mb-4">
-            <button
-              type="button"
-              class="badge max-w-full overflow-hidden badge-outline text-left badge-sm hover:bg-base-200"
-              title="Copier l’ID de la traduction"
-              onclick={() => {
-                navigator.clipboard.writeText(editingTranslation.id);
-                newToast({
-                  alertType: 'success',
-                  message: 'ID de la traduction copié dans le presse-papiers'
-                });
-              }}
-            >
-              ID: {editingTranslation.id}
-            </button>
-          </div>
-        {/if}
+			<div class="space-y-5 overflow-y-auto px-8">
+				{#if isSuperAdmin}
+					<div class="mb-4">
+						<button
+							type="button"
+							class="badge max-w-full overflow-hidden badge-outline text-left badge-sm hover:bg-base-200"
+							title="Copier l’ID de la traduction"
+							onclick={() => {
+								navigator.clipboard.writeText(editingTranslation.id);
+								newToast({
+									alertType: 'success',
+									message: 'ID de la traduction copié dans le presse-papiers'
+								});
+							}}
+						>
+							ID: {editingTranslation.id}
+						</button>
+					</div>
+				{/if}
 
-        {#key editingTranslation.id}
-          <div class="space-y-5">
-            <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-              <div class="mb-4">
-                <h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
-              </div>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div class="form-control w-full md:col-span-2">
-                  <label class="label" for="edit-translationName">
-                    <span class="label-text">Nom de la traduction</span>
-                  </label>
-                  <input
-                    id="edit-translationName"
-                    type="text"
-                    placeholder="Ex: Saison 1"
-                    class="input-bordered input w-full"
-                    bind:value={editingTranslation.translationName}
-                    required
-                  />
-                </div>
+				{#key editingTranslation.id}
+					<div class="space-y-5">
+						<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+							<div class="mb-4">
+								<h4 class="text-sm font-semibold text-base-content/80">Informations principales</h4>
+							</div>
+							<div class="grid gap-4 md:grid-cols-2">
+								<div class="form-control w-full md:col-span-2">
+									<label class="label" for="edit-translationName">
+										<span class="label-text">Nom de la traduction</span>
+									</label>
+									<input
+										id="edit-translationName"
+										type="text"
+										placeholder="Ex: Saison 1"
+										class="input-bordered input w-full"
+										bind:value={editingTranslation.translationName}
+										required
+									/>
+								</div>
 
-                <div class="form-control w-full">
-                  <label class="label" for="edit-tname">
-                    <span class="label-text">Statut de traduction</span>
-                  </label>
-                  <select
-                    id="edit-tname"
-                    class="select-bordered select w-full"
-                    bind:value={editingTranslation.tname}
-                  >
-                    <option value="no_translation">Pas de traduction</option>
-                    <option value="integrated">Intégrée</option>
-                    <option value="translation">Traduction</option>
-                    <option value="translation_with_mods">Traduction avec mods</option>
-                  </select>
-                  <p class="mt-1 text-xs text-base-content/60">
-                    Définit les contraintes de version et si le lien devient optionnel.
-                  </p>
-                </div>
+								<div class="form-control w-full">
+									<label class="label" for="edit-tname">
+										<span class="label-text">Statut de traduction</span>
+									</label>
+									<select
+										id="edit-tname"
+										class="select-bordered select w-full"
+										bind:value={editingTranslation.tname}
+									>
+										<option value="no_translation">Pas de traduction</option>
+										<option value="integrated">Intégrée</option>
+										<option value="translation">Traduction</option>
+										<option value="translation_with_mods">Traduction avec mods</option>
+									</select>
+									<p class="mt-1 text-xs text-base-content/60">
+										Définit les contraintes de version et si le lien devient optionnel.
+									</p>
+								</div>
 
-                <div class="form-control w-full">
-                  <label class="label" for="edit-status">
-                    <span class="label-text">Progression</span>
-                  </label>
-                  <select
-                    id="edit-status"
-                    class="select-bordered select w-full text-nowrap"
-                    bind:value={editingTranslation.status}
-                  >
-                    <option value="in_progress">En cours</option>
-                    <option value="completed">Terminé</option>
-                    <option value="abandoned">Abandonné</option>
-                  </select>
-                </div>
+								<div class="form-control w-full">
+									<label class="label" for="edit-status">
+										<span class="label-text">Progression</span>
+									</label>
+									<select
+										id="edit-status"
+										class="select-bordered select w-full text-nowrap"
+										bind:value={editingTranslation.status}
+									>
+										<option value="in_progress">En cours</option>
+										<option value="completed">Terminé</option>
+										<option value="abandoned">Abandonné</option>
+									</select>
+								</div>
 
-                <div class="form-control w-full">
-                  <label class="label" for="edit-ttype">
-                    <span class="label-text">Type de traduction</span>
-                  </label>
-                  <select
-                    id="edit-ttype"
-                    class="select-bordered select w-full"
-                    bind:value={editingTranslation.ttype}
-                    disabled={editingTranslation.tname === 'no_translation'}
-                  >
-                    <option value="vf">VO Française</option>
-                    <option value="manual">Traduction Humaine</option>
-                    <option value="semi-auto">Traduction Semi-Automatique</option>
-                    <option value="auto">Traduction Automatique</option>
-                    <option value="to_tested">À tester</option>
-                    <option value="hs">Lien Trad HS</option>
-                  </select>
-                  <p class="mt-1 text-xs text-base-content/60">
-                    Utilisez « Lien Trad HS » si le lien ne fonctionne plus.
-                  </p>
-                </div>
+								<div class="form-control w-full">
+									<label class="label" for="edit-ttype">
+										<span class="label-text">Type de traduction</span>
+									</label>
+									<select
+										id="edit-ttype"
+										class="select-bordered select w-full"
+										bind:value={editingTranslation.ttype}
+										disabled={editingTranslation.tname === 'no_translation'}
+									>
+										<option value="vf">VO Française</option>
+										<option value="manual">Traduction Humaine</option>
+										<option value="semi-auto">Traduction Semi-Automatique</option>
+										<option value="auto">Traduction Automatique</option>
+										<option value="to_tested">À tester</option>
+										<option value="hs">Lien Trad HS</option>
+									</select>
+									<p class="mt-1 text-xs text-base-content/60">
+										Utilisez « Lien Trad HS » si le lien ne fonctionne plus.
+									</p>
+								</div>
 
-                <div class="form-control w-full">
-                  <label class="label" for="edit-game-type">
-                    <span class="label-text">Moteur du jeu</span>
-                  </label>
-                  <select
-                    id="edit-game-type"
-                    class="select-bordered select w-full"
-                    bind:value={editingTranslation.gameType}
-                  >
-                    {#each gameEngineSelectValues as v (v)}
-                      <option value={v}>{getGameEngineLabel(v)}</option>
-                    {/each}
-                  </select>
-                </div>
-              </div>
-            </div>
+								<div class="form-control w-full">
+									<label class="label" for="edit-game-type">
+										<span class="label-text">Moteur du jeu</span>
+									</label>
+									<select
+										id="edit-game-type"
+										class="select-bordered select w-full"
+										bind:value={editingTranslation.gameType}
+									>
+										{#each gameEngineSelectValues as v (v)}
+											<option value={v}>{getGameEngineLabel(v)}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+						</div>
 
-            <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-              <div class="mb-4">
-                <h4 class="text-sm font-semibold text-base-content/80">Versions et lien</h4>
-              </div>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div class="form-control w-full">
-                  <label class="label" for="edit-version">
-                    <span class="label-text">Version de référence</span>
-                  </label>
-                  <input
-                    id="edit-version"
-                    type="text"
-                    placeholder="Ex: 1.2"
-                    class="input-bordered input w-full"
-                    bind:value={editingTranslation.version}
-                    disabled={editTranslationReferenceVersionLockedByAc}
-                  />
-                  <p class="mt-1 text-xs text-base-content/60">
-                    Doit correspondre à la version source du jeu.
-                  </p>
-                  {#if editTranslationReferenceVersionLockedByAc}
-                    <p class="mt-1 text-xs text-base-content/60">
-                      Version verrouillée tant que l’auto-check traduction est actif.
-                    </p>
-                  {/if}
-                </div>
+						<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+							<div class="mb-4">
+								<h4 class="text-sm font-semibold text-base-content/80">Versions et lien</h4>
+							</div>
+							<div class="grid gap-4 md:grid-cols-2">
+								<div class="form-control w-full">
+									<label class="label" for="edit-version">
+										<span class="label-text">Version de référence</span>
+									</label>
+									<input
+										id="edit-version"
+										type="text"
+										placeholder="Ex: 1.2"
+										class="input-bordered input w-full"
+										bind:value={editingTranslation.version}
+										disabled={editTranslationReferenceVersionLockedByAc}
+									/>
+									<p class="mt-1 text-xs text-base-content/60">
+										Doit correspondre à la version source du jeu.
+									</p>
+									{#if editTranslationReferenceVersionLockedByAc}
+										<p class="mt-1 text-xs text-base-content/60">
+											Version verrouillée tant que l’auto-check traduction est actif.
+										</p>
+									{/if}
+								</div>
 
-                <div class="form-control w-full">
-                  <label class="label" for="edit-tversion">
-                    <span class="label-text">Version de traduction</span>
-                  </label>
-                  <input
-                    id="edit-tversion"
-                    type="text"
-                    placeholder="Ex: 1.0"
-                    class="input-bordered input w-full"
-                    bind:value={editingTranslation.tversion}
-                    disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
-                    required
-                  />
-                  <p class="mt-1 text-xs text-base-content/60">
-                    Indiquez la version réellement publiée de la traduction.
-                  </p>
-                  {#if editTranslationVersionsLockedByAc}
-                    <p class="mt-1 text-xs text-base-content/60">
-                      Pour une traduction intégrée, la version reste « Intégrée » et la version de
-                      référence suit automatiquement la version du jeu.
-                    </p>
-                  {/if}
-                </div>
+								<div class="form-control w-full">
+									<label class="label" for="edit-tversion">
+										<span class="label-text">Version de traduction</span>
+									</label>
+									<input
+										id="edit-tversion"
+										type="text"
+										placeholder="Ex: 1.0"
+										class="input-bordered input w-full"
+										bind:value={editingTranslation.tversion}
+										disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
+										required
+									/>
+									<p class="mt-1 text-xs text-base-content/60">
+										Indiquez la version réellement publiée de la traduction.
+									</p>
+									{#if editTranslationVersionsLockedByAc}
+										<p class="mt-1 text-xs text-base-content/60">
+											Pour une traduction intégrée, la version reste « Intégrée » et la version de
+											référence suit automatiquement la version du jeu.
+										</p>
+									{/if}
+								</div>
 
-                <div class="form-control w-full md:col-span-2">
-                  <label class="label" for="edit-tlink">
-                    <span class="label-text">Lien de traduction</span>
-                  </label>
-                  <div class="join join-horizontal w-full">
-                    <input
-                      id="edit-tlink"
-                      type="url"
-                      placeholder="https://..."
-                      class="input-bordered input join-item min-w-0 flex-1"
-                      bind:value={editingTranslation.tlink}
-                      disabled={editTranslationLinkNotRequired}
-                      required={!editTranslationLinkNotRequired}
-                    />
-                    <button
-                      type="button"
-                      class="btn join-item shrink-0 btn-outline"
-                      disabled={editTranslationLinkNotRequired || !editingTranslation.tlink?.trim()}
-                      aria-label="Ouvrir le lien dans un nouvel onglet"
-                      onclick={() => {
-                        const u = editingTranslation.tlink?.trim();
-                        if (u) window.open(u, '_blank', 'noopener,noreferrer');
-                      }}
-                    >
-                      Ouvrir
-                    </button>
-                  </div>
-                  <p class="mt-1 text-xs text-base-content/60">
-                    Laissez vide uniquement pour « Intégrée » ou « Pas de traduction ».
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        {/key}
+								<div class="form-control w-full md:col-span-2">
+									<label class="label" for="edit-tlink">
+										<span class="label-text">Lien de traduction</span>
+									</label>
+									<div class="join join-horizontal w-full">
+										<input
+											id="edit-tlink"
+											type="url"
+											placeholder="https://..."
+											class="input-bordered input join-item min-w-0 flex-1"
+											bind:value={editingTranslation.tlink}
+											disabled={editTranslationLinkNotRequired}
+											required={!editTranslationLinkNotRequired}
+										/>
+										<button
+											type="button"
+											class="btn join-item shrink-0 btn-outline"
+											disabled={editTranslationLinkNotRequired || !editingTranslation.tlink?.trim()}
+											aria-label="Ouvrir le lien dans un nouvel onglet"
+											onclick={() => {
+												const u = editingTranslation.tlink?.trim();
+												if (u) window.open(u, '_blank', 'noopener,noreferrer');
+											}}
+										>
+											Ouvrir
+										</button>
+									</div>
+									<p class="mt-1 text-xs text-base-content/60">
+										Laissez vide uniquement pour « Intégrée » ou « Pas de traduction ».
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/key}
 
-        <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-          <div class="mb-4">
-            <h4 class="text-sm font-semibold text-base-content/80">Auto-check</h4>
-          </div>
-          <div class="form-control mb-4 w-full">
-            <div
-              class="rounded-box border border-base-300 bg-base-100/70 p-4 text-sm text-base-content/80"
-            >
-              {#if game.website !== 'f95z'}
-                <p>
-                  L’auto-check traduction n’est prévu que pour les jeux <strong>F95Zone</strong>. Sur
-                  ce site, il reste désactivé.
-                </p>
-              {:else if game.gameAutoCheck === false}
-                <p>
-                  L’<strong>auto-check du jeu</strong> est désactivé sur cette fiche. À
-                  l’enregistrement, l’auto-check de <strong>cette</strong> traduction sera donc mis à
-                  <strong>false</strong>
-                  (même si la ligne était marquée en auto-check auparavant).
-                </p>
-                {#if isAdmin}
-                  <p class="mt-2 text-base-content/70">
-                    Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
-                    page), puis cochez l’auto-check jeu pour ce thread F95.
-                  </p>
-                {/if}
-              {:else if canManuallyEditTranslationAc}
-                <p>
-                  Vous pouvez activer l’auto-check sur cette ligne. S’il est actif, la version de
-                  référence suit le jeu ; pour une traduction <strong>intégrée</strong>, la Trad. Ver.
-                  reste « Intégrée ».
-                </p>
-              {:else}
-                <p>L’auto-check de cette traduction n’est pas modifiable avec votre rôle.</p>
-              {/if}
-            </div>
-          </div>
+				<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+					<div class="mb-4">
+						<h4 class="text-sm font-semibold text-base-content/80">Auto-check</h4>
+					</div>
+					<div class="form-control mb-4 w-full">
+						<div
+							class="rounded-box border border-base-300 bg-base-100/70 p-4 text-sm text-base-content/80"
+						>
+							{#if game.website !== 'f95z'}
+								<p>
+									L’auto-check traduction n’est prévu que pour les jeux <strong>F95Zone</strong>.
+									Sur ce site, il reste désactivé.
+								</p>
+							{:else if game.gameAutoCheck === false}
+								<p>
+									L’<strong>auto-check du jeu</strong> est désactivé sur cette fiche. À
+									l’enregistrement, l’auto-check de <strong>cette</strong> traduction sera donc mis
+									à
+									<strong>false</strong>
+									(même si la ligne était marquée en auto-check auparavant).
+								</p>
+								{#if isAdmin}
+									<p class="mt-2 text-base-content/70">
+										Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
+										page), puis cochez l’auto-check jeu pour ce thread F95.
+									</p>
+								{/if}
+							{:else if canManuallyEditTranslationAc}
+								<p>
+									Vous pouvez activer l’auto-check sur cette ligne. S’il est actif, la version de
+									référence suit le jeu ; pour une traduction <strong>intégrée</strong>, la Trad.
+									Ver. reste « Intégrée ».
+								</p>
+							{:else}
+								<p>L’auto-check de cette traduction n’est pas modifiable avec votre rôle.</p>
+							{/if}
+						</div>
+					</div>
 
-          {#if canShowTranslationAcCheckbox}
-            <div class="form-control w-full">
-              <label
-                class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100/70 px-3 py-2 {!canManuallyEditTranslationAc
-                  ? 'opacity-70'
-                  : ''}"
-              >
-                <input
-                  type="checkbox"
-                  class="checkbox checkbox-sm"
-                  bind:checked={editingTranslation.ac}
-                  disabled={!canManuallyEditTranslationAc}
-                />
-                <span class="label-text">Auto-check traduction</span>
-              </label>
-              <p class="mt-1 text-xs text-base-content/60">
-                Activez cette option si cette ligne doit suivre automatiquement la version du jeu.
-              </p>
-              {#if !canManuallyEditTranslationAc && game.website === 'f95z' && game.gameAutoCheck === false}
-                <p class="mt-1 text-xs text-base-content/60">
-                  Réactivez d’abord l’auto-check du jeu pour cocher cette case.
-                </p>
-              {/if}
-            </div>
-          {/if}
-        </div>
+					{#if canShowTranslationAcCheckbox}
+						<div class="form-control w-full">
+							<label
+								class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100/70 px-3 py-2 {!canManuallyEditTranslationAc
+									? 'opacity-70'
+									: ''}"
+							>
+								<input
+									type="checkbox"
+									class="checkbox checkbox-sm"
+									bind:checked={editingTranslation.ac}
+									disabled={!canManuallyEditTranslationAc}
+								/>
+								<span class="label-text">Auto-check traduction</span>
+							</label>
+							<p class="mt-1 text-xs text-base-content/60">
+								Activez cette option si cette ligne doit suivre automatiquement la version du jeu.
+							</p>
+							{#if !canManuallyEditTranslationAc && game.website === 'f95z' && game.gameAutoCheck === false}
+								<p class="mt-1 text-xs text-base-content/60">
+									Réactivez d’abord l’auto-check du jeu pour cocher cette case.
+								</p>
+							{/if}
+						</div>
+					{/if}
+				</div>
 
-        <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-          <div class="mb-4">
-            <h4 class="text-sm font-semibold text-base-content/80">Contributeurs</h4>
-          </div>
-          <div class="grid gap-4 md:grid-cols-2">
-            <div class="form-control">
-              <label class="label" for="edit-translator">
-                <span class="label-text">Traducteur</span>
-              </label>
-              <input
-                id="edit-translator"
-                class="input-bordered input"
-                type="text"
-                list="edit-translator-list"
-                bind:value={editingTranslation.translatorId}
-                placeholder="Nom du traducteur"
-              />
-              <datalist id="edit-translator-list">
-                {#each translators as translator (translator.id)}
-                  <option value={translator.name}>{translator.name}</option>
-                {/each}
-              </datalist>
-            </div>
-            <div class="form-control">
-              <label class="label" for="edit-proofreader">
-                <span class="label-text">Relecteur</span>
-              </label>
-              <input
-                id="edit-proofreader"
-                class="input-bordered input w-full"
-                type="text"
-                list="edit-proofreader-list"
-                bind:value={editingTranslation.proofreaderId}
-                placeholder="Nom du relecteur"
-              />
-              <datalist id="edit-proofreader-list">
-                {#each translators as translator (translator.id)}
-                  <option value={translator.name}>{translator.name}</option>
-                {/each}
-              </datalist>
-            </div>
-          </div>
-        </div>
+				<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+					<div class="mb-4">
+						<h4 class="text-sm font-semibold text-base-content/80">Contributeurs</h4>
+					</div>
+					<div class="grid gap-4 md:grid-cols-2">
+						<div class="form-control">
+							<label class="label" for="edit-translator">
+								<span class="label-text">Traducteur</span>
+							</label>
+							<input
+								id="edit-translator"
+								class="input-bordered input"
+								type="text"
+								list="edit-translator-list"
+								bind:value={editingTranslation.translatorId}
+								placeholder="Nom du traducteur"
+							/>
+							<datalist id="edit-translator-list">
+								{#each translators as translator (translator.id)}
+									<option value={translator.name}>{translator.name}</option>
+								{/each}
+							</datalist>
+						</div>
+						<div class="form-control">
+							<label class="label" for="edit-proofreader">
+								<span class="label-text">Relecteur</span>
+							</label>
+							<input
+								id="edit-proofreader"
+								class="input-bordered input w-full"
+								type="text"
+								list="edit-proofreader-list"
+								bind:value={editingTranslation.proofreaderId}
+								placeholder="Nom du relecteur"
+							/>
+							<datalist id="edit-proofreader-list">
+								{#each translators as translator (translator.id)}
+									<option value={translator.name}>{translator.name}</option>
+								{/each}
+							</datalist>
+						</div>
+					</div>
+				</div>
 
-        {#if isAdmin}
-          <div
-            class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5"
-          >
-            <p class="text-sm text-base-content/80">
-              Désactive l'envoi d'une notification sur Discord.
-            </p>
-            <label class="label cursor-pointer gap-2 p-0">
-              <span class="label-text">Mode silencieux</span>
-              <input
-                type="checkbox"
-                class="toggle toggle-primary toggle-sm"
-                bind:checked={editTranslationSilentMode}
-              />
-            </label>
-          </div>
-        {/if}
-      </div>
+				{#if isAdmin}
+					<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+						<p class="text-sm text-base-content/80">
+							Désactive l'envoi d'une notification sur Discord.
+						</p>
+						<label class="label cursor-pointer gap-2 p-0">
+							<span class="label-text">Mode silencieux</span>
+							<input
+								type="checkbox"
+								class="toggle toggle-primary toggle-sm"
+								bind:checked={editTranslationSilentMode}
+							/>
+						</label>
+					</div>
+				{/if}
+			</div>
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur p-4"
+				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>
 				<button class="btn btn-primary" onclick={editTranslation}>Modifier</button>
@@ -1968,7 +1967,7 @@
 <!-- Modal de modification du jeu -->
 {#if showEditGameModal}
 	<div class="modal-open modal">
-		<div class="modal-box p-0 max-h-[90vh] max-w-4xl">
+		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
 			<div class="p-8">
 				<h3 class="text-lg font-bold">Modifier le jeu</h3>
 				<p class="mt-1 text-sm text-base-content/70">
@@ -2185,7 +2184,7 @@
 			</div>
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur p-4"
+				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button class="btn btn-ghost" onclick={closeEditGameModal}>Annuler</button>
 				<button class="btn btn-primary" onclick={editGame}>Modifier</button>
@@ -2216,30 +2215,34 @@
 <!-- Modal de confirmation de suppression de traduction -->
 {#if translationToDelete}
 	<div class="modal-open modal">
-		<div class="modal-box p-0 max-h-[90vh] max-w-4xl">
+		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
 			<div class="p-8">
-        <h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>
-        <p class="mb-6">Êtes-vous sûr de vouloir supprimer cette traduction ?</p>
-      </div>
+				<h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>
+				<p class="mb-6">Êtes-vous sûr de vouloir supprimer cette traduction ?</p>
+			</div>
 
-      <div class="space-y-5 overflow-y-auto px-8">
-        <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-          <p><strong>Version traduction:</strong> {translationToDelete.tversion}</p>
-          <p><strong>Statut:</strong> {getStatusText(translationToDelete.status)}</p>
-        </div>
-        <div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
-          <label class="label" for="translation-delete-reason">
-            <span class="label-text">Raison de la suppression <span class="text-error">*</span></span>
-          </label>
-          <textarea
-            id="translation-delete-reason"
-            class="textarea-bordered textarea min-h-24 w-full"
-            placeholder="Expliquez pourquoi cette traduction doit être retirée…"
-            bind:value={translationDeleteReason}
-          ></textarea>
-        </div>
-      </div>
-			<div class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur p-4">
+			<div class="space-y-5 overflow-y-auto px-8">
+				<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+					<p><strong>Version traduction:</strong> {translationToDelete.tversion}</p>
+					<p><strong>Statut:</strong> {getStatusText(translationToDelete.status)}</p>
+				</div>
+				<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
+					<label class="label" for="translation-delete-reason">
+						<span class="label-text"
+							>Raison de la suppression <span class="text-error">*</span></span
+						>
+					</label>
+					<textarea
+						id="translation-delete-reason"
+						class="textarea-bordered textarea min-h-24 w-full"
+						placeholder="Expliquez pourquoi cette traduction doit être retirée…"
+						bind:value={translationDeleteReason}
+					></textarea>
+				</div>
+			</div>
+			<div
+				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
+			>
 				<button class="btn btn-ghost" onclick={cancelDeleteTranslation}>Annuler</button>
 				<button class="btn btn-error" onclick={deleteTranslation}>Supprimer</button>
 			</div>
@@ -2250,34 +2253,38 @@
 <!-- Modal de confirmation de suppression de jeu -->
 {#if gameToDelete}
 	<div class="modal-open modal">
-		<div class="modal-box p-0 max-h-[90vh] max-w-4xl">
+		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
 			<div class="p-8">
-        <h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>
-        <p class="mb-6">Êtes-vous sûr de vouloir supprimer ce jeu ?</p>
-      </div>
+				<h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>
+				<p class="mb-6">Êtes-vous sûr de vouloir supprimer ce jeu ?</p>
+			</div>
 
-      <div class="space-y-5 overflow-y-auto px-8">
-        <div class="mb-6 rounded-lg bg-base-200 p-4">
-          <p><strong>Nom:</strong> {game.name}</p>
-          <p class="mt-2 text-error">
-            <strong>Attention:</strong> Cette action supprimera également toutes les traductions associées
-            à ce jeu.
-          </p>
-        </div>
-        <div class="form-control mb-6 w-full">
-          <label class="label" for="game-delete-reason">
-            <span class="label-text">Raison de la suppression <span class="text-error">*</span></span>
-          </label>
-          <textarea
-            id="game-delete-reason"
-            class="textarea-bordered textarea min-h-24 w-full"
-            placeholder="Expliquez pourquoi ce jeu doit être retiré…"
-            bind:value={gameDeleteReason}
-          ></textarea>
-        </div>
-      </div>
+			<div class="space-y-5 overflow-y-auto px-8">
+				<div class="mb-6 rounded-lg bg-base-200 p-4">
+					<p><strong>Nom:</strong> {game.name}</p>
+					<p class="mt-2 text-error">
+						<strong>Attention:</strong> Cette action supprimera également toutes les traductions associées
+						à ce jeu.
+					</p>
+				</div>
+				<div class="form-control mb-6 w-full">
+					<label class="label" for="game-delete-reason">
+						<span class="label-text"
+							>Raison de la suppression <span class="text-error">*</span></span
+						>
+					</label>
+					<textarea
+						id="game-delete-reason"
+						class="textarea-bordered textarea min-h-24 w-full"
+						placeholder="Expliquez pourquoi ce jeu doit être retiré…"
+						bind:value={gameDeleteReason}
+					></textarea>
+				</div>
+			</div>
 
-			<div class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur p-4">
+			<div
+				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
+			>
 				<button class="btn btn-ghost" onclick={cancelDeleteGame}>Annuler</button>
 				<button class="btn btn-error" onclick={deleteGame}>Supprimer</button>
 			</div>

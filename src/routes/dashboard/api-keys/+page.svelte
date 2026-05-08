@@ -138,8 +138,8 @@
 		</div>
 	</div>
 
-	<div class="card w-full border border-base-300 bg-base-100 shadow-xl overflow-x-auto rounded-lg">
-		<table class="card-body gap-6 sm:py-8 table table-zebra">
+	<div class="card w-full overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-xl">
+		<table class="table card-body gap-6 table-zebra sm:py-8">
 			<thead>
 				<tr>
 					<th>Préfixe</th>

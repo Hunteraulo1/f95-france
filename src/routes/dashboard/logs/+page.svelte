@@ -102,114 +102,111 @@
 		</div>
 	</div>
 
-	<form
-		method="GET"
-		class="card w-full border border-base-300 bg-base-100 shadow-xl"
-	>
+	<form method="GET" class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
-      <div class="grid grid-cols-1 gap-4 xs:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-        <label class="form-control flex flex-col">
-          <span class="label-text">Méthode</span>
-          <select class="select-bordered select" name="method" bind:value={methodFilter}>
-            <option value="">Toutes</option>
-            {#each methodOptions as option (option)}
-              <option value={option}>{option}</option>
-            {/each}
-          </select>
-        </label>
-        <label class="form-control flex flex-col">
-          <span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
-          <input
-            type="text"
-            name="q"
-            class="input-bordered input"
-            placeholder="/api/..."
-            bind:value={search}
-          />
-        </label>
-        <label class="form-control flex flex-col">
-          <span class="label-text">Utilisateur</span>
-          <input
-            type="text"
-            name="user"
-            class="input-bordered input"
-            placeholder="Nom d'utilisateur..."
-            bind:value={userSearch}
-          />
-        </label>
-        <label class="form-control flex flex-col">
-          <span class="label-text">Filtres de statut</span>
-          <div class="m-2 mb-0 flex flex-col space-y-2">
-            <label class="label cursor-pointer">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-info"
-                checked={redirectsOnly}
-                onchange={(e) => {
-                  redirectsOnly = e.currentTarget.checked;
-                  if (redirectsOnly) {
-                    errorsOnly = false;
-                    warningsOnly = false;
-                  }
-                }}
-              />
-              <span class="label-text">Redirections (3xx)</span>
-            </label>
-            <label class="label cursor-pointer">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-warning"
-                checked={warningsOnly}
-                onchange={(e) => {
-                  warningsOnly = e.currentTarget.checked;
-                  if (warningsOnly) {
-                    errorsOnly = false;
-                    redirectsOnly = false;
-                  }
-                }}
-              />
-              <span class="label-text">Warnings (4xx)</span>
-            </label>
-            <label class="label cursor-pointer">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-error"
-                checked={errorsOnly}
-                onchange={(e) => {
-                  errorsOnly = e.currentTarget.checked;
-                  if (errorsOnly) {
-                    warningsOnly = false;
-                    redirectsOnly = false;
-                  }
-                }}
-              />
-              <span class="label-text">Erreurs (5xx)</span>
-            </label>
-          </div>
-          {#if redirectsOnly}
-            <input type="hidden" name="redirects" value="true" />
-          {/if}
-          {#if warningsOnly}
-            <input type="hidden" name="warnings" value="true" />
-          {/if}
-          {#if errorsOnly}
-            <input type="hidden" name="errors" value="true" />
-          {/if}
-        </label>
-      </div>
-      <label class="form-control flex flex-col">
-        <span class="label-text">Limite</span>
-        <select class="select-bordered select" name="limit" bind:value={limit}>
-          {#each [25, 50, 100, 200, 500] as option (option)}
-            <option value={option}>{option} lignes</option>
-          {/each}
-        </select>
-      </label>
-      <div class="flex justify-end gap-2 md:col-span-6">
-        <a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
-        <button type="submit" class="btn btn-primary">Actualiser</button>
-      </div>
-    </div>
+			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+				<label class="form-control flex flex-col">
+					<span class="label-text">Méthode</span>
+					<select class="select-bordered select" name="method" bind:value={methodFilter}>
+						<option value="">Toutes</option>
+						{#each methodOptions as option (option)}
+							<option value={option}>{option}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
+					<input
+						type="text"
+						name="q"
+						class="input-bordered input"
+						placeholder="/api/..."
+						bind:value={search}
+					/>
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Utilisateur</span>
+					<input
+						type="text"
+						name="user"
+						class="input-bordered input"
+						placeholder="Nom d'utilisateur..."
+						bind:value={userSearch}
+					/>
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Filtres de statut</span>
+					<div class="m-2 mb-0 flex flex-col space-y-2">
+						<label class="label cursor-pointer">
+							<input
+								type="checkbox"
+								class="checkbox checkbox-info"
+								checked={redirectsOnly}
+								onchange={(e) => {
+									redirectsOnly = e.currentTarget.checked;
+									if (redirectsOnly) {
+										errorsOnly = false;
+										warningsOnly = false;
+									}
+								}}
+							/>
+							<span class="label-text">Redirections (3xx)</span>
+						</label>
+						<label class="label cursor-pointer">
+							<input
+								type="checkbox"
+								class="checkbox checkbox-warning"
+								checked={warningsOnly}
+								onchange={(e) => {
+									warningsOnly = e.currentTarget.checked;
+									if (warningsOnly) {
+										errorsOnly = false;
+										redirectsOnly = false;
+									}
+								}}
+							/>
+							<span class="label-text">Warnings (4xx)</span>
+						</label>
+						<label class="label cursor-pointer">
+							<input
+								type="checkbox"
+								class="checkbox checkbox-error"
+								checked={errorsOnly}
+								onchange={(e) => {
+									errorsOnly = e.currentTarget.checked;
+									if (errorsOnly) {
+										warningsOnly = false;
+										redirectsOnly = false;
+									}
+								}}
+							/>
+							<span class="label-text">Erreurs (5xx)</span>
+						</label>
+					</div>
+					{#if redirectsOnly}
+						<input type="hidden" name="redirects" value="true" />
+					{/if}
+					{#if warningsOnly}
+						<input type="hidden" name="warnings" value="true" />
+					{/if}
+					{#if errorsOnly}
+						<input type="hidden" name="errors" value="true" />
+					{/if}
+				</label>
+			</div>
+			<label class="form-control flex flex-col">
+				<span class="label-text">Limite</span>
+				<select class="select-bordered select" name="limit" bind:value={limit}>
+					{#each [25, 50, 100, 200, 500] as option (option)}
+						<option value={option}>{option} lignes</option>
+					{/each}
+				</select>
+			</label>
+			<div class="flex justify-end gap-2 md:col-span-6">
+				<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
+				<button type="submit" class="btn btn-primary">Actualiser</button>
+			</div>
+		</div>
 	</form>
 
 	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">

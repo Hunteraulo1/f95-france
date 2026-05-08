@@ -53,7 +53,7 @@
 	};
 </script>
 
-<div class="flex w-full justify-end gap-2 mb-4">
+<div class="mb-4 flex w-full justify-end gap-2">
 	<input
 		type="text"
 		class="input-bordered input"
@@ -67,8 +67,8 @@
 	{/if}
 </div>
 
-<div class="card w-full border border-base-300 bg-base-100 shadow-xl overflow-x-auto">
-	<table class="card-body gap-6 sm:py-8 table table-zebra table-sm">
+<div class="card w-full overflow-x-auto border border-base-300 bg-base-100 shadow-xl">
+	<table class="table card-body gap-6 table-zebra table-sm sm:py-8">
 		<!-- head -->
 		<thead>
 			<tr>
