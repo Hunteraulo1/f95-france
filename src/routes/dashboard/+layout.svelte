@@ -21,7 +21,9 @@
 	<div class="drawer-content overflow-y-auto bg-base-200 p-4 sm:p-8 lg:p-16">
 		{@render children?.()}
 	</div>
-	<Sidebar pendingSubmissionsCount={data.pendingSubmissionsCount} />
+  {#if data.user}
+	  <Sidebar pendingSubmissionsCount={data.pendingSubmissionsCount} />
+	{/if}
 </main>
 
 <!-- Toasts -->

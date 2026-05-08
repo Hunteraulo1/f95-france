@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import type { ActionData } from './$types';
 
 	interface Props {
@@ -9,108 +10,126 @@
 	let { form }: Props = $props();
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-base-200">
-	<div class="card w-full max-w-md bg-base-100 shadow-xl">
-		<div class="card-body">
-			<h2 class="mb-4 card-title text-center text-2xl font-bold">Créer un compte</h2>
-			<p class="mb-6 text-center text-sm text-base-content/70">
-				Ou
-				<a href="/dashboard/login" class="link link-primary">
-					se connecter à votre compte existant
-				</a>
-			</p>
+<svelte:head>
+	<title>Inscription — F95 France</title>
+</svelte:head>
 
-			<form method="post" action="?/register" use:enhance class="space-y-4">
-				<div class="form-control">
-					<label class="label" for="username">
-						<span class="label-text">Nom d'utilisateur</span>
+<div
+	class="flex h-full items-center justify-center bg-base-200 px-4"
+>
+	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
+		<div class="card-body gap-6 sm:p-8">
+			<div class="text-center">
+				<div
+					class="bg-primary/10 text-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+				>
+					<UserPlus size={28} strokeWidth={1.75} aria-hidden="true" />
+				</div>
+				<h1 class="text-2xl font-bold tracking-tight">Créer un compte</h1>
+				<p class="mt-2 text-sm text-base-content/70">
+					Rejoignez la communauté F95 France
+				</p>
+			</div>
+
+			<form method="post" action="?/register" use:enhance class="flex flex-col gap-4">
+				<div class="form-control w-full">
+					<label class="label pt-0" for="register-username">
+						<span class="label-text font-medium">Nom d'utilisateur</span>
 					</label>
 					<input
-						id="username"
+						id="register-username"
 						name="username"
 						autocomplete="username"
 						type="text"
 						required
-						class="input-bordered input w-full"
-						placeholder="Nom d'utilisateur"
+						class="input input-bordered w-full"
+						placeholder="Votre pseudo"
 					/>
 					{#if form?.errors?.username}
-						<label class="label" for="username">
+						<label class="label" for="register-username">
 							<span class="label-text-alt text-error">{form.errors.username}</span>
 						</label>
 					{/if}
 				</div>
 
-				<div class="form-control">
-					<label class="label" for="email">
-						<span class="label-text">Adresse email</span>
+				<div class="form-control w-full">
+					<label class="label pt-0" for="register-email">
+						<span class="label-text font-medium">Adresse email</span>
 					</label>
 					<input
-						id="email"
+						id="register-email"
 						name="email"
 						autocomplete="email"
 						type="email"
 						required
-						class="input-bordered input w-full"
-						placeholder="Adresse email"
+						class="input input-bordered w-full"
+						placeholder="vous@exemple.fr"
 					/>
 					{#if form?.errors?.email}
-						<label class="label" for="email">
+						<label class="label" for="register-email">
 							<span class="label-text-alt text-error">{form.errors.email}</span>
 						</label>
 					{/if}
 				</div>
 
-				<div class="form-control">
-					<label class="label" for="password">
-						<span class="label-text">Mot de passe</span>
+				<div class="form-control w-full">
+					<label class="label pt-0" for="register-password">
+						<span class="label-text font-medium">Mot de passe</span>
 					</label>
 					<input
-						id="password"
+						id="register-password"
 						name="password"
 						autocomplete="new-password"
 						type="password"
 						required
-						class="input-bordered input w-full"
-						placeholder="Mot de passe"
+						class="input input-bordered w-full"
+						placeholder="••••••••"
 					/>
 					{#if form?.errors?.password}
-						<label class="label" for="password">
+						<label class="label" for="register-password">
 							<span class="label-text-alt text-error">{form.errors.password}</span>
 						</label>
 					{/if}
 				</div>
 
-				<div class="form-control">
-					<label class="label" for="confirmPassword">
-						<span class="label-text">Confirmer le mot de passe</span>
+				<div class="form-control w-full">
+					<label class="label pt-0" for="register-confirm">
+						<span class="label-text font-medium">Confirmer le mot de passe</span>
 					</label>
 					<input
-						id="confirmPassword"
+						id="register-confirm"
 						name="confirmPassword"
 						autocomplete="new-password"
 						type="password"
 						required
-						class="input-bordered input w-full"
-						placeholder="Confirmer le mot de passe"
+						class="input input-bordered w-full"
+						placeholder="••••••••"
 					/>
 					{#if form?.errors?.confirmPassword}
-						<label class="label" for="confirmPassword">
+						<label class="label" for="register-confirm">
 							<span class="label-text-alt text-error">{form.errors.confirmPassword}</span>
 						</label>
 					{/if}
 				</div>
 
 				{#if form?.message}
-					<div class="alert alert-error">
+					<div role="alert" class="alert alert-error alert-soft text-sm">
 						<span>{form.message}</span>
 					</div>
 				{/if}
 
-				<div class="form-control mt-6">
-					<button type="submit" class="btn btn-primary"> Créer le compte </button>
+				<div class="card-actions mt-2 flex-col gap-3 px-0">
+					<button type="submit" class="btn btn-primary btn-block gap-2">
+						<UserPlus size={18} aria-hidden="true" />
+						Créer le compte
+					</button>
 				</div>
 			</form>
+
+			<p class="text-center text-sm text-base-content/70">
+				Déjà un compte ?
+				<a href="/dashboard/login" class="link link-primary font-medium">Se connecter</a>
+			</p>
 		</div>
 	</div>
 </div>
