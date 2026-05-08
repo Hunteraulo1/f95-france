@@ -481,7 +481,8 @@ export const actions: Actions = {
 						submissionId,
 						currentStatus,
 						status,
-						submissionType
+						submissionType,
+						adminNotes
 					);
 				} catch (notificationError: unknown) {
 					// Ne pas bloquer la mise à jour du statut si la notification échoue
