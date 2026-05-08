@@ -116,6 +116,18 @@
 			formHasTranslatorInputIssue(game, data.translators, data.warnUnknownTranslators)
 	);
 
+	const buildGameLinkFromThread = (
+		website: FormGameType['website'],
+		threadId: FormGameType['threadId']
+	): string => {
+		const parsedThreadId =
+			typeof threadId === 'number' ? threadId : Number.parseInt(String(threadId ?? ''), 10);
+		if (Number.isNaN(parsedThreadId) || parsedThreadId <= 0) return '';
+		if (website === 'f95z') return `https://f95zone.to/threads/${parsedThreadId}`;
+		if (website === 'lc') return `https://lewdcorner.com/threads/${parsedThreadId}`;
+		return '';
+	};
+
 	onMount(() => {
 		const threadIdRaw = new URLSearchParams(window.location.search).get('threadId');
 		if (!threadIdRaw) return;
@@ -124,6 +136,7 @@
 		if (game.threadId === null || game.threadId === 0) {
 			game.threadId = parsed;
 		}
+		game.link = buildGameLinkFromThread(game.website, game.threadId);
 		skipThreadStepFromQueryParam = true;
 		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
 		// On garde le déclenchement automatique pour plus tard.

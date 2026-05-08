@@ -24,7 +24,6 @@
 		</a>
 	</div>
 	<div class="flex gap-2">
-		<!-- <button class="btn btn-soft btn-primary">Retour au compte { user.username }</button> TODO: Implement user switcher -->
 		{#if $user}
 			<Notifications />
 		{/if}

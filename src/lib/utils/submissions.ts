@@ -8,6 +8,8 @@ export const getStatusBadge = (status: string) => {
 			return { label: 'En attente', class: 'badge-warning', icon: Clock };
 		case 'opened':
 			return { label: 'Ouverte', class: 'badge-info', icon: Clock };
+		case 'to_fix':
+			return { label: 'À corriger', class: 'badge-secondary', icon: Clock };
 		case 'accepted':
 			return { label: 'Acceptée', class: 'badge-success', icon: CircleCheck };
 		case 'rejected':
@@ -60,8 +62,10 @@ export const formatDate = (date: Date | string) => {
 };
 
 export const validateStatusChange = (status: string, notes: string): string | null => {
-	if (status === 'rejected' && (!notes || notes.trim() === '')) {
-		return 'Une note admin est obligatoire pour refuser une soumission';
+	if ((status === 'rejected' || status === 'to_fix') && (!notes || notes.trim() === '')) {
+		return status === 'to_fix'
+			? 'Une note admin est obligatoire pour demander une correction'
+			: 'Une note admin est obligatoire pour refuser une soumission';
 	}
 	return null;
 };
@@ -70,6 +74,7 @@ export const getStatusFilterLabel = (status: string): string => {
 	const labels: Record<string, string> = {
 		pending: 'en attente',
 		opened: 'ouverte',
+		to_fix: 'à corriger',
 		accepted: 'acceptée',
 		rejected: 'refusée'
 	};

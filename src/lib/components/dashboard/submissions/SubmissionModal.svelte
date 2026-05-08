@@ -222,8 +222,12 @@
 		return JSON.stringify(out);
 	});
 
-	const isRejected = $derived(selectedStatus === 'rejected');
-	const hasNotesError = $derived(isRejected && (!adminNotesText || adminNotesText.trim() === ''));
+	const isStatusRequiringAdminNote = $derived(
+		selectedStatus === 'rejected' || selectedStatus === 'to_fix'
+	);
+	const hasNotesError = $derived(
+		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
+	);
 	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
 	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
@@ -233,6 +237,7 @@
 			submission?.type !== 'delete' &&
 			(submission?.status === 'pending' ||
 				submission?.status === 'opened' ||
+				submission?.status === 'to_fix' ||
 				submission?.status === 'rejected')
 		)
 	);
@@ -287,12 +292,37 @@
 			: undefined;
 	};
 
+	const normalizeValueForComparison = (
+		value: SubmissionPrimitive,
+		fieldKey?: string
+	): string | number | boolean | null => {
+		if (value === null || value === undefined) {
+			return null;
+		}
+
+		// Normalisation ciblée du threadId pour éviter les faux positifs "123" vs 123.
+		if (fieldKey === 'threadId') {
+			if (typeof value === 'string') {
+				const trimmed = value.trim();
+				if (trimmed === '') return null;
+				const numericThreadId = Number(trimmed);
+				return Number.isNaN(numericThreadId) ? trimmed : numericThreadId;
+			}
+			if (typeof value === 'number' && !Number.isNaN(value)) {
+				return value;
+			}
+		}
+
+		return value;
+	};
+
 	const valuesAreEqual = (
 		oldValue: SubmissionPrimitive,
-		newValue: SubmissionPrimitive
+		newValue: SubmissionPrimitive,
+		fieldKey?: string
 	): boolean => {
-		const normalizedOld = oldValue === null || oldValue === undefined ? null : oldValue;
-		const normalizedNew = newValue === null || newValue === undefined ? null : newValue;
+		const normalizedOld = normalizeValueForComparison(oldValue, fieldKey);
+		const normalizedNew = normalizeValueForComparison(newValue, fieldKey);
 
 		if (normalizedOld === null && normalizedNew === null) {
 			return true;
@@ -302,6 +332,8 @@
 			return false;
 		}
 
+		// Comparaison stricte par défaut (comportement historique),
+		// avec normalisation spéciale uniquement pour threadId.
 		return String(normalizedOld) === String(normalizedNew);
 	};
 
@@ -369,10 +401,24 @@
 	};
 
 	const normalizeTranslatorPages = (
-		pages: Array<{ name?: string; link?: string }> | undefined
+		pages: Array<{ name?: string; link?: string }> | string | null | undefined
 	): Array<{ name: string; link: string }> => {
-		if (!Array.isArray(pages)) return [];
-		return pages.map((p) => ({
+		let source: Array<{ name?: string; link?: string }> = [];
+
+		if (Array.isArray(pages)) {
+			source = pages;
+		} else if (typeof pages === 'string' && pages.trim() !== '') {
+			try {
+				const parsed = JSON.parse(pages) as unknown;
+				if (Array.isArray(parsed)) {
+					source = parsed as Array<{ name?: string; link?: string }>;
+				}
+			} catch {
+				source = [];
+			}
+		}
+
+		return source.map((p) => ({
 			name: String(p.name ?? '').trim(),
 			link: String(p.link ?? '').trim()
 		}));
@@ -494,7 +540,7 @@
 			{/if}
 
 			<!-- Section des détails (scrollable) -->
-			<div class="flex-1 overflow-y-auto pr-2">
+			<div class="min-h-60 flex-1 overflow-y-auto pr-2">
 				{#if submission.type === 'translator_pages'}
 					{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
 					{@const currentPages = submission.currentTranslator?.pages ?? []}
@@ -563,7 +609,7 @@
 						}
 						const oldValue = getFieldValue(submission.currentGame, field.key);
 						const newValue = getFieldValue(submission.parsedData.game, field.key);
-						return !valuesAreEqual(oldValue, newValue);
+						return !valuesAreEqual(oldValue, newValue, String(field.key));
 					})}
 					{#if hasAnyChanges}
 						<div class="space-y-4">
@@ -571,7 +617,7 @@
 								{@const oldValue = getFieldValue(submission.currentGame, field.key)}
 								{@const newValue = getFieldValue(submission.parsedData.game, field.key)}
 								{@const fieldKey = String(field.key)}
-								{#if !valuesAreEqual(oldValue, newValue)}
+								{#if !valuesAreEqual(oldValue, newValue, String(field.key))}
 									{@const formattedOld = formatFieldValue(
 										oldValue,
 										field.options?.showIfEmpty ?? false,
@@ -735,7 +781,7 @@
 								}
 								const oldValue = getFieldValue(submission.currentTranslation, field.key);
 								const newValue = getFieldValue(submission.parsedData.translation, field.key);
-								return !valuesAreEqual(oldValue, newValue);
+								return !valuesAreEqual(oldValue, newValue, String(field.key));
 							})}
 							{#if hasAnyChanges}
 								<div class="space-y-4">
@@ -743,7 +789,7 @@
 										{@const oldValue = getFieldValue(submission.currentTranslation, field.key)}
 										{@const newValue = getFieldValue(submission.parsedData.translation, field.key)}
 										{@const fieldKey = String(field.key)}
-										{#if !valuesAreEqual(oldValue, newValue)}
+										{#if !valuesAreEqual(oldValue, newValue, String(field.key))}
 											{@const formattedOld = formatFieldValue(
 												oldValue,
 												field.options?.showIfEmpty ?? false,
@@ -1368,6 +1414,7 @@
 						>
 							<option value="pending">En attente</option>
 							<option value="opened">Ouverte</option>
+							<option value="to_fix">À corriger</option>
 							<option value="accepted">Acceptée</option>
 							<option value="rejected">Refusée</option>
 						</select>
@@ -1376,7 +1423,7 @@
 					<div class="form-control mt-4 w-full">
 						<label for="adminNotes" class="label">
 							<span class="label-text">Notes admin</span>
-							{#if isRejected}
+							{#if isStatusRequiringAdminNote}
 								<span class="label-text-alt text-error">* Obligatoire</span>
 							{:else}
 								<span class="label-text-alt">(optionnel)</span>
@@ -1387,18 +1434,18 @@
 							name="adminNotes"
 							class="textarea-bordered textarea w-full"
 							class:textarea-error={hasNotesError}
-							placeholder={isRejected
-								? 'Vous devez expliquer pourquoi cette soumission est refusée...'
+							placeholder={isStatusRequiringAdminNote
+								? 'Vous devez expliquer pourquoi cette soumission est à corriger ou refusée...'
 								: 'Ajouter des notes pour cette soumission...'}
 							rows="3"
-							required={isRejected}
+							required={isStatusRequiringAdminNote}
 							bind:value={adminNotesText}
 						></textarea>
-						{#if isRejected}
+						{#if isStatusRequiringAdminNote}
 							<div class="label">
-								<span class="label-text-alt text-error"
-									>Une note est obligatoire pour refuser une soumission</span
-								>
+								<span class="label-text-alt text-error">
+									Une note est obligatoire pour "À corriger" ou "Refusée"
+								</span>
 							</div>
 						{/if}
 					</div>

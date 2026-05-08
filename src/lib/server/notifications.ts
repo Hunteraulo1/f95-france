@@ -1,12 +1,13 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { eq, sql, and, desc } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 export type NotificationType =
 	| 'submission_status_changed'
 	| 'new_user_registered'
 	| 'submission_accepted'
 	| 'submission_rejected'
+	| 'submission_to_fix'
 	| 'api_error';
 
 interface CreateNotificationParams {
@@ -63,10 +64,12 @@ export async function notifySubmissionStatusChange(
 	submissionId: string,
 	oldStatus: string,
 	newStatus: string,
-	submissionType: string
+	submissionType: string,
+	adminNotes?: string | null
 ) {
 	const statusLabels: Record<string, string> = {
 		pending: 'en attente',
+		to_fix: 'à corriger',
 		accepted: 'acceptée',
 		rejected: 'refusée'
 	};
@@ -81,15 +84,31 @@ export async function notifySubmissionStatusChange(
 	const title =
 		newStatus === 'accepted'
 			? 'Soumission acceptée'
-			: newStatus === 'rejected'
-				? 'Soumission refusée'
-				: 'Statut de soumission modifié';
+			: newStatus === 'to_fix'
+				? 'Soumission à corriger'
+				: newStatus === 'rejected'
+					? 'Soumission refusée'
+					: 'Statut de soumission modifié';
 
-	const message = `Votre soumission de ${typeLabels[submissionType] || submissionType} est maintenant ${statusLabels[newStatus] || newStatus}.`;
+	const reason = adminNotes?.trim();
+	const messageBase = `Votre soumission de ${typeLabels[submissionType] || submissionType} est maintenant ${statusLabels[newStatus] || newStatus}.`;
+	const message =
+		newStatus === 'to_fix'
+			? reason
+				? `${messageBase} Motif: ${reason}`
+				: `${messageBase} Merci de la corriger puis de la renvoyer.`
+			: messageBase;
 
 	await createNotification({
 		userId: submissionUserId,
-		type: newStatus === 'accepted' ? 'submission_accepted' : 'submission_rejected',
+		type:
+			newStatus === 'accepted'
+				? 'submission_accepted'
+				: newStatus === 'to_fix'
+					? 'submission_to_fix'
+					: newStatus === 'rejected'
+						? 'submission_rejected'
+						: 'submission_status_changed',
 		title,
 		message,
 		link: `/dashboard/submit`,

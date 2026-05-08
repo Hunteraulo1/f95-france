@@ -12,6 +12,7 @@
 		openedCount: number;
 		acceptedCount: number;
 		rejectedCount: number;
+		toFixCount: number;
 		onFilterChange: (status: string) => void;
 	}
 
@@ -21,6 +22,7 @@
 		openedCount,
 		acceptedCount,
 		rejectedCount,
+		toFixCount,
 		onFilterChange
 	}: Props = $props();
 
@@ -30,6 +32,12 @@
 			label: 'En attente',
 			count: pendingCount,
 			badgeClass: 'badge-warning'
+		},
+		{
+			value: 'to_fix',
+			label: 'À corriger',
+			count: toFixCount,
+			badgeClass: 'badge-secondary'
 		},
 		{
 			value: 'opened',

@@ -17,24 +17,41 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 	let intervalId: ReturnType<typeof setInterval> | null = null;
 	let closed = false;
+	const stop = () => {
+		closed = true;
+		if (intervalId) clearInterval(intervalId);
+		intervalId = null;
+	};
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
 			let lastUnread = -1;
+			const safeEnqueue = (chunk: Uint8Array) => {
+				if (closed) return false;
+				try {
+					controller.enqueue(chunk);
+					return true;
+				} catch {
+					// Le stream est déjà fermé (cancel côté client ou fermeture de connexion).
+					stop();
+					return false;
+				}
+			};
 
 			const pushUnreadCount = async () => {
 				if (closed) return;
 				try {
 					const unreadCount = await countUnreadNotifications(userId);
+					if (closed) return;
 					if (unreadCount !== lastUnread) {
 						lastUnread = unreadCount;
-						controller.enqueue(sseEvent('unread_count', { unreadCount }));
+						safeEnqueue(sseEvent('unread_count', { unreadCount }));
 					} else {
-						controller.enqueue(sseComment('keepalive'));
+						safeEnqueue(sseComment('keepalive'));
 					}
 				} catch {
 					// On garde la connexion vivante, le client retentera automatiquement.
-					controller.enqueue(sseComment('error'));
+					safeEnqueue(sseComment('error'));
 				}
 			};
 
@@ -44,8 +61,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			}, 15000);
 		},
 		cancel() {
-			closed = true;
-			if (intervalId) clearInterval(intervalId);
+			stop();
 		}
 	});
 

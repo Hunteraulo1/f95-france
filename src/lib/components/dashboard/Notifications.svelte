@@ -14,6 +14,15 @@
 	let isDrawerOpen = $state(false);
 	let isLoading = $state(false);
 	let isUnauthorized = $state(false);
+	/** @type {EventSource | null} */
+	let notificationsSource = null;
+
+	const closeNotificationsStream = () => {
+		if (notificationsSource) {
+			notificationsSource.close();
+			notificationsSource = null;
+		}
+	};
 
 	const fetchNotifications = async () => {
 		if (!$user || isUnauthorized) return;
@@ -25,7 +34,7 @@
 				// Session expirée ou utilisateur non authentifié:
 				// stopper les appels automatiques pour éviter le spam de 401.
 				isUnauthorized = true;
-				user.set(null);
+				closeNotificationsStream();
 				notifications = [];
 				unreadCount = 0;
 				return;
@@ -60,7 +69,7 @@
 				unreadCount = Math.max(0, unreadCount - 1);
 			} else if (response.status === 401) {
 				isUnauthorized = true;
-				user.set(null);
+				closeNotificationsStream();
 			}
 		} catch (error) {
 			console.error('Erreur lors du marquage de la notification:', error);
@@ -80,7 +89,7 @@
 				unreadCount = 0;
 			} else if (response.status === 401) {
 				isUnauthorized = true;
-				user.set(null);
+				closeNotificationsStream();
 			}
 		} catch (error) {
 			console.error('Erreur lors du marquage de toutes les notifications:', error);
@@ -117,16 +126,18 @@
 	};
 
 	onMount(() => {
+		if (!$user) {
+			return () => {};
+		}
+
 		fetchNotifications();
 
-		/** @type {EventSource | null} */
-		let source = null;
 		/** @type {ReturnType<typeof setInterval> | null} */
 		let fallbackInterval = null;
 
 		if (typeof EventSource !== 'undefined') {
-			source = new EventSource('/api/notifications/stream');
-			source.addEventListener('unread_count', (event) => {
+			notificationsSource = new EventSource('/api/notifications/stream');
+			notificationsSource.addEventListener('unread_count', (event) => {
 				try {
 					const parsed = JSON.parse(event.data);
 					if (typeof parsed?.unreadCount === 'number') {
@@ -136,13 +147,16 @@
 					// no-op
 				}
 			});
+			// Ne pas appeler close() ici : le navigateur reconnecte tout seul après une coupure
+			// réseau, un redémarrage du serveur de dev ou un timeout proxy. Fermer sur chaque
+			// onerror cassait définitivement le flux jusqu’au rechargement de la page.
 		} else {
-			// Fallback legacy navigateur: polling léger.
+			// Fallback legacy navigateur: polling léger uniquement si connecté.
 			fallbackInterval = setInterval(fetchNotifications, 30000);
 		}
 
 		return () => {
-			if (source) source.close();
+			closeNotificationsStream();
 			if (fallbackInterval) clearInterval(fallbackInterval);
 		};
 	});

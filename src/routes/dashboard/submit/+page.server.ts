@@ -96,6 +96,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		statusFilterRaw === 'all' ||
 		statusFilterRaw === 'pending' ||
 		statusFilterRaw === 'opened' ||
+		statusFilterRaw === 'to_fix' ||
 		statusFilterRaw === 'accepted' ||
 		statusFilterRaw === 'rejected'
 			? statusFilterRaw
@@ -262,8 +263,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'rejected'))
 			);
 
+		const toFixCountResult = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(
+				and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'to_fix'))
+			);
+
 		const pendingCount = pendingCountResult[0]?.count || 0;
 		const openedCount = openedCountResult[0]?.count || 0;
+		const toFixCount = toFixCountResult[0]?.count || 0;
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
 		const rejectedCount = rejectedCountResult[0]?.count || 0;
 
@@ -283,6 +292,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			statusFilter,
 			pendingCount,
 			openedCount,
+			toFixCount,
 			acceptedCount,
 			rejectedCount,
 			translators
@@ -295,6 +305,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			statusFilter,
 			pendingCount: 0,
 			openedCount: 0,
+			toFixCount: 0,
 			acceptedCount: 0,
 			rejectedCount: 0,
 			translators: []
@@ -371,8 +382,13 @@ export const actions: Actions = {
 		}
 
 		// Autoriser la correction tant que la soumission n'est pas finalisée :
-		// l'utilisateur peut modifier si elle est "pending", "opened" ou "rejected".
-		if (sub.status !== 'pending' && sub.status !== 'opened' && sub.status !== 'rejected') {
+		// l'utilisateur peut modifier si elle est "pending", "opened", "to_fix" ou "rejected".
+		if (
+			sub.status !== 'pending' &&
+			sub.status !== 'opened' &&
+			sub.status !== 'to_fix' &&
+			sub.status !== 'rejected'
+		) {
 			return fail(403, {
 				message: 'Seules les soumissions en attente, ouvertes ou refusées sont modifiables'
 			});
@@ -392,8 +408,8 @@ export const actions: Actions = {
 
 		await persistSubmissionPayload(submissionId, parsed.data);
 
-		// Après correction d'une soumission refusée, la remettre automatiquement en attente.
-		if (sub.status === 'rejected') {
+		// Après correction d'une soumission marquée "à corriger" ou refusée, la remettre en attente.
+		if (sub.status === 'rejected' || sub.status === 'to_fix') {
 			await db
 				.update(table.submission)
 				.set({

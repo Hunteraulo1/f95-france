@@ -109,6 +109,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		statusFilterRaw === 'all' ||
 		statusFilterRaw === 'pending' ||
 		statusFilterRaw === 'opened' ||
+		statusFilterRaw === 'to_fix' ||
 		statusFilterRaw === 'accepted' ||
 		statusFilterRaw === 'rejected'
 			? statusFilterRaw
@@ -270,8 +271,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.from(table.submission)
 			.where(eq(table.submission.status, 'rejected'));
 
+		const toFixCountResult = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(eq(table.submission.status, 'to_fix'));
+
 		const pendingCount = pendingCountResult[0]?.count || 0;
 		const openedCount = openedCountResult[0]?.count || 0;
+		const toFixCount = toFixCountResult[0]?.count || 0;
 		const acceptedCount = acceptedCountResult[0]?.count || 0;
 		const rejectedCount = rejectedCountResult[0]?.count || 0;
 
@@ -291,6 +298,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			statusFilter,
 			pendingCount,
 			openedCount,
+			toFixCount,
 			acceptedCount,
 			rejectedCount,
 			translators
@@ -303,6 +311,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			statusFilter,
 			pendingCount: 0,
 			openedCount: 0,
+			toFixCount: 0,
 			acceptedCount: 0,
 			rejectedCount: 0,
 			translators: []
@@ -353,7 +362,12 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
-		if (sub.status !== 'pending' && sub.status !== 'opened' && sub.status !== 'rejected') {
+		if (
+			sub.status !== 'pending' &&
+			sub.status !== 'opened' &&
+			sub.status !== 'rejected' &&
+			sub.status !== 'to_fix'
+		) {
 			return fail(400, {
 				message: 'Seules les soumissions en attente, ouvertes ou refusées peuvent être modifiées'
 			});
@@ -390,13 +404,21 @@ export const actions: Actions = {
 		}
 
 		// Vérifier que le statut est valide
-		if (!['pending', 'opened', 'accepted', 'rejected'].includes(status)) {
+		if (!['pending', 'opened', 'to_fix', 'accepted', 'rejected'].includes(status)) {
 			return fail(400, { message: 'Statut invalide' });
 		}
 
 		// Si le statut est "rejected", la note admin est obligatoire
-		if (status === 'rejected' && (!adminNotes || adminNotes.trim() === '')) {
-			return fail(400, { message: 'Une note admin est obligatoire pour refuser une soumission' });
+		if (
+			(status === 'rejected' || status === 'to_fix') &&
+			(!adminNotes || adminNotes.trim() === '')
+		) {
+			return fail(400, {
+				message:
+					status === 'to_fix'
+						? 'Une note admin est obligatoire pour demander une correction'
+						: 'Une note admin est obligatoire pour refuser une soumission'
+			});
 		}
 
 		try {
@@ -448,7 +470,7 @@ export const actions: Actions = {
 			await db
 				.update(table.submission)
 				.set({
-					status: status as 'pending' | 'opened' | 'accepted' | 'rejected',
+					status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
 					adminNotes: adminNotes || null
 				})
 				.where(eq(table.submission.id, submissionId));
@@ -462,7 +484,8 @@ export const actions: Actions = {
 						submissionId,
 						currentStatus,
 						status,
-						submissionType
+						submissionType,
+						adminNotes
 					);
 				} catch (notificationError: unknown) {
 					// Ne pas bloquer la mise à jour du statut si la notification échoue
