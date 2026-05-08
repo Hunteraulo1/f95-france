@@ -83,7 +83,7 @@
 			type="button"
 			role="tab"
 			aria-selected={currentFilter === filter.value}
-			disabled={disabled}
+			{disabled}
 			class="btn btn-sm {currentFilter === filter.value ? 'btn-primary' : 'btn-ghost'} {disabled
 				? 'pointer-events-none opacity-80'
 				: ''}"
