@@ -1,10 +1,10 @@
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+  EXTENSION_ONLY_API_ROUTE,
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -23,19 +23,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.session = null;
 	} else {
 		try {
-			const { session, user } = await auth.validateSessionToken(sessionToken);
+			const { session, user } = await auth.validateSessionTokenWithRetry(sessionToken);
 
 			if (session && user) {
 				event.locals.user = user;
 				event.locals.session = session;
 			} else {
+				// Session absente ou expirée : réponse explicite de la DB, cookie invalide.
 				auth.deleteSessionTokenCookie(event);
 				event.locals.user = null;
 				event.locals.session = null;
 			}
 		} catch (error) {
+			// Erreur inattendue après réessais : ne pas supprimer le cookie (souvent infra / DB).
+			// Évite les « déconnexions » intempestives ; la requête courante reste anonyme.
 			console.error('Erreur lors de la validation de session:', error);
-			auth.deleteSessionTokenCookie(event);
 			event.locals.user = null;
 			event.locals.session = null;
 		}

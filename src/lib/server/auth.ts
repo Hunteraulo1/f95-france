@@ -93,6 +93,28 @@ export async function validateSessionToken(token: string) {
 	return { session, user };
 }
 
+/** Réessaie la validation en cas d'erreur DB transitoire (sans supprimer le cookie). */
+export async function validateSessionTokenWithRetry(
+	token: string,
+	options?: { retries?: number; delayMs?: number }
+): Promise<SessionValidationResult> {
+	const retries = options?.retries ?? 2;
+	const delayMs = options?.delayMs ?? 80;
+	let lastError: unknown;
+	for (let attempt = 0; attempt <= retries; attempt++) {
+		try {
+			return await validateSessionToken(token);
+		} catch (e) {
+			lastError = e;
+			if (attempt < retries) {
+				await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+			}
+		}
+	}
+	console.error('validateSessionToken: échec après réessais', lastError);
+	throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 export async function getUserById(userId: string) {
 	const [user] = await db.select().from(table.user).where(eq(table.user.id, userId));
 

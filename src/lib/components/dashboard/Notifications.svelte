@@ -147,11 +147,9 @@
 					// no-op
 				}
 			});
-			notificationsSource.onerror = () => {
-				// Fermer proprement pour éviter les boucles de reconnexion bruyantes
-				// quand la session devient invalide (logout/session expirée).
-				closeNotificationsStream();
-			};
+			// Ne pas appeler close() ici : le navigateur reconnecte tout seul après une coupure
+			// réseau, un redémarrage du serveur de dev ou un timeout proxy. Fermer sur chaque
+			// onerror cassait définitivement le flux jusqu’au rechargement de la page.
 		} else {
 			// Fallback legacy navigateur: polling léger uniquement si connecté.
 			fallbackInterval = setInterval(fetchNotifications, 30000);
