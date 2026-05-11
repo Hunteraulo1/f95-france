@@ -64,7 +64,6 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "1.14.0",
-		"@node-rs/argon2": "^2.0.2",
 		"@simplewebauthn/browser": "^13.3.0",
 		"@simplewebauthn/server": "^13.3.0",
 		"@vercel/analytics": "2.0.1",
