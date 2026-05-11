@@ -1,5 +1,10 @@
 node_modules
 
+# IDE
+.cursor/
+.cursorignore
+.vscode/
+
 # Output
 .output
 .vercel
