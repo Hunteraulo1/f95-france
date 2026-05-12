@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+  sendDiscordWebhookProofreadersVersionBumps,
+  sendDiscordWebhookTranslatorsVersionBumps,
+  sendDiscordWebhookUpdatesAutoCheckVersionBump,
+  type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
@@ -206,7 +206,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		: [];
 	const staffMentionById = new Map(
 		staffRows.map(
-			(s) => [s.id, s.discordId?.trim() ? `<@${s.discordId.trim()}>` : undefined] as const
+			(s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const
 		)
 	);
 
