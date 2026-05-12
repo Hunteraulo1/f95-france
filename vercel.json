@@ -1,4 +1,0 @@
-{
-	"buildCommand": "bash scripts/vercel-build.sh",
-	"crons": []
-}
