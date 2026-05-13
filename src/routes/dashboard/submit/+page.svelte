@@ -15,8 +15,8 @@
 	let { data }: Props = $props();
 
 	let selectedSubmission: (typeof data.submissions)[0] | null = $state(null);
-  let pendingFilter = $state<string | null>(null);
-  let isFilterChanging = $state(false);
+	let pendingFilter = $state<string | null>(null);
+	let isFilterChanging = $state(false);
 	const activeFilter = $derived(pendingFilter ?? data.statusFilter);
 	$effect(() => {
 		if (pendingFilter && data.statusFilter === pendingFilter) {
@@ -42,10 +42,11 @@
 
 	const closeSubmissionModal = () => {
 		selectedSubmission = null;
-		const q = new URLSearchParams({ status: data.statusFilter });
-		if (data.page > 1) q.set('page', String(data.page));
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-		void goto(`${resolve('/dashboard/submit')}?${q}`, { noScroll: true, invalidateAll: true });
+		void goto(`${resolve('/dashboard/submit')}${buildQuery({})}`, {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const updateFilter = async (status: string) => {
@@ -55,10 +56,12 @@
 
 		isFilterChanging = true;
 		pendingFilter = status;
-		const q = new URLSearchParams({ status });
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-			await goto(`${resolve('/dashboard/submit')}?${q}`, { noScroll: true, invalidateAll: true });
+			await goto(`${resolve('/dashboard/submit')}${buildQuery({ status, page: 1 })}`, {
+				noScroll: true,
+				invalidateAll: true
+			});
 		} catch {
 			pendingFilter = null;
 			isFilterChanging = false;

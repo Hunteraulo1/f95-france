@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    parseSubmissionPayloadJson,
-    persistSubmissionPayload,
-    validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
@@ -169,7 +169,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.from(table.submission)
 			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
-			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id));
+			.leftJoin(
+				table.gameTranslation,
+				eq(table.submission.translationId, table.gameTranslation.id)
+			);
 
 		const submissions = await (whereCondition ? listQuery.where(whereCondition) : listQuery)
 			.orderBy(desc(table.submission.createdAt))

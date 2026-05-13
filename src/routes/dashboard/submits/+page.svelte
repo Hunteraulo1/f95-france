@@ -58,10 +58,11 @@
 
 	const closeSubmissionModal = async () => {
 		selectedSubmission = null;
-		const q = new URLSearchParams({ status: data.statusFilter });
-		if (data.page > 1) q.set('page', String(data.page));
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-		await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+		await goto(`${resolve('/dashboard/submits')}${buildQuery({})}`, {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const updateFilter = async (status: string) => {
@@ -71,10 +72,12 @@
 
 		isFilterChanging = true;
 		pendingFilter = status;
-		const q = new URLSearchParams({ status });
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-			await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+			await goto(`${resolve('/dashboard/submits')}${buildQuery({ status, page: 1 })}`, {
+				noScroll: true,
+				invalidateAll: true
+			});
 		} catch {
 			pendingFilter = null;
 			isFilterChanging = false;
