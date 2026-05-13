@@ -1,4 +1,3 @@
-# Build SvelteKit (adapter-node) avec Bun (bun.lock présent à la racine)
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
