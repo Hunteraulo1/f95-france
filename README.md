@@ -61,7 +61,6 @@ URL locale à utiliser dans `.env`:
 
 ```env
 DATABASE_URL="postgresql://f95france:f95france@localhost:5433/f95france"
-DRIZZLE_DATABASE_URL="postgresql://f95france:f95france@localhost:5433/f95france"
 ```
 
 Puis pousser le schéma:

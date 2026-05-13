@@ -4,8 +4,8 @@ import {
 	getEffectiveConfigFromRow,
 	toConfigClientSafe
 } from '$lib/server/app-config';
-import { db } from '$lib/server/db';
 import { runAutoCheckVersions } from '$lib/server/check-version';
+import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
@@ -13,7 +13,7 @@ import {
 	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
-import type { Config } from '@sveltejs/adapter-vercel';
+// import type { Config } from '@sveltejs/adapter-vercel';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -21,7 +21,7 @@ import type { Actions, PageServerLoad } from './$types';
  * Sync legacy + Sheets peut être long (Apps Script froid, gros JSON).
  * Vercel Hobby : maxDuration plafonné à 300s (plan Pro permet jusqu’à 900s sur certaines régions).
  */
-export const config: Config = {
+export const config = {
 	maxDuration: 300,
 	split: true
 };

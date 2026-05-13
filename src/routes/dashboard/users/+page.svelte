@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import User from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 
@@ -31,6 +33,16 @@
 		selectedUser = null;
 		userError = null;
 	};
+
+	const buildQuery = (overrides: { page?: number }) => {
+		const page = overrides.page ?? data.page;
+		return page > 1 ? `?page=${page}` : '';
+	};
+
+	const buildHref = (overrides: { page?: number }) =>
+		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
+
+	const hrefForPage = (p: number) => buildHref({ page: p });
 </script>
 
 <section class="flex flex-col gap-4">
@@ -58,7 +70,7 @@
 				<tbody>
 					{#each data.users as user, index (user.id)}
 						<tr>
-							<td class="font-bold">{index + 1}</td>
+							<td class="font-bold">{(data.page - 1) * data.pageSize + index + 1}</td>
 							<td>
 								<div class="flex items-center gap-3">
 									<div class="avatar">
@@ -71,7 +83,7 @@
 										</div>
 									</div>
 									<a
-										href={`/dashboard/profile/${user.username}`}
+										href={resolve(`/dashboard/profile/${user.username}`)}
 										class="link font-bold text-nowrap link-hover"
 									>
 										{user.username}
@@ -105,17 +117,15 @@
 					{/each}
 				</tbody>
 			</table>
-		</div>
 
-		{#if data.totalUsers > data.pageSize}
-			<div class="mt-4 flex justify-center">
-				<div class="join">
-					<button class="btn join-item btn-sm" disabled>«</button>
-					<button class="btn btn-active join-item btn-sm">1</button>
-					<button class="btn join-item btn-sm">»</button>
-				</div>
-			</div>
-		{/if}
+			<Pagination
+				currentPage={data.page}
+				totalPages={data.totalPages}
+				totalCount={data.totalUsers}
+				{hrefForPage}
+				countLabel="utilisateur"
+			/>
+		</div>
 	</div>
 </section>
 

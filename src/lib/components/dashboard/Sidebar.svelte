@@ -44,9 +44,12 @@
 		};
 	});
 
+	/** Après le clic : la navigation du `<a>` doit s’exécuter avant de muter l’état du drawer, sinon Svelte peut re-render et retirer le lien avant l’action par défaut (navigation SPA bloquée, F5 « répare »). */
 	function closeDrawerOnMobile() {
 		if (!isDesktop()) {
-			isDrawerOpen = false;
+			setTimeout(() => {
+				isDrawerOpen = false;
+			}, 0);
 		}
 	}
 

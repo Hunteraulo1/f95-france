@@ -1,5 +1,5 @@
 <script lang="ts">
-	import AddTraductorModal from '$lib/components/AddTraductorModal.svelte';
+	import AddTraductorModal from '$lib/components/dashboard/AddTraductorModal.svelte';
 	import type { Translator } from '$lib/server/db/schema';
 	import type { FormGameType } from '$lib/types';
 	import { checkRole } from '$lib/utils';

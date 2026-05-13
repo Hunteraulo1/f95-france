@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
-import { fail } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -11,7 +11,7 @@ const PAGE_SIZE = 20;
 
 export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 	if (!locals.user) {
-		throw fail(401, { message: 'Non authentifié' });
+		redirect(303, '/dashboard/login');
 	}
 
 	// Le compte doit être lié à un traducteur (translator.userId) pour que "Mes traductions" ait du sens.

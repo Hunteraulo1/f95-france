@@ -3,14 +3,16 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+    parseSubmissionPayloadJson,
+    persistSubmissionPayload,
+    validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
+
+const PAGE_SIZE = 20;
 
 const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
 	if (typeof value !== 'string') return null;
@@ -115,12 +117,27 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			? statusFilterRaw
 			: 'pending';
 
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
 	try {
 		const whereCondition =
 			statusFilter === 'all' ? undefined : eq(table.submission.status, statusFilter);
 
-		// Charger les soumissions avec les informations utilisateur
-		const submissions = await db
+		const [countRow] = whereCondition
+			? await db
+					.select({ count: sql<number>`count(*)`.as('count') })
+					.from(table.submission)
+					.where(whereCondition)
+			: await db.select({ count: sql<number>`count(*)`.as('count') }).from(table.submission);
+
+		const totalCount = Number(countRow?.count ?? 0);
+		const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+		const page = Math.min(requestedPage, totalPages);
+		const offset = (page - 1) * PAGE_SIZE;
+
+		// Charger les soumissions avec les informations utilisateur (paginé)
+		const listQuery = db
 			.select({
 				id: table.submission.id,
 				status: table.submission.status,
@@ -152,9 +169,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.from(table.submission)
 			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
-			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
-			.where(whereCondition)
-			.orderBy(desc(table.submission.createdAt));
+			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id));
+
+		const submissions = await (whereCondition ? listQuery.where(whereCondition) : listQuery)
+			.orderBy(desc(table.submission.createdAt))
+			.limit(PAGE_SIZE)
+			.offset(offset);
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(
@@ -296,6 +316,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			submissions: submissionsWithData,
 			statusFilter,
+			page,
+			pageSize: PAGE_SIZE,
+			totalCount,
+			totalPages,
 			pendingCount,
 			openedCount,
 			toFixCount,
@@ -309,6 +333,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			submissions: [],
 			statusFilter,
+			page: 1,
+			pageSize: PAGE_SIZE,
+			totalCount: 0,
+			totalPages: 1,
 			pendingCount: 0,
 			openedCount: 0,
 			toFixCount: 0,

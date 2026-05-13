@@ -2,6 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -11,14 +13,56 @@
 	let { data }: Props = $props();
 
 	let searchQuery = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	let filteredTranslators = $derived.by(() =>
-		data.translator.filter(
-			(traductor) =>
-				traductor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				(traductor.discordId && traductor.discordId.toString().includes(searchQuery))
-		)
-	);
+	const buildQuery = (overrides: { q?: string; page?: number }) => {
+		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
+		const page = overrides.page ?? data.page;
+		const params: string[] = [];
+		if (qVal) params.push(`q=${encodeURIComponent(qVal)}`);
+		if (page > 1) params.push(`page=${page}`);
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { q?: string; page?: number }) =>
+		resolve(`/dashboard/translators${buildQuery(overrides)}` as '/dashboard/translators');
+
+	const hrefForPage = (p: number) => buildHref({ page: p });
+
+	const navigateSearch = (value: string) => {
+		goto(
+			resolve(
+				`/dashboard/translators${buildQuery({ q: value, page: 1 })}` as '/dashboard/translators'
+			),
+			{
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true,
+				invalidateAll: true
+			}
+		);
+	};
+
+	const onSearchInput = (value: string) => {
+		searchQuery = value;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
+	};
+
+	const clearSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchQuery = '';
+		navigateSearch('');
+	};
+
+	$effect(() => {
+		const incoming = data.q ?? '';
+		untrack(() => {
+			if (incoming !== searchQuery) {
+				searchQuery = incoming;
+			}
+		});
+	});
 
 	let showAddModal = $state(false);
 	let showEditModal = $state(false);
@@ -53,13 +97,22 @@
 	};
 </script>
 
-<div class="mb-4 flex w-full justify-end gap-2">
-	<input
-		type="text"
-		class="input-bordered input"
-		placeholder="Rechercher un traducteur"
-		bind:value={searchQuery}
-	/>
+<div class="mb-4 flex w-full flex-wrap items-center justify-end gap-2">
+	<label class="input flex max-w-md min-w-48 items-center gap-2">
+		<span class="sr-only">Rechercher un traducteur</span>
+		<input
+			type="search"
+			class="grow"
+			placeholder="Rechercher (nom, ID Discord)…"
+			value={searchQuery}
+			oninput={(e) => onSearchInput(e.currentTarget.value)}
+		/>
+		{#if searchQuery}
+			<button type="button" class="btn btn-ghost btn-sm btn-square" onclick={clearSearch} aria-label="Effacer la recherche">
+				✕
+			</button>
+		{/if}
+	</label>
 	{#if data.isAdmin}
 		<button class="btn btn-primary" onclick={() => (showAddModal = true)}>
 			Ajouter un traducteur
@@ -81,9 +134,9 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each filteredTranslators as translator, index (translator.id)}
+			{#each data.translator as translator, index (translator.id)}
 				<tr>
-					<td class="font-bold">{index + 1}</td>
+					<td class="font-bold">{(data.page - 1) * data.pageSize + index + 1}</td>
 					<th class="font-bold">{translator.name}</th>
 					<td>
 						{#if translator.userId}
@@ -137,6 +190,16 @@
 			{/each}
 		</tbody>
 	</table>
+
+	<div class="card-body pt-0">
+		<Pagination
+			currentPage={data.page}
+			totalPages={data.totalPages}
+			totalCount={data.totalCount}
+			{hrefForPage}
+			countLabel="traducteur"
+		/>
+	</div>
 </div>
 
 <!-- Modal d'ajout de traducteur -->
