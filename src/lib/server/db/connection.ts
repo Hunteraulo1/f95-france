@@ -14,6 +14,12 @@ export type PostgresConfig =
 			ssl?: boolean | 'require';
 	  };
 
+function sslFromPgSslMode(env: Record<string, string | undefined>): boolean | 'require' {
+	const m = env.PGSSLMODE?.toLowerCase();
+	if (m === 'disable') return false;
+	return 'require';
+}
+
 export function getPostgresConfig(env: Record<string, string | undefined>): PostgresConfig {
 	const { PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, DATABASE_URL } = env;
 
@@ -24,7 +30,7 @@ export function getPostgresConfig(env: Record<string, string | undefined>): Post
 			database: PGDATABASE ?? 'postgres',
 			user: PGUSER ?? 'postgres',
 			password: PGPASSWORD,
-			ssl: 'require'
+			ssl: sslFromPgSslMode(env)
 		};
 	}
 
