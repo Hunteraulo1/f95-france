@@ -108,7 +108,12 @@
 			oninput={(e) => onSearchInput(e.currentTarget.value)}
 		/>
 		{#if searchQuery}
-			<button type="button" class="btn btn-ghost btn-sm btn-square" onclick={clearSearch} aria-label="Effacer la recherche">
+			<button
+				type="button"
+				class="btn btn-square btn-ghost btn-sm"
+				onclick={clearSearch}
+				aria-label="Effacer la recherche"
+			>
 				✕
 			</button>
 		{/if}

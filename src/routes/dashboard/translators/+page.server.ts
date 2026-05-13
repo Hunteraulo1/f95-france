@@ -62,9 +62,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-	const countBase = db
-		.select({ count: sql<number>`count(*)`.as('count') })
-		.from(table.translator);
+	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.translator);
 	const [countRow] = await (whereClause ? countBase.where(whereClause) : countBase);
 
 	const totalCount = Number(countRow?.count ?? 0);
@@ -83,10 +81,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			userId: table.translator.userId
 		})
 		.from(table.translator);
-	const translators = await (whereClause
-		? listBase.where(whereClause)
-		: listBase
-	)
+	const translators = await (whereClause ? listBase.where(whereClause) : listBase)
 		.orderBy(table.translator.name)
 		.limit(PAGE_SIZE)
 		.offset(offset);
