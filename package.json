@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "vite preview",
+    "start": "node build/index.js",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -66,7 +66,6 @@
     "@lucide/svelte": "1.14.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.0",
-    "cheerio": "^1.2.0",
     "linkedom": "^0.18.12",
     "otpauth": "^9.5.1",
     "postgres": "^3.4.9",
