@@ -7,9 +7,9 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 ENV NODE_ENV=production
+ENV DATABASE_URL=postgresql://docker-build:docker-build@127.0.0.1:5432/docker-build
 RUN bun run build
 
-# Exécution : Node aligné sur kit.adapter runtime (nodejs22.x+)
 FROM node:24-alpine AS runner
 WORKDIR /app
 

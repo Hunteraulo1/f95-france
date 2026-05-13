@@ -5,9 +5,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    // Runtime fixé pour le build local (ex. Node 25) et pour Vercel
-    adapter: adapter({ runtime: 'nodejs22.x' }),
-    // Optimiser le préchargement des ressources
+    adapter: adapter({ runtime: 'nodejs24.x' }),
     prerender: {
       handleHttpError: 'warn'
     }
