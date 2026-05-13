@@ -1,10 +1,13 @@
 node_modules
 .svelte-kit
 build
-.git
 .env
 .env.*
-!.env.example
+docker
+drizzle
+scripts
 *.md
-.vscode
+.git
+.gitignore
 .cursor
+.vscode
