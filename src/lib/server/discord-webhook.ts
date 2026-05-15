@@ -344,9 +344,7 @@ function buildAutoCheckVersionBumpEmbed(
 		title: trimFieldValue(line.gameName, 256),
 		color: 0x3498db,
 		fields: [
-			...(tr
-				? [{ name: 'Traduction', value: trimFieldValue(tr, 256), inline: false }]
-				: []),
+			...(tr ? [{ name: 'Traduction', value: trimFieldValue(tr, 256), inline: false }] : []),
 			{ name: 'Version', value: trimFieldValue(versionValue, 1024), inline: false }
 		],
 		author: { name: 'Auto-Check' },

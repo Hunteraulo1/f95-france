@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    bytesToBase64URL,
-    consumePasskeyChallenge,
-    getExpectedOrigin,
-    getRpID
+	bytesToBase64URL,
+	consumePasskeyChallenge,
+	getExpectedOrigin,
+	getRpID
 } from '$lib/server/passkeys';
 import { verifyRegistrationResponse, type RegistrationResponseJSON } from '@simplewebauthn/server';
 import { json } from '@sveltejs/kit';

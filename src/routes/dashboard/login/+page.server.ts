@@ -1,8 +1,8 @@
 import * as auth from '$lib/server/auth';
 import {
-    checkLoginThrottle,
-    clearLoginThrottle,
-    recordLoginFailure
+	checkLoginThrottle,
+	clearLoginThrottle,
+	recordLoginFailure
 } from '$lib/server/login-throttle';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';

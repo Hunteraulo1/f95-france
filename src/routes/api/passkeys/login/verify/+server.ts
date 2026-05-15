@@ -2,20 +2,20 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    checkLoginThrottle,
-    clearLoginThrottle,
-    LOGIN_THROTTLE_MESSAGE,
-    recordLoginFailure
+	checkLoginThrottle,
+	clearLoginThrottle,
+	LOGIN_THROTTLE_MESSAGE,
+	recordLoginFailure
 } from '$lib/server/login-throttle';
 import {
-    base64URLToBytes,
-    consumePasskeyChallenge,
-    getExpectedOrigin,
-    getRpID
+	base64URLToBytes,
+	consumePasskeyChallenge,
+	getExpectedOrigin,
+	getRpID
 } from '$lib/server/passkeys';
 import {
-    verifyAuthenticationResponse,
-    type AuthenticationResponseJSON
+	verifyAuthenticationResponse,
+	type AuthenticationResponseJSON
 } from '@simplewebauthn/server';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';

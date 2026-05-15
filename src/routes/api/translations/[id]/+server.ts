@@ -1,4 +1,7 @@
-import { getTranslatorFkResolver, mapTranslationForPublicApi } from '$lib/server/api/translation-public';
+import {
+	getTranslatorFkResolver,
+	mapTranslationForPublicApi
+} from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';

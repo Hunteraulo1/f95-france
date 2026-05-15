@@ -2,8 +2,8 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getRpID, getRpName, savePasskeyChallenge } from '$lib/server/passkeys';
 import {
-    generateRegistrationOptions,
-    type PublicKeyCredentialCreationOptionsJSON
+	generateRegistrationOptions,
+	type PublicKeyCredentialCreationOptionsJSON
 } from '@simplewebauthn/server';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
