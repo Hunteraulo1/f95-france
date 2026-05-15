@@ -1,3 +1,4 @@
+import { mapTranslationsForPublicApi } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
 import { inArray } from 'drizzle-orm';
@@ -26,6 +27,16 @@ export async function translationsByGameIds(
 
 	for (const list of map.values()) {
 		list.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+	}
+
+	const allRows = Array.from(map.values()).flat();
+	const mapped = await mapTranslationsForPublicApi(allRows);
+	const mappedById = new Map(mapped.map((row) => [row.id, row]));
+	for (const [gameId, list] of map) {
+		map.set(
+			gameId,
+			list.map((row) => mappedById.get(row.id) ?? row)
+		);
 	}
 	return map;
 }

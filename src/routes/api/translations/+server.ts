@@ -1,4 +1,5 @@
 import { parseTranslationListFilters } from '$lib/server/api/translation-list-filters';
+import { mapTranslationsForPublicApi } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
@@ -30,7 +31,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				: db.select().from(gameTranslation)
 		).orderBy(desc(gameTranslation.updatedAt));
 
-		return json(rows, { headers: corsHeaders });
+		return json(await mapTranslationsForPublicApi(rows), { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translations:', error);
 		return json(
