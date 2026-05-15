@@ -1,8 +1,8 @@
 import * as auth from '$lib/server/auth';
 import {
-	checkLoginThrottle,
-	clearLoginThrottle,
-	recordLoginFailure
+    checkLoginThrottle,
+    clearLoginThrottle,
+    recordLoginFailure
 } from '$lib/server/login-throttle';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
@@ -85,6 +85,7 @@ export const actions: Actions = {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;
 			}
+			console.error('[dashboard/login?/login]', error);
 			return fail(500, {
 				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).'
 			});
