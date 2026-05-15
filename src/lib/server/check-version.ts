@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+  sendDiscordWebhookProofreadersVersionBumps,
+  sendDiscordWebhookTranslatorsVersionBumps,
+  sendDiscordWebhookUpdatesAutoCheckVersionBump,
+  type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
@@ -117,6 +117,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		.select({
 			gameId: table.game.id,
 			gameName: table.game.name,
+			gameImage: table.game.image,
 			gameVersion: table.game.gameVersion,
 			threadId: table.game.threadId,
 			translationId: table.gameTranslation.id,
@@ -145,13 +146,20 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 
 	const uniqueByGame = new Map<
 		string,
-		{ gameId: string; gameName: string; gameVersion: string | null; threadId: number }
+		{
+			gameId: string;
+			gameName: string;
+			gameImage: string | null;
+			gameVersion: string | null;
+			threadId: number;
+		}
 	>();
 	for (const row of rows) {
 		if (row.threadId == null) continue;
 		uniqueByGame.set(row.gameId, {
 			gameId: row.gameId,
 			gameName: row.gameName,
+			gameImage: row.gameImage,
 			gameVersion: row.gameVersion,
 			threadId: row.threadId
 		});
@@ -165,6 +173,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	type UniqueGameRow = {
 		gameId: string;
 		gameName: string;
+		gameImage: string | null;
 		gameVersion: string | null;
 		threadId: number;
 	};
@@ -233,6 +242,9 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 
 		try {
 			const scraped = await scrapeF95Thread(game.threadId);
+			if (scraped.image?.trim()) {
+				game.gameImage = scraped.image.trim();
+			}
 			await db
 				.update(table.game)
 				.set(autoCheckGamePatchFromScrape(scraped))
@@ -271,6 +283,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			}
 			translatorWebhookLines.push({
 				gameName: game.gameName,
+				gameImage: game.gameImage,
 				translationName: t.translationName,
 				oldVersion: game.gameVersion ?? '—',
 				newVersion,
@@ -279,6 +292,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			if (t.proofreaderId) {
 				proofreaderWebhookLines.push({
 					gameName: game.gameName,
+					gameImage: game.gameImage,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion ?? '—',
 					newVersion,
@@ -294,6 +308,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			try {
 				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
 					gameName: game.gameName,
+					gameImage: game.gameImage,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion,
 					newVersion
