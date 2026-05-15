@@ -324,26 +324,35 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 
 export type TranslatorVersionBumpLine = {
 	gameName: string;
+	gameImage?: string | null;
 	translationName?: string | null;
 	oldVersion: string;
 	newVersion: string;
 	discordMention?: string;
 };
 
-function buildAutoCheckVersionBumpFields(
-	lines: TranslatorVersionBumpLine[]
-): DiscordEmbed['fields'] {
-	return lines.slice(0, 20).map((l) => {
-		const tr = l.translationName?.trim();
-		const name = trimFieldValue(tr ? `${l.gameName} — ${tr}` : l.gameName, 256);
-		const ver = `${trimFieldValue(l.oldVersion || '—', 400)} → ${trimFieldValue(l.newVersion, 400)}`;
-		const value = l.discordMention ? `${ver}\n${l.discordMention}` : ver;
-		return {
-			name,
-			value: trimFieldValue(value, 1024),
-			inline: false
-		};
-	});
+const AUTO_CHECK_EMBEDS_PER_MESSAGE = 10;
+
+function buildAutoCheckVersionBumpEmbed(
+	line: TranslatorVersionBumpLine,
+	footerText: string
+): DiscordEmbed {
+	const tr = line.translationName?.trim();
+	const ver = `${trimFieldValue(line.oldVersion || '—', 400)} → ${trimFieldValue(line.newVersion, 400)}`;
+	const versionValue = line.discordMention ? `${ver}\n${line.discordMention}` : ver;
+	const embed: DiscordEmbed = {
+		title: trimFieldValue(line.gameName, 256),
+		color: 0x3498db,
+		fields: [
+			...(tr ? [{ name: 'Traduction', value: trimFieldValue(tr, 256), inline: false }] : []),
+			{ name: 'Version', value: trimFieldValue(versionValue, 1024), inline: false }
+		],
+		author: { name: 'Auto-Check' },
+		footer: { text: footerText }
+	};
+	const coverUrl = embedImageUrl(line.gameImage);
+	if (coverUrl) embed.image = { url: coverUrl };
+	return embed;
 }
 
 async function sendAutoCheckVersionBumpEmbed(
@@ -352,18 +361,15 @@ async function sendAutoCheckVersionBumpEmbed(
 	footerText: string
 ): Promise<void> {
 	if (!webhookUrl || lines.length === 0) return;
-	const fields = buildAutoCheckVersionBumpFields(lines);
-	await executeDiscordWebhook(webhookUrl, {
-		embeds: [
-			{
-				title: 'Jeux mis à jour (Auto-Check)',
-				color: 0x3498db,
-				fields,
-				author: { name: 'Auto-Check' },
-				footer: { text: footerText }
-			}
-		]
-	});
+	const capped = lines.slice(0, 20);
+	for (let i = 0; i < capped.length; i += AUTO_CHECK_EMBEDS_PER_MESSAGE) {
+		const batch = capped.slice(i, i + AUTO_CHECK_EMBEDS_PER_MESSAGE);
+		const embeds = batch.map((line) => buildAutoCheckVersionBumpEmbed(line, footerText));
+		await executeDiscordWebhook(webhookUrl, {
+			content: i === 0 && capped.length > 1 ? 'Jeux mis à jour (Auto-Check)' : undefined,
+			embeds
+		});
+	}
 }
 
 /** Auto-check : canal traducteurs (`DISCORD_WEBHOOK_TRANSLATORS`). */
@@ -385,6 +391,7 @@ export async function sendDiscordWebhookProofreadersVersionBumps(
 /** Canal updates : annonce d'une montée de version détectée par l'auto-check. */
 export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	gameName: string;
+	gameImage?: string | null;
 	translationName?: string | null;
 	oldVersion?: string | null;
 	newVersion: string;
@@ -393,27 +400,26 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	if (!updates) return;
 
 	const trLabel = args.translationName?.trim() ? ` - ${args.translationName.trim()}` : '';
-	await executeDiscordWebhook(updates, {
-		embeds: [
+	const embed: DiscordEmbed = {
+		title: 'Traduction mise à jour',
+		color: 0x58b9ff,
+		fields: [
 			{
-				title: 'Traduction mise à jour',
-				color: 0x58b9ff,
-				fields: [
-					{
-						name: 'Jeu',
-						value: `${trimFieldValue(args.gameName, 200)}${trimFieldValue(trLabel, 200)}`,
-						inline: false
-					},
-					{
-						name: 'Version',
-						value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
-						inline: false
-					}
-				],
-				footer: { text: 'Auto-Check · F95 France' }
+				name: 'Jeu',
+				value: `${trimFieldValue(args.gameName, 200)}${trimFieldValue(trLabel, 200)}`,
+				inline: false
+			},
+			{
+				name: 'Version',
+				value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
+				inline: false
 			}
-		]
-	});
+		],
+		footer: { text: 'Auto-Check · F95 France' }
+	};
+	const coverUrl = embedImageUrl(args.gameImage);
+	if (coverUrl) embed.image = { url: coverUrl };
+	await executeDiscordWebhook(updates, { embeds: [embed] });
 }
 
 /** Canal proofreaders : message libre (ex. alertes relecture). */
