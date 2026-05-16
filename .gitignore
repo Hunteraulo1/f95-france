@@ -21,6 +21,9 @@ node_modules
 docker/postgres/init/
 *.dump
 
+# DB dumps locaux (peuvent contenir des secrets OAuth, tokens, etc.)
+dump-*.sql
+
 # OS
 .DS_Store
 Thumbs.db
