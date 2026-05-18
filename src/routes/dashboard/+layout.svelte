@@ -27,6 +27,6 @@
 </main>
 
 <!-- Toasts -->
-<div class="toast toast-end toast-top">
+<div class="toast toast-end toast-top z-9999">
 	<Toaster />
 </div>
