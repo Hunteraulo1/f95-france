@@ -3,7 +3,18 @@ const HSTS = 'max-age=63072000; includeSubDomains; preload';
 
 const STATIC_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 	'X-Content-Type-Options': 'nosniff',
-	'X-Frame-Options': 'DENY'
+	'X-Frame-Options': 'DENY',
+	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	'Permissions-Policy':
+		'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
+	'Cross-Origin-Opener-Policy': 'same-origin',
+	/** Protège les réponses de ce site ; n’empêche pas le chargement d’images tierces (F95, etc.). */
+	'Cross-Origin-Resource-Policy': 'same-site',
+	/**
+	 * `credentialless` : isolation partielle sans exiger CORP sur les hôtes tiers
+	 * (contrairement à `require-corp`, qui casserait les vignettes F95 / LC).
+	 */
+	'Cross-Origin-Embedder-Policy': 'credentialless'
 };
 
 function shouldSendHsts(): boolean {
