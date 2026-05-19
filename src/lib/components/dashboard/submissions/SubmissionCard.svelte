@@ -148,11 +148,12 @@
 
 				<div class="mt-2 flex items-center gap-2">
 					{#if submission.game}
-						{#if submission.game.image}
+						{@const gameImageSrc = resolveGameImageSrc(submission.game.image, {
+							website: submission.game.website
+						})}
+						{#if gameImageSrc}
 							<img
-								src={resolveGameImageSrc(submission.game.image, {
-									website: submission.game.website
-								})}
+								src={gameImageSrc}
 								alt={submission.game.name}
 								class="h-10 w-10 rounded object-cover"
 								referrerpolicy="no-referrer"

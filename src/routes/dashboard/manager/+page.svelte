@@ -149,6 +149,9 @@
 							<div class="p-4 text-center text-base-content/60">Aucun jeu trouvé</div>
 						{:else}
 							{#each searchResults as game (game.id)}
+								{@const gameImageSrc = resolveGameImageSrc(game.image, {
+									website: game.website
+								})}
 								<div
 									class="flex items-stretch border-b border-base-300 last:border-b-0 hover:bg-base-200"
 								>
@@ -156,13 +159,15 @@
 										href="/dashboard/game/{game.id}"
 										class="flex min-w-0 flex-1 cursor-pointer items-start gap-3 p-4"
 									>
-										<img
-											src={resolveGameImageSrc(game.image, { website: game.website })}
-											alt={game.name}
-											class="h-12 w-12 rounded object-cover"
-											loading="lazy"
-											referrerpolicy="no-referrer"
-										/>
+										{#if gameImageSrc}
+											<img
+												src={gameImageSrc}
+												alt={game.name}
+												class="h-12 w-12 rounded object-cover"
+												loading="lazy"
+												referrerpolicy="no-referrer"
+											/>
+										{/if}
 										<div class="min-w-0 flex-1">
 											<h3 class="truncate text-base font-semibold">{game.name}</h3>
 											<p class="truncate text-sm text-base-content/70">

@@ -995,22 +995,31 @@
 				<div class="flex flex-col gap-6 lg:flex-row">
 					<!-- Image du jeu -->
 					<div class="flex shrink-0 flex-col gap-4">
-						<button
-							type="button"
-							class="rounded-lg transition outline-none hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-primary/60"
-							aria-label="Ouvrir l'image du jeu en grand"
-							onclick={() => {
-								showGameImagePopup = true;
-							}}
-						>
-							<img
-								src={gameCoverSrc}
-								alt={game.name}
-								class="h-64 w-48 rounded-lg object-cover shadow-md"
-								loading="lazy"
-								referrerpolicy="no-referrer"
-							/>
-						</button>
+						{#if gameCoverSrc}
+							<button
+								type="button"
+								class="rounded-lg transition outline-none hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-primary/60"
+								aria-label="Ouvrir l'image du jeu en grand"
+								onclick={() => {
+									showGameImagePopup = true;
+								}}
+							>
+								<img
+									src={gameCoverSrc}
+									alt={game.name}
+									class="h-64 w-48 rounded-lg object-cover shadow-md"
+									loading="lazy"
+									referrerpolicy="no-referrer"
+								/>
+							</button>
+						{:else if game.image?.trim()}
+							<div
+								class="flex h-64 w-48 items-center justify-center rounded-lg bg-base-200 px-3 text-center text-xs text-base-content/60"
+								title="URL de page galerie (ex. ibb.co/…) — utiliser le lien direct i.ibb.co"
+							>
+								Vignette indisponible (lien galerie)
+							</div>
+						{/if}
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
 							<SquarePen size={16} />
 							Modifier le jeu

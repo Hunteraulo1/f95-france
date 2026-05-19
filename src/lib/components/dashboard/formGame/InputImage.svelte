@@ -68,12 +68,14 @@
 	{warn}
 	type="text"
 >
-	<img
-		src={previewSrc}
-		alt="bannière du jeu 2"
-		class="absolute top-20 z-10 hidden w-full max-w-md rounded-md"
-		loading="lazy"
-		referrerpolicy="no-referrer"
-		onerror={handleImageError}
-	/>
+	{#if previewSrc}
+		<img
+			src={previewSrc}
+			alt="bannière du jeu 2"
+			class="absolute top-20 z-10 hidden w-full max-w-md rounded-md"
+			loading="lazy"
+			referrerpolicy="no-referrer"
+			onerror={handleImageError}
+		/>
+	{/if}
 </Input>
