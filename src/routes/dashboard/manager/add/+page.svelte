@@ -76,8 +76,25 @@
 		description: string;
 	};
 	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
+	/** LC : état du scrape image (idle = pas encore tenté sur ce thread). */
+	let lcScrapeStatus = $state<'idle' | 'ok' | 'no_image' | 'failed'>('idle');
+	let f95ScrapeFailed = $state(false);
+
+	const F95_SCRAPE_FAIL_MESSAGE =
+		'Impossible de récupérer ce thread F95Zone : le jeu n’existe peut-être pas (vérifiez l’ID) ou le forum est temporairement indisponible. Réessayez dans quelques minutes.';
+
+	const lcScrapeFailed = $derived(game.website === 'lc' && lcScrapeStatus === 'failed');
+	const f95ScrapeFailedActive = $derived(game.website === 'f95z' && f95ScrapeFailed);
+	const lcImageLocked = $derived(
+		game.website === 'lc' && (lcScrapeStatus === 'failed' || lcScrapeStatus === 'no_image')
+	);
+	const lcShowImageField = $derived(
+		game.website === 'lc' && lcScrapeStatus === 'ok' && !!game.image?.trim()
+	);
+	const lcImageReadOnly = $derived(game.website === 'lc' && lcScrapeStatus === 'ok');
 
 	const normScrapeField = (v: unknown): string => (v == null ? '' : String(v).trim());
+	const supportsThreadScrape = $derived(game.website === 'f95z' || game.website === 'lc');
 
 	let threadDuplicateCheck = $state<{
 		gameExists: boolean;
@@ -107,7 +124,11 @@
 			: ['Site', 'Thread', 'Infos jeu', 'Traduction']
 	);
 
-	let fieldFormState = $derived(computeGameFormFieldState(game));
+	let fieldFormState = $derived(
+		computeGameFormFieldState(game, {
+			requireImage: game.website !== 'lc' || lcShowImageField
+		})
+	);
 	let translatorFieldErrors = $derived(
 		getTranslatorFieldErrors(game, data.translators, data.warnUnknownTranslators)
 	);
@@ -182,6 +203,22 @@
 		}
 	});
 
+	$effect(() => {
+		if (game.website !== 'lc') {
+			lcScrapeStatus = 'idle';
+		}
+		if (game.website !== 'f95z') {
+			f95ScrapeFailed = false;
+		}
+	});
+
+	$effect(() => {
+		if (game.website !== 'lc') return;
+		if (lcImageLocked) {
+			game.image = '';
+		}
+	});
+
 	/** Auto-check traduction seulement si auto-check jeu (F95) ; pas l’inverse : on peut désactiver `ac`. */
 	$effect(() => {
 		if (game.gameAutoCheck === false) {
@@ -220,31 +257,67 @@
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
 		const previousStep = step;
+		let targetStep = step + amount;
 
-		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
 		if (
-			step === 1 &&
+			targetStep === 1 &&
 			(game.website === 'other' || (game.website === 'f95z' && skipThreadStepFromQueryParam))
-		)
-			step += amount;
-		if (step === 2 && game.website === 'f95z') step += amount;
-
-		// Clamp final après sauts conditionnels
-		if (step < 0) step = 0;
-		if (step > maxStep) step = maxStep;
-
-		// Lancer le scrape une seule fois au passage à l'étape suivante (depuis l'étape Thread).
-		const movedForwardFromThreadStep =
-			amount > 0 && previousStep === 1 && step > previousStep && game.website === 'f95z';
-
-		// Compat query param: garder le déclenchement différé si nécessaire.
-		if (
-			(pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') ||
-			movedForwardFromThreadStep
 		) {
+			targetStep += amount;
+		}
+
+		const movingForwardFromThread =
+			amount > 0 && previousStep === 1 && targetStep >= 2 && supportsThreadScrape;
+		const deferredAutoScrape =
+			amount > 0 && pendingQueryThreadIdAutoScrape && targetStep >= 3 && supportsThreadScrape;
+
+		if (movingForwardFromThread || deferredAutoScrape) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
+
+		const skipInfosStep =
+			(game.website === 'f95z' && !f95ScrapeFailed) ||
+			(game.website === 'lc' && lcScrapeStatus !== 'failed');
+
+		if (targetStep === 2 && skipInfosStep) {
+			targetStep += amount;
+		}
+
+		// Scrape F95 en échec : rester sur l’étape Thread pour corriger l’ID ou réessayer.
+		if (amount > 0 && game.website === 'f95z' && f95ScrapeFailed && previousStep === 1) {
+			targetStep = 1;
+		}
+
+		// Scrape LC en échec : depuis Traduction, « Précédent » doit revenir aux infos (pas au thread).
+		if (
+			amount < 0 &&
+			game.website === 'lc' &&
+			lcScrapeStatus === 'failed' &&
+			previousStep >= 3 &&
+			targetStep === 1
+		) {
+			targetStep = 2;
+		}
+
+		// Scrape LC en échec : obliger l’étape « Infos jeu » (saisie manuelle).
+		if (
+			amount > 0 &&
+			game.website === 'lc' &&
+			lcScrapeStatus === 'failed' &&
+			previousStep < 2 &&
+			targetStep > 2
+		) {
+			targetStep = 2;
+		}
+
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
+		step = targetStep;
 	};
 
 	const requiresThreadIdForNextStep = $derived(
@@ -261,8 +334,8 @@
 	}: {
 		threadId: number | null;
 		website: FormGameType['website'];
-	}): Promise<void> => {
-		if (!threadId || threadId === 0 || website !== 'f95z') return;
+	}): Promise<boolean> => {
+		if (!threadId || threadId === 0 || (website !== 'f95z' && website !== 'lc')) return false;
 
 		try {
 			scraping = true;
@@ -290,12 +363,20 @@
 				description: string | null;
 			};
 
+			const scrapedImage = data.image?.trim() ?? '';
+			if (website === 'lc') {
+				lcScrapeStatus = scrapedImage ? 'ok' : 'no_image';
+			}
+			if (website === 'f95z') {
+				f95ScrapeFailed = false;
+			}
+
 			game = {
 				...game,
 				name: data.name ?? game.name,
 				tags: data.tags ?? game.tags,
 				gameType: data.gameType ?? game.gameType,
-				image: data.image ?? game.image,
+				image: website === 'lc' ? scrapedImage : (data.image ?? game.image),
 				gameVersion: data.version ?? game.gameVersion,
 				description: data.description ?? game.description
 			};
@@ -309,12 +390,39 @@
 				description: normScrapeField(game.description)
 			};
 			savedId = threadId;
+			return true;
 		} catch (error) {
 			console.warn('Erreur lors du scraping', error);
+			if (website === 'lc') {
+				lcScrapeStatus = 'failed';
+				game = {
+					...game,
+					name: '',
+					tags: '',
+					gameType: 'other',
+					image: '',
+					gameVersion: null,
+					description: null,
+					link: buildGameLinkFromThread('lc', threadId),
+					gameAutoCheck: false
+				};
+				scrapeBaseline = null;
+				savedId = threadId;
+				newToast({
+					alertType: 'warning',
+					message:
+						'Scrape LewdCorner impossible — renseignez les informations du jeu à l’étape suivante (sans vignette).'
+				});
+				return false;
+			}
+			f95ScrapeFailed = true;
+			scrapeBaseline = null;
+			savedId = null;
 			newToast({
 				alertType: 'error',
-				message: 'Impossible de récupérer les informations du jeu'
+				message: F95_SCRAPE_FAIL_MESSAGE
 			});
+			return false;
 		} finally {
 			scraping = false;
 		}
@@ -360,9 +468,26 @@
 		const tid = threadIdForDuplicateCheck(game.threadId);
 		await runThreadDuplicateCheckForTid(tid);
 
-		if (!tid || game.website !== 'f95z') {
-			if (!tid) savedId = null;
+		if (!tid || !supportsThreadScrape) {
+			if (!tid) {
+				savedId = null;
+				if (game.website === 'lc') {
+					lcScrapeStatus = 'idle';
+					game.image = '';
+				}
+				if (game.website === 'f95z') {
+					f95ScrapeFailed = false;
+				}
+			}
 			return;
+		}
+
+		if (game.website === 'lc' && tid !== savedId) {
+			lcScrapeStatus = 'idle';
+			game.image = '';
+		}
+		if (game.website === 'f95z' && tid !== savedId) {
+			f95ScrapeFailed = false;
 		}
 
 		if (savedId === tid) return;
@@ -443,7 +568,7 @@
 					threadId: game.website === 'other' ? null : (game.threadId ?? null),
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
-					image: game.image.trim(),
+					image: game.image.trim() || '',
 					gameVersion: game.gameVersion?.trim() || null,
 					scrapeUnchanged: isScrapeUnchanged()
 				}
@@ -717,14 +842,28 @@
 			onsubmit={handleSubmit}
 			autocomplete="off"
 		>
-			{#if scraping}
-				<div class="alert flex items-center gap-2 alert-soft text-sm alert-info">
-					<LoaderCircle />
-					Chargement des données en cours
-				</div>
-			{/if}
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
+			{/if}
+			{#if f95ScrapeFailedActive}
+				<div class="alert text-sm alert-error" role="alert">
+					<span>{F95_SCRAPE_FAIL_MESSAGE}</span>
+				</div>
+			{/if}
+			{#if lcScrapeFailed}
+				<div class="alert text-sm alert-warning" role="status">
+					<span>
+						Scrape LewdCorner impossible — complétez le nom, les tags, le moteur, la version et la
+						description du jeu (étape Infos jeu). Aucune vignette ne sera ajoutée.
+					</span>
+				</div>
+			{:else if lcImageLocked}
+				<div class="alert text-sm alert-warning" role="status">
+					<span>
+						Scrape LewdCorner sans image — la vignette reste vide et ne peut pas être modifiée
+						manuellement.
+					</span>
+				</div>
 			{/if}
 			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
@@ -742,12 +881,20 @@
 				</div>
 			{/if}
 
-			<div
-				class="flex w-full flex-wrap items-center justify-between gap-3 rounded-box bg-base-200/60 px-4 py-3"
-			>
-				<div class="text-sm text-base-content/80">
-					<span class="font-medium">Section active :</span>
-					{stepLabels[step]}
+			<div class="flex h-11 flex-col gap-2 md:flex-row">
+				{#if scraping}
+					<div class="alert flex items-center alert-soft text-sm text-nowrap alert-info">
+						<LoaderCircle class="animate-spin" />
+						Chargement des données en cours
+					</div>
+				{/if}
+				<div
+					class="flex w-full flex-wrap items-center justify-between rounded-box bg-base-200/60 px-4 py-3"
+				>
+					<div class="text-sm text-base-content/80">
+						<span class="font-medium">Section active :</span>
+						{stepLabels[step]}
+					</div>
 				</div>
 			</div>
 
@@ -782,7 +929,9 @@
 				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
 			>
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
-					{#if !adminOnly || isAdmin}
+					{#if name === 'image' && game.website === 'lc' && !lcShowImageField}
+						<!-- LC : pas de champ image tant que le scrape n’a pas fourni d’URL -->
+					{:else if !adminOnly || isAdmin}
 						{#if needsTranslators && Component === Datalist}
 							<Datalist
 								{step}
@@ -809,6 +958,7 @@
 								bind:game
 								invalid={fieldFormState.fieldErrors[name] ?? false}
 								warn={fieldFormState.fieldWarns[name] ?? false}
+								readonly={name === 'image' && lcImageReadOnly}
 								onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
 							/>
 						{/if}
@@ -819,15 +969,19 @@
 			<div
 				class="flex w-full flex-row flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-4 sm:px-4"
 			>
-				{#if step < maxStep}
+				{#if step > 0}
 					<button
 						class="btn w-full btn-outline btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(-1)}
-						disabled={step <= 0}
 					>
 						Précédent
 					</button>
+				{/if}
+				{#if game.website === 'lc' || game.website === 'f95z'}
+					<Insert bind:game />
+				{/if}
+				{#if step < maxStep}
 					<button
 						class="btn w-full btn-primary md:w-38"
 						type="button"
@@ -856,9 +1010,6 @@
 							step = maxStep;
 						}}
 					/>
-				{/if}
-				{#if game.website === 'lc' || game.website === 'f95z'}
-					<Insert bind:game />
 				{/if}
 			</div>
 		</form>

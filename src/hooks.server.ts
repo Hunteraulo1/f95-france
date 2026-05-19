@@ -12,6 +12,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
+import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 
@@ -59,21 +60,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 			if (!isSuperAdmin && !isAuthException) {
 				const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 				if (acceptsHtml) {
-					return new Response(
-						'<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>',
-						{
+					return applySecurityHeaders(
+						new Response('<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>', {
 							status: 503,
 							headers: {
 								'content-type': 'text/html; charset=utf-8',
 								'retry-after': '600'
 							}
-						}
+						})
 					);
 				}
-				return new Response(JSON.stringify({ error: 'Service en maintenance' }), {
-					status: 503,
-					headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '600' }
-				});
+				return applySecurityHeaders(
+					new Response(JSON.stringify({ error: 'Service en maintenance' }), {
+						status: 503,
+						headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '600' }
+					})
+				);
 			}
 		}
 	} catch (error) {
@@ -110,35 +112,41 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (wantsApiKey) {
 			const keyResult = await validateApiKeyRequest(event.request);
 			if (!keyResult.ok) {
-				return jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders);
+				return applySecurityHeaders(
+					jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders)
+				);
 			}
 			if (keyResult.routeScope && pathname !== keyResult.routeScope) {
-				return new Response(
-					JSON.stringify({
-						error: `Cette clé API est restreinte à la route ${EXTENSION_ONLY_API_ROUTE}.`
-					}),
-					{
-						status: 403,
-						headers: {
-							'content-type': 'application/json; charset=utf-8',
-							...apiPublicErrorCorsHeaders
+				return applySecurityHeaders(
+					new Response(
+						JSON.stringify({
+							error: `Cette clé API est restreinte à la route ${EXTENSION_ONLY_API_ROUTE}.`
+						}),
+						{
+							status: 403,
+							headers: {
+								'content-type': 'application/json; charset=utf-8',
+								...apiPublicErrorCorsHeaders
+							}
 						}
-					}
+					)
 				);
 			}
 			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);
 			if (!userRow) {
-				return jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders);
+				return applySecurityHeaders(jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders));
 			}
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
 		} else if (event.locals.user) {
 			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
 			if (!sessionRate.ok) {
-				return jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders);
+				return applySecurityHeaders(
+					jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders)
+				);
 			}
 		} else {
-			return jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders);
+			return applySecurityHeaders(jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders));
 		}
 	}
 
@@ -149,6 +157,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/robot.txt' ||
+		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
@@ -217,7 +227,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return response;
+	return applySecurityHeaders(response);
 };
 
 export const handleError = async ({
@@ -239,6 +249,8 @@ export const handleError = async ({
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/robot.txt' ||
+		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');

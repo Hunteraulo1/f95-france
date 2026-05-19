@@ -237,40 +237,40 @@
 			<div
 				class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
 			>
-				<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+				<div class="flex justify-end">
+					{#if $user?.discordId}
+						<form
+							class="w-full"
+							method="POST"
+							action="?/unlinkDiscord"
+							use:enhance={() => {
+								discordError = null;
+								discordInfo = null;
+								return async ({ result, update }) => {
+									if (result.type === 'success') {
+										await update();
+										await loadUserData();
+										discordInfo = 'Compte Discord délié avec succès.';
+									} else if (result.type === 'failure' && result.data) {
+										const message =
+											typeof result.data === 'object' && 'message' in result.data
+												? String(result.data.message)
+												: 'Erreur lors du déliage Discord';
+										discordError = message;
+									}
+								};
+							}}
+						>
+							<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+						</form>
+					{:else}
+						<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+					{/if}
+				</div>
 				{#if $user?.discordId}
 					<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
 				{/if}
 			</div>
-
-			{#if $user?.discordId}
-				<form
-					class="w-full"
-					method="POST"
-					action="?/unlinkDiscord"
-					use:enhance={() => {
-						discordError = null;
-						discordInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								await loadUserData();
-								discordInfo = 'Compte Discord délié avec succès.';
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors du déliage Discord';
-								discordError = message;
-							}
-						};
-					}}
-				>
-					<div class="flex justify-end">
-						<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
-					</div>
-				</form>
-			{/if}
 		</div>
 	</div>
 

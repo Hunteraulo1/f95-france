@@ -5,27 +5,18 @@ import { fail } from '@sveltejs/kit';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+const PAGE_SIZE = 20;
+
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
 		throw new Error('Accès non autorisé');
 	}
 
-	const page = 1;
-	const pageSize = 20;
-	const [users, translatorsList, totalUsersResult] = await Promise.all([
-		db
-			.select({
-				id: table.user.id,
-				username: table.user.username,
-				email: table.user.email,
-				role: table.user.role,
-				avatar: table.user.avatar,
-				createdAt: table.user.createdAt
-			})
-			.from(table.user)
-			.orderBy(table.user.createdAt)
-			.limit(pageSize)
-			.offset((page - 1) * pageSize),
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
+	const [totalUsersResult, translatorsList] = await Promise.all([
+		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user),
 		db
 			.select({
 				id: table.translator.id,
@@ -33,18 +24,34 @@ export const load: PageServerLoad = async ({ locals }) => {
 				userId: table.translator.userId
 			})
 			.from(table.translator)
-			.orderBy(table.translator.name),
-		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user)
+			.orderBy(table.translator.name)
 	]);
 
-	const totalUsers = totalUsersResult[0]?.count || 0;
+	const totalUsers = Number(totalUsersResult[0]?.count ?? 0);
+	const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
+	const page = Math.min(requestedPage, totalPages);
+
+	const users = await db
+		.select({
+			id: table.user.id,
+			username: table.user.username,
+			email: table.user.email,
+			role: table.user.role,
+			avatar: table.user.avatar,
+			createdAt: table.user.createdAt
+		})
+		.from(table.user)
+		.orderBy(table.user.createdAt)
+		.limit(PAGE_SIZE)
+		.offset((page - 1) * PAGE_SIZE);
 
 	return {
 		users,
 		translators: translatorsList,
 		totalUsers,
-		currentPage: page,
-		pageSize
+		page,
+		pageSize: PAGE_SIZE,
+		totalPages
 	};
 };
 

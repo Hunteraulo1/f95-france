@@ -1,0 +1,13 @@
+node_modules
+.svelte-kit
+build
+.env
+.env.*
+docker
+drizzle
+scripts
+*.md
+.git
+.gitignore
+.cursor
+.vscode

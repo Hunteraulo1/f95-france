@@ -38,16 +38,14 @@
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
 	<label for={name}>{title}:</label>
-	<div class="flex gap-1">
-		<textarea
-			placeholder={title}
-			id={name}
-			oninput={handleInput}
-			value={stringValue}
-			class="textarea-bordered textarea h-10 max-h-32 min-h-10 w-full textarea-xs"
-			class:textarea-error={invalid}
-			class:textarea-warning={warn}
-			{...rest}
-		></textarea>
-	</div>
+	<textarea
+		placeholder={title}
+		id={name}
+		oninput={handleInput}
+		value={stringValue}
+		class="textarea-bordered textarea mt-1 h-10 max-h-32 min-h-10 w-full textarea-xs"
+		class:textarea-error={invalid}
+		class:textarea-warning={warn}
+		{...rest}
+	></textarea>
 </div>

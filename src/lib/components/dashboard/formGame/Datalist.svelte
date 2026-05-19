@@ -1,5 +1,5 @@
 <script lang="ts">
-	import AddTraductorModal from '$lib/components/AddTraductorModal.svelte';
+	import AddTraductorModal from '$lib/components/dashboard/AddTraductorModal.svelte';
 	import type { Translator } from '$lib/server/db/schema';
 	import type { FormGameType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
@@ -52,7 +52,7 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<label for={name}>{title}:</label>
+	<label for={name} class="mb-1">{title}:</label>
 	<div class="flex gap-1">
 		<input
 			placeholder={title}

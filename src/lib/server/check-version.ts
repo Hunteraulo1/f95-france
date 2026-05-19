@@ -9,8 +9,9 @@ import {
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
+import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
+import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 type CheckerResponse = {
@@ -77,7 +78,7 @@ async function fetchF95Versions(
 				versions.set(threadId, version);
 			}
 		} catch (error) {
-			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout le cron.
+			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout l'auto-check.
 			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
 			issues.push({
 				stage: 'checker_fetch',
@@ -102,7 +103,7 @@ type AutoCheckResult = {
  * Champs `game` que l’auto-check peut écraser après un scrape F95.
  * `name` et `description` sont exclus : le titre du fil peut changer sans refléter la fiche locale.
  */
-function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
+function autoCheckGamePatchFromScrape(scraped: ScrapedThreadGame) {
 	return {
 		tags: scraped.tags ?? undefined,
 		image: scraped.image ?? undefined,
@@ -110,13 +111,16 @@ function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
 	};
 }
 
-/** Cron / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
+/** API POST /api/cron/check-version / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
 export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	const issues: AutoCheckIssue[] = [];
 	const rows = await db
 		.select({
 			gameId: table.game.id,
 			gameName: table.game.name,
+			gameImage: table.game.image,
+			gameLink: table.game.link,
+			gameWebsite: table.game.website,
 			gameVersion: table.game.gameVersion,
 			threadId: table.game.threadId,
 			translationId: table.gameTranslation.id,
@@ -145,15 +149,30 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 
 	const uniqueByGame = new Map<
 		string,
-		{ gameId: string; gameName: string; gameVersion: string | null; threadId: number }
+		{
+			gameId: string;
+			gameName: string;
+			gameImage: string | null;
+			gameLink: string | null;
+			gameVersion: string | null;
+			threadId: number;
+			threadUrl: string | null;
+		}
 	>();
 	for (const row of rows) {
 		if (row.threadId == null) continue;
 		uniqueByGame.set(row.gameId, {
 			gameId: row.gameId,
 			gameName: row.gameName,
+			gameImage: row.gameImage,
+			gameLink: row.gameLink,
 			gameVersion: row.gameVersion,
-			threadId: row.threadId
+			threadId: row.threadId,
+			threadUrl: resolveGameThreadLink({
+				link: row.gameLink,
+				threadId: row.threadId,
+				website: row.gameWebsite
+			})
 		});
 	}
 
@@ -165,8 +184,11 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	type UniqueGameRow = {
 		gameId: string;
 		gameName: string;
+		gameImage: string | null;
+		gameLink: string | null;
 		gameVersion: string | null;
 		threadId: number;
+		threadUrl: string | null;
 	};
 
 	/** Bump si la fiche jeu OU une traduction auto-check a une « version jeu » (ligne) différente du checker. */
@@ -205,9 +227,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				.where(inArray(table.translator.id, staffIds))
 		: [];
 	const staffMentionById = new Map(
-		staffRows.map(
-			(s) => [s.id, s.discordId?.trim() ? `<@${s.discordId.trim()}>` : undefined] as const
-		)
+		staffRows.map((s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const)
 	);
 
 	const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
@@ -235,6 +255,9 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 
 		try {
 			const scraped = await scrapeF95Thread(game.threadId);
+			if (scraped.image?.trim()) {
+				game.gameImage = scraped.image.trim();
+			}
 			await db
 				.update(table.game)
 				.set(autoCheckGamePatchFromScrape(scraped))
@@ -273,6 +296,8 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			}
 			translatorWebhookLines.push({
 				gameName: game.gameName,
+				gameImage: game.gameImage,
+				gameLink: game.threadUrl,
 				translationName: t.translationName,
 				oldVersion: game.gameVersion ?? '—',
 				newVersion,
@@ -281,6 +306,8 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			if (t.proofreaderId) {
 				proofreaderWebhookLines.push({
 					gameName: game.gameName,
+					gameImage: game.gameImage,
+					gameLink: game.threadUrl,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion ?? '—',
 					newVersion,
@@ -296,6 +323,8 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			try {
 				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
 					gameName: game.gameName,
+					gameImage: game.gameImage,
+					gameLink: game.threadUrl,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion,
 					newVersion

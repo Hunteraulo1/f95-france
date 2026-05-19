@@ -6,9 +6,12 @@ import {
 	persistSubmissionPayload,
 	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
+import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
+
+const PAGE_SIZE = 20;
 
 const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
 	if (typeof value !== 'string') return null;
@@ -102,6 +105,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			? statusFilterRaw
 			: 'pending';
 
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
 	try {
 		const whereCondition =
 			statusFilter === 'all'
@@ -111,7 +117,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						eq(table.submission.status, statusFilter)
 					);
 
-		// Charger les soumissions de l'utilisateur connecté avec le filtre
+		const [countRow] = await db
+			.select({ count: sql<number>`count(*)`.as('count') })
+			.from(table.submission)
+			.where(whereCondition);
+
+		const totalCount = Number(countRow?.count ?? 0);
+		const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+		const page = Math.min(requestedPage, totalPages);
+		const offset = (page - 1) * PAGE_SIZE;
+
+		// Charger les soumissions de l'utilisateur connecté avec le filtre (paginé)
 		const submissions = await db
 			.select({
 				id: table.submission.id,
@@ -133,13 +149,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					version: table.gameTranslation.version,
 					tversion: table.gameTranslation.tversion,
 					translationName: table.gameTranslation.translationName
+				},
+				user: {
+					id: table.user.id,
+					username: table.user.username,
+					avatar: table.user.avatar
+				},
+				openedByUser: {
+					id: submissionOpenedByUser.id,
+					username: submissionOpenedByUser.username,
+					avatar: submissionOpenedByUser.avatar
 				}
 			})
 			.from(table.submission)
+			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
+			.leftJoin(
+				submissionOpenedByUser,
+				eq(submissionOpenedByUser.id, table.submission.openedByUserId)
+			)
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)
-			.orderBy(desc(table.submission.createdAt));
+			.orderBy(desc(table.submission.createdAt))
+			.limit(PAGE_SIZE)
+			.offset(offset);
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(
@@ -290,6 +323,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			submissions: submissionsWithData,
 			statusFilter,
+			page,
+			pageSize: PAGE_SIZE,
+			totalCount,
+			totalPages,
 			pendingCount,
 			openedCount,
 			toFixCount,
@@ -303,6 +340,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			submissions: [],
 			statusFilter,
+			page: 1,
+			pageSize: PAGE_SIZE,
+			totalCount: 0,
+			totalPages: 1,
 			pendingCount: 0,
 			openedCount: 0,
 			toFixCount: 0,

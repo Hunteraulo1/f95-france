@@ -97,47 +97,6 @@
 								</span>
 							</label>
 						</div>
-						<div class="divider">Auto-check F95</div>
-						<div class="form-control w-full">
-							<label for="autoCheckIntervalMinutes" class="label">
-								<span class="label-text text-wrap">Délai entre 2 vérifications (minutes)</span>
-							</label>
-							<input
-								id="autoCheckIntervalMinutes"
-								name="autoCheckIntervalMinutes"
-								type="number"
-								min="5"
-								max="1440"
-								step="1"
-								class="input-bordered input w-full"
-								value={String(data.config?.autoCheckIntervalMinutes ?? 360)}
-							/>
-							<label class="label" for="autoCheckIntervalMinutes">
-								<span class="label-text-alt text-base-content/60">
-									Entre 5 min et 24h. Le cron passe régulièrement, mais n'exécute l'auto-check que
-									si ce délai est écoulé.
-								</span>
-							</label>
-						</div>
-						<div class="form-control w-full">
-							<label for="autoCheckReferenceTime" class="label">
-								<span class="label-text text-wrap">Heure de référence (HH:mm)</span>
-							</label>
-							<input
-								id="autoCheckReferenceTime"
-								name="autoCheckReferenceTime"
-								type="time"
-								step="60"
-								class="input-bordered input w-full"
-								value={data.config?.autoCheckReferenceTime || '00:00'}
-							/>
-							<label class="label" for="autoCheckReferenceTime">
-								<span class="label-text-alt text-base-content/60">
-									L'intervalle démarre à partir de cette heure (ex: 03:00 avec 360 min => 03:00,
-									09:00, 15:00, 21:00).
-								</span>
-							</label>
-						</div>
 						<div class="divider">Secrets (variables d’environnement)</div>
 						<div class="alert text-sm alert-info">
 							<div class="flex flex-col gap-2 text-wrap">
@@ -149,8 +108,7 @@
 								<ul class="list-inside list-disc text-xs opacity-90">
 									<li><code>DISCORD_WEBHOOK_UPDATES</code></li>
 									<li><code>DISCORD_WEBHOOK_TRANSLATORS</code></li>
-									<li><code>DISCORD_WEBHOOK_PROOFREADERS</code> (canal admin)</li>
-									<li><code>DISCORD_WEBHOOK_LOGS</code> (optionnel)</li>
+									<li><code>DISCORD_WEBHOOK_ADMIN</code></li>
 									<li><code>GOOGLE_API_KEY</code> (si pas uniquement OAuth)</li>
 									<li>
 										<code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code>
@@ -164,7 +122,7 @@
 									</li>
 								</ul>
 								<p class="text-xs opacity-80">
-									Source actuelle (indicatif) — Updates :
+									Variables d’environnement (indicatif) — Updates :
 									<span class="badge badge-ghost badge-sm"
 										>{data.config?.secretSources.discordUpdates}</span
 									>
@@ -174,7 +132,7 @@
 									>
 									· Admin :
 									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.discordProofreaders}</span
+										>{data.config?.secretSources.discordAdmin}</span
 									>
 									· Clé API :
 									<span class="badge badge-ghost badge-sm"
@@ -184,6 +142,7 @@
 									<span class="badge badge-ghost badge-sm"
 										>{data.config?.secretSources.googleOAuthClient}</span
 									>
+									<span class="ml-1 opacity-70">(env = défini, none = absent)</span>
 								</p>
 								<p class="text-xs opacity-90">
 									<span class="font-medium">Google OAuth (session)</span> —
@@ -257,8 +216,9 @@
 										>GOOGLE_OAUTH_CLIENT_ID</code
 									>
 									et
-									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis (variables d’environnement
-									sur Vercel ou valeurs encore présentes en base). Redéploie après les avoir ajoutées.
+									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis sur le
+									serveur (Vercel ou <code class="text-xs">.env</code>). Redéployez après les avoir
+									ajoutées.
 								</span>
 							</div>
 						{/if}

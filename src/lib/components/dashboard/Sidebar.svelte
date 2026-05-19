@@ -20,9 +20,13 @@
 
 	interface Props {
 		pendingSubmissionsCount?: number;
+		hasLinkedTranslator?: boolean;
 	}
 
-	let { pendingSubmissionsCount = 0 }: Pick<Props, 'pendingSubmissionsCount'> = $props();
+	let {
+		pendingSubmissionsCount = 0,
+		hasLinkedTranslator = false
+	}: Pick<Props, 'pendingSubmissionsCount' | 'hasLinkedTranslator'> = $props();
 	let isDrawerOpen = $state(true);
 
 	const isDesktop = () => window.matchMedia('(min-width: 840px)').matches;
@@ -44,9 +48,12 @@
 		};
 	});
 
+	/** Après le clic : la navigation du `<a>` doit s'exécuter avant de muter l'état du drawer, sinon Svelte peut re-render et retirer le lien avant l'action par défaut (navigation SPA bloquée, F5 « répare »). */
 	function closeDrawerOnMobile() {
 		if (!isDesktop()) {
-			isDrawerOpen = false;
+			setTimeout(() => {
+				isDrawerOpen = false;
+			}, 0);
 		}
 	}
 
@@ -57,6 +64,7 @@
 		roles: checkRoleType[];
 		badge?: number;
 		badgeKey?: boolean;
+		requiresLinkedTranslator?: boolean;
 	}
 
 	interface NavItemSplit {
@@ -81,7 +89,8 @@
 			label: 'Mes traductions',
 			href: '/dashboard/my-translations',
 			icon: BookType,
-			roles: ['translator', 'admin', 'superadmin']
+			roles: ['translator', 'admin', 'superadmin'],
+			requiresLinkedTranslator: true
 		},
 		{
 			label: 'Mes soumissions',
@@ -165,6 +174,11 @@
 			roles: ['all']
 		}
 	];
+
+	const canShowNavItem = (item: NavItem) => {
+		if (item.requiresLinkedTranslator && !hasLinkedTranslator) return false;
+		return true;
+	};
 </script>
 
 <input id="my-drawer-4" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
@@ -180,7 +194,7 @@
 				{#if $user && checkRole(item.roles)}
 					{#if 'split' in item}
 						<div class="divider"></div>
-					{:else}
+					{:else if canShowNavItem(item)}
 						{@const IconComponent = item.icon}
 
 						<li>

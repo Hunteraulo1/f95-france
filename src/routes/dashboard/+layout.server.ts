@@ -1,21 +1,9 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
-	// Retourner les données utilisateur complètes pour le layout
-	console.log(
-		'🔍 Layout Server - locals.user:',
-		locals.user
-			? {
-					id: locals.user.id,
-					username: locals.user.username,
-					email: locals.user.email
-				}
-			: 'null'
-	);
-
 	let pendingSubmissionsCount = 0;
 
 	// Charger le nombre de soumissions en attente
@@ -46,8 +34,29 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	let hasLinkedTranslator = false;
+
+	if (locals.user) {
+		try {
+			const [linkedTranslator] = await db
+				.select({ id: table.translator.id })
+				.from(table.translator)
+				.where(eq(table.translator.userId, locals.user.id))
+				.limit(1);
+
+			hasLinkedTranslator = Boolean(linkedTranslator);
+
+			if (locals.user.role === 'superadmin') {
+				hasLinkedTranslator = true;
+			}
+		} catch (error) {
+			console.warn('Erreur lors du chargement du traducteur lié:', error);
+		}
+	}
+
 	return {
 		user: locals.user,
-		pendingSubmissionsCount
+		pendingSubmissionsCount,
+		hasLinkedTranslator
 	};
 };

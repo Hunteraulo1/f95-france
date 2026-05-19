@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ScrapedF95Game } from '$lib/server/scrape/f95';
+	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
@@ -395,7 +395,7 @@
 				throw new Error(payload.error ?? 'Erreur lors du rafraîchissement');
 			}
 
-			const data = payload.data as ScrapedF95Game;
+			const data = payload.data as ScrapedThreadGame;
 
 			if (!data.version) {
 				newToast({
@@ -960,9 +960,15 @@
 									<li>
 										{submissionTypeLabel(sub.type, sub.translationId)}
 										{#if sub.userId === currentUser?.id}
-											· <span class="font-semibold">par toi</span>
+											· <span class="text-base-content/70">créée par</span>
+											<span class="font-semibold">toi</span>
 										{:else if sub.username}
-											· par <span class="font-semibold">{sub.username}</span>
+											· <span class="text-base-content/70">créée par</span>
+											<span class="font-semibold">{sub.username}</span>
+										{/if}
+										{#if sub.openedByUsername}
+											· <span class="text-base-content/70">ouverte par</span>
+											<span class="font-semibold">{sub.openedByUsername}</span>
 										{/if}
 										· {formatSubmissionDate(sub.createdAt)}
 										{#if sub.status === 'opened'}
@@ -989,22 +995,31 @@
 				<div class="flex flex-col gap-6 lg:flex-row">
 					<!-- Image du jeu -->
 					<div class="flex shrink-0 flex-col gap-4">
-						<button
-							type="button"
-							class="rounded-lg transition outline-none hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-primary/60"
-							aria-label="Ouvrir l'image du jeu en grand"
-							onclick={() => {
-								showGameImagePopup = true;
-							}}
-						>
-							<img
-								src={gameCoverSrc}
-								alt={game.name}
-								class="h-64 w-48 rounded-lg object-cover shadow-md"
-								loading="lazy"
-								referrerpolicy="no-referrer"
-							/>
-						</button>
+						{#if gameCoverSrc}
+							<button
+								type="button"
+								class="rounded-lg transition outline-none hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-primary/60"
+								aria-label="Ouvrir l'image du jeu en grand"
+								onclick={() => {
+									showGameImagePopup = true;
+								}}
+							>
+								<img
+									src={gameCoverSrc}
+									alt={game.name}
+									class="h-64 w-48 rounded-lg object-cover shadow-md"
+									loading="lazy"
+									referrerpolicy="no-referrer"
+								/>
+							</button>
+						{:else if game.image?.trim()}
+							<div
+								class="flex h-64 w-48 items-center justify-center rounded-lg bg-base-200 px-3 text-center text-xs text-base-content/60"
+								title="URL de page galerie (ex. ibb.co/…) — utiliser le lien direct i.ibb.co"
+							>
+								Vignette indisponible (lien galerie)
+							</div>
+						{/if}
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
 							<SquarePen size={16} />
 							Modifier le jeu
@@ -1285,7 +1300,7 @@
 <!-- Modal d'ajout de traduction -->
 {#if showAddTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box max-h-[90vh] max-w-5xl overflow-y-auto">
+		<div class="modal-box max-h-[90vh] max-w-7xl overflow-y-auto">
 			<div class="mb-5">
 				<h3 class="text-lg font-bold">Ajouter une traduction</h3>
 				<p class="mt-1 text-sm text-base-content/70">
@@ -1604,7 +1619,7 @@
 			{/if}
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 pt-4 backdrop-blur"
+				class="sticky right-0 bottom-0 left-0 modal-action mt-6 w-full border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button type="button" class="btn btn-ghost" onclick={closeAddTranslationModal}>
 					Annuler
@@ -1618,7 +1633,7 @@
 <!-- Modal de modification de traduction -->
 {#if showEditTranslationModal}
 	<div class="modal-open modal">
-		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
+		<div class="modal-box max-h-[90vh] max-w-7xl p-0">
 			<div class="p-8">
 				<h3 class="text-lg font-bold">Modifier la traduction</h3>
 				<p class="mt-1 text-sm text-base-content/70">
@@ -1955,7 +1970,7 @@
 			</div>
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
+				class="sticky right-0 bottom-0 left-0 modal-action mt-6 w-full border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button class="btn btn-ghost" onclick={closeEditTranslationModal}>Annuler</button>
 				<button class="btn btn-primary" onclick={editTranslation}>Modifier</button>
@@ -1967,7 +1982,7 @@
 <!-- Modal de modification du jeu -->
 {#if showEditGameModal}
 	<div class="modal-open modal">
-		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
+		<div class="modal-box max-h-[90vh] max-w-7xl p-0">
 			<div class="p-8">
 				<h3 class="text-lg font-bold">Modifier le jeu</h3>
 				<p class="mt-1 text-sm text-base-content/70">
@@ -2184,7 +2199,7 @@
 			</div>
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
+				class="sticky right-0 bottom-0 left-0 modal-action mt-6 w-full border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button class="btn btn-ghost" onclick={closeEditGameModal}>Annuler</button>
 				<button class="btn btn-primary" onclick={editGame}>Modifier</button>
@@ -2283,7 +2298,7 @@
 			</div>
 
 			<div
-				class="sticky bottom-0 modal-action mt-6 border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
+				class="sticky right-0 bottom-0 left-0 modal-action mt-6 w-full border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button class="btn btn-ghost" onclick={cancelDeleteGame}>Annuler</button>
 				<button class="btn btn-error" onclick={deleteGame}>Supprimer</button>

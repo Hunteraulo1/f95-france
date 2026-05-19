@@ -35,23 +35,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 			{
 				id: 'main',
 				appName: 'F95 France',
-				discordWebhookUpdates: null,
-				discordWebhookLogs: null,
-				discordWebhookTranslators: null,
-				discordWebhookProofreaders: null,
 				googleSpreadsheetId: null,
-				googleApiKey: null,
-				googleOAuthClientId: null,
-				googleOAuthClientSecret: null,
 				googleOAuthAccessToken: null,
 				googleOAuthRefreshToken: null,
 				googleOAuthTokenExpiry: null,
-				autoCheckIntervalMinutes: 360,
-				autoCheckReferenceTime: '00:00',
 				autoCheckLastRunAt: null,
 				maintenanceMode: false,
 				updatedAt: new Date()
-			} as Config
+			} satisfies Config
 		];
 	}
 
@@ -70,22 +61,10 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const appName = formData.get('appName') as string;
 		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
-		const autoCheckIntervalMinutesRaw = formData.get('autoCheckIntervalMinutes') as string;
-		const autoCheckReferenceTimeRaw = (formData.get('autoCheckReferenceTime') as string) ?? '00:00';
 		const maintenanceMode = formData.get('maintenanceMode') === 'on';
 
 		if (!appName) {
 			return fail(400, { message: "Le nom de l'application est requis" });
-		}
-		const parsedInterval = Number.parseInt((autoCheckIntervalMinutesRaw ?? '').trim(), 10);
-		if (!Number.isFinite(parsedInterval) || parsedInterval < 5 || parsedInterval > 1440) {
-			return fail(400, {
-				message: "L'intervalle d'auto-check doit être un nombre entre 5 et 1440 minutes"
-			});
-		}
-		const referenceTime = autoCheckReferenceTimeRaw.trim();
-		if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(referenceTime)) {
-			return fail(400, { message: "L'heure de référence doit être au format HH:mm" });
 		}
 
 		try {
@@ -111,8 +90,6 @@ export const actions: Actions = {
 							googleSpreadsheetId,
 							currentConfig.googleSpreadsheetId
 						),
-						autoCheckIntervalMinutes: parsedInterval,
-						autoCheckReferenceTime: referenceTime,
 						maintenanceMode
 					})
 					.where(eq(table.config.id, 'main'));
@@ -121,8 +98,6 @@ export const actions: Actions = {
 					id: 'main',
 					appName,
 					googleSpreadsheetId: googleSpreadsheetId || null,
-					autoCheckIntervalMinutes: parsedInterval,
-					autoCheckReferenceTime: referenceTime,
 					maintenanceMode
 				});
 			}

@@ -135,7 +135,11 @@
 		/** @type {ReturnType<typeof setInterval> | null} */
 		let fallbackInterval = null;
 
-		if (typeof EventSource !== 'undefined') {
+		// En dev, EventSource + HMR/rebuild Vite = connexions coupées et bruit console navigateur
+		// (« connexion interrompue pendant le chargement »). Le polling suffit localement.
+		const usePollingOnly = import.meta.env.DEV;
+
+		if (!usePollingOnly && typeof EventSource !== 'undefined') {
 			notificationsSource = new EventSource('/api/notifications/stream');
 			notificationsSource.addEventListener('unread_count', (event) => {
 				try {
@@ -147,12 +151,10 @@
 					// no-op
 				}
 			});
-			// Ne pas appeler close() ici : le navigateur reconnecte tout seul après une coupure
-			// réseau, un redémarrage du serveur de dev ou un timeout proxy. Fermer sur chaque
-			// onerror cassait définitivement le flux jusqu’au rechargement de la page.
+			// Ne pas appeler close() sur onerror : le navigateur reconnecte après coupure réseau / timeout.
 		} else {
-			// Fallback legacy navigateur: polling léger uniquement si connecté.
-			fallbackInterval = setInterval(fetchNotifications, 30000);
+			const intervalMs = usePollingOnly ? 20000 : 30000;
+			fallbackInterval = setInterval(fetchNotifications, intervalMs);
 		}
 
 		return () => {

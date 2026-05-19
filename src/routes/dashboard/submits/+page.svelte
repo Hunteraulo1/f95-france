@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
 	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
 	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
+	import { user } from '$lib/stores';
 	import { getStatusFilterLabel } from '$lib/utils/submissions';
+	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -24,6 +27,17 @@
 		}
 	});
 
+	const buildQuery = (overrides: { status?: string; page?: number }) => {
+		const status = overrides.status ?? data.statusFilter;
+		const page = overrides.page ?? data.page;
+		const params = [`status=${encodeURIComponent(status)}`];
+		if (page > 1) params.push(`page=${page}`);
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { status?: string; page?: number }) =>
+		resolve(`/dashboard/submits${buildQuery(overrides)}` as '/dashboard/submits');
+
 	const openSubmissionModal = async (submission: (typeof data.submissions)[0]) => {
 		// Passer en "opened" une seule fois (pending) pour bloquer les modifications côté utilisateur.
 		if (submission.status === 'pending') {
@@ -35,7 +49,18 @@
 					body: formData,
 					credentials: 'include'
 				});
-				selectedSubmission = { ...submission, status: 'opened' };
+				const currentUser = get(user);
+				selectedSubmission = {
+					...submission,
+					status: 'opened',
+					openedByUser: currentUser
+						? {
+								id: currentUser.id,
+								username: currentUser.username,
+								avatar: currentUser.avatar
+							}
+						: submission.openedByUser
+				};
 				return;
 			} catch {
 				// En cas d'erreur, on ouvre quand même la modal.
@@ -46,10 +71,11 @@
 
 	const closeSubmissionModal = async () => {
 		selectedSubmission = null;
-		const q = new URLSearchParams({ status: data.statusFilter });
-		// La query ne doit pas être passée dans resolve() (sinon elle est traitée comme segment de chemin).
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-		await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+		await goto(`${resolve('/dashboard/submits')}${buildQuery({})}`, {
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const updateFilter = async (status: string) => {
@@ -59,10 +85,12 @@
 
 		isFilterChanging = true;
 		pendingFilter = status;
-		const q = new URLSearchParams({ status });
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-			await goto(`${resolve('/dashboard/submits')}?${q}`, { noScroll: true, invalidateAll: true });
+			await goto(`${resolve('/dashboard/submits')}${buildQuery({ status, page: 1 })}`, {
+				noScroll: true,
+				invalidateAll: true
+			});
 		} catch {
 			pendingFilter = null;
 			isFilterChanging = false;
@@ -75,7 +103,7 @@
 		<h2 class="text-lg font-semibold text-base-content">
 			Soumissions
 			<span class="text-sm font-normal opacity-70">
-				({data.submissions.length} soumission{data.submissions.length > 1 ? 's' : ''})
+				({data.totalCount} soumission{data.totalCount > 1 ? 's' : ''})
 			</span>
 		</h2>
 	</div>
@@ -92,7 +120,7 @@
 		onFilterChange={updateFilter}
 	/>
 
-	{#if data.submissions.length === 0}
+	{#if data.totalCount === 0}
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:p-8">
 				<p class="text-center text-lg opacity-70">
@@ -110,6 +138,14 @@
 				<SubmissionCard {submission} onClick={() => openSubmissionModal(submission)} />
 			{/each}
 		</div>
+
+		<Pagination
+			currentPage={data.page}
+			totalPages={data.totalPages}
+			totalCount={data.totalCount}
+			hrefForPage={(p) => buildHref({ page: p })}
+			countLabel="soumission"
+		/>
 	{/if}
 </section>
 

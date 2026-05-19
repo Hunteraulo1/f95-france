@@ -97,10 +97,10 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<div class="mb-1 flex items-center gap-2">
+	<div class="flex items-center gap-2">
 		<label for={name}>{title}:</label>
 		{#if name === 'translationName'}
-			<div class="tooltip tooltip-right" data-tip="Exemple : Saison 1">
+			<div class="tooltip tooltip-right mt-1" data-tip="Exemple : Saison 1">
 				<button
 					type="button"
 					class="btn btn-circle btn-ghost btn-xs"
@@ -112,7 +112,7 @@
 		{/if}
 		{#if name === 'version'}
 			<div
-				class="tooltip tooltip-right"
+				class="tooltip tooltip-right mt-1"
 				data-tip="Version de référence = dernière version sortie du jeu pour la branche concernée (pas la version de la traduction). Exemple : s'il y a une saison 1 et une saison 2, pour une traduction de la saison 1, indique la dernière version de la saison 1."
 			>
 				<button
@@ -140,13 +140,13 @@
 				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}
 			{type}
-			class={type === 'checkbox' ? 'checkbox checkbox-lg' : 'input-bordered input w-full'}
+			class={type === 'checkbox' ? 'checkbox checkbox-lg' : 'input-bordered input mt-1 w-full'}
 			class:input-error={invalid}
 			class:input-warning={warn}
 		/>
 		{#if name === 'tversion'}
 			<button
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.gameVersion}
 				class:btn-primary={!!game.gameVersion}
 				disabled={tversionLocked}
@@ -160,7 +160,7 @@
 			</button>
 		{:else if name === 'version'}
 			<button
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.gameVersion}
 				class:btn-primary={!!game.gameVersion}
 				type="button"

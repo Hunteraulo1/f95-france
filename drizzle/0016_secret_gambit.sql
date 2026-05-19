@@ -1,0 +1,2 @@
+ALTER TABLE "submission" ADD COLUMN "opened_by_user_id" varchar(255);--> statement-breakpoint
+ALTER TABLE "submission" ADD CONSTRAINT "submission_opened_by_user_id_user_id_fk" FOREIGN KEY ("opened_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;

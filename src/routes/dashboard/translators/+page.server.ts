@@ -2,8 +2,10 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
+
+const PAGE_SIZE = 20;
 
 const DISCORD_AVATAR_API_BASE_URL = 'https://avatar-cyan.vercel.app/api';
 
@@ -35,14 +37,40 @@ async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: st
 	}
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		throw new Error('Non authentifié');
 	}
 
 	const isAdmin = locals.user.role === 'admin' || locals.user.role === 'superadmin';
 
-	const translatorQuery = db
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
+	const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
+
+	const conditions = [];
+	if (!isAdmin) {
+		conditions.push(eq(table.translator.userId, locals.user.id));
+	}
+	if (q) {
+		const pattern = `%${escapeIlike(q)}%`;
+		conditions.push(
+			or(ilike(table.translator.name, pattern), ilike(table.translator.discordId, pattern))
+		);
+	}
+	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.translator);
+	const [countRow] = await (whereClause ? countBase.where(whereClause) : countBase);
+
+	const totalCount = Number(countRow?.count ?? 0);
+	const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+	const page = Math.min(requestedPage, totalPages);
+	const offset = (page - 1) * PAGE_SIZE;
+
+	const listBase = db
 		.select({
 			id: table.translator.id,
 			name: table.translator.name,
@@ -52,24 +80,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			readCount: table.translator.readCount,
 			userId: table.translator.userId
 		})
-		.from(table.translator)
-		.orderBy(table.translator.name);
-
-	const translators = isAdmin
-		? await translatorQuery
-		: await db
-				.select({
-					id: table.translator.id,
-					name: table.translator.name,
-					discordId: table.translator.discordId,
-					pages: table.translator.pages,
-					tradCount: table.translator.tradCount,
-					readCount: table.translator.readCount,
-					userId: table.translator.userId
-				})
-				.from(table.translator)
-				.where(eq(table.translator.userId, locals.user.id))
-				.orderBy(table.translator.name);
+		.from(table.translator);
+	const translators = await (whereClause ? listBase.where(whereClause) : listBase)
+		.orderBy(table.translator.name)
+		.limit(PAGE_SIZE)
+		.offset(offset);
 
 	const users = isAdmin
 		? await db
@@ -91,7 +106,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		translator: translatorsWithPages,
 		users,
 		isAdmin,
-		currentUserId: locals.user.id
+		currentUserId: locals.user.id,
+		q,
+		page,
+		pageSize: PAGE_SIZE,
+		totalCount,
+		totalPages
 	};
 };
 

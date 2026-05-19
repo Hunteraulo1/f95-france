@@ -7,14 +7,7 @@ import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 function getConfiguredOrigins(): URL[] {
-	const raw = [
-		env.APP_ORIGINS?.trim(),
-		env.APP_ORIGIN?.trim(),
-		publicEnv.PUBLIC_APP_ORIGIN?.trim(),
-		'https://f95-france.vercel.app',
-		'https://f95-france-git-dev-hunteraulo1s-projects.vercel.app',
-		'http://localhost:5173'
-	]
+	const raw = [env.APP_ORIGINS?.trim(), env.APP_ORIGIN?.trim(), publicEnv.PUBLIC_APP_ORIGIN?.trim()]
 		.filter(Boolean)
 		.join(',');
 
@@ -40,7 +33,7 @@ function getConfiguredOrigins(): URL[] {
 
 function resolveOrigin(requestUrl?: string): URL {
 	const configured = getConfiguredOrigins();
-	const fallback = configured[0] ?? new URL('https://f95-france.vercel.app');
+	const fallback = configured[0] ?? new URL('https://f95france.site');
 
 	if (!requestUrl) return fallback;
 	try {
