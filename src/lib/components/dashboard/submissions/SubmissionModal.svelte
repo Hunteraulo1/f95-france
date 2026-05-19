@@ -541,7 +541,7 @@
 
 			<div class="md flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 				<!-- Section des détails (scrollable) -->
-				<div class="flex-1 overflow-y-auto pr-2">
+				<div class="md flex-1 overflow-y-auto pr-2 md:border-r md:border-base-300 md:pr-0">
 					{#if submission.type === 'translator_pages'}
 						{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
 						{@const currentPages = submission.currentTranslator?.pages ?? []}
@@ -888,7 +888,7 @@
 											} ${field.options?.isUrl ? 'break-all' : ''} ${
 												field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
 											}`.trim()}
-											<div class="border-b border-base-300 pb-3 last:border-b-0 last:pb-0">
+											<div class="border-b border-base-300 pr-1 pb-3 last:border-b-0 last:pb-0">
 												<div class="mb-2 font-semibold">{field.label}:</div>
 												<div class={classes}>{formattedValue}</div>
 											</div>
@@ -899,7 +899,7 @@
 						{/if}
 					{/if}
 				</div>
-				<div class="h-full">
+				<div class="h-full md:pl-2">
 					{#if canEditSubmissionDataAllowed}
 						<div>
 							{#if submissionEditError}
