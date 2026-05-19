@@ -2,10 +2,10 @@ import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import type { ScrapedThreadGame } from './types';
 import {
-  parseTitleTokens,
-  parseVersionFromTitle,
-  SCRAPE_USER_AGENT,
-  unescapeHtml
+	parseTitleTokens,
+	parseVersionFromTitle,
+	SCRAPE_USER_AGENT,
+	unescapeHtml
 } from './xenforo';
 
 const THREAD_URL = 'https://lewdcorner.com/threads';
@@ -138,8 +138,7 @@ export const scrapeLcThread = async (threadId: number): Promise<ScrapedThreadGam
 	const name =
 		parseNameFromHeadline(jsonLd?.headline) ??
 		unescapeHtml(rawPageTitle.replace(/\s*\[.*$/, '') || null);
-	const version =
-		parseVersionFromCustomField(document) ?? parseVersionFromTitle(rawPageTitle);
+	const version = parseVersionFromCustomField(document) ?? parseVersionFromTitle(rawPageTitle);
 	const tags = jsonLd?.keywords?.trim() || null;
 	const description =
 		parseDescriptionFromLdText(jsonLd?.text) ??

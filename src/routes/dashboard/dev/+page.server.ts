@@ -1,16 +1,16 @@
 import { env } from '$env/dynamic/private';
 import {
-  getEffectiveConfig,
-  getEffectiveConfigFromRow,
-  toConfigClientSafe
+	getEffectiveConfig,
+	getEffectiveConfigFromRow,
+	toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-  deleteGameTranslationsFromGoogleSheet,
-  syncDbToSpreadsheetBulk
+	deleteGameTranslationsFromGoogleSheet,
+	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
 import { eq, inArray, sql } from 'drizzle-orm';

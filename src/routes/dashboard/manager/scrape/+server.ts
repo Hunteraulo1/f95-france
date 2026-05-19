@@ -19,9 +19,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (website !== 'f95z' && website !== 'lc') {
-			return json({ error: "Le scraping n'est disponible que pour F95Zone et LewdCorner" }, {
-				status: 400
-			});
+			return json(
+				{ error: "Le scraping n'est disponible que pour F95Zone et LewdCorner" },
+				{
+					status: 400
+				}
+			);
 		}
 
 		const numericThreadId = Number(threadId);

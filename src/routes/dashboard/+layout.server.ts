@@ -45,10 +45,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				.limit(1);
 
 			hasLinkedTranslator = Boolean(linkedTranslator);
-      
-      if (locals.user.role === 'superadmin') {
-        hasLinkedTranslator = true;
-      }
+
+			if (locals.user.role === 'superadmin') {
+				hasLinkedTranslator = true;
+			}
 		} catch (error) {
 			console.warn('Erreur lors du chargement du traducteur lié:', error);
 		}
