@@ -1,28 +1,47 @@
 import {
-	countActiveApiKeysForOwner,
-	createApiKey,
-	getSessionApiKeyRowForOwner,
-	listApiKeysForOwner,
-	revokeApiKeyForActor,
-	USER_API_KEY_DEFAULT_RPM,
-	USER_API_KEY_MAX_COUNT
+  countActiveApiKeysForOwner,
+  createApiKey,
+  getSessionApiKeyRowForOwner,
+  listApiKeysForOwner,
+  revokeApiKeyForActor,
+  USER_API_KEY_DEFAULT_RPM,
+  USER_API_KEY_MAX_COUNT
 } from '$lib/server/api-keys';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+const REVOKED_FILTERS = ['all', 'revoked', 'not_revoked'] as const;
+type RevokedFilter = (typeof REVOKED_FILTERS)[number];
+
+function parseRevokedFilter(value: string | null): RevokedFilter {
+	if (value && REVOKED_FILTERS.includes(value as RevokedFilter)) {
+		return value as RevokedFilter;
+	}
+	return 'not_revoked';
+}
+
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		throw redirect(302, '/dashboard/login');
 	}
 
+	const revokedFilter = parseRevokedFilter(url.searchParams.get('revoked'));
+
 	try {
-		const [keys, activeCount, sessionKey] = await Promise.all([
+		const [allKeys, activeCount, sessionKey] = await Promise.all([
 			listApiKeysForOwner(locals.user.id),
 			countActiveApiKeysForOwner(locals.user.id),
 			getSessionApiKeyRowForOwner(locals.user.id)
 		]);
+		const keys =
+			revokedFilter === 'all'
+				? allKeys
+				: revokedFilter === 'revoked'
+					? allKeys.filter((key) => key.revokedAt)
+					: allKeys.filter((key) => !key.revokedAt);
 		return {
 			keys,
+			revokedFilter,
 			sessionKey,
 			activeCount,
 			limits: {

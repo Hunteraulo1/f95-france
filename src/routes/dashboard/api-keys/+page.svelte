@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
@@ -16,7 +17,23 @@
 		newKey ? `${'•'.repeat(Math.max(8, newKey.length - 4))}${newKey.slice(-4)}` : ''
 	);
 
+	const buildQuery = (overrides: { revoked?: string } = {}) => {
+		const revoked = overrides.revoked ?? data.revokedFilter;
+		const params =
+			revoked && revoked !== 'not_revoked' ? [`revoked=${encodeURIComponent(revoked)}`] : [];
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { revoked?: string } = {}) =>
+		resolve(`/dashboard/api-keys${buildQuery(overrides)}` as '/dashboard/api-keys');
+
 	const formatCount = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
+
+	const revokedOptions = [
+		{ value: 'all', label: 'Toutes' },
+		{ value: 'revoked', label: 'Révoquées' },
+		{ value: 'not_revoked', label: 'Non révoquées' }
+	] as const;
 </script>
 
 <svelte:head>
@@ -138,6 +155,19 @@
 		</div>
 	</div>
 
+	<div class="join ml-auto w-fit rounded-sm border border-base-300 bg-base-100">
+		{#each revokedOptions as option (option.value)}
+			<a
+				class="btn join-item text-nowrap btn-sm {data.revokedFilter === option.value
+					? 'bg-base-300 btn-outline btn-primary'
+					: 'btn-ghost'}"
+				href={buildHref({ revoked: option.value })}
+			>
+				{option.label}
+			</a>
+		{/each}
+	</div>
+
 	<div class="card w-full overflow-x-auto rounded-lg border border-base-300 bg-base-100 shadow-xl">
 		<table class="table card-body gap-6 table-zebra sm:py-8">
 			<thead>
@@ -150,7 +180,7 @@
 					<th>Expire</th>
 					<th>Dernière utilisation</th>
 					<th>État</th>
-					<th></th>
+					<th>Actions</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -219,7 +249,7 @@
 								<span class="badge badge-success">Active</span>
 							{/if}
 						</td>
-						<td>
+						<td class="min-w-48">
 							{#if !row.revokedAt}
 								<div class="flex items-center gap-2">
 									<form method="post" action="?/rotate" use:enhance>
