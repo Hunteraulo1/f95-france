@@ -34,8 +34,29 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	let hasLinkedTranslator = false;
+
+	if (locals.user) {
+		try {
+			const [linkedTranslator] = await db
+				.select({ id: table.translator.id })
+				.from(table.translator)
+				.where(eq(table.translator.userId, locals.user.id))
+				.limit(1);
+
+			hasLinkedTranslator = Boolean(linkedTranslator);
+      
+      if (locals.user.role === 'superadmin') {
+        hasLinkedTranslator = true;
+      }
+		} catch (error) {
+			console.warn('Erreur lors du chargement du traducteur lié:', error);
+		}
+	}
+
 	return {
 		user: locals.user,
-		pendingSubmissionsCount
+		pendingSubmissionsCount,
+		hasLinkedTranslator
 	};
 };

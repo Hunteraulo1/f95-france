@@ -22,7 +22,10 @@
 		{@render children?.()}
 	</div>
 	{#if data.user}
-		<Sidebar pendingSubmissionsCount={data.pendingSubmissionsCount} />
+		<Sidebar
+			pendingSubmissionsCount={data.pendingSubmissionsCount}
+			hasLinkedTranslator={data.hasLinkedTranslator}
+		/>
 	{/if}
 </main>
 
