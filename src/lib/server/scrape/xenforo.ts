@@ -75,10 +75,10 @@ export const parseTitleTokens = (
 
 /** Extrait une version du titre XenForo (ex. [v1.0], v1.0). */
 export const parseVersionFromTitle = (rawTitle: string): string | null => {
-	const bracket = rawTitle.match(/\[\s*v?([0-9][\w.\-]*)\s*\]/i);
+	const bracket = rawTitle.match(/\[\s*v?([0-9][\w.-]*)\s*\]/i);
 	if (bracket?.[1]) return bracket[1];
 
-	const inline = rawTitle.match(/\bv([0-9][\w.\-]*)\b/i);
+	const inline = rawTitle.match(/\bv([0-9][\w.-]*)\b/i);
 	if (inline?.[1]) return inline[1];
 
 	return null;

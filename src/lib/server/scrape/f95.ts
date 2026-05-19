@@ -1,47 +1,22 @@
-import type { GameEngineType } from '$lib/types';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
+import type { ScrapedThreadGame } from './types';
+import { parseTitleTokens, SCRAPE_USER_AGENT, unescapeHtml } from './xenforo';
+
+export type { ScrapedThreadGame as ScrapedF95Game } from './types';
 
 interface F95CheckerResponse {
 	status: 'ok' | 'error' | string;
 	msg: Record<string, string> | string;
 }
 
-export interface ScrapedF95Game {
-	name: string | null;
-	version: string | null;
-	description: string | null;
-	status: string | null;
-	tags: string | null;
-	gameType: GameEngineType | null;
-	image: string | null;
-}
-
-const USER_AGENT =
-	'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) f95-france/1.0';
 const THREAD_URL = 'https://f95zone.to/threads';
 const CHECKER_URL = 'https://f95zone.to/sam/checker.php?threads=';
-
-const htmlEntities: Record<string, string> = {
-	'&amp;': '&',
-	'&lt;': '<',
-	'&gt;': '>',
-	'&#39;': "'",
-	'&quot;': '"'
-};
-
-const unescapeHtml = (input: string | null | undefined): string | null => {
-	if (!input) return null;
-	return input.replace(
-		/(&amp;|&lt;|&gt;|&#39;|&quot;)/g,
-		(entity) => htmlEntities[entity] ?? entity
-	);
-};
 
 const fetchF95Version = async (threadId: string): Promise<string | null> => {
 	const response = await fetch(`${CHECKER_URL}${threadId}`, {
 		headers: {
-			'User-Agent': USER_AGENT
+			'User-Agent': SCRAPE_USER_AGENT
 		}
 	});
 
@@ -56,68 +31,14 @@ const fetchF95Version = async (threadId: string): Promise<string | null> => {
 	return json.msg[threadId] ?? null;
 };
 
-const scrapeGetTitle = (
-	tokens: string[]
-): { status: string | null; gameType: GameEngineType | null } => {
-	let status: string | null = null;
-	let gameType: GameEngineType | null = null;
-
-	for (const token of tokens) {
-		if (!status || status === 'EN COURS') {
-			switch (token) {
-				case 'Abandoned':
-					status = 'ABANDONNÉ';
-					break;
-				case 'Completed':
-					status = 'TERMINÉ';
-					break;
-				default:
-					status = 'EN COURS';
-					break;
-			}
-		}
-
-		switch (token) {
-			case "Ren'Py":
-				gameType = 'renpy';
-				break;
-			case 'RPGM':
-				gameType = 'rpgm';
-				break;
-			case 'Unity':
-				gameType = 'unity';
-				break;
-			case 'Unreal Engine':
-				gameType = 'unreal';
-				break;
-			case 'Flash':
-				gameType = 'flash';
-				break;
-			case 'HTML':
-				gameType = 'html';
-				break;
-			case 'QSP':
-				gameType = 'qsp';
-				break;
-			case 'Others':
-				gameType = 'other';
-				break;
-			default:
-				break;
-		}
-	}
-
-	return { status, gameType };
-};
-
-export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game> => {
+export const scrapeF95Thread = async (threadId: number): Promise<ScrapedThreadGame> => {
 	if (!threadId || Number.isNaN(threadId)) {
 		throw new Error('threadId invalide');
 	}
 
 	const response = await fetch(`${THREAD_URL}/${threadId}`, {
 		headers: {
-			'User-Agent': USER_AGENT
+			'User-Agent': SCRAPE_USER_AGENT
 		}
 	});
 
@@ -137,7 +58,7 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedF95Game>
 	const title = document.title ?? '';
 	const titleMatch = title.match(/([\w\\']+)(?=\s-)/gi) ?? undefined;
 	const { status, gameType } = titleMatch
-		? scrapeGetTitle(titleMatch)
+		? parseTitleTokens(titleMatch)
 		: { status: null, gameType: null };
 
 	const description =

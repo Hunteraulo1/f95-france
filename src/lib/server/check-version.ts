@@ -1,15 +1,15 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+  sendDiscordWebhookProofreadersVersionBumps,
+  sendDiscordWebhookTranslatorsVersionBumps,
+  sendDiscordWebhookUpdatesAutoCheckVersionBump,
+  type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { scrapeF95Thread, type ScrapedF95Game } from '$lib/server/scrape/f95';
+import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -102,7 +102,7 @@ type AutoCheckResult = {
  * Champs `game` que l’auto-check peut écraser après un scrape F95.
  * `name` et `description` sont exclus : le titre du fil peut changer sans refléter la fiche locale.
  */
-function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
+function autoCheckGamePatchFromScrape(scraped: ScrapedThreadGame) {
 	return {
 		tags: scraped.tags ?? undefined,
 		image: scraped.image ?? undefined,

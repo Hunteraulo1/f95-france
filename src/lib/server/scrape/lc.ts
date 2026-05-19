@@ -1,7 +1,12 @@
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import type { ScrapedThreadGame } from './types';
-import { parseTitleTokens, SCRAPE_USER_AGENT, unescapeHtml } from './xenforo';
+import {
+  parseTitleTokens,
+  parseVersionFromTitle,
+  SCRAPE_USER_AGENT,
+  unescapeHtml
+} from './xenforo';
 
 const THREAD_URL = 'https://lewdcorner.com/threads';
 
@@ -44,7 +49,7 @@ const parseThreadIdFromLcUrl = (url: string | undefined): number | null => {
 /** Aligné sur l’extension : texte avant le premier `[` dans le headline JSON-LD. */
 const parseNameFromHeadline = (headline: string | undefined): string | null => {
 	if (!headline?.trim()) return null;
-	const name = headline.match(/([^\[]*)/)?.[1]?.trim();
+	const name = headline.match(/([^[]*)/)?.[1]?.trim();
 	return name ? unescapeHtml(name) : null;
 };
 
@@ -84,7 +89,8 @@ const parseStatusAndTypeFromTitle = (
 	if (titleTokens.length > 0) {
 		return parseTitleTokens(titleTokens);
 	}
-	const pTitle = document.querySelector('.p-title-value')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+	const pTitle =
+		document.querySelector('.p-title-value')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 	const pTokens = pTitle.match(/([\w'’]+)(?=\s|$)/gi) ?? [];
 	return parseTitleTokens(pTokens);
 };
@@ -127,17 +133,13 @@ export const scrapeLcThread = async (threadId: number): Promise<ScrapedThreadGam
 	}
 
 	const { status, gameType } = parseStatusAndTypeFromTitle(document);
+	const rawPageTitle =
+		document.querySelector('.p-title-value')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 	const name =
 		parseNameFromHeadline(jsonLd?.headline) ??
-		unescapeHtml(
-			document
-				.querySelector('.p-title-value')
-				?.textContent?.replace(/\s+/g, ' ')
-				.trim()
-				.replace(/\s*\[.*$/, '') || null
-		);
-
-	const version = parseVersionFromCustomField(document);
+		unescapeHtml(rawPageTitle.replace(/\s*\[.*$/, '') || null);
+	const version =
+		parseVersionFromCustomField(document) ?? parseVersionFromTitle(rawPageTitle);
 	const tags = jsonLd?.keywords?.trim() || null;
 	const description =
 		parseDescriptionFromLdText(jsonLd?.text) ??

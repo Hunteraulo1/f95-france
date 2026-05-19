@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ScrapedF95Game } from '$lib/server/scrape/f95';
+	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
@@ -395,7 +395,7 @@
 				throw new Error(payload.error ?? 'Erreur lors du rafraîchissement');
 			}
 
-			const data = payload.data as ScrapedF95Game;
+			const data = payload.data as ScrapedThreadGame;
 
 			if (!data.version) {
 				newToast({

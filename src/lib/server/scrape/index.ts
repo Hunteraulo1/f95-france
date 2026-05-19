@@ -4,7 +4,7 @@ import type { ScrapedThreadGame } from './types';
 
 export { scrapeF95Thread } from './f95';
 export { scrapeLcThread } from './lc';
-export type { ScrapedThreadGame } from './types';
+export type { ScrapedThreadGame as ScrapedF95Game, ScrapedThreadGame } from './types';
 
 export type ScrapeWebsite = 'f95z' | 'lc';
 
