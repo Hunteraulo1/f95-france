@@ -35,6 +35,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ success: true, data: scrapedData });
 	} catch (error) {
 		console.warn('Erreur lors du scraping:', error);
-		return json({ error: 'Erreur serveur lors du scraping' }, { status: 500 });
+		const detail = error instanceof Error ? error.message : '';
+		const notFound = /\b404\b/.test(detail) || /introuvable/i.test(detail);
+		return json(
+			{
+				success: false,
+				error: notFound
+					? 'Thread introuvable sur le forum'
+					: 'Forum temporairement inaccessible ou réponse invalide'
+			},
+			{ status: notFound ? 404 : 502 }
+		);
 	}
 };

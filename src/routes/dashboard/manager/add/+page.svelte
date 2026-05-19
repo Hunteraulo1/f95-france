@@ -78,8 +78,13 @@
 	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
 	/** LC : état du scrape image (idle = pas encore tenté sur ce thread). */
 	let lcScrapeStatus = $state<'idle' | 'ok' | 'no_image' | 'failed'>('idle');
+	let f95ScrapeFailed = $state(false);
+
+	const F95_SCRAPE_FAIL_MESSAGE =
+		'Impossible de récupérer ce thread F95Zone : le jeu n’existe peut-être pas (vérifiez l’ID) ou le forum est temporairement indisponible. Réessayez dans quelques minutes.';
 
 	const lcScrapeFailed = $derived(game.website === 'lc' && lcScrapeStatus === 'failed');
+	const f95ScrapeFailedActive = $derived(game.website === 'f95z' && f95ScrapeFailed);
 	const lcImageLocked = $derived(
 		game.website === 'lc' && (lcScrapeStatus === 'failed' || lcScrapeStatus === 'no_image')
 	);
@@ -201,8 +206,14 @@
 	$effect(() => {
 		if (game.website !== 'lc') {
 			lcScrapeStatus = 'idle';
-			return;
 		}
+		if (game.website !== 'f95z') {
+			f95ScrapeFailed = false;
+		}
+	});
+
+	$effect(() => {
+		if (game.website !== 'lc') return;
 		if (lcImageLocked) {
 			game.image = '';
 		}
@@ -269,10 +280,16 @@
 		}
 
 		const skipInfosStep =
-			game.website === 'f95z' || (game.website === 'lc' && lcScrapeStatus !== 'failed');
+			(game.website === 'f95z' && !f95ScrapeFailed) ||
+			(game.website === 'lc' && lcScrapeStatus !== 'failed');
 
 		if (targetStep === 2 && skipInfosStep) {
 			targetStep += amount;
+		}
+
+		// Scrape F95 en échec : rester sur l’étape Thread pour corriger l’ID ou réessayer.
+		if (amount > 0 && game.website === 'f95z' && f95ScrapeFailed && previousStep === 1) {
+			targetStep = 1;
 		}
 
 		// Scrape LC en échec : depuis Traduction, « Précédent » doit revenir aux infos (pas au thread).
@@ -350,6 +367,9 @@
 			if (website === 'lc') {
 				lcScrapeStatus = scrapedImage ? 'ok' : 'no_image';
 			}
+			if (website === 'f95z') {
+				f95ScrapeFailed = false;
+			}
 
 			game = {
 				...game,
@@ -395,9 +415,12 @@
 				});
 				return false;
 			}
+			f95ScrapeFailed = true;
+			scrapeBaseline = null;
+			savedId = null;
 			newToast({
 				alertType: 'error',
-				message: 'Impossible de récupérer les informations du jeu'
+				message: F95_SCRAPE_FAIL_MESSAGE
 			});
 			return false;
 		} finally {
@@ -452,6 +475,9 @@
 					lcScrapeStatus = 'idle';
 					game.image = '';
 				}
+				if (game.website === 'f95z') {
+					f95ScrapeFailed = false;
+				}
 			}
 			return;
 		}
@@ -459,6 +485,9 @@
 		if (game.website === 'lc' && tid !== savedId) {
 			lcScrapeStatus = 'idle';
 			game.image = '';
+		}
+		if (game.website === 'f95z' && tid !== savedId) {
+			f95ScrapeFailed = false;
 		}
 
 		if (savedId === tid) return;
@@ -813,14 +842,13 @@
 			onsubmit={handleSubmit}
 			autocomplete="off"
 		>
-			{#if scraping}
-				<div class="alert flex items-center gap-2 alert-soft text-sm alert-info">
-					<LoaderCircle />
-					Chargement des données en cours
-				</div>
-			{/if}
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
+			{/if}
+			{#if f95ScrapeFailedActive}
+				<div class="alert text-sm alert-error" role="alert">
+					<span>{F95_SCRAPE_FAIL_MESSAGE}</span>
+				</div>
 			{/if}
 			{#if lcScrapeFailed}
 				<div class="alert text-sm alert-warning" role="status">
@@ -853,12 +881,20 @@
 				</div>
 			{/if}
 
-			<div
-				class="flex w-full flex-wrap items-center justify-between gap-3 rounded-box bg-base-200/60 px-4 py-3"
-			>
-				<div class="text-sm text-base-content/80">
-					<span class="font-medium">Section active :</span>
-					{stepLabels[step]}
+			<div class="flex h-11 flex-col gap-2 md:flex-row">
+				{#if scraping}
+					<div class="alert flex items-center alert-soft text-sm text-nowrap alert-info">
+						<LoaderCircle class="animate-spin" />
+						Chargement des données en cours
+					</div>
+				{/if}
+				<div
+					class="flex w-full flex-wrap items-center justify-between rounded-box bg-base-200/60 px-4 py-3"
+				>
+					<div class="text-sm text-base-content/80">
+						<span class="font-medium">Section active :</span>
+						{stepLabels[step]}
+					</div>
 				</div>
 			</div>
 
