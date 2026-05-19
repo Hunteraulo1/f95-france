@@ -11,6 +11,7 @@ import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
+import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 type CheckerResponse = {
@@ -118,6 +119,8 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			gameId: table.game.id,
 			gameName: table.game.name,
 			gameImage: table.game.image,
+			gameLink: table.game.link,
+			gameWebsite: table.game.website,
 			gameVersion: table.game.gameVersion,
 			threadId: table.game.threadId,
 			translationId: table.gameTranslation.id,
@@ -150,8 +153,10 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			gameId: string;
 			gameName: string;
 			gameImage: string | null;
+			gameLink: string | null;
 			gameVersion: string | null;
 			threadId: number;
+			threadUrl: string | null;
 		}
 	>();
 	for (const row of rows) {
@@ -160,8 +165,14 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			gameId: row.gameId,
 			gameName: row.gameName,
 			gameImage: row.gameImage,
+			gameLink: row.gameLink,
 			gameVersion: row.gameVersion,
-			threadId: row.threadId
+			threadId: row.threadId,
+			threadUrl: resolveGameThreadLink({
+				link: row.gameLink,
+				threadId: row.threadId,
+				website: row.gameWebsite
+			})
 		});
 	}
 
@@ -174,8 +185,10 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		gameId: string;
 		gameName: string;
 		gameImage: string | null;
+		gameLink: string | null;
 		gameVersion: string | null;
 		threadId: number;
+		threadUrl: string | null;
 	};
 
 	/** Bump si la fiche jeu OU une traduction auto-check a une « version jeu » (ligne) différente du checker. */
@@ -284,6 +297,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			translatorWebhookLines.push({
 				gameName: game.gameName,
 				gameImage: game.gameImage,
+				gameLink: game.threadUrl,
 				translationName: t.translationName,
 				oldVersion: game.gameVersion ?? '—',
 				newVersion,
@@ -293,6 +307,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				proofreaderWebhookLines.push({
 					gameName: game.gameName,
 					gameImage: game.gameImage,
+					gameLink: game.threadUrl,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion ?? '—',
 					newVersion,
@@ -309,6 +324,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
 					gameName: game.gameName,
 					gameImage: game.gameImage,
+					gameLink: game.threadUrl,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion,
 					newVersion

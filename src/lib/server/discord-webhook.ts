@@ -4,6 +4,7 @@ import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
 import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -94,15 +95,42 @@ type TrRow = {
 type GameRow = {
 	name: string;
 	image: string;
+	link: string | null;
+	threadId: number | null;
+	website: string;
 };
 
-async function fetchGameNameAndImage(gameId: string): Promise<GameRow | null> {
+function gameLinkEmbedField(gameLink: string | null | undefined) {
+	if (!gameLink) return null;
+	return {
+		name: 'Lien du jeu',
+		value: `[Ouvrir le fil](${gameLink})`,
+		inline: false as const
+	};
+}
+
+async function fetchGameForWebhook(gameId: string): Promise<GameRow | null> {
 	const rows = await db
-		.select({ name: table.game.name, image: table.game.image })
+		.select({
+			name: table.game.name,
+			image: table.game.image,
+			link: table.game.link,
+			threadId: table.game.threadId,
+			website: table.game.website
+		})
 		.from(table.game)
 		.where(eq(table.game.id, gameId))
 		.limit(1);
 	return rows[0] ?? null;
+}
+
+function resolveGameLinkFromRow(game: GameRow | null | undefined): string | null {
+	if (!game) return null;
+	return resolveGameThreadLink({
+		link: game.link,
+		threadId: game.threadId,
+		website: game.website
+	});
 }
 
 /**
@@ -176,12 +204,26 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	const originalTranslation = data.originalTranslation as TrRow | undefined;
 	const originalTranslations = data.originalTranslations as TrRow[] | undefined;
 
-	let resolvedGame: GameRow | null = game ?? originalGame ?? null;
-	if (!resolvedGame && gameId) {
-		resolvedGame = await fetchGameNameAndImage(gameId);
+	const partial = (game ?? originalGame) as Partial<GameRow> | undefined;
+	let resolvedGame: GameRow | null = gameId ? await fetchGameForWebhook(gameId) : null;
+	if (!resolvedGame && partial?.name) {
+		resolvedGame = {
+			name: partial.name,
+			image: typeof partial.image === 'string' ? partial.image : '',
+			link: partial.link ?? null,
+			threadId: partial.threadId ?? null,
+			website: partial.website ?? 'other'
+		};
+	} else if (resolvedGame && partial?.name) {
+		resolvedGame = {
+			...resolvedGame,
+			name: partial.name,
+			image: partial.image ?? resolvedGame.image
+		};
 	}
 
 	const gameName = resolvedGame?.name ?? '—';
+	const gameLink = resolveGameLinkFromRow(resolvedGame);
 	/** Image principale (sous les champs) — plus lisible que la vignette `thumbnail`. */
 	const coverUrl = embedImageUrl(resolvedGame?.image);
 
@@ -190,10 +232,13 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	const fields: { name: string; value: string; inline?: boolean }[] = [
 		{ name: 'Nom du jeu', value: trimFieldValue(gameName), inline: false }
 	];
+	const linkField = gameLinkEmbedField(gameLink);
+	if (linkField) fields.push(linkField);
 
 	let title = 'Soumission acceptée';
 	let color = 0x2ecc71;
 	let embed: DiscordEmbed = { title, color, fields, footer: baseFooter };
+	if (gameLink) embed.url = gameLink;
 	if (coverUrl) embed.image = { url: coverUrl };
 
 	const st = args.submissionType;
@@ -258,11 +303,15 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 
 		// Suppression traduction : JSON sans originalGame → jeu encore en base
 		if (originalTranslation && gameId && !originalGame) {
-			const g = await fetchGameNameAndImage(gameId);
+			const g = await fetchGameForWebhook(gameId);
 			if (g) {
+				const gLink = resolveGameLinkFromRow(g);
 				fields[0] = { name: 'Nom du jeu', value: trimFieldValue(g.name), inline: false };
+				const linkFieldDelete = gameLinkEmbedField(gLink);
+				if (linkFieldDelete) fields.splice(1, 0, linkFieldDelete);
 				const u = embedImageUrl(g.image);
 				if (u) embed.image = { url: u };
+				if (gLink) embed.url = gLink;
 			}
 			fields.push(
 				{
@@ -277,9 +326,13 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 				}
 			);
 		} else if (originalGame) {
+			const ogLink = resolveGameLinkFromRow(originalGame as GameRow);
 			fields[0] = { name: 'Nom du jeu', value: trimFieldValue(originalGame.name), inline: false };
+			const ogLinkField = gameLinkEmbedField(ogLink);
+			if (ogLinkField) fields.splice(1, 0, ogLinkField);
 			const u = embedImageUrl(originalGame.image);
 			if (u) embed.image = { url: u };
+			if (ogLink) embed.url = ogLink;
 
 			if (originalTranslations && originalTranslations.length > 0) {
 				const lines = originalTranslations.map(
@@ -325,6 +378,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 export type TranslatorVersionBumpLine = {
 	gameName: string;
 	gameImage?: string | null;
+	gameLink?: string | null;
 	translationName?: string | null;
 	oldVersion: string;
 	newVersion: string;
@@ -340,16 +394,19 @@ function buildAutoCheckVersionBumpEmbed(
 	const tr = line.translationName?.trim();
 	const ver = `${trimFieldValue(line.oldVersion || '—', 400)} → ${trimFieldValue(line.newVersion, 400)}`;
 	const versionValue = line.discordMention ? `${ver}\n${line.discordMention}` : ver;
+	const linkField = gameLinkEmbedField(line.gameLink);
 	const embed: DiscordEmbed = {
 		title: trimFieldValue(line.gameName, 256),
 		color: 0x3498db,
 		fields: [
+			...(linkField ? [linkField] : []),
 			...(tr ? [{ name: 'Traduction', value: trimFieldValue(tr, 256), inline: false }] : []),
 			{ name: 'Version', value: trimFieldValue(versionValue, 1024), inline: false }
 		],
 		author: { name: 'Auto-Check' },
 		footer: { text: footerText }
 	};
+	if (line.gameLink) embed.url = line.gameLink;
 	const coverUrl = embedImageUrl(line.gameImage);
 	if (coverUrl) embed.image = { url: coverUrl };
 	return embed;
@@ -392,6 +449,7 @@ export async function sendDiscordWebhookProofreadersVersionBumps(
 export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	gameName: string;
 	gameImage?: string | null;
+	gameLink?: string | null;
 	translationName?: string | null;
 	oldVersion?: string | null;
 	newVersion: string;
@@ -400,6 +458,7 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	if (!updates) return;
 
 	const trLabel = args.translationName?.trim() ? ` - ${args.translationName.trim()}` : '';
+	const linkField = gameLinkEmbedField(args.gameLink);
 	const embed: DiscordEmbed = {
 		title: 'Traduction mise à jour',
 		color: 0x58b9ff,
@@ -409,6 +468,7 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 				value: `${trimFieldValue(args.gameName, 200)}${trimFieldValue(trLabel, 200)}`,
 				inline: false
 			},
+			...(linkField ? [linkField] : []),
 			{
 				name: 'Version',
 				value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
@@ -417,6 +477,7 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 		],
 		footer: { text: 'Auto-Check · F95 France' }
 	};
+	if (args.gameLink) embed.url = args.gameLink;
 	const coverUrl = embedImageUrl(args.gameImage);
 	if (coverUrl) embed.image = { url: coverUrl };
 	await executeDiscordWebhook(updates, { embeds: [embed] });
@@ -447,7 +508,7 @@ export async function sendDiscordWebhookAdminNewSubmission(args: {
 	let gameImage = typeof args.gameImage === 'string' ? args.gameImage.trim() : '';
 
 	if ((!gameName || !gameImage) && args.gameId) {
-		const game = await fetchGameNameAndImage(args.gameId);
+		const game = await fetchGameForWebhook(args.gameId);
 		if (game) {
 			if (!gameName) gameName = game.name;
 			if (!gameImage) gameImage = game.image;
