@@ -1,10 +1,10 @@
 import {
-    EXTENSION_ONLY_API_ROUTE,
-    consumeSessionApiKeyRateForUser,
-    extractApiKeyFromRequest,
-    getUserForApiKeyOwner,
-    jsonApiKeyGuardResponse,
-    validateApiKeyRequest
+  EXTENSION_ONLY_API_ROUTE,
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -162,6 +162,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/robot.txt' ||
 		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
@@ -253,6 +254,7 @@ export const handleError = async ({
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/robot.txt' ||
 		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 

@@ -1,8 +1,8 @@
 import { db } from '$lib/server/db';
 import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
 import {
-	isExtensionApiCallerAllowed,
-	resolveUserForExtensionApiOriginGate
+    isExtensionApiCallerAllowed,
+    resolveUserForExtensionApiOriginGate
 } from '$lib/server/extension-api-access';
 import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
 import { json } from '@sveltejs/kit';
@@ -179,8 +179,8 @@ const firstPageLink = (raw: string | null | undefined): string | null => {
 const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À JOUR' =>
 	(v ?? '').trim().toLowerCase() === 'adding' ? 'AJOUT DE JEU' : 'MISE À JOUR';
 
-export const GET: RequestHandler = async ({ url, request, locals }) => {
-	const gateUser = await resolveUserForExtensionApiOriginGate(locals);
+export const GET: RequestHandler = async ({ url, request, locals, cookies }) => {
+	const gateUser = await resolveUserForExtensionApiOriginGate(locals, cookies);
 	if (!isExtensionApiCallerAllowed(request, gateUser)) {
 		return json(
 			{ error: "Accès interdit à l'API extension." },
