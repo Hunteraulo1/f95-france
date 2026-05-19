@@ -51,6 +51,9 @@
 			translatorId?: string;
 			pages?: Array<{ name?: string; link?: string }>;
 			originalPages?: Array<{ name?: string; link?: string }>;
+			reason?: string;
+			gameId?: string;
+			translationId?: string;
 		} | null;
 		currentGame?: GameSubmissionJson | null;
 		currentTranslation?: GameTranslation | null;
@@ -163,8 +166,14 @@
 		}
 	});
 
+	const isDeleteSubmission = $derived(submission?.type === 'delete');
+
 	const submissionDataJsonHidden = $derived(() => {
 		if (!submission) return '';
+
+		if (submission.type === 'delete') {
+			return '';
+		}
 
 		if (submission.type === 'translator_pages') {
 			return JSON.stringify({
@@ -245,12 +254,21 @@
 				submission?.status === 'rejected')
 		)
 	);
-	/** Admin : en attente ou ouverte, avant acceptation / refus. */
+	/** Admin : en attente ou ouverte, sauf soumissions de suppression. */
 	const canEditSubmissionDataAsAdmin = $derived(
-		Boolean(canEditStatus && (submission?.status === 'pending' || submission?.status === 'opened'))
+		Boolean(
+			canEditStatus &&
+			!isDeleteSubmission &&
+			(submission?.status === 'pending' || submission?.status === 'opened')
+		)
 	);
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
+	);
+	/** Formulaire admin (statut) sans champs de données éditables (ex. suppression). */
+	const canAdminManageStatusOnly = $derived(Boolean(canEditStatus && isDeleteSubmission));
+	const showAdminSubmissionForm = $derived(
+		canEditSubmissionDataAllowed || canAdminManageStatusOnly
 	);
 	const isOpenedReadOnlyForUser = $derived(
 		Boolean(!canEditStatus && submission?.status === 'opened')
@@ -454,6 +472,12 @@
 							{:else}
 								Détails de la nouvelle traduction
 							{/if}
+						{:else if submission.type === 'delete'}
+							{#if submission.translationId}
+								Demande de suppression (traduction)
+							{:else}
+								Demande de suppression (jeu)
+							{/if}
 						{:else}
 							Détails du nouveau jeu
 						{/if}
@@ -561,7 +585,42 @@
 			<div class="md flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 				<!-- Section des détails (scrollable) -->
 				<div class="md flex-1 overflow-y-auto pr-2 md:border-r md:border-base-300 md:pr-0">
-					{#if submission.type === 'translator_pages'}
+					{#if submission.type === 'delete'}
+						<div class="space-y-4">
+							<div role="alert" class="alert alert-error">
+								<span>Cette soumission demande une suppression définitive après acceptation.</span>
+							</div>
+							{#if submission.translationId && (submission.currentTranslation || submission.parsedData?.translation)}
+								<div class="rounded-box border border-base-300 p-4">
+									<h4 class="text-md mb-2 font-semibold">Traduction concernée</h4>
+									<p class="text-sm">
+										{submission.currentTranslation?.translationName ??
+											submission.parsedData?.translation?.translationName ??
+											'—'}
+										{#if submission.currentTranslation?.tversion ?? submission.parsedData?.translation?.tversion}
+											<span class="opacity-70">
+												(v{submission.currentTranslation?.tversion ??
+													submission.parsedData?.translation?.tversion})
+											</span>
+										{/if}
+									</p>
+								</div>
+							{:else if submission.currentGame || submission.parsedData?.game}
+								<div class="rounded-box border border-base-300 p-4">
+									<h4 class="text-md mb-2 font-semibold">Jeu concerné</h4>
+									<p class="text-sm font-medium">
+										{submission.currentGame?.name ?? submission.parsedData?.game?.name ?? '—'}
+									</p>
+								</div>
+							{/if}
+							{#if submission.parsedData?.reason}
+								<div class="rounded-box border border-base-300 p-4">
+									<h4 class="text-md mb-2 font-semibold">Raison de la suppression</h4>
+									<p class="text-sm whitespace-pre-wrap">{submission.parsedData.reason}</p>
+								</div>
+							{/if}
+						</div>
+					{:else if submission.type === 'translator_pages'}
 						{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
 						{@const currentPages = submission.currentTranslator?.pages ?? []}
 						{@const fallbackOldPages = normalizeTranslatorPages(
@@ -919,7 +978,7 @@
 					{/if}
 				</div>
 				<div class="h-full md:pl-2">
-					{#if canEditSubmissionDataAllowed}
+					{#if showAdminSubmissionForm}
 						<div>
 							{#if submissionEditError}
 								<div class="mb-4 alert alert-error">
@@ -932,6 +991,14 @@
 										Cette soumission n’est plus modifiable : un listeur est actuellement en train de
 										la traiter.
 									</span>
+								</div>
+							{/if}
+							{#if canAdminManageStatusOnly}
+								<div class="mb-4 alert alert-info">
+									<span
+										>Les données de suppression ne sont pas modifiables — validez ou refusez la
+										demande.</span
+									>
 								</div>
 							{/if}
 							<form
@@ -968,8 +1035,10 @@
 								}}
 							>
 								<input type="hidden" name="submissionId" value={submission.id} />
-								<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
-								<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+								{#if canEditSubmissionDataAllowed}
+									<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
+									<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
+								{/if}
 								{#if canEditStatus}
 									<input type="hidden" name="status" value={selectedStatus} />
 									<input type="hidden" name="adminNotes" value={adminNotesText} />
@@ -1027,7 +1096,7 @@
 												+ Ajouter une ligne
 											</button>
 										</div>
-									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages'}
+									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages' && submission.type !== 'delete'}
 										<div class="mt-2 space-y-4">
 											<h5 class="text-md font-semibold">Détails du jeu</h5>
 											<div class="grid gap-4 md:grid-cols-2">

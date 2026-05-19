@@ -407,6 +407,11 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.type === 'delete') {
+			return fail(400, {
+				message: 'Les soumissions de suppression ne peuvent pas être modifiées.'
+			});
+		}
 		if (
 			sub.status !== 'pending' &&
 			sub.status !== 'opened' &&
@@ -490,7 +495,7 @@ export const actions: Actions = {
 
 			// Si des modifications de payload sont présentes dans le formulaire,
 			// les persister avant la mise à jour du statut (enregistrement unique).
-			if (submissionDataJson !== null) {
+			if (submissionDataJson !== null && submissionType !== 'delete') {
 				let parsed = parseSubmissionPayloadJson(submissionDataJson);
 				if (!parsed.ok) {
 					const rebuiltPayload = formDataToSubmissionPayload(submissionType, formData);

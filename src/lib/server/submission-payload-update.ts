@@ -47,6 +47,13 @@ export function validateSubmissionPayloadForType(
 		}
 		return null;
 	}
+	if (type === 'delete') {
+		const reason = String(data.reason ?? '').trim();
+		if (!reason) {
+			return 'La raison de la suppression est obligatoire';
+		}
+		return null;
+	}
 	if (type === 'translation') {
 		if (!('translation' in data) || data.translation === null) {
 			return 'Données invalides: clé `translation` manquante';
