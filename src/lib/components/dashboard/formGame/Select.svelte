@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { FormGameType } from '$lib/types';
+	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface SelectOption {
@@ -99,7 +99,7 @@
 		onchange={handleChange}
 		bind:value={game[name]}
 		disabled={ttypeLocked}
-		class="select-bordered select w-full"
+		class="select-bordered select mt-1 w-full"
 		class:select-error={invalid}
 		class:select-warning={warn}
 	>

@@ -79,6 +79,7 @@
 	/** LC : état du scrape image (idle = pas encore tenté sur ce thread). */
 	let lcScrapeStatus = $state<'idle' | 'ok' | 'no_image' | 'failed'>('idle');
 
+	const lcScrapeFailed = $derived(game.website === 'lc' && lcScrapeStatus === 'failed');
 	const lcImageLocked = $derived(
 		game.website === 'lc' && (lcScrapeStatus === 'failed' || lcScrapeStatus === 'no_image')
 	);
@@ -245,36 +246,61 @@
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
 		const previousStep = step;
+		let targetStep = step + amount;
 
-		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
 		if (
-			step === 1 &&
+			targetStep === 1 &&
 			(game.website === 'other' || (game.website === 'f95z' && skipThreadStepFromQueryParam))
-		)
-			step += amount;
-		if (step === 2 && (game.website === 'f95z' || game.website === 'lc')) step += amount;
-
-		// Clamp final après sauts conditionnels
-		if (step < 0) step = 0;
-		if (step > maxStep) step = maxStep;
-
-		// Lancer le scrape une seule fois au passage à l'étape suivante (depuis l'étape Thread).
-		const movedForwardFromThreadStep =
-			amount > 0 &&
-			previousStep === 1 &&
-			step > previousStep &&
-			(game.website === 'f95z' || game.website === 'lc');
-
-		// Compat query param: garder le déclenchement différé si nécessaire.
-		if (
-			(pendingQueryThreadIdAutoScrape &&
-				step >= 3 &&
-				(game.website === 'f95z' || game.website === 'lc')) ||
-			movedForwardFromThreadStep
 		) {
+			targetStep += amount;
+		}
+
+		const movingForwardFromThread =
+			amount > 0 && previousStep === 1 && targetStep >= 2 && supportsThreadScrape;
+		const deferredAutoScrape =
+			amount > 0 && pendingQueryThreadIdAutoScrape && targetStep >= 3 && supportsThreadScrape;
+
+		if (movingForwardFromThread || deferredAutoScrape) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
+
+		const skipInfosStep =
+			game.website === 'f95z' || (game.website === 'lc' && lcScrapeStatus !== 'failed');
+
+		if (targetStep === 2 && skipInfosStep) {
+			targetStep += amount;
+		}
+
+		// Scrape LC en échec : depuis Traduction, « Précédent » doit revenir aux infos (pas au thread).
+		if (
+			amount < 0 &&
+			game.website === 'lc' &&
+			lcScrapeStatus === 'failed' &&
+			previousStep >= 3 &&
+			targetStep === 1
+		) {
+			targetStep = 2;
+		}
+
+		// Scrape LC en échec : obliger l’étape « Infos jeu » (saisie manuelle).
+		if (
+			amount > 0 &&
+			game.website === 'lc' &&
+			lcScrapeStatus === 'failed' &&
+			previousStep < 2 &&
+			targetStep > 2
+		) {
+			targetStep = 2;
+		}
+
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
+		step = targetStep;
 	};
 
 	const requiresThreadIdForNextStep = $derived(
@@ -349,13 +375,23 @@
 			console.warn('Erreur lors du scraping', error);
 			if (website === 'lc') {
 				lcScrapeStatus = 'failed';
-				game.image = '';
+				game = {
+					...game,
+					name: '',
+					tags: '',
+					gameType: 'other',
+					image: '',
+					gameVersion: null,
+					description: null,
+					link: buildGameLinkFromThread('lc', threadId),
+					gameAutoCheck: false
+				};
 				scrapeBaseline = null;
 				savedId = threadId;
 				newToast({
 					alertType: 'warning',
 					message:
-						'Scrape LewdCorner impossible — aucune image (champ verrouillé, jeu ajoutable sans vignette).'
+						'Scrape LewdCorner impossible — renseignez les informations du jeu à l’étape suivante (sans vignette).'
 				});
 				return false;
 			}
@@ -786,7 +822,14 @@
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
-			{#if lcImageLocked}
+			{#if lcScrapeFailed}
+				<div class="alert text-sm alert-warning" role="status">
+					<span>
+						Scrape LewdCorner impossible — complétez le nom, les tags, le moteur, la version et la
+						description du jeu (étape Infos jeu). Aucune vignette ne sera ajoutée.
+					</span>
+				</div>
+			{:else if lcImageLocked}
 				<div class="alert text-sm alert-warning" role="status">
 					<span>
 						Scrape LewdCorner sans image — la vignette reste vide et ne peut pas être modifiée
@@ -890,15 +933,19 @@
 			<div
 				class="flex w-full flex-row flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-4 sm:px-4"
 			>
-				{#if step < maxStep}
+				{#if step > 0}
 					<button
 						class="btn w-full btn-outline btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(-1)}
-						disabled={step <= 0}
 					>
 						Précédent
 					</button>
+				{/if}
+				{#if game.website === 'lc' || game.website === 'f95z'}
+					<Insert bind:game />
+				{/if}
+				{#if step < maxStep}
 					<button
 						class="btn w-full btn-primary md:w-38"
 						type="button"
@@ -927,9 +974,6 @@
 							step = maxStep;
 						}}
 					/>
-				{/if}
-				{#if game.website === 'lc' || game.website === 'f95z'}
-					<Insert bind:game />
 				{/if}
 			</div>
 		</form>

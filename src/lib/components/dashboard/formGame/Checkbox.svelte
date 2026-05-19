@@ -35,7 +35,7 @@
 		class:hidden={!step || !active?.includes(step)}
 	>
 		<div class="mb-1 flex items-center gap-2">
-			<label for={name}>{title}:</label>
+			<label for={name} class="mb-1">{title}:</label>
 			{#if name === 'gameAutoCheck'}
 				<div
 					class="tooltip tooltip-right"

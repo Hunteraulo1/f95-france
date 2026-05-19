@@ -52,7 +52,7 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<label for={name}>{title}:</label>
+	<label for={name} class="mb-1">{title}:</label>
 	<div class="flex gap-1">
 		<input
 			placeholder={title}

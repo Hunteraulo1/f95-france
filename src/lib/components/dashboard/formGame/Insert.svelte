@@ -38,7 +38,7 @@
 </script>
 
 <button
-	class="btn w-full btn-info md:w-38"
+	class="btn btn-circle w-full btn-outline btn-secondary md:w-38"
 	type="button"
 	onclick={() => {
 		insertModal = true;
