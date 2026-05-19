@@ -175,21 +175,11 @@ export const translator = pgTable('translator', {
 export const config = pgTable('config', {
 	id: varchar('id', { length: 255 }).primaryKey().default('main'),
 	appName: varchar('app_name', { length: 255 }).notNull().default('F95 France'),
-	discordWebhookUpdates: text('discord_webhook_updates'),
-	discordWebhookLogs: text('discord_webhook_logs'),
-	discordWebhookTranslators: text('discord_webhook_translators'),
-	discordWebhookProofreaders: text('discord_webhook_proofreaders'),
+	/** Peut être surchargé par la variable d’environnement `GOOGLE_SPREADSHEET_ID`. */
 	googleSpreadsheetId: varchar('google_spreadsheet_id', { length: 255 }),
-	googleApiKey: text('google_api_key'),
-	googleOAuthClientId: text('google_oauth_client_id'),
-	googleOAuthClientSecret: text('google_oauth_client_secret'),
 	googleOAuthAccessToken: text('google_oauth_access_token'),
 	googleOAuthRefreshToken: text('google_oauth_refresh_token'),
 	googleOAuthTokenExpiry: timestamp('google_oauth_token_expiry'),
-	autoCheckIntervalMinutes: integer('auto_check_interval_minutes').notNull().default(360),
-	autoCheckReferenceTime: varchar('auto_check_reference_time', { length: 5 })
-		.notNull()
-		.default('00:00'),
 	autoCheckLastRunAt: timestamp('auto_check_last_run_at'),
 	maintenanceMode: boolean('maintenance_mode').notNull().default(false),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

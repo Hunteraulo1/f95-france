@@ -7,8 +7,8 @@ import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { eq } from 'drizzle-orm';
 
 /**
- * Envoi vers les webhooks Discord configurés dans {@link table.config}
- * (même esprit que l’ancien projet f95list-form : embeds JSON vers l’API Discord).
+ * Envoi vers les webhooks Discord dont les URL viennent des variables d’environnement
+ * `DISCORD_WEBHOOK_*` (voir {@link getEffectiveConfig}).
  *
  * @see https://discord.com/developers/docs/resources/webhook#execute-webhook
  */
@@ -37,7 +37,7 @@ function webhookEnvSignature(): string {
 	return [
 		privateEnv('DISCORD_WEBHOOK_UPDATES'),
 		privateEnv('DISCORD_WEBHOOK_TRANSLATORS'),
-		privateEnv('DISCORD_WEBHOOK_PROOFREADERS')
+		privateEnv('DISCORD_WEBHOOK_ADMIN')
 	].join('\0');
 }
 
@@ -51,7 +51,7 @@ async function getWebhookUrls(forceRefresh = false): Promise<WebhookUrls> {
 	const urls: WebhookUrls = {
 		updates: cfg?.discordWebhookUpdates ?? null,
 		translators: cfg?.discordWebhookTranslators ?? null,
-		admin: cfg?.discordWebhookProofreaders ?? null
+		admin: cfg?.discordWebhookAdmin ?? null
 	};
 	cached = { urls, at: now, envSig };
 	return urls;
@@ -380,7 +380,7 @@ export async function sendDiscordWebhookTranslatorsVersionBumps(
 	await sendAutoCheckVersionBumpEmbed(translators, lines, 'F95 France');
 }
 
-/** Auto-check : même embed que les traducteurs, canal relecteurs (`DISCORD_WEBHOOK_PROOFREADERS`). */
+/** Auto-check : même embed que les traducteurs, canal relecteurs (`DISCORD_WEBHOOK_ADMIN`). */
 export async function sendDiscordWebhookProofreadersVersionBumps(
 	lines: TranslatorVersionBumpLine[]
 ): Promise<void> {

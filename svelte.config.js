@@ -5,6 +5,13 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
+    typescript: {
+      config(config) {
+        config.include.push('../drizzle.config.ts');
+        // Les segments `.foo` ne sont pas couverts par `src/**/*.ts` (RFC 9116 security.txt, etc.)
+        config.include.push('../src/**/.well-known/**/*.ts');
+      }
+    },
     adapter: adapter({ runtime: 'nodejs24.x' }),
     prerender: {
       handleHttpError: 'warn'

@@ -29,27 +29,6 @@ function hasCronAuth(request: Request): boolean {
 	return safeCompareToken(bearer, secret);
 }
 
-/** Dernière occurrence UTC de l’heure de référence (minutes depuis minuit) strictement ≤ `now`. */
-function referenceEpochUtcOnOrBefore(referenceMinutes: number, now: Date): number {
-	const ref = new Date(now);
-	ref.setUTCHours(0, referenceMinutes, 0, 0);
-	let refMs = ref.getTime();
-	const nowMs = now.getTime();
-	while (refMs > nowMs) {
-		refMs -= 86_400_000;
-	}
-	return refMs;
-}
-
-function parseReferenceMinutes(reference: string | null | undefined): number {
-	const normalized = (reference ?? '00:00').trim();
-	const match = normalized.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-	if (!match) return 0;
-	const hh = Number.parseInt(match[1]!, 10);
-	const mm = Number.parseInt(match[2]!, 10);
-	return hh * 60 + mm;
-}
-
 function parseCronMaxWaitMs(raw: string | undefined): number {
 	const parsed = Number.parseInt((raw ?? '').trim(), 10);
 	// garde une marge sous 30s pour les limites de cron providers
@@ -64,37 +43,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	console.info('[cron/check-version] déclenché à', new Date().toISOString());
 
+	const startedAt = Date.now();
+
 	try {
-		const url = new URL(request.url);
-		const isForcedRun = ['1', 'true', 'yes', 'on'].includes(
-			(url.searchParams.get('force') ?? '').toLowerCase()
-		);
-		const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
-		const intervalMinutes = cfg?.autoCheckIntervalMinutes ?? 360;
-		const referenceMinutes = parseReferenceMinutes(cfg?.autoCheckReferenceTime);
-		const lastRunAt = cfg?.autoCheckLastRunAt ? new Date(cfg.autoCheckLastRunAt) : null;
-		const now = new Date();
-		const intervalMs = intervalMinutes * 60_000;
-		const referenceEpoch = referenceEpochUtcOnOrBefore(referenceMinutes, now);
-		const elapsedSinceReference = now.getTime() - referenceEpoch;
-		const slotIndex = Math.floor(elapsedSinceReference / intervalMs);
-		const currentSlotStartMs = referenceEpoch + slotIndex * intervalMs;
-		const currentSlotStart = new Date(currentSlotStartMs);
-		const nextSlotStart = new Date(currentSlotStartMs + intervalMs);
-
-		if (!isForcedRun && lastRunAt && lastRunAt.getTime() >= currentSlotStartMs) {
-			return json({
-				ok: true,
-				skipped: true,
-				reason: 'slot_already_processed',
-				intervalMinutes,
-				referenceTime: cfg?.autoCheckReferenceTime ?? '00:00',
-				currentSlotStart: currentSlotStart.toISOString(),
-				nextRunAt: nextSlotStart.toISOString(),
-				nextRunInMinutes: Math.max(1, Math.ceil((nextSlotStart.getTime() - now.getTime()) / 60_000))
-			});
-		}
-
 		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
 		const runPromise = runAutoCheckVersions();
 		const timeoutResult = await Promise.race([
@@ -128,8 +79,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					ok: true,
 					accepted: true,
 					reason: 'processing_in_background',
-					timeoutMs: maxWaitMs,
-					forced: isForcedRun
+					timeoutMs: maxWaitMs
 				},
 				{ status: 202 }
 			);
@@ -167,8 +117,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			ok: true,
 			...timeoutResult.result,
 			errorCount: timeoutResult.result.issues.length,
-			durationMs: finishedAt.getTime() - now.getTime(),
-			forced: isForcedRun
+			durationMs: finishedAt.getTime() - startedAt
 		});
 	} catch (error) {
 		console.error('[cron/check-version] erreur:', error);

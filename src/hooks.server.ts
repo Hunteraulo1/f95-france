@@ -162,6 +162,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');
@@ -252,6 +253,7 @@ export const handleError = async ({
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/robots.txt') ||
+		pathname === '/sitemap.xml' ||
 		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
 
 	const isApiRequest = pathname.startsWith('/api/');

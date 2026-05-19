@@ -1,16 +1,16 @@
 import { env } from '$env/dynamic/private';
 import {
-	getEffectiveConfig,
-	getEffectiveConfigFromRow,
-	toConfigClientSafe
+    getEffectiveConfig,
+    getEffectiveConfigFromRow,
+    toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncDbToSpreadsheetBulk
+    deleteGameTranslationsFromGoogleSheet,
+    syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 // import type { Config } from '@sveltejs/adapter-vercel';
@@ -1056,7 +1056,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const webhookStatus = {
 		updates: Boolean(effective?.discordWebhookUpdates?.trim()),
 		translators: Boolean(effective?.discordWebhookTranslators?.trim()),
-		admin: Boolean(effective?.discordWebhookProofreaders?.trim())
+		admin: Boolean(effective?.discordWebhookAdmin?.trim())
 	};
 
 	return {
@@ -1165,7 +1165,7 @@ export const actions: Actions = {
 							success: false,
 							message: 'Authentification requise',
 							details:
-								"Une clé API Google ou une authentification OAuth2 est nécessaire pour accéder aux spreadsheets via l'API. Veuillez configurer l'une des deux méthodes dans les paramètres."
+								"Une clé API Google (GOOGLE_API_KEY) ou une authentification OAuth2 est nécessaire. Définissez les variables d’environnement côté serveur."
 						};
 					}
 					return {
@@ -1182,7 +1182,7 @@ export const actions: Actions = {
 						success: false,
 						message: 'Clé API invalide',
 						details:
-							'La clé API configurée est invalide ou a expiré. Veuillez vérifier votre clé API dans les paramètres.'
+							'La clé API (GOOGLE_API_KEY) est invalide ou a expiré. Vérifiez la variable d’environnement sur le serveur.'
 					};
 				}
 
@@ -1626,14 +1626,14 @@ export const actions: Actions = {
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
 			translators: cfg?.discordWebhookTranslators,
-			admin: cfg?.discordWebhookProofreaders
+			admin: cfg?.discordWebhookAdmin
 		} as const;
 
 		const url = urlByChannel[channel]?.trim();
 		if (!url) {
 			return {
 				success: false,
-				message: 'Aucune URL enregistrée pour ce canal (paramètres).',
+				message: 'Aucune URL pour ce canal : définissez la variable d’environnement correspondante (voir /dashboard/config).',
 				details: null,
 				channel,
 				httpStatus: null

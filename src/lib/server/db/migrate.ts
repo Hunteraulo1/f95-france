@@ -9,11 +9,11 @@ import { getPostgresConfig } from './connection';
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const clientConfig = getPostgresConfig(process.env);
+const clientConfig = getPostgresConfig();
 const client =
 	typeof clientConfig === 'string'
-		? postgres(clientConfig, { prepare: false })
-		: postgres(clientConfig);
+		? postgres(clientConfig, { prepare: false, connect_timeout: 20 })
+		: postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
 const db = drizzle(client);
 
 async function runMigrations() {

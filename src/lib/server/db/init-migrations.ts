@@ -1,19 +1,19 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { sql } from 'drizzle-orm';
 import { config } from 'dotenv';
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { resolve } from 'path';
+import postgres from 'postgres';
 import { getPostgresConfig } from './connection';
 
 // Charger les variables d'environnement depuis .env
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const clientConfig = getPostgresConfig(process.env);
+const clientConfig = getPostgresConfig();
 const client =
 	typeof clientConfig === 'string'
-		? postgres(clientConfig, { prepare: false })
-		: postgres(clientConfig);
+		? postgres(clientConfig, { prepare: false, connect_timeout: 20 })
+		: postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
 const db = drizzle(client);
 
 async function initMigrations() {

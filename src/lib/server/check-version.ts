@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+  sendDiscordWebhookProofreadersVersionBumps,
+  sendDiscordWebhookTranslatorsVersionBumps,
+  sendDiscordWebhookUpdatesAutoCheckVersionBump,
+  type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
@@ -77,7 +77,7 @@ async function fetchF95Versions(
 				versions.set(threadId, version);
 			}
 		} catch (error) {
-			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout le cron.
+			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout l'auto-check.
 			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
 			issues.push({
 				stage: 'checker_fetch',
@@ -110,7 +110,7 @@ function autoCheckGamePatchFromScrape(scraped: ScrapedF95Game) {
 	};
 }
 
-/** Cron / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
+/** API POST /api/cron/check-version / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
 export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	const issues: AutoCheckIssue[] = [];
 	const rows = await db

@@ -1,15 +1,12 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
+import { getDatabaseUrl } from './src/lib/server/db/connection';
 
 /**
  * drizzle-kit push/pull/introspect : préférer une connexion **directe** Postgres (port 5432),
  * pas le pooler PgBouncer (ex. Supabase :6543). Sinon l’étape « Pulling schema » peut rester
  * bloquée très longtemps ou sembler infinie.
  */
-const rawUrl = process.env.DATABASE_URL;
-if (!rawUrl) {
-	throw new Error('Définir DATABASE_URL pour drizzle-kit');
-}
 
 function withConnectTimeout(url: string, seconds: number): string {
 	if (/\bconnect_timeout=/.test(url)) return url;
@@ -20,7 +17,7 @@ function withConnectTimeout(url: string, seconds: number): string {
 export default defineConfig({
 	schema: './src/lib/server/db/schema.ts',
 	dialect: 'postgresql',
-	dbCredentials: { url: withConnectTimeout(rawUrl, 30) },
+	dbCredentials: { url: withConnectTimeout(getDatabaseUrl(), 30) },
 	out: './drizzle',
 	verbose: true,
 	strict: true,

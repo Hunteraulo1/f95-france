@@ -18,6 +18,7 @@
 
 <svelte:head>
 	<link rel="icon" href="/favicon.ico" />
+	<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 	<title>{SITE.name}</title>
 	<meta name="description" content={SITE.description} />
 	<meta property="og:type" content="website" />

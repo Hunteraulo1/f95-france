@@ -10,10 +10,7 @@ function getConfiguredOrigins(): URL[] {
 	const raw = [
 		env.APP_ORIGINS?.trim(),
 		env.APP_ORIGIN?.trim(),
-		publicEnv.PUBLIC_APP_ORIGIN?.trim(),
-		'https://f95france.site',
-		'https://dev.f95france.site',
-		'http://localhost:5173'
+		publicEnv.PUBLIC_APP_ORIGIN?.trim()
 	]
 		.filter(Boolean)
 		.join(',');

@@ -558,7 +558,9 @@
 
 			{#if !webhookStatus.updates && !webhookStatus.translators && !webhookStatus.admin}
 				<p class="mb-4 text-sm text-warning">
-					Aucune URL de webhook enregistrée : ajoutez-en au moins une dans les paramètres pour
+					Aucune variable <code class="text-xs">DISCORD_WEBHOOK_*</code> définie sur le serveur :
+					ajoutez-en au moins une (voir
+					<a href="/dashboard/config" class="link link-primary">Configuration</a>) pour pouvoir
 					tester.
 				</p>
 			{/if}
