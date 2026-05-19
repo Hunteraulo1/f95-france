@@ -1,18 +1,17 @@
 import { env } from '$env/dynamic/private';
 import {
-	getEffectiveConfig,
-	getEffectiveConfigFromRow,
-	toConfigClientSafe
+  getEffectiveConfig,
+  getEffectiveConfigFromRow,
+  toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncDbToSpreadsheetBulk
+  deleteGameTranslationsFromGoogleSheet,
+  syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
-import { scrapeF95Thread } from '$lib/server/scrape/f95';
 // import type { Config } from '@sveltejs/adapter-vercel';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -1242,16 +1241,17 @@ export const actions: Actions = {
 			};
 		}
 
-		if (!website || website !== 'f95z') {
+		if (!website || (website !== 'f95z' && website !== 'lc')) {
 			return {
 				success: false,
-				message: 'Le scraping de test ne supporte actuellement que les threads F95',
+				message: 'Le scraping de test ne supporte que F95Zone et LewdCorner',
 				details: null
 			};
 		}
 
 		try {
-			const data = await scrapeF95Thread(threadId);
+			const { scrapeThread } = await import('$lib/server/scrape');
+			const data = await scrapeThread(website, threadId);
 			return {
 				success: true,
 				message: 'Scrape réussi',

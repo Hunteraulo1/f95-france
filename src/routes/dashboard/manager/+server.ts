@@ -7,8 +7,8 @@ import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+  syncTranslationToGoogleSheet,
+  syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
@@ -129,7 +129,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					normVersion(translation?.version) === normVersion(gameVersion)));
 
 		// Valider les données requises
-		if (!name || !type || !website || !image) {
+		const imageValue = typeof image === 'string' ? image.trim() : '';
+		if (!name || !type || !website) {
+			return json({ error: 'Nom, type et site web sont requis' }, { status: 400 });
+		}
+		if (!imageValue && website !== 'lc') {
 			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
 		}
 
@@ -201,7 +205,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					threadId: validThreadId,
 					tags: tags || null,
 					link: link || null,
-					image,
+					image: imageValue,
 					gameAutoCheck: computedGameAutoCheck,
 					gameVersion:
 						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
@@ -229,7 +233,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameName: name,
-				gameImage: image
+				gameImage: imageValue || undefined
 			});
 
 			return json({
@@ -247,7 +251,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			threadId: validThreadId,
 			tags: tags || null,
 			link: link || null,
-			image,
+			image: imageValue,
 			gameAutoCheck: computedGameAutoCheck,
 			gameVersion:
 				typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,

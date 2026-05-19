@@ -1,4 +1,4 @@
-import { scrapeF95Thread } from '$lib/server/scrape/f95';
+import { scrapeThread, type ScrapeWebsite } from '$lib/server/scrape';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = await request.json();
 		const { website, threadId } = body as {
-			website?: 'f95z' | 'lc' | 'other';
+			website?: ScrapeWebsite | 'other';
 			threadId?: number | string;
 		};
 
@@ -18,8 +18,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Site web et ID de thread requis' }, { status: 400 });
 		}
 
-		if (website !== 'f95z') {
-			return json({ error: "Le scraping n'est disponible que pour F95Zone" }, { status: 400 });
+		if (website !== 'f95z' && website !== 'lc') {
+			return json({ error: "Le scraping n'est disponible que pour F95Zone et LewdCorner" }, {
+				status: 400
+			});
 		}
 
 		const numericThreadId = Number(threadId);
@@ -28,7 +30,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'ID de thread invalide' }, { status: 400 });
 		}
 
-		const scrapedData = await scrapeF95Thread(numericThreadId);
+		const scrapedData = await scrapeThread(website, numericThreadId);
 
 		return json({ success: true, data: scrapedData });
 	} catch (error) {

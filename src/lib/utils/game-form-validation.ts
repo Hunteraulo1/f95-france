@@ -14,11 +14,15 @@ function trimStr(v: unknown): string {
 }
 
 /** Erreurs bloquantes + avertissement description (ne bloque pas) */
-export function computeGameFormFieldState(game: FormGameType): {
+export function computeGameFormFieldState(
+	game: FormGameType,
+	opts?: { requireImage?: boolean }
+): {
 	fieldErrors: Record<string, boolean>;
 	fieldWarns: Record<string, boolean>;
 	hasBlockingError: boolean;
 } {
+	const requireImage = opts?.requireImage ?? true;
 	const noTr = isNoTranslation(game.tname);
 	const integ = isIntegrated(game.tname);
 
@@ -27,7 +31,7 @@ export function computeGameFormFieldState(game: FormGameType): {
 	if (!trimStr(game.name)) fieldErrors.name = true;
 	if (!trimStr(game.link)) fieldErrors.link = true;
 	if (!trimStr(game.tags)) fieldErrors.tags = true;
-	if (!trimStr(game.image)) fieldErrors.image = true;
+	if (requireImage && !trimStr(game.image)) fieldErrors.image = true;
 	if (!trimStr(game.gameVersion)) fieldErrors.gameVersion = true;
 
 	if (noTr) {

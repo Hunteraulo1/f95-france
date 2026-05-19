@@ -3,6 +3,10 @@ function isF95Host(hostname: string): boolean {
 	return hostname === 'f95zone.to' || hostname.endsWith('.f95zone.to');
 }
 
+function isLcHost(hostname: string): boolean {
+	return hostname === 'lewdcorner.com' || hostname.endsWith('.lewdcorner.com');
+}
+
 /**
  * URL utilisable en `src` pour une vignette jeu : absolue, HTTPS quand c’est possible,
  * chemins relatifs XenForo résolus sur f95zone.to (sinon le navigateur les charge sur le domaine Vercel).
@@ -23,13 +27,16 @@ export function resolveGameImageSrc(
 		if (site === 'f95z') {
 			return `https://f95zone.to${u}`;
 		}
+		if (site === 'lc') {
+			return `https://lewdcorner.com${u}`;
+		}
 		return u;
 	}
 
 	if (u.startsWith('http://')) {
 		try {
 			const { hostname } = new URL(u);
-			if (isF95Host(hostname)) {
+			if (isF95Host(hostname) || isLcHost(hostname)) {
 				return `https://${u.slice('http://'.length)}`;
 			}
 		} catch {
