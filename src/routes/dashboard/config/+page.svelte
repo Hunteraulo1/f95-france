@@ -216,8 +216,9 @@
 										>GOOGLE_OAUTH_CLIENT_ID</code
 									>
 									et
-									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis sur le serveur
-									(Vercel ou <code class="text-xs">.env</code>). Redéployez après les avoir ajoutées.
+									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis sur le
+									serveur (Vercel ou <code class="text-xs">.env</code>). Redéployez après les avoir
+									ajoutées.
 								</span>
 							</div>
 						{/if}

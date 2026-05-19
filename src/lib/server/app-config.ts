@@ -105,7 +105,10 @@ export function toConfigClientSafe(row: Config): ConfigClientSafe {
 }
 
 /** Champs à persister pour les jetons OAuth (chiffrés si clé définie). */
-export function oauthTokenFieldsForDb(plainAccess: string, plainRefresh: string | null | undefined) {
+export function oauthTokenFieldsForDb(
+	plainAccess: string,
+	plainRefresh: string | null | undefined
+) {
 	return {
 		googleOAuthAccessToken: sealOAuthToken(plainAccess),
 		googleOAuthRefreshToken: sealOAuthToken(plainRefresh ?? null)

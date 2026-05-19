@@ -1,8 +1,8 @@
 import { db } from '$lib/server/db';
 import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
 import {
-    isExtensionApiCallerAllowed,
-    resolveUserForExtensionApiOriginGate
+	isExtensionApiCallerAllowed,
+	resolveUserForExtensionApiOriginGate
 } from '$lib/server/extension-api-access';
 import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
 import { json } from '@sveltejs/kit';

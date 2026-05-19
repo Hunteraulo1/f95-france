@@ -1,16 +1,16 @@
 import { env } from '$env/dynamic/private';
 import {
-    getEffectiveConfig,
-    getEffectiveConfigFromRow,
-    toConfigClientSafe
+	getEffectiveConfig,
+	getEffectiveConfigFromRow,
+	toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-    deleteGameTranslationsFromGoogleSheet,
-    syncDbToSpreadsheetBulk
+	deleteGameTranslationsFromGoogleSheet,
+	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread } from '$lib/server/scrape/f95';
 // import type { Config } from '@sveltejs/adapter-vercel';
@@ -1165,7 +1165,7 @@ export const actions: Actions = {
 							success: false,
 							message: 'Authentification requise',
 							details:
-								"Une clé API Google (GOOGLE_API_KEY) ou une authentification OAuth2 est nécessaire. Définissez les variables d’environnement côté serveur."
+								'Une clé API Google (GOOGLE_API_KEY) ou une authentification OAuth2 est nécessaire. Définissez les variables d’environnement côté serveur.'
 						};
 					}
 					return {
@@ -1633,7 +1633,8 @@ export const actions: Actions = {
 		if (!url) {
 			return {
 				success: false,
-				message: 'Aucune URL pour ce canal : définissez la variable d’environnement correspondante (voir /dashboard/config).',
+				message:
+					'Aucune URL pour ce canal : définissez la variable d’environnement correspondante (voir /dashboard/config).',
 				details: null,
 				channel,
 				httpStatus: null

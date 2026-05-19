@@ -1,10 +1,10 @@
 import {
-  EXTENSION_ONLY_API_ROUTE,
-  consumeSessionApiKeyRateForUser,
-  extractApiKeyFromRequest,
-  getUserForApiKeyOwner,
-  jsonApiKeyGuardResponse,
-  validateApiKeyRequest
+	EXTENSION_ONLY_API_ROUTE,
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -61,16 +61,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 				const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 				if (acceptsHtml) {
 					return applySecurityHeaders(
-						new Response(
-							'<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>',
-							{
-								status: 503,
-								headers: {
-									'content-type': 'text/html; charset=utf-8',
-									'retry-after': '600'
-								}
+						new Response('<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>', {
+							status: 503,
+							headers: {
+								'content-type': 'text/html; charset=utf-8',
+								'retry-after': '600'
 							}
-						)
+						})
 					);
 				}
 				return applySecurityHeaders(
@@ -137,9 +134,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}
 			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);
 			if (!userRow) {
-				return applySecurityHeaders(
-					jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders)
-				);
+				return applySecurityHeaders(jsonApiKeyGuardResponse('invalid', apiPublicErrorCorsHeaders));
 			}
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
