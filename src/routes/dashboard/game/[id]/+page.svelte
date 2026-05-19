@@ -960,9 +960,15 @@
 									<li>
 										{submissionTypeLabel(sub.type, sub.translationId)}
 										{#if sub.userId === currentUser?.id}
-											· <span class="font-semibold">par toi</span>
+											· <span class="text-base-content/70">créée par</span>
+											<span class="font-semibold">toi</span>
 										{:else if sub.username}
-											· par <span class="font-semibold">{sub.username}</span>
+											· <span class="text-base-content/70">créée par</span>
+											<span class="font-semibold">{sub.username}</span>
+										{/if}
+										{#if sub.openedByUsername}
+											· <span class="text-base-content/70">ouverte par</span>
+											<span class="font-semibold">{sub.openedByUsername}</span>
 										{/if}
 										· {formatSubmissionDate(sub.createdAt)}
 										{#if sub.status === 'opened'}

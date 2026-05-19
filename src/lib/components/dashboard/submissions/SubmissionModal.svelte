@@ -63,6 +63,10 @@
 			id: string;
 			username: string;
 		} | null;
+		openedByUser?: {
+			id: string;
+			username: string;
+		} | null;
 	}
 
 	interface Translator {
@@ -456,7 +460,7 @@
 					</h3>
 					{#if submission.user?.username}
 						<div class="mt-1 text-sm text-base-content/70">
-							Soumis par :
+							Soumission créée par :
 							<a
 								class="link link-hover"
 								href={resolve(`/dashboard/profile/${submission.user.username}`)}
@@ -466,6 +470,21 @@
 								}}
 							>
 								{submission.user.username}
+							</a>
+						</div>
+					{/if}
+					{#if submission.openedByUser?.username}
+						<div class="mt-1 text-sm text-base-content/70">
+							Ouverte par :
+							<a
+								class="link link-hover"
+								href={resolve(`/dashboard/profile/${submission.openedByUser.username}`)}
+								onclick={async (event) => {
+									event.preventDefault();
+									await goto(resolve(`/dashboard/profile/${submission.openedByUser?.username}`));
+								}}
+							>
+								{submission.openedByUser.username}
 							</a>
 						</div>
 					{/if}

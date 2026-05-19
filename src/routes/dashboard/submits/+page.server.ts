@@ -3,10 +3,11 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+  parseSubmissionPayloadJson,
+  persistSubmissionPayload,
+  validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
+import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -153,6 +154,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					username: table.user.username,
 					avatar: table.user.avatar
 				},
+				openedByUser: {
+					id: submissionOpenedByUser.id,
+					username: submissionOpenedByUser.username,
+					avatar: submissionOpenedByUser.avatar
+				},
 				game: {
 					id: table.game.id,
 					name: table.game.name,
@@ -168,6 +174,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			})
 			.from(table.submission)
 			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
+			.leftJoin(
+				submissionOpenedByUser,
+				eq(submissionOpenedByUser.id, table.submission.openedByUserId)
+			)
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(
 				table.gameTranslation,
@@ -363,7 +373,11 @@ export const actions: Actions = {
 		// Uniquement si la soumission est encore en attente.
 		await db
 			.update(table.submission)
-			.set({ status: 'opened', updatedAt: new Date() })
+			.set({
+				status: 'opened',
+				updatedAt: new Date(),
+				openedByUserId: locals.user.id
+			})
 			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
 
 		return { success: true };
@@ -498,12 +512,23 @@ export const actions: Actions = {
 			}
 
 			// Mettre à jour le statut
+			const statusUpdate: {
+				status: 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected';
+				adminNotes: string | null;
+				openedByUserId?: string | null;
+			} = {
+				status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
+				adminNotes: adminNotes || null
+			};
+			if (status === 'opened' && currentStatus === 'pending') {
+				statusUpdate.openedByUserId = locals.user.id;
+			}
+			if (status === 'pending') {
+				statusUpdate.openedByUserId = null;
+			}
 			await db
 				.update(table.submission)
-				.set({
-					status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
-					adminNotes: adminNotes || null
-				})
+				.set(statusUpdate)
 				.where(eq(table.submission.id, submissionId));
 
 			// Créer une notification si le statut a changé

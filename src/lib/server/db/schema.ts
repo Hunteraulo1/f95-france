@@ -192,6 +192,9 @@ export const submission = pgTable('submission', {
 	userId: varchar('user_id', { length: 255 })
 		.notNull()
 		.references(() => user.id),
+	openedByUserId: varchar('opened_by_user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null'
+	}),
 	status: varchar('status', { length: 32 }).notNull().default('pending'),
 	gameId: varchar('game_id', { length: 255 }).references(() => game.id),
 	translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id),

@@ -5,7 +5,9 @@
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
 	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
 	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
+	import { user } from '$lib/stores';
 	import { getStatusFilterLabel } from '$lib/utils/submissions';
+	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -47,7 +49,18 @@
 					body: formData,
 					credentials: 'include'
 				});
-				selectedSubmission = { ...submission, status: 'opened' };
+				const currentUser = get(user);
+				selectedSubmission = {
+					...submission,
+					status: 'opened',
+					openedByUser: currentUser
+						? {
+								id: currentUser.id,
+								username: currentUser.username,
+								avatar: currentUser.avatar
+							}
+						: submission.openedByUser
+				};
 				return;
 			} catch {
 				// En cas d'erreur, on ouvre quand même la modal.

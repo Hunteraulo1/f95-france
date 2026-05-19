@@ -2,10 +2,11 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	parseSubmissionPayloadJson,
-	persistSubmissionPayload,
-	validateSubmissionPayloadForType
+  parseSubmissionPayloadJson,
+  persistSubmissionPayload,
+  validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
+import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -148,9 +149,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					version: table.gameTranslation.version,
 					tversion: table.gameTranslation.tversion,
 					translationName: table.gameTranslation.translationName
+				},
+				user: {
+					id: table.user.id,
+					username: table.user.username,
+					avatar: table.user.avatar
+				},
+				openedByUser: {
+					id: submissionOpenedByUser.id,
+					username: submissionOpenedByUser.username,
+					avatar: submissionOpenedByUser.avatar
 				}
 			})
 			.from(table.submission)
+			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
+			.leftJoin(
+				submissionOpenedByUser,
+				eq(submissionOpenedByUser.id, table.submission.openedByUserId)
+			)
 			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
 			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
 			.where(whereCondition)

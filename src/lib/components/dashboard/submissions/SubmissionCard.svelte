@@ -41,6 +41,11 @@
 			username: string;
 			avatar: string;
 		} | null;
+		openedByUser?: {
+			id: string;
+			username: string;
+			avatar: string;
+		} | null;
 	}
 
 	interface Props {
@@ -57,7 +62,8 @@
 			<div class="flex-1">
 				<div class="mb-2 flex flex-wrap items-center gap-3">
 					{#if submission.user}
-						<div class="mb-2 flex items-center justify-center gap-2">
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">Soumission créée par :</span>
 							<div class="avatar">
 								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
 									{#if submission.user.avatar}
@@ -81,6 +87,33 @@
 								}}
 							>
 								{submission.user.username}
+							</button>
+						</div>
+					{/if}
+					{#if submission.openedByUser?.username}
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">Ouverte par :</span>
+							<div class="avatar">
+								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
+									{#if submission.openedByUser.avatar}
+										<img
+											src={submission.openedByUser.avatar}
+											alt={submission.openedByUser.username}
+											class="h-8 w-8 rounded-full object-cover"
+										/>
+									{:else}
+										<User size={24} />
+									{/if}
+								</div>
+							</div>
+							<button
+								type="button"
+								class="text-sm text-primary opacity-70 hover:opacity-100"
+								onclick={() => {
+									goto(resolve(`/dashboard/profile/${submission.openedByUser!.username}`));
+								}}
+							>
+								{submission.openedByUser.username}
 							</button>
 						</div>
 					{/if}

@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { error } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -84,10 +85,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				translationId: table.submission.translationId,
 				createdAt: table.submission.createdAt,
 				userId: table.submission.userId,
-				username: table.user.username
+				username: table.user.username,
+				openedByUsername: submissionOpenedByUser.username
 			})
 			.from(table.submission)
 			.leftJoin(table.user, eq(table.user.id, table.submission.userId))
+			.leftJoin(
+				submissionOpenedByUser,
+				eq(submissionOpenedByUser.id, table.submission.openedByUserId)
+			)
 			.where(
 				and(
 					sql`${table.submission.status} IN ('pending', 'opened')`,
