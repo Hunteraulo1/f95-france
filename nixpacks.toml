@@ -8,4 +8,4 @@ cmds = [
 ]
 
 [start]
-cmd = "node build/index.js"
+cmd = "node build/handler.js"
