@@ -3,9 +3,9 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
-  DEV_IMPERSONATION_ORIGIN_COOKIE,
-  isDevImpersonationTargetAllowed
+	DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
+	DEV_IMPERSONATION_ORIGIN_COOKIE,
+	isDevImpersonationTargetAllowed
 } from '$lib/server/dev-impersonation';
 import { userHasPermission } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
