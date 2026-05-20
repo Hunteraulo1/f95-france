@@ -3,14 +3,15 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import {
-	clearAllTranslationAutoCheckForGame,
-	resolveGameAutoCheckForWebsite
+  clearAllTranslationAutoCheckForGame,
+  resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet
+  deleteGameTranslationsFromGoogleSheet,
+  syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
@@ -179,13 +180,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 						: undefined,
 					prevGameAutoCheck ?? true
 				);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameUpdateSubmission(currentUser.id, gameId, {
 				name,
 				description: description || null,
@@ -299,13 +301,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameDeleteSubmission(currentUser.id, gameId, reason);
 			const gameNameRow = await db
 				.select({ name: table.game.name })

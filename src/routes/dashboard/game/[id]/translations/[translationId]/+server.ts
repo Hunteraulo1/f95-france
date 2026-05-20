@@ -2,24 +2,25 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+  sendDiscordWebhookAdminNewSubmission,
+  sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteTranslationFromGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+  deleteTranslationFromGoogleSheet,
+  syncTranslationToGoogleSheet,
+  syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
-	hasGameTranslationGameTypeColumn,
-	publicErrorFromUnknown
+  hasGameTranslationGameTypeColumn,
+  publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-	createTranslationDeleteSubmission,
-	createTranslationUpdateSubmission
+  createTranslationDeleteSubmission,
+  createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
@@ -124,13 +125,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				? acRequested
 				: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
 				translationName: translationName || null,
 				version: normalizedVersion,
@@ -321,13 +323,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,

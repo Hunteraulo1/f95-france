@@ -2,15 +2,16 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+  sendDiscordWebhookAdminNewSubmission,
+  sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+  syncTranslationToGoogleSheet,
+  syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
@@ -106,13 +107,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationSubmission(currentUser.id, gameId, {
 				translationName: translationName || null,
 				version: typeof version === 'string' ? version.trim() || null : null,

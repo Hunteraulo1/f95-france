@@ -1,0 +1,1 @@
+ALTER TABLE "app_role" ADD COLUMN "edit_mode" varchar(32) DEFAULT 'direct' NOT NULL;

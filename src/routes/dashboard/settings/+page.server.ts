@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
 import { assertPermission } from '$lib/server/permissions-guard';
+import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
@@ -55,8 +56,11 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		.from(table.translator)
 		.where(eq(table.translator.userId, locals.user.id))
 		.limit(1);
+	const roleEditMode = await getRoleEditMode(locals.user.role);
+
 	return {
 		user: locals.user,
+		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
 		passkeys,
 		linkedTranslator: linkedTranslator
@@ -284,11 +288,12 @@ export const actions: Actions = {
 				message: 'Revenez sur votre compte pour modifier le mode direct.'
 			});
 		}
-		const role = locals.user.role.trim();
-		const canEdit =
-			role === 'superadmin' || hasEffectivePermission(role, locals.permissions, 'dev.panel');
-		if (!canEdit) {
-			return fail(403, { message: 'Accès non autorisé' });
+		const roleEditMode = await getRoleEditMode(locals.user.role);
+		if (roleEditMode !== 'user_direct_mode') {
+			return fail(403, {
+				message:
+					'Votre rôle n’utilise pas le mode direct personnel. Demandez à un administrateur de modifier le mode d’enregistrement du rôle.'
+			});
 		}
 
 		const formData = await request.formData();

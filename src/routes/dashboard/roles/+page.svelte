@@ -146,9 +146,35 @@
 									disabled={selectedRole.isSystem}>{selectedRole.description ?? ''}</textarea
 								>
 							</fieldset>
-							{#if !selectedRole.isSystem}
-								<button type="submit" class="btn w-fit btn-sm btn-primary">Enregistrer</button>
-							{/if}
+							<fieldset class="fieldset">
+								<legend class="fieldset-legend">Mode d'enregistrement</legend>
+								<p class="mb-2 text-xs text-base-content/70">
+									Contrôle si les ajouts/modifications de jeux passent par une soumission ou sont
+									appliqués directement en base.
+								</p>
+								<div class="flex flex-col gap-2">
+									{#each data.editModeOptions as option (option.value)}
+										<label
+											class="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3 hover:bg-base-200"
+										>
+											<input
+												type="radio"
+												name="editMode"
+												value={option.value}
+												class="radio mt-0.5 radio-sm"
+												checked={selectedRole.editMode === option.value}
+											/>
+											<span class="flex flex-col gap-0.5">
+												<span class="text-sm font-medium">{option.label}</span>
+												<span class="text-xs opacity-70">{option.description}</span>
+											</span>
+										</label>
+									{/each}
+								</div>
+							</fieldset>
+							<button type="submit" class="btn w-fit btn-sm btn-primary">
+								{selectedRole.isSystem ? 'Enregistrer le mode' : 'Enregistrer'}
+							</button>
 						</form>
 					</div>
 				</div>
@@ -248,6 +274,28 @@
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Description</legend>
 					<textarea name="description" class="textarea w-full" rows="2"></textarea>
+				</fieldset>
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">Mode d'enregistrement</legend>
+					<div class="flex flex-col gap-2">
+						{#each data.editModeOptions as option (option.value)}
+							<label
+								class="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3"
+							>
+								<input
+									type="radio"
+									name="editMode"
+									value={option.value}
+									class="radio mt-0.5 radio-sm"
+									checked={option.value === 'direct'}
+								/>
+								<span class="flex flex-col gap-0.5">
+									<span class="text-sm font-medium">{option.label}</span>
+									<span class="text-xs opacity-70">{option.description}</span>
+								</span>
+							</label>
+						{/each}
+					</div>
 				</fieldset>
 				<div class="modal-action">
 					<button type="button" class="btn" onclick={() => (showCreateModal = false)}>

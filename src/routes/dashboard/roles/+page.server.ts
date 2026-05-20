@@ -1,19 +1,24 @@
 import {
-	PERMISSION_CATALOG,
-	SYSTEM_ROLE_LABELS,
-	type PermissionKey
+  PERMISSION_CATALOG,
+  SYSTEM_ROLE_LABELS,
+  type PermissionKey
 } from '$lib/permissions/catalog';
+import {
+  isRoleEditMode,
+  legacyEditModeForRoleSlug,
+  ROLE_EDIT_MODE_OPTIONS
+} from '$lib/permissions/edit-mode';
 import { permissionCatalogGrouped } from '$lib/permissions/legacy';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	countPermissionsByRoles,
-	countUsersWithRoles,
-	invalidateRolePermissionsCache,
-	listAppRoles,
-	listRolePermissions,
-	roleExists,
-	setRolePermissions
+  countPermissionsByRoles,
+  countUsersWithRoles,
+  invalidateRolePermissionsCache,
+  listAppRoles,
+  listRolePermissions,
+  roleExists,
+  setRolePermissions
 } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { fail } from '@sveltejs/kit';
@@ -53,13 +58,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		roles: roles.map((r) => ({
 			...r,
 			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+			editMode:
+				r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
 			userCount: userCounts[r.slug] ?? 0,
 			permissionCount: permissionCounts[r.slug] ?? 0
 		})),
 		selectedSlug,
 		selectedPermissions,
 		permissionGroups,
-		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key)
+		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key),
+		editModeOptions: ROLE_EDIT_MODE_OPTIONS
 	};
 };
 
@@ -70,6 +78,8 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
+		const editModeRaw = String(formData.get('editMode') ?? 'direct').trim();
+		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : 'direct';
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 
@@ -90,6 +100,7 @@ export const actions: Actions = {
 				slug,
 				label,
 				description,
+				editMode,
 				isSystem: false
 			});
 			await setRolePermissions(slug, [
@@ -112,9 +123,14 @@ export const actions: Actions = {
 		const slug = (formData.get('slug') as string)?.trim();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
+		const editModeRaw = String(formData.get('editMode') ?? '').trim();
+		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : null;
 
 		if (!slug || !label) {
 			return fail(400, { message: 'Champs requis manquants' });
+		}
+		if (!editMode) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
 		}
 
 		const [role] = await db
@@ -131,10 +147,12 @@ export const actions: Actions = {
 				.update(table.appRole)
 				.set({
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
-					description,
+					description: role.isSystem ? role.description : description,
+					editMode,
 					updatedAt: new Date()
 				})
 				.where(eq(table.appRole.slug, slug));
+			invalidateRolePermissionsCache(slug);
 
 			return { success: true, message: 'Rôle mis à jour', selectedSlug: slug };
 		} catch (error) {

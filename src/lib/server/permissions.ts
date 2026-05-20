@@ -1,13 +1,15 @@
 import {
-	PERMISSION_CATALOG,
-	SYSTEM_ROLE_PERMISSIONS,
-	type PermissionKey
+  PERMISSION_CATALOG,
+  SYSTEM_ROLE_PERMISSIONS,
+  type PermissionKey
 } from '$lib/permissions/catalog';
+import { legacyEditModeForRoleSlug } from '$lib/permissions/edit-mode';
 import { resolveEffectivePermissions } from '$lib/permissions/effective';
 import { legacyPermissionsForRole } from '$lib/permissions/legacy';
 import { legacyPermissionCounts, sortRolesByPrivileges } from '$lib/permissions/sort-roles';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
 import { eq, inArray, sql } from 'drizzle-orm';
 
@@ -34,9 +36,11 @@ function cacheSet(roleSlug: string, permissions: string[]) {
 export function invalidateRolePermissionsCache(roleSlug?: string) {
 	if (roleSlug) {
 		rolePermissionsCache.delete(roleSlug);
+		invalidateRoleEditModeCache(roleSlug);
 		return;
 	}
 	rolePermissionsCache.clear();
+	invalidateRoleEditModeCache();
 }
 
 export async function getPermissionsForRole(roleSlug: string): Promise<string[]> {
@@ -148,6 +152,7 @@ export async function listAppRoles() {
 			slug,
 			label: slug,
 			description: null,
+			editMode: legacyEditModeForRoleSlug(slug),
 			isSystem: true,
 			createdAt: new Date(),
 			updatedAt: new Date()
@@ -198,6 +203,7 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 		systemRoles.map((slug) => ({
 			slug,
 			label: slug,
+			editMode: legacyEditModeForRoleSlug(slug),
 			isSystem: true
 		}))
 	);
