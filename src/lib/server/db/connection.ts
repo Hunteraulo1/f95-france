@@ -33,7 +33,7 @@ function isLocalPostgresHost(host: string): boolean {
 	return /^(localhost|127\.0\.0\.1)$/i.test(host.trim());
 }
 
-/** `POSTGRES_SSL_MODE=disable` en local ; `require` pour Supabase/Neon/etc. si non précisé. */
+/** `POSTGRES_SSL_MODE=disable` en local ; `require` pour Postgres distant si non précisé. */
 function sslFromEnv(source: DbEnvSource, host: string): boolean | 'require' {
 	const m = pickEnv(source, 'POSTGRES_SSL_MODE', 'PGSSLMODE')?.toLowerCase();
 	if (m === 'disable') return false;
