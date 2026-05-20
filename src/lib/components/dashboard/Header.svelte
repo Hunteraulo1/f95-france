@@ -8,10 +8,9 @@
 
 	interface Props {
 		maintenanceMode?: boolean;
-		canManageConfig?: boolean;
 	}
 
-	let { maintenanceMode = false, canManageConfig = false }: Props = $props();
+	let { maintenanceMode = false }: Props = $props();
 
 	const VERSION = pkg.version;
 </script>
