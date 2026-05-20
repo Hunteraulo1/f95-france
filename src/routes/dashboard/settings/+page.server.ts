@@ -2,12 +2,16 @@ import { hasEffectivePermission } from '$lib/permissions/effective';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import {
+  DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
+  DEV_IMPERSONATION_ORIGIN_COOKIE,
+  isDevImpersonationTargetAllowed
+} from '$lib/server/dev-impersonation';
 import { userHasPermission } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, notInArray } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
@@ -32,6 +36,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 					role: table.user.role
 				})
 				.from(table.user)
+				.where(notInArray(table.user.role, [...DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES]))
 		: [];
 
 	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
@@ -508,7 +513,8 @@ export const actions: Actions = {
 		const [targetUser] = await db
 			.select({
 				id: table.user.id,
-				username: table.user.username
+				username: table.user.username,
+				role: table.user.role
 			})
 			.from(table.user)
 			.where(eq(table.user.id, targetUserId))
@@ -516,6 +522,9 @@ export const actions: Actions = {
 
 		if (!targetUser) {
 			return fail(404, { message: 'Utilisateur introuvable' });
+		}
+		if (!isDevImpersonationTargetAllowed(targetUser.role)) {
+			return fail(403, { message: 'Impossible de basculer vers un super administrateur' });
 		}
 
 		try {
