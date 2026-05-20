@@ -52,7 +52,7 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<label for={name} class="mb-1">{title}:</label>
+	<label for={name}>{title}:</label>
 	<div class="flex gap-1">
 		<input
 			placeholder={title}
@@ -62,7 +62,7 @@
 			disabled={translators.length === 0}
 			onchange={handleChange}
 			bind:value={game[name]}
-			class="input-bordered input w-full"
+			class="input-bordered input mt-1 w-full"
 			class:input-error={invalid}
 		/>
 		<datalist id="traductor-list">
@@ -73,7 +73,7 @@
 		{#if safeCheckRole(['admin', 'superadmin'])}
 			<button
 				type="button"
-				class="btn w-min btn-primary"
+				class="btn mt-1 w-min btn-primary"
 				onclick={(e) => {
 					e.preventDefault();
 					modal = true;

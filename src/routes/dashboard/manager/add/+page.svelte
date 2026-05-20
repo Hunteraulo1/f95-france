@@ -956,7 +956,7 @@
 			</div>
 
 			<div
-				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
+				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 			>
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
 					{#if name === 'image' && game.website === 'lc' && !lcShowImageField}
