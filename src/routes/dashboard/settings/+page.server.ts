@@ -2,10 +2,16 @@ import { hasEffectivePermission } from '$lib/permissions/effective';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import {
+	DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
+	DEV_IMPERSONATION_ORIGIN_COOKIE,
+	isDevImpersonationTargetAllowed
+} from '$lib/server/dev-impersonation';
+import { userHasPermission } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
+import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, notInArray } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
@@ -16,9 +22,13 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const canUseDevTools = hasEffectivePermission(locals.user.role, locals.permissions, 'dev.panel');
+	const canImpersonateUsers = hasEffectivePermission(
+		locals.user.role,
+		locals.permissions,
+		'dev.impersonate'
+	);
 
-	const devUsers = canUseDevTools
+	const devUsers = canImpersonateUsers
 		? await db
 				.select({
 					id: table.user.id,
@@ -26,6 +36,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 					role: table.user.role
 				})
 				.from(table.user)
+				.where(notInArray(table.user.role, [...DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES]))
 		: [];
 
 	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
@@ -55,8 +66,11 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		.from(table.translator)
 		.where(eq(table.translator.userId, locals.user.id))
 		.limit(1);
+	const roleEditMode = await getRoleEditMode(locals.user.role);
+
 	return {
 		user: locals.user,
+		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
 		passkeys,
 		linkedTranslator: linkedTranslator
@@ -284,11 +298,12 @@ export const actions: Actions = {
 				message: 'Revenez sur votre compte pour modifier le mode direct.'
 			});
 		}
-		const role = locals.user.role.trim();
-		const canEdit =
-			role === 'superadmin' || hasEffectivePermission(role, locals.permissions, 'dev.panel');
-		if (!canEdit) {
-			return fail(403, { message: 'Accès non autorisé' });
+		const roleEditMode = await getRoleEditMode(locals.user.role);
+		if (roleEditMode !== 'user_direct_mode') {
+			return fail(403, {
+				message:
+					'Votre rôle n’utilise pas le mode direct personnel. Demandez à un administrateur de modifier le mode d’enregistrement du rôle.'
+			});
 		}
 
 		const formData = await request.formData();
@@ -481,7 +496,7 @@ export const actions: Actions = {
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
-		await assertPermission(locals, 'dev.panel');
+		await assertPermission(locals, 'dev.impersonate');
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });
 		}
@@ -498,7 +513,8 @@ export const actions: Actions = {
 		const [targetUser] = await db
 			.select({
 				id: table.user.id,
-				username: table.user.username
+				username: table.user.username,
+				role: table.user.role
 			})
 			.from(table.user)
 			.where(eq(table.user.id, targetUserId))
@@ -506,6 +522,9 @@ export const actions: Actions = {
 
 		if (!targetUser) {
 			return fail(404, { message: 'Utilisateur introuvable' });
+		}
+		if (!isDevImpersonationTargetAllowed(targetUser.role)) {
+			return fail(403, { message: 'Impossible de basculer vers un super administrateur' });
 		}
 
 		try {
@@ -551,8 +570,10 @@ export const actions: Actions = {
 			.where(eq(table.user.id, originUserId))
 			.limit(1);
 
-		if (!originUser || originUser.role !== 'superadmin') {
-			return fail(403, { message: "Le compte d'origine est invalide ou n'est pas superadmin" });
+		if (!originUser || !(await userHasPermission(originUser, 'dev.impersonate'))) {
+			return fail(403, {
+				message: "Le compte d'origine est invalide ou n'a pas le droit de changement d'utilisateur"
+			});
 		}
 
 		try {

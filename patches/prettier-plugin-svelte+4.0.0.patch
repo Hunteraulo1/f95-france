@@ -1,0 +1,20 @@
+diff --git a/node_modules/prettier-plugin-svelte/plugin.js b/node_modules/prettier-plugin-svelte/plugin.js
+index da110ba..7a17c5b 100644
+--- a/node_modules/prettier-plugin-svelte/plugin.js
++++ b/node_modules/prettier-plugin-svelte/plugin.js
+@@ -1501,8 +1501,14 @@ function print(path, options, print) {
+             return ['{@attach ', printJS(path, print, 'expression'), '}'];
+         case 'SpreadAttribute':
+             return ['{...', printJS(path, print, 'expression'), '}'];
+-        case 'ConstTag':
++        case 'ConstTag': {
++            const declarator = node.declaration && node.declaration.declarations && node.declaration.declarations[0];
++            if (declarator && options.originalText) {
++                const constText = options.originalText.slice(declarator.id.start, declarator.init.end);
++                return ['{@const ', constText, '}'];
++            }
+             return ['{@const ', printJS(path, print, 'expression'), '}'];
++        }
+     }
+     console.error(JSON.stringify(node, null, 4));
+     throw new Error('unknown node type: ' + node.type);

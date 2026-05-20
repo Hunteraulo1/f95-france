@@ -1078,7 +1078,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check lancé: ${result.updatedGames} jeu(x) mis à jour`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} aligné(s) (auto-check désactivé)`,
 				details: result
 			};
 		} catch (error: unknown) {

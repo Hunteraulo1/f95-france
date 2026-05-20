@@ -405,22 +405,30 @@
 				return;
 			}
 
+			const checkerVersion = (data.version ?? '').trim();
+			const wasAligned =
+				checkerVersion.length > 0 &&
+				checkerVersion === (game.gameVersion ?? '').trim() &&
+				(!acTranslation ||
+					(acTranslation.version ?? '').trim() === '' ||
+					(acTranslation.version ?? '').trim() === checkerVersion);
+
 			const gameUpdateRes = await fetch(`/dashboard/game/${game.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					name: data.name ?? game.name,
-					description: data.description ?? game.description ?? '',
+					name: game.name,
+					description: game.description ?? '',
 					type: data.gameType ?? (translations[0]?.gameType as string | undefined) ?? 'other',
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
 					tags: data.tags ?? game.tags ?? '',
 					link: game.link ?? '',
 					image: data.image ?? game.image ?? '',
-					gameAutoCheck: game.gameAutoCheck ?? true,
-					gameVersion: data.version ?? game.gameVersion ?? '',
+					gameVersion: checkerVersion,
+					f95VersionRefresh: true,
 					directMode: true
 				})
 			});
@@ -432,48 +440,13 @@
 				);
 			}
 
-			showEditGameModal = true;
-			editingGame = {
-				...editingGame,
-				name: data.name ?? game.name,
-				tags: data.tags ?? game.tags,
-				image: data.image ?? game.image,
-				gameVersion: data.version
-			};
-
-			if (acTranslation) {
-				const translationResponse = await fetch(
-					`/dashboard/game/${game.id}/translations/${acTranslation.id}`,
-					{
-						method: 'PUT',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							translationName: acTranslation.translationName,
-							version: acTranslation.version ?? null,
-							tversion: acTranslation.tversion,
-							status: acTranslation.status,
-							ttype: acTranslation.ttype,
-							gameType: data.gameType ?? acTranslation.gameType,
-							tlink: acTranslation.tlink ?? '',
-							ac: acTranslation.ac ?? false,
-							directMode: true
-						})
-					}
-				);
-
-				if (!translationResponse.ok) {
-					const details = await translationResponse.json().catch(() => ({}));
-					throw new Error(details.error || 'Erreur lors de la mise à jour de la traduction');
-				}
-			}
-
 			newToast({
 				alertType: 'success',
-				message: acTranslation
-					? 'Fiche jeu et traduction en auto-check rafraîchies'
-					: 'Fiche jeu rafraîchie'
+				message: wasAligned
+					? 'Version à jour : auto-check désactivé sur le jeu et les traductions'
+					: acTranslation
+						? 'Fiche jeu et versions de référence (auto-check) mises à jour'
+						: 'Fiche jeu rafraîchie'
 			});
 
 			window.location.reload();

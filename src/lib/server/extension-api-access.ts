@@ -1,6 +1,7 @@
 import { getUserById } from '$lib/server/auth';
 import type { User } from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import { userHasPermission } from '$lib/server/permissions';
 
 /** Préfixes d’`Origin` émis par le runtime extension (service worker, popup). */
 const EXTENSION_ORIGIN_PREFIXES = [
@@ -65,7 +66,9 @@ export async function resolveUserForExtensionApiOriginGate(
 	const devOriginUserId = cookies?.get(DEV_IMPERSONATION_ORIGIN_COOKIE)?.trim();
 	if (devOriginUserId) {
 		const originUser = await getUserById(devOriginUserId);
-		if (originUser?.role === 'superadmin') return originUser;
+		if (originUser && (await userHasPermission(originUser, 'dev.impersonate'))) {
+			return originUser;
+		}
 	}
 
 	if (locals.authenticatedViaApiKey) {

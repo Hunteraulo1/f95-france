@@ -139,6 +139,7 @@
 					scannedGames: number;
 					updatedGames: number;
 					updatedTranslations: number;
+					disabledAlignedGames: number;
 			  }
 			| null;
 	};
@@ -254,7 +255,8 @@
 								{#if autoCheckManualResult.details && typeof autoCheckManualResult.details === 'object'}
 									<p class="mt-1 text-sm">
 										Jeux scannés: {autoCheckManualResult.details.scannedGames} | Jeux mis à jour:
-										{autoCheckManualResult.details.updatedGames} | Traductions impactées:
+										{autoCheckManualResult.details.updatedGames} | Alignés (auto-check off):
+										{autoCheckManualResult.details.disabledAlignedGames} | Traductions impactées:
 										{autoCheckManualResult.details.updatedTranslations}
 									</p>
 								{:else if typeof autoCheckManualResult.details === 'string'}

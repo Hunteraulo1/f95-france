@@ -255,6 +255,8 @@ export const appRole = pgTable('app_role', {
 	slug: varchar('slug', { length: 64 }).primaryKey(),
 	label: varchar('label', { length: 255 }).notNull(),
 	description: text('description'),
+	/** direct | submission | user_direct_mode — voir `$lib/permissions/edit-mode`. */
+	editMode: varchar('edit_mode', { length: 32 }).notNull().default('direct'),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

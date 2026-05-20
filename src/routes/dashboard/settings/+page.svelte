@@ -39,7 +39,7 @@
 	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
 	$effect(() => {
-		if ($user && checkPermission('dev.panel')) {
+		if ($user && checkPermission('dev.impersonate')) {
 			const nextUsers = (data.devUsers ?? []) as DevUserLite[];
 			users = nextUsers;
 			targetUserId = nextUsers.some((u) => u.id === $user?.id)
@@ -737,18 +737,16 @@
 		</div>
 	</div>
 
-	{#if $user && checkPermission('dev.panel')}
+	{#if $user && data.canEditDirectMode}
 		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Paramètres développeur</h2>
-
+			<h2 class="text-lg font-semibold text-base-content">Mode d'enregistrement</h2>
 			<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 				<div class="card-body gap-6 sm:p-8">
 					{#if directModeError}
-						<div class="mb-4 alert alert-error">
+						<div class="alert alert-error">
 							<span>{directModeError}</span>
 						</div>
 					{/if}
-
 					<form
 						method="POST"
 						action="?/updateDirectMode"
@@ -779,43 +777,37 @@
 							};
 						}}
 					>
-						<div class="mb-4 flex w-full items-center justify-between gap-4">
-							<span class="opacity-70"
-								>Mode direct : quand activé, les modifications sont appliquées directement sans
-								créer de soumission. Quand désactivé, les modifications créent des soumissions en
-								attente d'approbation.</span
-							>
-						</div>
-						<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
-							<label class="label cursor-pointer">
-								<span class="label-text">Mode direct</span>
-								<input
-									type="checkbox"
-									class="toggle toggle-primary"
-									checked={$user?.directMode ?? true}
-									onchange={(e) => {
-										const form = e.currentTarget.closest('form');
-										const hiddenInput = form?.querySelector(
-											'input[type="hidden"][name="directMode"]'
-										);
-										if (hiddenInput instanceof HTMLInputElement) {
-											hiddenInput.value = e.currentTarget.checked ? 'true' : 'false';
-										}
-										form?.requestSubmit();
-									}}
-								/>
-								<input
-									type="hidden"
-									name="directMode"
-									value={$user?.directMode ? 'true' : 'false'}
-								/>
-							</label>
-						</div>
+						<p class="text-sm opacity-70">
+							Votre rôle utilise la préférence personnelle : activé, les ajouts et modifications
+							sont appliqués directement ; désactivé, ils passent par une soumission en attente de
+							validation.
+						</p>
+						<label class="label mt-4 cursor-pointer justify-start gap-4">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								checked={$user?.directMode ?? true}
+								onchange={(e) => {
+									const form = e.currentTarget.closest('form');
+									const hiddenInput = form?.querySelector(
+										'input[type="hidden"][name="directMode"]'
+									);
+									if (hiddenInput instanceof HTMLInputElement) {
+										hiddenInput.value = e.currentTarget.checked ? 'true' : 'false';
+									}
+									form?.requestSubmit();
+								}}
+							/>
+							<span class="label-text">Mode direct</span>
+							<input type="hidden" name="directMode" value={$user?.directMode ? 'true' : 'false'} />
+						</label>
 					</form>
 				</div>
 			</div>
 		</div>
+	{/if}
 
+	{#if $user && checkPermission('dev.impersonate')}
 		<div class="flex flex-col gap-4">
 			<h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
 
