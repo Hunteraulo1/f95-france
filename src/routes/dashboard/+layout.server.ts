@@ -7,11 +7,13 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = async ({ locals }) => {
 	let pendingSubmissionsCount = 0;
 	let permissions: string[] = [];
+	let canManageConfig = false;
 
 	// Charger le nombre de soumissions en attente
 	if (locals.user) {
 		permissions = await getPermissionsForRole(locals.user.role);
 		locals.permissions = permissions;
+		canManageConfig = hasPermission(permissions, 'config.view');
 
 		try {
 			if (hasPermission(permissions, 'submissions.review')) {
@@ -39,6 +41,19 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	let maintenanceMode = false;
+
+	try {
+		const [cfg] = await db
+			.select({ maintenanceMode: table.config.maintenanceMode })
+			.from(table.config)
+			.where(eq(table.config.id, 'main'))
+			.limit(1);
+		maintenanceMode = cfg?.maintenanceMode === true;
+	} catch (error) {
+		console.warn('Erreur lors du chargement du mode maintenance:', error);
+	}
+
 	let hasLinkedTranslator = false;
 
 	if (locals.user) {
@@ -63,6 +78,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		user: locals.user,
 		permissions,
 		pendingSubmissionsCount,
-		hasLinkedTranslator
+		hasLinkedTranslator,
+		maintenanceMode,
+		canManageConfig
 	};
 };
