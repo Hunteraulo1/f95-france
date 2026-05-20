@@ -33,7 +33,16 @@ To create a production version of your app:
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+Preview du build de production (serveur **adapter-node**, pas `vite preview`) :
+
+```sh
+bun run build
+bun run preview
+```
+
+Ouvre http://127.0.0.1:4173/ — `ORIGIN` est fixé pour le preview local. Après un rebuild, fais un rechargement forcé (Ctrl+Shift+R) pour éviter un vieux `app.*.js` en cache (erreur `__sveltekit_* is undefined`).
+
+Ne lance pas `vite preview` ni `bun run dev` en parallèle sur le même onglet.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
@@ -62,3 +71,13 @@ Puis pousser le schéma:
 ```sh
 npm run db:push
 ```
+
+Après sync prod → dev (`bun run db:sync:prod-to-dev`), les migrations Drizzle sont appliquées automatiquement.
+
+**Production :** après chaque déploiement qui ajoute des colonnes au schéma, exécuter sur la base prod :
+
+```sh
+bun run db:migrate
+```
+
+(Sans la migration `0016`, les pages `submit` / `submits` / `game/[id]` ne chargent pas les soumissions — la sidebar et la recherche continuent de fonctionner.)

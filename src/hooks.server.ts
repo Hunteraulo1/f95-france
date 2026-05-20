@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-  EXTENSION_ONLY_API_ROUTE,
-  consumeSessionApiKeyRateForUser,
-  extractApiKeyFromRequest,
-  getUserForApiKeyOwner,
-  jsonApiKeyGuardResponse,
-  validateApiKeyRequest
+	EXTENSION_ONLY_API_ROUTE,
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -67,7 +67,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Pas de requête DB pendant le prerender (build sans Postgres).
 	if (!building) {
 		try {
-			const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
+			const [cfg] = await db
+				.select()
+				.from(table.config)
+				.where(eq(table.config.id, 'main'))
+				.limit(1);
 			const maintenanceEnabled = cfg?.maintenanceMode === true;
 			if (maintenanceEnabled) {
 				const path = event.url.pathname;
@@ -81,13 +85,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
 						return applySecurityHeaders(
-							new Response('<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>', {
-								status: 503,
-								headers: {
-									'content-type': 'text/html; charset=utf-8',
-									'retry-after': '600'
+							new Response(
+								'<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>',
+								{
+									status: 503,
+									headers: {
+										'content-type': 'text/html; charset=utf-8',
+										'retry-after': '600'
+									}
 								}
-							})
+							)
 						);
 					}
 					return applySecurityHeaders(

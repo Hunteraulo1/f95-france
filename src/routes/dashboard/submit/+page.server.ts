@@ -1,14 +1,14 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import {
 	parseSubmissionPayloadJson,
 	persistSubmissionPayload,
 	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
-import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { fail } from '@sveltejs/kit';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
@@ -127,52 +127,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const page = Math.min(requestedPage, totalPages);
 		const offset = (page - 1) * PAGE_SIZE;
 
-		// Charger les soumissions de l'utilisateur connecté avec le filtre (paginé)
-		const submissions = await db
-			.select({
-				id: table.submission.id,
-				status: table.submission.status,
-				type: table.submission.type,
-				adminNotes: table.submission.adminNotes,
-				data: table.submission.data,
-				gameId: table.submission.gameId,
-				translationId: table.submission.translationId,
-				createdAt: table.submission.createdAt,
-				updatedAt: table.submission.updatedAt,
-				game: {
-					id: table.game.id,
-					name: table.game.name,
-					image: table.game.image
-				},
-				translation: {
-					id: table.gameTranslation.id,
-					version: table.gameTranslation.version,
-					tversion: table.gameTranslation.tversion,
-					translationName: table.gameTranslation.translationName
-				},
-				user: {
-					id: table.user.id,
-					username: table.user.username,
-					avatar: table.user.avatar
-				},
-				openedByUser: {
-					id: submissionOpenedByUser.id,
-					username: submissionOpenedByUser.username,
-					avatar: submissionOpenedByUser.avatar
-				}
-			})
-			.from(table.submission)
-			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
-			.leftJoin(
-				submissionOpenedByUser,
-				eq(submissionOpenedByUser.id, table.submission.openedByUserId)
-			)
-			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
-			.leftJoin(table.gameTranslation, eq(table.submission.translationId, table.gameTranslation.id))
-			.where(whereCondition)
-			.orderBy(desc(table.submission.createdAt))
-			.limit(PAGE_SIZE)
-			.offset(offset);
+		const submissions = await fetchSubmissionListRows({
+			where: whereCondition,
+			limit: PAGE_SIZE,
+			offset
+		});
 
 		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
 		const submissionsWithData = await Promise.all(
@@ -335,8 +294,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			translators
 		};
 	} catch (error: unknown) {
-		// Si la table n'existe pas encore, retourner une liste vide
-		console.warn("Table submission n'existe pas encore:", error);
+		console.warn(
+			'Erreur chargement soumissions — vérifier migrations (`opened_by_user_id`) :',
+			error
+		);
 		return {
 			submissions: [],
 			statusFilter,
