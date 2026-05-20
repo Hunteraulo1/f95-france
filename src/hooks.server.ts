@@ -1,10 +1,11 @@
+import { building } from '$app/environment';
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+  EXTENSION_ONLY_API_ROUTE,
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -15,6 +16,23 @@ import { notifyApiError } from '$lib/server/notifications';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
+
+/** `url.search` est interdit sur les routes en prerender — évite un second crash dans les hooks. */
+function requestRouteLabel(url: URL): string {
+	try {
+		return `${url.pathname}${url.search}`;
+	} catch {
+		return url.pathname;
+	}
+}
+
+function urlSearchIncludes(url: URL, fragment: string): boolean {
+	try {
+		return url.search.includes(fragment);
+	} catch {
+		return false;
+	}
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
@@ -46,40 +64,43 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
-	try {
-		const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
-		const maintenanceEnabled = cfg?.maintenanceMode === true;
-		if (maintenanceEnabled) {
-			const path = event.url.pathname;
-			const isAuthException =
-				path === '/dashboard/login' ||
-				path === '/dashboard/register' ||
-				path === '/dashboard/logout';
-			const isSuperAdmin = event.locals.user?.role === 'superadmin';
+	// Pas de requête DB pendant le prerender (build sans Postgres).
+	if (!building) {
+		try {
+			const [cfg] = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
+			const maintenanceEnabled = cfg?.maintenanceMode === true;
+			if (maintenanceEnabled) {
+				const path = event.url.pathname;
+				const isAuthException =
+					path === '/dashboard/login' ||
+					path === '/dashboard/register' ||
+					path === '/dashboard/logout';
+				const isSuperAdmin = event.locals.user?.role === 'superadmin';
 
-			if (!isSuperAdmin && !isAuthException) {
-				const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
-				if (acceptsHtml) {
+				if (!isSuperAdmin && !isAuthException) {
+					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
+					if (acceptsHtml) {
+						return applySecurityHeaders(
+							new Response('<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>', {
+								status: 503,
+								headers: {
+									'content-type': 'text/html; charset=utf-8',
+									'retry-after': '600'
+								}
+							})
+						);
+					}
 					return applySecurityHeaders(
-						new Response('<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>', {
+						new Response(JSON.stringify({ error: 'Service en maintenance' }), {
 							status: 503,
-							headers: {
-								'content-type': 'text/html; charset=utf-8',
-								'retry-after': '600'
-							}
+							headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '600' }
 						})
 					);
 				}
-				return applySecurityHeaders(
-					new Response(JSON.stringify({ error: 'Service en maintenance' }), {
-						status: 503,
-						headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '600' }
-					})
-				);
 			}
+		} catch (error) {
+			console.warn('Maintenance check skipped:', error);
 		}
-	} catch (error) {
-		console.warn('Maintenance check skipped:', error);
 	}
 
 	const method = event.request.method.toUpperCase();
@@ -169,7 +190,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
 	const isSensitiveSettingsAction =
 		pathname === '/dashboard/settings' &&
-		(event.url.search.includes('/changePassword') || event.url.search.includes('/disable2FA'));
+		(urlSearchIncludes(event.url, '/changePassword') ||
+			urlSearchIncludes(event.url, '/disable2FA'));
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
@@ -198,7 +220,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 
 	if (shouldLog) {
-		const route = `${event.url.pathname}${event.url.search}`;
+		const route = requestRouteLabel(event.url);
 
 		// Logger l'action API
 		logApiAction({
@@ -265,7 +287,7 @@ export const handleError = async ({
 		(isApiRequest || isDashboardAction || isSubmissionRoute);
 
 	if (shouldLog && status >= 500) {
-		const route = `${event.url.pathname}${event.url.search}`;
+		const route = requestRouteLabel(event.url);
 
 		// Construire le message d'erreur avec la stack trace
 		let errorMessage = message || 'Erreur inconnue';

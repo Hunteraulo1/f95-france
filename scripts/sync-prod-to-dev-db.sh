@@ -185,3 +185,6 @@ pg_dump --no-owner --no-privileges --no-tablespaces | {
 }
 
 echo "Terminé: base dev synchronisée depuis prod."
+
+echo "Application des migrations Drizzle (colonnes du code absentes du dump prod)..."
+(cd "${ROOT_DIR}" && bun run db:migrate)
