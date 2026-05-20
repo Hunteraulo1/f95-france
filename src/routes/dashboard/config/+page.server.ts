@@ -2,15 +2,14 @@ import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
+import { assertAnyPermission, assertPermission } from '$lib/server/permissions-guard';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est admin
-	if (!locals.user || locals.user.role !== 'superadmin') {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'config.view');
 
 	// Charger la configuration
 	let config;
@@ -54,9 +53,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	updateConfig: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertAnyPermission(locals, ['config.view', 'config.edit']);
 
 		const formData = await request.formData();
 		const appName = formData.get('appName') as string;

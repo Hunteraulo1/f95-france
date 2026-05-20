@@ -4,6 +4,9 @@ import type { User } from './server/db/schema';
 // Store utilisateur (Svelte store classique)
 export const user = writable<User | null>(null);
 
+/** Droits effectifs du rôle courant (rempli par le layout dashboard). */
+export const userPermissions = writable<string[]>([]);
+
 // Store pour les toasts
 export const toasts = writable<
 	Array<{ id: string; alertType: 'info' | 'warning' | 'success' | 'error'; message: string }>
@@ -62,4 +65,9 @@ export const initializeUserFromLocals = (userData: User | null) => {
 // Fonction pour réinitialiser le store
 export const clearUserData = () => {
 	user.set(null);
+	userPermissions.set([]);
+};
+
+export const setUserPermissions = (permissions: string[]) => {
+	userPermissions.set(permissions);
 };

@@ -1,6 +1,7 @@
 <script lang="ts">
+	import type { PermissionKey } from '$lib/permissions/catalog';
+	import { checkPermission } from '$lib/permissions/client';
 	import { user } from '$lib/stores';
-	import { checkRole, type checkRoleType } from '$lib/utils';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
@@ -13,6 +14,7 @@
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
+	import Shield from '@lucide/svelte/icons/shield';
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import Users from '@lucide/svelte/icons/users';
 	import type { Component } from 'svelte';
@@ -57,11 +59,13 @@
 		}
 	}
 
+	type NavAccess = 'all' | PermissionKey;
+
 	interface NavItem {
 		label: string;
 		href: string;
 		icon: Component;
-		roles: checkRoleType[];
+		access: NavAccess;
 		badge?: number;
 		badgeKey?: boolean;
 		requiresLinkedTranslator?: boolean;
@@ -69,109 +73,120 @@
 
 	interface NavItemSplit {
 		split: true;
-		roles: checkRoleType[];
+		access: NavAccess;
 	}
+
+	const canAccessNav = (access: NavAccess) => {
+		if (access === 'all') return true;
+		return checkPermission(access);
+	};
 
 	const nav: (NavItem | NavItemSplit)[] = [
 		{
 			label: 'Tableau de bord',
 			href: '/dashboard/',
 			icon: MonitorCog,
-			roles: ['all']
+			access: 'all'
 		},
 		{
 			label: 'Gestion des jeux',
 			href: '/dashboard/manager',
 			icon: Library,
-			roles: ['translator', 'admin']
+			access: 'games.manage'
 		},
 		{
 			label: 'Mes traductions',
 			href: '/dashboard/my-translations',
 			icon: BookType,
-			roles: ['translator', 'admin', 'superadmin'],
+			access: 'translations.own',
 			requiresLinkedTranslator: true
 		},
 		{
 			label: 'Mes soumissions',
 			href: '/dashboard/submit',
 			icon: Inbox,
-			roles: ['translator']
+			access: 'submissions.own'
 		},
 		{
 			label: 'Soumissions',
 			href: '/dashboard/submits',
 			icon: Box,
-			roles: ['admin'],
+			access: 'submissions.review',
 			badgeKey: true
 		},
 		{
 			label: 'Traducteurs/Relecteurs',
 			href: '/dashboard/translators',
 			icon: Languages,
-			roles: ['admin']
+			access: 'translators.manage'
 		},
 		{
 			split: true,
-			roles: ['admin']
+			access: 'users.manage'
 		},
 		{
 			label: 'Utilisateurs',
 			href: '/dashboard/users',
 			icon: Users,
-			roles: ['admin']
+			access: 'users.manage'
+		},
+		{
+			label: 'Rôles et droits',
+			href: '/dashboard/roles',
+			icon: Shield,
+			access: 'roles.manage'
 		},
 		{
 			label: 'Gestion API',
 			href: '/dashboard/api-management',
 			icon: KeyRound,
-			roles: ['superadmin']
+			access: 'api.management'
 		},
 		{
 			label: 'Configuration',
 			href: '/dashboard/config',
 			icon: Settings,
-			roles: ['superadmin']
+			access: 'config.view'
 		},
 		{
 			label: 'Logs API',
 			href: '/dashboard/logs',
 			icon: ScrollText,
-			roles: ['superadmin']
+			access: 'logs.view'
 		},
 		{
 			label: 'Panel développeur',
 			href: '/dashboard/dev',
 			icon: BrickWallShield,
-			roles: ['superadmin']
+			access: 'dev.panel'
 		},
 		{
 			split: true,
-			roles: ['all']
+			access: 'all'
 		},
 		{
 			label: 'Mes clés API',
 			href: '/dashboard/api-keys',
 			icon: KeyRound,
-			roles: ['all']
+			access: 'all'
 		},
 		{
 			label: 'Profil',
 			href: '/dashboard/profile',
 			icon: UserPen,
-			roles: ['all']
+			access: 'all'
 		},
 		{
 			label: 'Paramètres',
 			href: '/dashboard/settings',
 			icon: Settings2,
-			roles: ['all']
+			access: 'all'
 		},
 		{
 			label: 'Déconnexion',
 			href: '/dashboard/logout',
 			icon: LogOut,
-			roles: ['all']
+			access: 'all'
 		}
 	];
 
@@ -191,7 +206,7 @@
 		<!-- Sidebar content here -->
 		<ul class="menu w-full grow">
 			{#each nav as item, index ('split' in item ? `split-${index}` : item.href || item.label || `item-${index}`)}
-				{#if $user && checkRole(item.roles)}
+				{#if $user && canAccessNav(item.access)}
 					{#if 'split' in item}
 						<div class="divider"></div>
 					{:else if canShowNavItem(item)}
@@ -201,7 +216,7 @@
 							<a
 								class="flex h-8 items-center font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
 								class:text-red-400={item.href === '/dashboard/logout'}
-								data-tip="Homepage"
+								data-tip={item.label}
 								href={item.href}
 								onclick={closeDrawerOnMobile}
 							>

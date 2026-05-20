@@ -14,6 +14,10 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import {
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
+} from '$lib/server/schema-column-compat';
+import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
@@ -185,13 +189,19 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			ac: acValue,
 			updatedAt: new Date()
 		};
-		if (typeof gameTypeBody === 'string' && gameTypeBody.trim()) {
+		if (
+			typeof gameTypeBody === 'string' &&
+			gameTypeBody.trim() &&
+			(await hasGameTranslationGameTypeColumn())
+		) {
 			directSet.gameType = coerceGameEngineType(gameTypeBody);
 		}
 		await db
 			.update(table.gameTranslation)
 			.set(directSet)
-			.where(eq(table.gameTranslation.id, translationId));
+			.where(
+				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
+			);
 
 		const dataJson = JSON.stringify({
 			gameId,
@@ -251,7 +261,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la modification de la traduction:', error);
-		return json({ error: 'Erreur serveur' }, { status: 500 });
+		return json(
+			{ error: publicErrorFromUnknown(error, 'Erreur lors de la modification de la traduction') },
+			{ status: 500 }
+		);
 	}
 };
 
@@ -359,6 +372,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
 		console.error('Erreur lors de la suppression de la traduction:', error);
-		return json({ error: 'Erreur serveur' }, { status: 500 });
+		return json(
+			{ error: publicErrorFromUnknown(error, 'Erreur lors de la suppression de la traduction') },
+			{ status: 500 }
+		);
 	}
 };

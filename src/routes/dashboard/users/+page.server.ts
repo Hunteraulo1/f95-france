@@ -1,5 +1,8 @@
+import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { listAppRoles, roleExists, userHasPermission } from '$lib/server/permissions';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne, sql } from 'drizzle-orm';
@@ -8,9 +11,7 @@ import type { Actions, PageServerLoad } from './$types';
 const PAGE_SIZE = 20;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'users.manage');
 
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
@@ -45,9 +46,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.limit(PAGE_SIZE)
 		.offset((page - 1) * PAGE_SIZE);
 
+	const appRoles = await listAppRoles();
+
 	return {
 		users,
 		translators: translatorsList,
+		roles: appRoles.map((r) => ({
+			value: r.slug,
+			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+			isSystem: r.isSystem
+		})),
+		canAssignAdmin: await userHasPermission(locals.user, 'users.assign_admin'),
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
@@ -57,9 +66,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	updateUser: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'users.manage');
 
 		const formData = await request.formData();
 		const userId = formData.get('userId') as string;
@@ -77,7 +84,7 @@ export const actions: Actions = {
 			return fail(400, { message: 'Tous les champs sont requis' });
 		}
 
-		if (!['user', 'translator', 'admin', 'superadmin'].includes(role)) {
+		if (!(await roleExists(role))) {
 			return fail(400, { message: 'Rôle invalide' });
 		}
 
@@ -105,7 +112,9 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 
-			if ((role === 'admin' || role === 'superadmin') && locals.user.role !== 'superadmin') {
+			const canAssignAdmin = await userHasPermission(locals.user, 'users.assign_admin');
+
+			if ((role === 'admin' || role === 'superadmin') && !canAssignAdmin) {
 				return fail(403, {
 					message:
 						role === 'admin'
@@ -114,20 +123,15 @@ export const actions: Actions = {
 				});
 			}
 
-			if (currentUserRole === 'superadmin' && locals.user.role !== 'superadmin') {
+			if (currentUserRole === 'superadmin' && !canAssignAdmin) {
 				return fail(403, {
 					message: "Vous n'avez pas les permissions pour modifier un superadmin"
 				});
 			}
 
-			// Un admin ne peut pas modifier un autre admin (sauf lui-même).
-			if (
-				currentUserRole === 'admin' &&
-				locals.user.role === 'admin' &&
-				locals.user.id !== userId
-			) {
+			if (currentUserRole === 'admin' && !canAssignAdmin && locals.user!.id !== userId) {
 				return fail(403, {
-					message: 'Un admin ne peut pas modifier un autre admin'
+					message: 'Vous ne pouvez pas modifier un autre administrateur'
 				});
 			}
 

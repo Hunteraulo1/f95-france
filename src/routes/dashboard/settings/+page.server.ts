@@ -1,7 +1,9 @@
+import { hasEffectivePermission } from '$lib/permissions/effective';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
@@ -14,16 +16,17 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const devUsers =
-		locals.user.role === 'superadmin'
-			? await db
-					.select({
-						id: table.user.id,
-						username: table.user.username,
-						role: table.user.role
-					})
-					.from(table.user)
-			: [];
+	const canUseDevTools = hasEffectivePermission(locals.user.role, locals.permissions, 'dev.panel');
+
+	const devUsers = canUseDevTools
+		? await db
+				.select({
+					id: table.user.id,
+					username: table.user.username,
+					role: table.user.role
+				})
+				.from(table.user)
+		: [];
 
 	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
 	const canReturnToOwnAccount = Boolean(devOriginUserId);
@@ -272,15 +275,25 @@ export const actions: Actions = {
 		return { success: true, message: 'Mot de passe mis à jour avec succès.' };
 	},
 
-	updateDirectMode: async ({ request, locals }) => {
-		// Vérifier que l'utilisateur est authentifié et est superadmin
-		if (!locals.user || locals.user.role !== 'superadmin') {
+	updateDirectMode: async ({ request, locals, cookies }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+		if (cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE)) {
+			return fail(403, {
+				message: 'Revenez sur votre compte pour modifier le mode direct.'
+			});
+		}
+		const role = locals.user.role.trim();
+		const canEdit =
+			role === 'superadmin' || hasEffectivePermission(role, locals.permissions, 'dev.panel');
+		if (!canEdit) {
 			return fail(403, { message: 'Accès non autorisé' });
 		}
 
 		const formData = await request.formData();
-		// Les checkboxes n'envoient rien si elles ne sont pas cochées
-		const directMode = formData.has('directMode') && formData.get('directMode') !== 'false';
+		const raw = String(formData.get('directMode') ?? 'false');
+		const directMode = raw === 'true' || raw === 'on';
 
 		try {
 			await db
@@ -468,8 +481,9 @@ export const actions: Actions = {
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès non autorisé' });
+		await assertPermission(locals, 'dev.panel');
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
 		}
 		if (!locals.session?.id) {
 			return fail(401, { message: 'Session introuvable' });

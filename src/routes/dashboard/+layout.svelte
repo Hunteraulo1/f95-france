@@ -2,12 +2,13 @@
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
-	import { initializeUserFromLocals } from '$lib/stores';
+	import { initializeUserFromLocals, setUserPermissions } from '$lib/stores';
 
 	let { children, data } = $props();
 
 	$effect(() => {
 		initializeUserFromLocals(data?.user);
+		setUserPermissions(data?.permissions ?? []);
 	});
 </script>
 
@@ -15,7 +16,7 @@
 	<title>F95 France - Dashboard</title>
 </svelte:head>
 
-<Header />
+<Header maintenanceMode={data.maintenanceMode} />
 
 <main class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open">
 	<div class="drawer-content overflow-y-auto bg-base-200 p-4 sm:p-8 lg:p-16">

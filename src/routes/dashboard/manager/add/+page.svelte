@@ -159,11 +159,21 @@
 		}
 		game.link = buildGameLinkFromThread(game.website, game.threadId);
 		skipThreadStepFromQueryParam = true;
-		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
-		// On garde le déclenchement automatique pour plus tard.
 		pendingQueryThreadIdAutoScrape = true;
-		void runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
 		replaceState(resolve('/dashboard/manager/add'), page.state);
+
+		void (async () => {
+			try {
+				if (game.website === 'f95z' || game.website === 'lc') {
+					await handleThreadIdFieldBlur();
+					applyStepAfterQueryThreadScrape();
+				} else {
+					await runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
+				}
+			} finally {
+				pendingQueryThreadIdAutoScrape = false;
+			}
+		})();
 	});
 
 	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
@@ -493,6 +503,26 @@
 		if (savedId === tid) return;
 
 		await scrapeData({ threadId: tid, website: game.website });
+	};
+
+	/** Après scrape auto depuis ?threadId= : sauter thread/infos ou rester sur l’étape à corriger. */
+	const applyStepAfterQueryThreadScrape = () => {
+		if (game.website === 'f95z') {
+			if (f95ScrapeFailed) {
+				skipThreadStepFromQueryParam = false;
+				step = 1;
+				return;
+			}
+			step = 3;
+			return;
+		}
+		if (game.website === 'lc') {
+			if (lcScrapeStatus === 'failed') {
+				step = 2;
+				return;
+			}
+			step = 3;
+		}
 	};
 
 	const onInputBlurCommit = async (field: keyof FormGameType) => {
@@ -926,7 +956,7 @@
 			</div>
 
 			<div
-				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
+				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 			>
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
 					{#if name === 'image' && game.website === 'lc' && !lcShowImageField}

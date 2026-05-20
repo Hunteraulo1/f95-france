@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { boolean, integer, pgEnum, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import {
+	boolean,
+	integer,
+	pgEnum,
+	pgTable,
+	primaryKey,
+	text,
+	timestamp,
+	varchar
+} from 'drizzle-orm/pg-core';
 
 export const themeEnum = pgEnum('theme_enum', ['system', 'light', 'dark']);
 
@@ -241,6 +250,36 @@ export const notification = pgTable('notification', {
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+/** Rôle applicatif (slug = valeur de `user.role`). */
+export const appRole = pgTable('app_role', {
+	slug: varchar('slug', { length: 64 }).primaryKey(),
+	label: varchar('label', { length: 255 }).notNull(),
+	description: text('description'),
+	isSystem: boolean('is_system').notNull().default(false),
+	createdAt: timestamp('created_at').notNull().defaultNow(),
+	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const appPermission = pgTable('app_permission', {
+	key: varchar('key', { length: 64 }).primaryKey(),
+	label: varchar('label', { length: 255 }).notNull(),
+	description: text('description'),
+	group: varchar('group', { length: 64 })
+});
+
+export const appRolePermission = pgTable(
+	'app_role_permission',
+	{
+		roleSlug: varchar('role_slug', { length: 64 })
+			.notNull()
+			.references(() => appRole.slug, { onDelete: 'cascade' }),
+		permissionKey: varchar('permission_key', { length: 64 })
+			.notNull()
+			.references(() => appPermission.key, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.roleSlug, t.permissionKey] })]
+);
+
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 export type Passkey = typeof passkey.$inferSelect;
@@ -255,3 +294,5 @@ export type ApiLog = typeof apiLog.$inferSelect;
 export type Notification = typeof notification.$inferSelect;
 export type ApiKey = typeof apiKey.$inferSelect;
 export type ApiKeyRate = typeof apiKeyRate.$inferSelect;
+export type AppRole = typeof appRole.$inferSelect;
+export type AppPermission = typeof appPermission.$inferSelect;

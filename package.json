@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.2.4",
+	"version": "4.2.5",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -9,8 +9,8 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "NODE_ENV=production vite build",
-		"start": "node --env-file=.env build/index.js",
-		"preview": "ORIGIN=http://127.0.0.1:4173 PORT=4173 HOST=127.0.0.1 node --env-file=.env build/index.js",
+		"start": "node build/index.js",
+		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -52,7 +52,7 @@
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^3.5.2",
 		"prettier-plugin-tailwindcss": "^0.8.0",
-		"svelte": "^5.55.8",
+		"svelte": "^5.55.9",
 		"svelte-check": "^4.4.8",
 		"tailwindcss": "^4.3.0",
 		"tsx": "^4.22.3",

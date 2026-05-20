@@ -13,6 +13,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
+import { attachPermissionsToLocals } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -62,6 +63,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	if (event.locals.user) {
+		await attachPermissionsToLocals(event.locals);
+	} else {
+		event.locals.permissions = [];
+	}
+
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
 	// Pas de requête DB pendant le prerender (build sans Postgres).
@@ -79,23 +86,36 @@ export const handle: Handle = async ({ event, resolve }) => {
 					path === '/dashboard/login' ||
 					path === '/dashboard/register' ||
 					path === '/dashboard/logout';
-				const isSuperAdmin = event.locals.user?.role === 'superadmin';
+				const isMaintenancePage = path === '/maintenance' || path.startsWith('/maintenance/');
+				const isStaticAsset =
+					path.startsWith('/_app/') ||
+					path.startsWith('/_svelte/') ||
+					path === '/favicon.ico' ||
+					path === '/opengraph.svg' ||
+					path.endsWith('.css') ||
+					path.endsWith('.js') ||
+					path.endsWith('.woff2');
+				const isSuperAdmin = event.locals.permissions?.includes('maintenance.bypass') ?? false;
 
-				if (!isSuperAdmin && !isAuthException) {
+				if (isMaintenancePage && !isSuperAdmin) {
+					const response = await resolve(event);
+					const headers = new Headers(response.headers);
+					headers.set('retry-after', '600');
+					headers.set('cache-control', 'no-store');
+					return applySecurityHeaders(
+						new Response(response.body, {
+							status: 503,
+							statusText: 'Service Unavailable',
+							headers
+						})
+					);
+				}
+
+				if (!isSuperAdmin && !isAuthException && !isMaintenancePage && !isStaticAsset) {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
-						return applySecurityHeaders(
-							new Response(
-								'<h1>Maintenance</h1><p>Le site est temporairement en maintenance.</p>',
-								{
-									status: 503,
-									headers: {
-										'content-type': 'text/html; charset=utf-8',
-										'retry-after': '600'
-									}
-								}
-							)
-						);
+						const maintenanceUrl = new URL('/maintenance', event.url.origin);
+						return applySecurityHeaders(Response.redirect(maintenanceUrl, 307));
 					}
 					return applySecurityHeaders(
 						new Response(JSON.stringify({ error: 'Service en maintenance' }), {

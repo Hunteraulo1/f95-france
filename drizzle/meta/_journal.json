@@ -120,6 +120,13 @@
       "when": 1779196515390,
       "tag": "0016_secret_gambit",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779284827467,
+      "tag": "0017_abandoned_spectrum",
+      "breakpoints": true
     }
   ]
 }

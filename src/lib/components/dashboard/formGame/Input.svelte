@@ -100,7 +100,7 @@
 	<div class="flex items-center gap-2">
 		<label for={name}>{title}:</label>
 		{#if name === 'translationName'}
-			<div class="tooltip tooltip-right mt-1" data-tip="Exemple : Saison 1">
+			<div class="tooltip tooltip-right" data-tip="Exemple : Saison 1">
 				<button
 					type="button"
 					class="btn btn-circle btn-ghost btn-xs"
@@ -112,7 +112,7 @@
 		{/if}
 		{#if name === 'version'}
 			<div
-				class="tooltip tooltip-right mt-1"
+				class="tooltip tooltip-right"
 				data-tip="Version de référence = dernière version sortie du jeu pour la branche concernée (pas la version de la traduction). Exemple : s'il y a une saison 1 et une saison 2, pour une traduction de la saison 1, indique la dernière version de la saison 1."
 			>
 				<button
@@ -176,7 +176,7 @@
 			<a
 				href={game.link}
 				target="_blank"
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.link}
 				class:btn-primary={game.link}
 			>
@@ -190,7 +190,7 @@
 			<a
 				href={game.tlink}
 				target="_blank"
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.tlink}
 				class:btn-primary={game.tlink}
 			>

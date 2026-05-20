@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
@@ -104,9 +105,7 @@ const formDataToSubmissionPayload = (
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'submissions.review');
 
 	const statusFilterRaw = url.searchParams.get('status') || 'pending';
 	const statusFilter =
@@ -319,9 +318,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	openSubmission: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId') as string;
@@ -333,7 +330,7 @@ export const actions: Actions = {
 			.set({
 				status: 'opened',
 				updatedAt: new Date(),
-				...(await submissionOpenedByUserIdPatch(locals.user.id))
+				...(await submissionOpenedByUserIdPatch(locals.user!.id))
 			})
 			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
 
@@ -341,9 +338,7 @@ export const actions: Actions = {
 	},
 	/** Admin / superadmin : corriger le JSON tant que la soumission n’est pas acceptée. */
 	updateSubmissionData: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId');
@@ -396,9 +391,7 @@ export const actions: Actions = {
 	},
 	updateStatus: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId') as string;
@@ -483,7 +476,7 @@ export const actions: Actions = {
 				adminNotes: adminNotes || null
 			};
 			if (status === 'opened' && currentStatus === 'pending') {
-				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(locals.user.id));
+				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(locals.user!.id));
 			}
 			if (status === 'pending') {
 				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(null));
