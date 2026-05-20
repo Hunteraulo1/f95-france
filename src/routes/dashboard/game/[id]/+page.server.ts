@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -115,8 +115,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			user: locals.user
 		};
 	} catch (err) {
-		if (err instanceof Error && err.message.includes('404')) {
-			throw error(404, 'Jeu non trouvé');
+		if (isHttpError(err)) {
+			throw err;
 		}
 		console.error('Erreur lors de la récupération du jeu:', err);
 		throw error(500, 'Erreur serveur');
