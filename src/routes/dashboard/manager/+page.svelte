@@ -102,10 +102,12 @@
 
 	const getAddGameHref = () => {
 		const q = searchQuery.trim();
-		const maybeThreadId = Number.parseInt(q, 10);
-		const isNumericId = q.length > 0 && !Number.isNaN(maybeThreadId) && maybeThreadId > 0;
-		if (isNumericId) {
-			return `/dashboard/manager/add?threadId=${encodeURIComponent(String(maybeThreadId))}`;
+		// Uniquement si la recherche est entièrement un threadId (pas "2 machintruck")
+		if (/^\d+$/.test(q)) {
+			const threadId = Number.parseInt(q, 10);
+			if (threadId > 0) {
+				return `/dashboard/manager/add?threadId=${encodeURIComponent(String(threadId))}`;
+			}
 		}
 		return '/dashboard/manager/add';
 	};
