@@ -79,20 +79,6 @@ function resolveDbCredentials(source: DbEnvSource): {
 	user: string;
 	password: string;
 } | null {
-	const databaseUrl = pickEnvTrimmed(source, 'DATABASE_URL');
-	if (databaseUrl) {
-		const fromUrl = configFromDatabaseUrl(databaseUrl);
-		if (fromUrl && typeof fromUrl !== 'string') {
-			return {
-				host: fromUrl.host,
-				port: fromUrl.port,
-				database: fromUrl.database,
-				user: fromUrl.user,
-				password: fromUrl.password
-			};
-		}
-	}
-
 	const host = pickEnvTrimmed(source, 'POSTGRES_HOST', 'PGHOST');
 	if (!host) return null;
 
@@ -116,7 +102,7 @@ export function getPostgresConfigFromEnv(source: DbEnvSource = processEnv): Post
 	const credentials = resolveDbCredentials(source);
 	if (!credentials) {
 		throw new Error(
-			'Configuration base de données manquante : définir POSTGRES_HOST + POSTGRES_PASSWORD (ou DATABASE_URL, ou PGHOST + PGPASSWORD)'
+			'Configuration base de données manquante : définir POSTGRES_HOST + POSTGRES_PASSWORD'
 		);
 	}
 

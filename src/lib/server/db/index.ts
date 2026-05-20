@@ -14,7 +14,6 @@ function loadDbEnv(): Record<string, string | undefined> {
 		POSTGRES_USER: privateEnv('POSTGRES_USER'),
 		POSTGRES_PASSWORD: privateEnv('POSTGRES_PASSWORD') ?? process.env.POSTGRES_PASSWORD,
 		POSTGRES_SSL_MODE: privateEnv('POSTGRES_SSL_MODE'),
-		DATABASE_URL: privateEnv('DATABASE_URL'),
 		PGHOST: privateEnv('PGHOST'),
 		PGPORT: privateEnv('PGPORT'),
 		PGDATABASE: privateEnv('PGDATABASE'),
