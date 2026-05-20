@@ -1,5 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { userHasPermission } from '$lib/server/permissions';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
@@ -42,7 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const isAdmin = locals.user.role === 'admin' || locals.user.role === 'superadmin';
+	const isAdmin = await userHasPermission(locals.user, 'translators.manage');
 
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
@@ -117,9 +119,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	addTranslator: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'translators.manage');
 		const formData = await request.formData();
 		const name = formData.get('name') as string;
 		const discordId = formData.get('discordId') as string;
@@ -185,9 +185,7 @@ export const actions: Actions = {
 	},
 
 	editTranslator: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'translators.manage');
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 		const name = formData.get('name') as string;

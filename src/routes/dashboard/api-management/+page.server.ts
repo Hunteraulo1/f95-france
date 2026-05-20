@@ -1,20 +1,19 @@
 import {
-	createApiKey,
-	listApiKeysForAdmin,
-	restoreRevokedApiKeyAdmin,
-	revokeApiKeyForActor,
-	updateApiKeyLimitsAdmin
+  createApiKey,
+  listApiKeysForAdmin,
+  restoreRevokedApiKeyAdmin,
+  revokeApiKeyForActor,
+  updateApiKeyLimitsAdmin
 } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user || locals.user.role !== 'superadmin') {
-		error(403, 'Accès réservé aux super-administrateurs.');
-	}
+	await assertPermission(locals, 'api.management', 'Accès réservé aux super-administrateurs.');
 
 	try {
 		const [keys, usersList] = await Promise.all([
@@ -48,9 +47,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès refusé.' });
-		}
+		await assertPermission(locals, 'api.management');
 
 		const formData = await request.formData();
 		const ownerUserId = String(formData.get('ownerUserId') ?? '').trim();
@@ -88,16 +85,14 @@ export const actions: Actions = {
 			requestsPerMinute,
 			expiresAt,
 			ownerUserId,
-			createdByUserId: locals.user.id
+			createdByUserId: locals.user!.id
 		});
 
 		return { ok: true as const, createdKey: rawKey };
 	},
 
 	revoke: async ({ request, locals }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès refusé.' });
-		}
+		await assertPermission(locals, 'api.management');
 
 		const formData = await request.formData();
 		const id = String(formData.get('id') ?? '').trim();
@@ -106,8 +101,8 @@ export const actions: Actions = {
 		}
 
 		const ok = await revokeApiKeyForActor(id, {
-			userId: locals.user.id,
-			role: locals.user.role
+			userId: locals.user!.id,
+			role: locals.user!.role
 		});
 		if (!ok) {
 			return fail(400, {
@@ -119,9 +114,7 @@ export const actions: Actions = {
 	},
 
 	restoreRevoked: async ({ request, locals }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès refusé.' });
-		}
+		await assertPermission(locals, 'api.management');
 
 		const formData = await request.formData();
 		const id = String(formData.get('id') ?? '').trim();
@@ -140,9 +133,7 @@ export const actions: Actions = {
 	},
 
 	updateLimits: async ({ request, locals }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès refusé.' });
-		}
+		await assertPermission(locals, 'api.management');
 
 		const formData = await request.formData();
 		const id = String(formData.get('id') ?? '').trim();

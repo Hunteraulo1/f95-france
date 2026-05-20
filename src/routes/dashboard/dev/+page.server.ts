@@ -1,18 +1,19 @@
 import { env } from '$env/dynamic/private';
 import {
-	getEffectiveConfig,
-	getEffectiveConfigFromRow,
-	toConfigClientSafe
+  getEffectiveConfig,
+  getEffectiveConfigFromRow,
+  toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncDbToSpreadsheetBulk
+  deleteGameTranslationsFromGoogleSheet,
+  syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -1032,9 +1033,7 @@ type LegacySyncMilestone = { atMs: number; message: string };
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'dev.panel');
 
 	let configRow;
 	try {
@@ -1066,10 +1065,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		try {
 			const result = await runAutoCheckVersions();
 			await db
@@ -1095,14 +1091,7 @@ export const actions: Actions = {
 	},
 	testGoogleSheets: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const spreadsheetId = (formData.get('spreadsheetId') as string)?.trim();
 
@@ -1219,14 +1208,7 @@ export const actions: Actions = {
 		}
 	},
 	testScrape: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const threadIdRaw = formData.get('threadId');
 		const website = (formData.get('website') as 'f95z' | 'lc' | 'other' | null) ?? null;
@@ -1267,14 +1249,7 @@ export const actions: Actions = {
 		}
 	},
 	importLegacyGamesJson: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const payload = String(formData.get('legacyJson') ?? '').trim();
 
@@ -1312,10 +1287,7 @@ export const actions: Actions = {
 		}
 	},
 	syncLegacyApiTranslators: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1345,9 +1317,7 @@ export const actions: Actions = {
 		}
 	},
 	checkLegacyApiGames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1407,10 +1377,7 @@ export const actions: Actions = {
 		}
 	},
 	syncLegacyApiGames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		const t0 = Date.now();
@@ -1495,10 +1462,7 @@ export const actions: Actions = {
 		}
 	},
 	cleanupDuplicateTranslations: async ({ locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		try {
 			const before = (await db.execute(
 				sql`select count(*)::int as count from game_translation`
@@ -1542,10 +1506,7 @@ export const actions: Actions = {
 		}
 	},
 	clearAllTranslationNames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1572,10 +1533,7 @@ export const actions: Actions = {
 		}
 	},
 	syncDbToSpreadsheet: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1598,16 +1556,7 @@ export const actions: Actions = {
 		}
 	},
 	testDiscordWebhook: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null,
-				channel: null,
-				httpStatus: null as number | null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const raw = formData.get('channel');
 		const channel = raw === 'updates' || raw === 'translators' || raw === 'admin' ? raw : null;

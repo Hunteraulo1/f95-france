@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+  EXTENSION_ONLY_API_ROUTE,
+  consumeSessionApiKeyRateForUser,
+  extractApiKeyFromRequest,
+  getUserForApiKeyOwner,
+  jsonApiKeyGuardResponse,
+  validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -13,6 +13,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
+import { attachPermissionsToLocals } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -62,6 +63,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	if (event.locals.user) {
+		await attachPermissionsToLocals(event.locals);
+	} else {
+		event.locals.permissions = [];
+	}
+
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
 	// Pas de requête DB pendant le prerender (build sans Postgres).
@@ -79,7 +86,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					path === '/dashboard/login' ||
 					path === '/dashboard/register' ||
 					path === '/dashboard/logout';
-				const isSuperAdmin = event.locals.user?.role === 'superadmin';
+				const isSuperAdmin = event.locals.permissions?.includes('maintenance.bypass') ?? false;
 
 				if (!isSuperAdmin && !isAuthException) {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');

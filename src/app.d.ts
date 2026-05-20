@@ -5,6 +5,8 @@ declare global {
 		interface Locals {
 			user: import('$lib/server/db/schema').User | null;
 			session: import('$lib/server/db/schema').Session | null;
+			/** Droits effectifs du rôle courant (`user.role`). */
+			permissions?: string[];
 			/** Présent si `user` provient d’une clé API (pas de cookie de session). */
 			authenticatedViaApiKey?: boolean;
 		}
@@ -14,4 +16,4 @@ declare global {
 // interface PageState {}
 
 // interface Platform {}
-export {};
+export { };

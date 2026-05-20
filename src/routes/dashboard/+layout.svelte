@@ -2,12 +2,13 @@
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
-	import { initializeUserFromLocals } from '$lib/stores';
+	import { initializeUserFromLocals, setUserPermissions } from '$lib/stores';
 
 	let { children, data } = $props();
 
 	$effect(() => {
 		initializeUserFromLocals(data?.user);
+		setUserPermissions(data?.permissions ?? []);
 	});
 </script>
 

@@ -1,13 +1,12 @@
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
+import { assertPermission } from '$lib/server/permissions-guard';
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, like, lt, notLike, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user || locals.user.role !== 'superadmin') {
-		throw error(403, 'Accès refusé');
-	}
+	await assertPermission(locals, 'logs.view', 'Accès refusé');
 
 	try {
 		const limitParam = Number(url.searchParams.get('limit') ?? '100');

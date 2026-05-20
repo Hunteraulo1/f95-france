@@ -1,15 +1,20 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { getPermissionsForRole, hasPermission, userHasPermission } from '$lib/server/permissions';
 import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	let pendingSubmissionsCount = 0;
+	let permissions: string[] = [];
 
 	// Charger le nombre de soumissions en attente
 	if (locals.user) {
+		permissions = await getPermissionsForRole(locals.user.role);
+		locals.permissions = permissions;
+
 		try {
-			if (locals.user.role === 'admin' || locals.user.role === 'superadmin') {
+			if (hasPermission(permissions, 'submissions.review')) {
 				// Pour les admins, compter toutes les soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -17,7 +22,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 					.where(eq(table.submission.status, 'pending'));
 
 				pendingSubmissionsCount = result[0]?.count || 0;
-			} else if (locals.user.role === 'translator') {
+			} else if (hasPermission(permissions, 'submissions.own')) {
 				// Pour les traducteurs, compter leurs propres soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -46,7 +51,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 			hasLinkedTranslator = Boolean(linkedTranslator);
 
-			if (locals.user.role === 'superadmin') {
+			if (await userHasPermission(locals.user, 'roles.manage')) {
 				hasLinkedTranslator = true;
 			}
 		} catch (error) {
@@ -56,6 +61,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
+		permissions,
 		pendingSubmissionsCount,
 		hasLinkedTranslator
 	};

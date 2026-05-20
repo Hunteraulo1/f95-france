@@ -15,12 +15,7 @@
 	let selectedUser: (typeof data.users)[0] | null = $state(null);
 	let userError = $state<string | null>(null);
 
-	const roles = [
-		{ value: 'user', label: 'Utilisateur' },
-		{ value: 'translator', label: 'Traducteur' },
-		{ value: 'admin', label: 'Administrateur' },
-		{ value: 'superadmin', label: 'Super Administrateur' }
-	];
+	const roles = $derived(data.roles);
 
 	const openEditUserModal = (user: (typeof data.users)[0]) => {
 		selectedUser = user;
@@ -219,7 +214,9 @@
 						required
 					>
 						{#each roles as role (role.value)}
-							<option value={role.value}>{role.label}</option>
+							{#if data.canAssignAdmin || (role.value !== 'admin' && role.value !== 'superadmin')}
+								<option value={role.value}>{role.label}</option>
+							{/if}
 						{/each}
 					</select>
 				</div>

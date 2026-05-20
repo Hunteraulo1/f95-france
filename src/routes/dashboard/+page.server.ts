@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { userHasPermission } from '$lib/server/permissions';
 import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	}
 
-	const isAdmin = locals.user.role === 'admin' || locals.user.role === 'superadmin';
+	const isAdmin = await userHasPermission(locals.user, 'submissions.review');
 
 	// Statistiques générales (pour tous les utilisateurs)
 	let userStats;
