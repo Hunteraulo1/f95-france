@@ -2,25 +2,25 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  sendDiscordWebhookAdminNewSubmission,
-  sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-  deleteTranslationFromGoogleSheet,
-  syncTranslationToGoogleSheet,
-  syncTranslatorToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
-  hasGameTranslationGameTypeColumn,
-  publicErrorFromUnknown
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-  createTranslationDeleteSubmission,
-  createTranslationUpdateSubmission
+	createTranslationDeleteSubmission,
+	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
@@ -83,11 +83,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				: (before.version ?? null);
 
 		const resolvedTranslatorId =
-			'translatorId' in body
-				? translatorId
-					? String(translatorId)
-					: null
-				: before.translatorId;
+			'translatorId' in body ? (translatorId ? String(translatorId) : null) : before.translatorId;
 		const resolvedProofreaderId =
 			'proofreaderId' in body
 				? proofreaderId
@@ -212,9 +208,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: isF95VersionRefresh
-				? before.translationName
-				: translationName || null,
+			translationName: isF95VersionRefresh ? before.translationName : translationName || null,
 			version: normalizedVersion,
 			tversion: effectiveTversion,
 			status: effectiveStatus,

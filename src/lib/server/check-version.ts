@@ -1,15 +1,15 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  sendDiscordWebhookProofreadersVersionBumps,
-  sendDiscordWebhookTranslatorsVersionBumps,
-  sendDiscordWebhookUpdatesAutoCheckVersionBump,
-  type TranslatorVersionBumpLine
+	sendDiscordWebhookProofreadersVersionBumps,
+	sendDiscordWebhookTranslatorsVersionBumps,
+	sendDiscordWebhookUpdatesAutoCheckVersionBump,
+	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import {
-  isF95CheckerVersionAligned,
-  needsF95VersionBump,
-  normalizeCheckerVersion
+	isF95CheckerVersionAligned,
+	needsF95VersionBump,
+	normalizeCheckerVersion
 } from '$lib/server/f95-checker-alignment';
 import { disableGameAndTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
@@ -205,9 +205,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	};
 
 	const gameTranslationsFor = (gameId: string) =>
-		rows
-			.filter((r) => r.gameId === gameId)
-			.map((r) => ({ ac: r.ac, version: r.version }));
+		rows.filter((r) => r.gameId === gameId).map((r) => ({ ac: r.ac, version: r.version }));
 
 	const gameNeedsCheckerBump = (g: UniqueGameRow) =>
 		needsF95VersionBump(versions.get(g.threadId), g.gameVersion, gameTranslationsFor(g.gameId));

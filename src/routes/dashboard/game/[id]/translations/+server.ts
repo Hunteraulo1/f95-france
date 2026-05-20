@@ -2,14 +2,14 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  sendDiscordWebhookAdminNewSubmission,
-  sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-  syncTranslationToGoogleSheet,
-  syncTranslatorToGoogleSheet
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';

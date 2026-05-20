@@ -1,8 +1,8 @@
 import {
-  isRoleEditMode,
-  legacyEditModeForRoleSlug,
-  resolveShouldCreateSubmission,
-  type RoleEditMode
+	isRoleEditMode,
+	legacyEditModeForRoleSlug,
+	resolveShouldCreateSubmission,
+	type RoleEditMode
 } from '$lib/permissions/edit-mode';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -51,8 +51,6 @@ export async function resolveShouldCreateSubmissionForUser(params: {
 }): Promise<boolean> {
 	const roleEditMode = await getRoleEditMode(params.roleSlug);
 	const useDirectMode =
-		params.requestDirectMode !== undefined
-			? params.requestDirectMode
-			: params.userDirectMode;
+		params.requestDirectMode !== undefined ? params.requestDirectMode : params.userDirectMode;
 	return resolveShouldCreateSubmission({ roleEditMode, useDirectMode });
 }

@@ -139,6 +139,7 @@
 					scannedGames: number;
 					updatedGames: number;
 					updatedTranslations: number;
+					disabledAlignedGames: number;
 			  }
 			| null;
 	};
@@ -255,7 +256,7 @@
 									<p class="mt-1 text-sm">
 										Jeux scannés: {autoCheckManualResult.details.scannedGames} | Jeux mis à jour:
 										{autoCheckManualResult.details.updatedGames} | Alignés (auto-check off):
-										{autoCheckManualResult.details.disabledAlignedGames ?? 0} | Traductions impactées:
+										{autoCheckManualResult.details.disabledAlignedGames} | Traductions impactées:
 										{autoCheckManualResult.details.updatedTranslations}
 									</p>
 								{:else if typeof autoCheckManualResult.details === 'string'}

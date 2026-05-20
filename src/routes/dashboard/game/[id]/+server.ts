@@ -4,14 +4,14 @@ import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
 import { isF95CheckerVersionAligned } from '$lib/server/f95-checker-alignment';
 import {
-  clearAllTranslationAutoCheckForGame,
-  disableGameAndTranslationAutoCheck,
-  resolveGameAutoCheckForWebsite
+	clearAllTranslationAutoCheckForGame,
+	disableGameAndTranslationAutoCheck,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-  deleteGameTranslationsFromGoogleSheet,
-  syncGameTranslationsToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
@@ -192,9 +192,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				);
 
 		let checkerAlignedOnRefresh = false;
-		let acTranslationsForRefresh:
-			| { ac: boolean; version: string | null }[]
-			| null = null;
+		let acTranslationsForRefresh: { ac: boolean; version: string | null }[] | null = null;
 
 		if (isF95VersionRefresh && website === 'f95z' && nextGameVersion) {
 			acTranslationsForRefresh = await db
@@ -282,9 +280,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			await db
 				.update(table.gameTranslation)
 				.set({ version: nextGameVersion, updatedAt: new Date() })
-				.where(
-					and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true))
-				);
+				.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
 		}
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);

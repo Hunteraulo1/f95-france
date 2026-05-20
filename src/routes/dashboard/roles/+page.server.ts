@@ -1,24 +1,24 @@
 import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_LABELS,
-  type PermissionKey
+	PERMISSION_CATALOG,
+	SYSTEM_ROLE_LABELS,
+	type PermissionKey
 } from '$lib/permissions/catalog';
 import {
-  isRoleEditMode,
-  legacyEditModeForRoleSlug,
-  ROLE_EDIT_MODE_OPTIONS
+	isRoleEditMode,
+	legacyEditModeForRoleSlug,
+	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
 import { permissionCatalogGrouped } from '$lib/permissions/legacy';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  countPermissionsByRoles,
-  countUsersWithRoles,
-  invalidateRolePermissionsCache,
-  listAppRoles,
-  listRolePermissions,
-  roleExists,
-  setRolePermissions
+	countPermissionsByRoles,
+	countUsersWithRoles,
+	invalidateRolePermissionsCache,
+	listAppRoles,
+	listRolePermissions,
+	roleExists,
+	setRolePermissions
 } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { fail } from '@sveltejs/kit';

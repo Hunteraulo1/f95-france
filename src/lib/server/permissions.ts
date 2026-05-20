@@ -1,7 +1,7 @@
 import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_PERMISSIONS,
-  type PermissionKey
+	PERMISSION_CATALOG,
+	SYSTEM_ROLE_PERMISSIONS,
+	type PermissionKey
 } from '$lib/permissions/catalog';
 import { legacyEditModeForRoleSlug } from '$lib/permissions/edit-mode';
 import { resolveEffectivePermissions } from '$lib/permissions/effective';
