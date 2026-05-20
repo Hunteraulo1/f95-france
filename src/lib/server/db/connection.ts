@@ -46,32 +46,6 @@ function sslFromEnv(source: DbEnvSource, host: string): boolean | 'require' {
 	return 'require';
 }
 
-function configFromDatabaseUrl(url: string): PostgresConfig | null {
-	try {
-		const parsed = new URL(url);
-		if (parsed.protocol !== 'postgresql:' && parsed.protocol !== 'postgres:') return null;
-		const host = parsed.hostname;
-		if (!host) return null;
-		const password = parsed.password ? decodeURIComponent(parsed.password) : '';
-		return {
-			host,
-			port: parsed.port ? Number.parseInt(parsed.port, 10) : 5432,
-			database: parsed.pathname.replace(/^\//, '') || 'postgres',
-			user: parsed.username ? decodeURIComponent(parsed.username) : 'postgres',
-			password,
-			ssl: sslFromEnv(sourceFromUrl(parsed), host)
-		};
-	} catch {
-		return null;
-	}
-}
-
-function sourceFromUrl(parsed: URL): DbEnvSource {
-	return {
-		POSTGRES_SSL_MODE: parsed.searchParams.get('sslmode') ?? undefined
-	};
-}
-
 function resolveDbCredentials(source: DbEnvSource): {
 	host: string;
 	port: number;
