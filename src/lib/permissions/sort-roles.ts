@@ -13,8 +13,7 @@ export function sortRolesByPrivileges<T extends { slug: string; label?: string }
 	};
 
 	return [...roles].sort((a, b) => {
-		const countDiff =
-			(permissionCountBySlug[a.slug] ?? 0) - (permissionCountBySlug[b.slug] ?? 0);
+		const countDiff = (permissionCountBySlug[a.slug] ?? 0) - (permissionCountBySlug[b.slug] ?? 0);
 		if (countDiff !== 0) return countDiff;
 
 		const rankDiff = systemRank(a.slug) - systemRank(b.slug);

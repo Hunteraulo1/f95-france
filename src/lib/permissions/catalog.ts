@@ -142,12 +142,7 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 
 /** Droits par rôle système (équivalent à l’ancien comportement codé en dur). */
 export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> = {
-	user: [
-		'dashboard.view',
-		'profile.view',
-		'settings.view',
-		'api_keys.own'
-	],
+	user: ['dashboard.view', 'profile.view', 'settings.view', 'api_keys.own'],
 	translator: [
 		'dashboard.view',
 		'profile.view',

@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-  EXTENSION_ONLY_API_ROUTE,
-  consumeSessionApiKeyRateForUser,
-  extractApiKeyFromRequest,
-  getUserForApiKeyOwner,
-  jsonApiKeyGuardResponse,
-  validateApiKeyRequest
+	EXTENSION_ONLY_API_ROUTE,
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -86,8 +86,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					path === '/dashboard/login' ||
 					path === '/dashboard/register' ||
 					path === '/dashboard/logout';
-				const isMaintenancePage =
-					path === '/maintenance' || path.startsWith('/maintenance/');
+				const isMaintenancePage = path === '/maintenance' || path.startsWith('/maintenance/');
 				const isStaticAsset =
 					path.startsWith('/_app/') ||
 					path.startsWith('/_svelte/') ||
@@ -116,9 +115,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
 						const maintenanceUrl = new URL('/maintenance', event.url.origin);
-						return applySecurityHeaders(
-							Response.redirect(maintenanceUrl, 307)
-						);
+						return applySecurityHeaders(Response.redirect(maintenanceUrl, 307));
 					}
 					return applySecurityHeaders(
 						new Response(JSON.stringify({ error: 'Service en maintenance' }), {

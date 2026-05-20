@@ -16,21 +16,17 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const canUseDevTools = hasEffectivePermission(
-		locals.user.role,
-		locals.permissions,
-		'dev.panel'
-	);
+	const canUseDevTools = hasEffectivePermission(locals.user.role, locals.permissions, 'dev.panel');
 
 	const devUsers = canUseDevTools
-			? await db
-					.select({
-						id: table.user.id,
-						username: table.user.username,
-						role: table.user.role
-					})
-					.from(table.user)
-			: [];
+		? await db
+				.select({
+					id: table.user.id,
+					username: table.user.username,
+					role: table.user.role
+				})
+				.from(table.user)
+		: [];
 
 	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
 	const canReturnToOwnAccount = Boolean(devOriginUserId);
@@ -290,8 +286,7 @@ export const actions: Actions = {
 		}
 		const role = locals.user.role.trim();
 		const canEdit =
-			role === 'superadmin' ||
-			hasEffectivePermission(role, locals.permissions, 'dev.panel');
+			role === 'superadmin' || hasEffectivePermission(role, locals.permissions, 'dev.panel');
 		if (!canEdit) {
 			return fail(403, { message: 'Accès non autorisé' });
 		}

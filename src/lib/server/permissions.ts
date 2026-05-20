@@ -1,7 +1,7 @@
 import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_PERMISSIONS,
-  type PermissionKey
+	PERMISSION_CATALOG,
+	SYSTEM_ROLE_PERMISSIONS,
+	type PermissionKey
 } from '$lib/permissions/catalog';
 import { resolveEffectivePermissions } from '$lib/permissions/effective';
 import { legacyPermissionsForRole } from '$lib/permissions/legacy';
@@ -66,7 +66,10 @@ export async function getPermissionsForRole(roleSlug: string): Promise<string[]>
 	return legacy;
 }
 
-export function hasPermission(permissions: string[] | undefined, key: PermissionKey | string): boolean {
+export function hasPermission(
+	permissions: string[] | undefined,
+	key: PermissionKey | string
+): boolean {
 	if (!permissions?.length) return false;
 	return permissions.includes(key);
 }
@@ -210,16 +213,19 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 	}
 }
 
-export async function setRolePermissions(roleSlug: string, permissionKeys: string[]): Promise<void> {
+export async function setRolePermissions(
+	roleSlug: string,
+	permissionKeys: string[]
+): Promise<void> {
 	const validKeys = new Set(PERMISSION_CATALOG.map((p) => p.key));
 	const filtered = [...new Set(permissionKeys.filter((k) => validKeys.has(k as PermissionKey)))];
 
 	await db.delete(table.appRolePermission).where(eq(table.appRolePermission.roleSlug, roleSlug));
 
 	if (filtered.length > 0) {
-		await db.insert(table.appRolePermission).values(
-			filtered.map((permissionKey) => ({ roleSlug, permissionKey }))
-		);
+		await db
+			.insert(table.appRolePermission)
+			.values(filtered.map((permissionKey) => ({ roleSlug, permissionKey })));
 	}
 
 	invalidateRolePermissionsCache(roleSlug);

@@ -2,24 +2,24 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  sendDiscordWebhookAdminNewSubmission,
-  sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-  deleteTranslationFromGoogleSheet,
-  syncTranslationToGoogleSheet,
-  syncTranslatorToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import {
-  hasGameTranslationGameTypeColumn,
-  publicErrorFromUnknown
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-  createTranslationDeleteSubmission,
-  createTranslationUpdateSubmission
+	createTranslationDeleteSubmission,
+	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { json } from '@sveltejs/kit';
@@ -200,10 +200,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.gameTranslation)
 			.set(directSet)
 			.where(
-				and(
-					eq(table.gameTranslation.id, translationId),
-					eq(table.gameTranslation.gameId, gameId)
-				)
+				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
 			);
 
 		const dataJson = JSON.stringify({

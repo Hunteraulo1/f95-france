@@ -1,19 +1,19 @@
 import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_LABELS,
-  type PermissionKey
+	PERMISSION_CATALOG,
+	SYSTEM_ROLE_LABELS,
+	type PermissionKey
 } from '$lib/permissions/catalog';
 import { permissionCatalogGrouped } from '$lib/permissions/legacy';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  countPermissionsByRoles,
-  countUsersWithRoles,
-  invalidateRolePermissionsCache,
-  listAppRoles,
-  listRolePermissions,
-  roleExists,
-  setRolePermissions
+	countPermissionsByRoles,
+	countUsersWithRoles,
+	invalidateRolePermissionsCache,
+	listAppRoles,
+	listRolePermissions,
+	roleExists,
+	setRolePermissions
 } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { fail } from '@sveltejs/kit';
@@ -92,7 +92,12 @@ export const actions: Actions = {
 				description,
 				isSystem: false
 			});
-			await setRolePermissions(slug, ['dashboard.view', 'profile.view', 'settings.view', 'api_keys.own']);
+			await setRolePermissions(slug, [
+				'dashboard.view',
+				'profile.view',
+				'settings.view',
+				'api_keys.own'
+			]);
 			return { success: true, message: 'Rôle créé', selectedSlug: slug };
 		} catch (error) {
 			console.error('createRole:', error);
@@ -112,7 +117,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Champs requis manquants' });
 		}
 
-		const [role] = await db.select().from(table.appRole).where(eq(table.appRole.slug, slug)).limit(1);
+		const [role] = await db
+			.select()
+			.from(table.appRole)
+			.where(eq(table.appRole.slug, slug))
+			.limit(1);
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
@@ -150,9 +159,7 @@ export const actions: Actions = {
 		const keys = formData
 			.getAll('permissions')
 			.map((v) => String(v))
-			.filter((k): k is PermissionKey =>
-				PERMISSION_CATALOG.some((p) => p.key === k)
-			);
+			.filter((k): k is PermissionKey => PERMISSION_CATALOG.some((p) => p.key === k));
 
 		try {
 			await setRolePermissions(slug, keys);
@@ -172,7 +179,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Rôle requis' });
 		}
 
-		const [role] = await db.select().from(table.appRole).where(eq(table.appRole.slug, slug)).limit(1);
+		const [role] = await db
+			.select()
+			.from(table.appRole)
+			.where(eq(table.appRole.slug, slug))
+			.limit(1);
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
