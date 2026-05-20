@@ -3,11 +3,14 @@ nixPkgs = ["nodejs_24", "bun"]
 
 [phases.install]
 cmds = [
-  "bun install --frozen-lockfile"
+  "rm -rf node_modules bun.lockb || true",
+  "bun install"
 ]
 
 [phases.build]
-cmds = ["bun run build", "bun install --frozen-lockfile --production"]
+cmds = [
+  "bun run build"
+]
 
 [start]
 cmd = "node build/handler.js"
