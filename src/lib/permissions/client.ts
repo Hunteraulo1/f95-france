@@ -1,23 +1,15 @@
 import { user, userPermissions } from '$lib/stores';
 import { get } from 'svelte/store';
 import type { PermissionKey } from './catalog';
-import { legacyPermissionsForRole } from './legacy';
+import { resolveEffectivePermissions } from './effective';
 
-export function hasClientPermission(
-	permissions: string[] | undefined,
-	key: PermissionKey | string
-): boolean {
-	if (!permissions?.length) return false;
-	return permissions.includes(key);
+export function effectivePermissionsForCurrentUser(): string[] {
+	const loggedUser = get(user);
+	if (!loggedUser?.role) return [];
+	return resolveEffectivePermissions(loggedUser.role, get(userPermissions));
 }
 
-/** Vérifie une permission côté client (store layout ou repli legacy). */
+/** Vérifie une permission côté client (store layout + repli legacy pour rôles système). */
 export function checkPermission(key: PermissionKey | string): boolean {
-	const perms = get(userPermissions);
-	if (perms.length > 0) {
-		return hasClientPermission(perms, key);
-	}
-	const loggedUser = get(user);
-	if (!loggedUser?.role) return false;
-	return legacyPermissionsForRole(loggedUser.role).includes(key as PermissionKey);
+	return effectivePermissionsForCurrentUser().includes(key);
 }

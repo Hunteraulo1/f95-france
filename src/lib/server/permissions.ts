@@ -3,6 +3,7 @@ import {
   SYSTEM_ROLE_PERMISSIONS,
   type PermissionKey
 } from '$lib/permissions/catalog';
+import { resolveEffectivePermissions } from '$lib/permissions/effective';
 import { legacyPermissionsForRole } from '$lib/permissions/legacy';
 import { legacyPermissionCounts, sortRolesByPrivileges } from '$lib/permissions/sort-roles';
 import { db } from '$lib/server/db';
@@ -49,7 +50,10 @@ export async function getPermissionsForRole(roleSlug: string): Promise<string[]>
 			.where(eq(table.appRolePermission.roleSlug, roleSlug));
 
 		if (rows.length > 0) {
-			const permissions = rows.map((r) => r.permissionKey);
+			const permissions = resolveEffectivePermissions(
+				roleSlug,
+				rows.map((r) => r.permissionKey)
+			);
 			cacheSet(roleSlug, permissions);
 			return permissions;
 		}

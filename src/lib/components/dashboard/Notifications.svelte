@@ -137,7 +137,7 @@
 
 		// En dev, EventSource + HMR/rebuild Vite = connexions coupées et bruit console navigateur
 		// (« connexion interrompue pendant le chargement »). Le polling suffit localement.
-		const usePollingOnly = import.meta.env.DEV;
+		const usePollingOnly = import.meta.env.DEV || import.meta.env.MODE === 'preview';
 
 		if (!usePollingOnly && typeof EventSource !== 'undefined') {
 			notificationsSource = new EventSource('/api/notifications/stream');
