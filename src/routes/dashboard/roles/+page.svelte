@@ -126,24 +126,29 @@
 							}}
 						>
 							<input type="hidden" name="slug" value={selectedRole.slug} />
+							{#if selectedRole.isSystem}
+								<input type="hidden" name="label" value={selectedRole.label} />
+							{/if}
 							<fieldset class="fieldset">
 								<legend class="fieldset-legend">Libellé</legend>
 								<input
 									type="text"
-									name="label"
+									name={selectedRole.isSystem ? undefined : 'label'}
 									class="input w-full"
+									class:opacity-60={selectedRole.isSystem}
 									value={selectedRole.label}
-									disabled={selectedRole.isSystem}
-									required
+									readonly={selectedRole.isSystem}
+									required={!selectedRole.isSystem}
 								/>
 							</fieldset>
 							<fieldset class="fieldset">
 								<legend class="fieldset-legend">Description</legend>
 								<textarea
-									name="description"
+									name={selectedRole.isSystem ? undefined : 'description'}
 									class="textarea w-full"
+									class:opacity-60={selectedRole.isSystem}
 									rows="2"
-									disabled={selectedRole.isSystem}>{selectedRole.description ?? ''}</textarea
+									readonly={selectedRole.isSystem}>{selectedRole.description ?? ''}</textarea
 								>
 							</fieldset>
 							<fieldset class="fieldset">

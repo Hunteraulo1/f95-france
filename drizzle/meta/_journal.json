@@ -134,6 +134,13 @@
       "when": 1779297610459,
       "tag": "0018_sad_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0019_dev_impersonate",
+      "breakpoints": true
     }
   ]
 }

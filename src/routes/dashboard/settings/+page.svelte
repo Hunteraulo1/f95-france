@@ -39,7 +39,7 @@
 	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
 	$effect(() => {
-		if ($user && checkPermission('dev.panel')) {
+		if ($user && checkPermission('dev.impersonate')) {
 			const nextUsers = (data.devUsers ?? []) as DevUserLite[];
 			users = nextUsers;
 			targetUserId = nextUsers.some((u) => u.id === $user?.id)
@@ -807,10 +807,9 @@
 		</div>
 	{/if}
 
-	{#if $user && checkPermission('dev.panel')}
+	{#if $user && checkPermission('dev.impersonate')}
 		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Paramètres développeur</h2>
-			<h3 class="text-base font-medium text-base-content">Changer d'utilisateur (Dev)</h3>
+			<h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
 
 			<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 				<div class="card-body gap-6 sm:p-8">

@@ -17,6 +17,7 @@ export const PERMISSION_KEYS = [
 	'config.edit',
 	'logs.view',
 	'dev.panel',
+	'dev.impersonate',
 	'maintenance.bypass'
 ] as const;
 
@@ -130,6 +131,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		key: 'dev.panel',
 		label: 'Panel développeur',
 		description: 'Outils de développement internes',
+		group: 'Système'
+	},
+	{
+		key: 'dev.impersonate',
+		label: "Changer d'utilisateur (Dev)",
+		description: 'Basculer la session vers un autre compte utilisateur (mode développeur)',
 		group: 'Système'
 	},
 	{

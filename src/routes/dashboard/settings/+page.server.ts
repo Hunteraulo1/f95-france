@@ -3,6 +3,7 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import { userHasPermission } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
@@ -17,9 +18,13 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const canUseDevTools = hasEffectivePermission(locals.user.role, locals.permissions, 'dev.panel');
+	const canImpersonateUsers = hasEffectivePermission(
+		locals.user.role,
+		locals.permissions,
+		'dev.impersonate'
+	);
 
-	const devUsers = canUseDevTools
+	const devUsers = canImpersonateUsers
 		? await db
 				.select({
 					id: table.user.id,
@@ -486,7 +491,7 @@ export const actions: Actions = {
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
-		await assertPermission(locals, 'dev.panel');
+		await assertPermission(locals, 'dev.impersonate');
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });
 		}
@@ -556,8 +561,10 @@ export const actions: Actions = {
 			.where(eq(table.user.id, originUserId))
 			.limit(1);
 
-		if (!originUser || originUser.role !== 'superadmin') {
-			return fail(403, { message: "Le compte d'origine est invalide ou n'est pas superadmin" });
+		if (!originUser || !(await userHasPermission(originUser, 'dev.impersonate'))) {
+			return fail(403, {
+				message: "Le compte d'origine est invalide ou n'a pas le droit de changement d'utilisateur"
+			});
 		}
 
 		try {

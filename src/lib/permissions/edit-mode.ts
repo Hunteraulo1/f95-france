@@ -20,7 +20,7 @@ export const ROLE_EDIT_MODE_OPTIONS: {
 		value: 'user_direct_mode',
 		label: 'Préférence utilisateur (mode direct)',
 		description:
-			'Chaque compte choisit via le toggle « Mode direct » dans ses paramètres (comme les superadmins aujourd’hui).'
+			'Possibilité pour les utilisateurs de choisir le mode direct dans leurs paramètres.'
 	}
 ];
 
