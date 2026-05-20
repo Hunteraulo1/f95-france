@@ -1,11 +1,17 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+  sendDiscordWebhookProofreadersVersionBumps,
+  sendDiscordWebhookTranslatorsVersionBumps,
+  sendDiscordWebhookUpdatesAutoCheckVersionBump,
+  type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
+import {
+  isF95CheckerVersionAligned,
+  needsF95VersionBump,
+  normalizeCheckerVersion
+} from '$lib/server/f95-checker-alignment';
+import { disableGameAndTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
@@ -96,6 +102,7 @@ type AutoCheckResult = {
 	scannedGames: number;
 	updatedGames: number;
 	updatedTranslations: number;
+	disabledAlignedGames: number;
 	issues: AutoCheckIssue[];
 };
 
@@ -144,7 +151,13 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		);
 
 	if (rows.length === 0) {
-		return { scannedGames: 0, updatedGames: 0, updatedTranslations: 0, issues };
+		return {
+			scannedGames: 0,
+			updatedGames: 0,
+			updatedTranslations: 0,
+			disabledAlignedGames: 0,
+			issues
+		};
 	}
 
 	const uniqueByGame = new Map<
@@ -191,24 +204,38 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		threadUrl: string | null;
 	};
 
-	/** Bump si la fiche jeu OU une traduction auto-check a une « version jeu » (ligne) différente du checker. */
-	const gameNeedsCheckerBump = (g: UniqueGameRow) => {
-		const nextRaw = versions.get(g.threadId);
-		if (!nextRaw || nextRaw === 'Unknown') return false;
-		const next = nextRaw.trim();
-		if ((g.gameVersion ?? '').trim() !== next) return true;
-		for (const r of rows) {
-			if (r.gameId !== g.gameId || !r.ac) continue;
-			const rowV = (r.version ?? '').trim();
-			if (rowV !== '' && rowV !== next) return true;
-		}
-		return false;
-	};
+	const gameTranslationsFor = (gameId: string) =>
+		rows
+			.filter((r) => r.gameId === gameId)
+			.map((r) => ({ ac: r.ac, version: r.version }));
+
+	const gameNeedsCheckerBump = (g: UniqueGameRow) =>
+		needsF95VersionBump(versions.get(g.threadId), g.gameVersion, gameTranslationsFor(g.gameId));
+
+	const gameIsCheckerAligned = (g: UniqueGameRow) =>
+		isF95CheckerVersionAligned(
+			versions.get(g.threadId),
+			g.gameVersion,
+			gameTranslationsFor(g.gameId)
+		);
 
 	const changedGames = Array.from(uniqueByGame.values()).filter(gameNeedsCheckerBump);
+	const alignedGames = Array.from(uniqueByGame.values()).filter(
+		(g) => !gameNeedsCheckerBump(g) && gameIsCheckerAligned(g)
+	);
+
+	for (const game of alignedGames) {
+		await disableGameAndTranslationAutoCheck(game.gameId);
+	}
 
 	if (changedGames.length === 0) {
-		return { scannedGames: uniqueByGame.size, updatedGames: 0, updatedTranslations: 0, issues };
+		return {
+			scannedGames: uniqueByGame.size,
+			updatedGames: 0,
+			updatedTranslations: 0,
+			disabledAlignedGames: alignedGames.length,
+			issues
+		};
 	}
 
 	const changedGameIds = changedGames.map((g) => g.gameId);
@@ -234,9 +261,8 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
 
 	for (const game of changedGames) {
-		const newVersionRaw = versions.get(game.threadId);
-		if (!newVersionRaw || newVersionRaw === 'Unknown') continue;
-		const newVersion = newVersionRaw.trim();
+		const newVersion = normalizeCheckerVersion(versions.get(game.threadId));
+		if (!newVersion) continue;
 
 		await db
 			.update(table.game)
@@ -388,6 +414,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		scannedGames: uniqueByGame.size,
 		updatedGames: changedGames.length,
 		updatedTranslations: impactedTranslations.length,
+		disabledAlignedGames: alignedGames.length,
 		issues
 	};
 }

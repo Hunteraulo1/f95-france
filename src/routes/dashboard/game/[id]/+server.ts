@@ -2,8 +2,10 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import { isF95CheckerVersionAligned } from '$lib/server/f95-checker-alignment';
 import {
   clearAllTranslationAutoCheckForGame,
+  disableGameAndTranslationAutoCheck,
   resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
@@ -112,8 +114,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			directMode,
 			silentMode,
 			gameAutoCheck,
-			gameVersion
+			gameVersion,
+			f95VersionRefresh
 		} = body;
+
+		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
 		// Valider les données requises (le moteur est par traduction ; `type` optionnel = appliquer à toutes les lignes si fourni, ex. refresh F95)
 		if (!name || !website || !image) {
@@ -163,15 +168,20 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				: null;
 		const nextThreadId =
 			parsedThreadId !== null && !Number.isNaN(parsedThreadId) ? parsedThreadId : null;
+		const nextGameVersion =
+			typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null;
+
 		const hasNonVersionChanges =
-			(name ?? '') !== (existingGame.name ?? '') ||
-			(description || null) !== (existingGame.description ?? null) ||
-			(website ?? '') !== (existingGame.website ?? '') ||
-			nextThreadId !== (existingGame.threadId ?? null) ||
-			(tags || null) !== (existingGame.tags ?? null) ||
-			(link || null) !== (existingGame.link ?? null) ||
-			(image ?? '') !== (existingGame.image ?? '');
-		const nextGameAutoCheck = hasNonVersionChanges
+			!isF95VersionRefresh &&
+			((name ?? '') !== (existingGame.name ?? '') ||
+				(description || null) !== (existingGame.description ?? null) ||
+				(website ?? '') !== (existingGame.website ?? '') ||
+				nextThreadId !== (existingGame.threadId ?? null) ||
+				(tags || null) !== (existingGame.tags ?? null) ||
+				(link || null) !== (existingGame.link ?? null) ||
+				(image ?? '') !== (existingGame.image ?? ''));
+
+		let nextGameAutoCheck = hasNonVersionChanges
 			? false
 			: resolveGameAutoCheckForWebsite(
 					website,
@@ -180,6 +190,37 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 						: undefined,
 					prevGameAutoCheck ?? true
 				);
+
+		let checkerAlignedOnRefresh = false;
+		let acTranslationsForRefresh:
+			| { ac: boolean; version: string | null }[]
+			| null = null;
+
+		if (isF95VersionRefresh && website === 'f95z' && nextGameVersion) {
+			acTranslationsForRefresh = await db
+				.select({
+					ac: table.gameTranslation.ac,
+					version: table.gameTranslation.version
+				})
+				.from(table.gameTranslation)
+				.where(eq(table.gameTranslation.gameId, gameId));
+
+			checkerAlignedOnRefresh = isF95CheckerVersionAligned(
+				nextGameVersion,
+				existingGame.gameVersion,
+				acTranslationsForRefresh
+			);
+
+			if (checkerAlignedOnRefresh) {
+				nextGameAutoCheck = false;
+			} else {
+				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+					website,
+					undefined,
+					prevGameAutoCheck ?? true
+				);
+			}
+		}
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
 			roleSlug: userRole,
@@ -197,7 +238,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion: typeof gameVersion === 'string' ? gameVersion : null
+				gameVersion: nextGameVersion
 			});
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
@@ -226,14 +267,24 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion:
-					typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+				gameVersion: nextGameVersion,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
 
 		if (!nextGameAutoCheck) {
-			await clearAllTranslationAutoCheckForGame(gameId);
+			if (checkerAlignedOnRefresh) {
+				await disableGameAndTranslationAutoCheck(gameId);
+			} else {
+				await clearAllTranslationAutoCheckForGame(gameId);
+			}
+		} else if (isF95VersionRefresh && nextGameVersion) {
+			await db
+				.update(table.gameTranslation)
+				.set({ version: nextGameVersion, updatedAt: new Date() })
+				.where(
+					and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true))
+				);
 		}
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);

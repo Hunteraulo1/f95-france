@@ -55,8 +55,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			silentMode,
 			ac,
 			translatorId,
-			proofreaderId
+			proofreaderId,
+			f95VersionRefresh
 		} = body;
+
+		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
 		const beforeRows = await db
 			.select()
@@ -71,8 +74,26 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const before = beforeRows[0];
-		const normalizedVersion =
-			typeof version === 'string' ? version.trim() || null : (before.version ?? null);
+		const normalizedVersion = isF95VersionRefresh
+			? typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null)
+			: typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null);
+
+		const resolvedTranslatorId =
+			'translatorId' in body
+				? translatorId
+					? String(translatorId)
+					: null
+				: before.translatorId;
+		const resolvedProofreaderId =
+			'proofreaderId' in body
+				? proofreaderId
+					? String(proofreaderId)
+					: null
+				: before.proofreaderId;
 
 		const TNAMES = [
 			'no_translation',
@@ -86,23 +107,33 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const linkNotRequired = effectiveTname === 'integrated' || effectiveTname === 'no_translation';
 		const requiresTranslationVersion = effectiveTname !== 'no_translation';
-		const tlinkStored = linkNotRequired ? '' : typeof tlink === 'string' ? tlink : '';
-		if (
-			(requiresTranslationVersion && !tversion) ||
-			!status ||
-			!ttype ||
-			(!linkNotRequired && !tlinkStored.trim())
-		) {
-			return json(
-				{
-					error: linkNotRequired
-						? requiresTranslationVersion
-							? 'Version de traduction, statut et type sont requis'
-							: 'Statut et type sont requis'
-						: 'Tous les champs sont requis (y compris le lien de traduction)'
-				},
-				{ status: 400 }
-			);
+		const tlinkStored = linkNotRequired
+			? ''
+			: typeof tlink === 'string'
+				? tlink
+				: (before.tlink ?? '');
+		const effectiveTversion = isF95VersionRefresh ? before.tversion : tversion;
+		const effectiveStatus = isF95VersionRefresh ? before.status : status;
+		const effectiveTtype = isF95VersionRefresh ? before.ttype : ttype;
+
+		if (!isF95VersionRefresh) {
+			if (
+				(requiresTranslationVersion && !effectiveTversion) ||
+				!effectiveStatus ||
+				!effectiveTtype ||
+				(!linkNotRequired && !tlinkStored.trim())
+			) {
+				return json(
+					{
+						error: linkNotRequired
+							? requiresTranslationVersion
+								? 'Version de traduction, statut et type sont requis'
+								: 'Statut et type sont requis'
+							: 'Tous les champs sont requis (y compris le lien de traduction)'
+					},
+					{ status: 400 }
+				);
+			}
 		}
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -119,11 +150,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
 		const gameAllowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
-		const acValue = !gameAllowsTranslationAc
-			? false
-			: canManuallyEditTranslationAc && acRequested !== undefined
-				? acRequested
-				: (before.ac ?? false);
+		const acValue = isF95VersionRefresh
+			? (before.ac ?? false)
+			: !gameAllowsTranslationAc
+				? false
+				: canManuallyEditTranslationAc && acRequested !== undefined
+					? acRequested
+					: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
@@ -144,8 +177,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
 					? { gameType: gameTypeBody.trim() }
 					: {}),
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
+				translatorId: resolvedTranslatorId,
+				proofreaderId: resolvedProofreaderId,
 				ac: acValue
 			});
 			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
@@ -179,15 +212,17 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: translationName || null,
+			translationName: isF95VersionRefresh
+				? before.translationName
+				: translationName || null,
 			version: normalizedVersion,
-			tversion,
-			status,
-			ttype,
-			tlink: tlinkStored,
+			tversion: effectiveTversion,
+			status: effectiveStatus,
+			ttype: effectiveTtype,
+			tlink: isF95VersionRefresh ? before.tlink : tlinkStored,
 			tname: effectiveTname,
-			translatorId: translatorId || null,
-			proofreaderId: proofreaderId || null,
+			translatorId: resolvedTranslatorId,
+			proofreaderId: resolvedProofreaderId,
 			ac: acValue,
 			updatedAt: new Date()
 		};
