@@ -5,9 +5,9 @@ import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
-  parseSubmissionPayloadJson,
-  persistSubmissionPayload,
-  validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';

@@ -3,9 +3,9 @@ import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import {
-  parseSubmissionPayloadJson,
-  persistSubmissionPayload,
-  validateSubmissionPayloadForType
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { fail } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';

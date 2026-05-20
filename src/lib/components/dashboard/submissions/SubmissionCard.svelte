@@ -39,12 +39,12 @@
 		user?: {
 			id: string;
 			username: string;
-			avatar: string;
+			avatar: string | null;
 		} | null;
 		openedByUser?: {
 			id: string;
 			username: string;
-			avatar: string;
+			avatar: string | null;
 		} | null;
 	}
 
