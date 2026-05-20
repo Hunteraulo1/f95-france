@@ -1,19 +1,16 @@
 import { env as processEnv } from 'node:process';
 
 /**
- * Configuration de connexion Postgres.
- * (utile quand le mot de passe contient des caractères spéciaux : & # % ! ^ etc.)
+ * Configuration de connexion Postgres (variables POSTGRES_* / PG* dans l’env).
  */
-export type PostgresConfig =
-	| string
-	| {
-			host: string;
-			port: number;
-			database: string;
-			user: string;
-			password: string;
-			ssl?: boolean | 'require';
-	  };
+export type PostgresConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl?: boolean | 'require';
+};
 
 export type DbEnvSource = Record<string, string | undefined>;
 
@@ -91,10 +88,9 @@ export function getPostgresConfig(): PostgresConfig {
 	return getPostgresConfigFromEnv(processEnv);
 }
 
-/** URL pour drizzle-kit (dbCredentials.url). */
+/** URL dérivée des variables d’environnement — pour drizzle-kit (`dbCredentials.url`). */
 export function getDatabaseUrl(source: DbEnvSource = processEnv): string {
 	const config = getPostgresConfigFromEnv(source);
-	if (typeof config === 'string') return config;
 
 	const base = `postgresql://${encodeURIComponent(config.user)}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${encodeURIComponent(config.database)}`;
 	if (config.ssl === false) return base;

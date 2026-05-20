@@ -45,9 +45,7 @@ function createPostgresClient(config: PostgresConfig) {
 		connect_timeout: 20
 	} as const;
 
-	return typeof config === 'string'
-		? postgres(config, options)
-		: postgres({ ...config, ...options });
+	return postgres({ ...config, ...options });
 }
 
 const globalForDb = globalThis as unknown as {
