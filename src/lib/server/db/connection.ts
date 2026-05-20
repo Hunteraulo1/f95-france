@@ -1,19 +1,16 @@
 import { env as processEnv } from 'node:process';
 
 /**
- * Configuration de connexion Postgres.
- * (utile quand le mot de passe contient des caractères spéciaux : & # % ! ^ etc.)
+ * Configuration de connexion Postgres (variables POSTGRES_* / PG* dans l’env).
  */
-export type PostgresConfig =
-	| string
-	| {
-			host: string;
-			port: number;
-			database: string;
-			user: string;
-			password: string;
-			ssl?: boolean | 'require';
-	  };
+export type PostgresConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl?: boolean | 'require';
+};
 
 export type DbEnvSource = Record<string, string | undefined>;
 
@@ -46,32 +43,6 @@ function sslFromEnv(source: DbEnvSource, host: string): boolean | 'require' {
 	return 'require';
 }
 
-function configFromDatabaseUrl(url: string): PostgresConfig | null {
-	try {
-		const parsed = new URL(url);
-		if (parsed.protocol !== 'postgresql:' && parsed.protocol !== 'postgres:') return null;
-		const host = parsed.hostname;
-		if (!host) return null;
-		const password = parsed.password ? decodeURIComponent(parsed.password) : '';
-		return {
-			host,
-			port: parsed.port ? Number.parseInt(parsed.port, 10) : 5432,
-			database: parsed.pathname.replace(/^\//, '') || 'postgres',
-			user: parsed.username ? decodeURIComponent(parsed.username) : 'postgres',
-			password,
-			ssl: sslFromEnv(sourceFromUrl(parsed), host)
-		};
-	} catch {
-		return null;
-	}
-}
-
-function sourceFromUrl(parsed: URL): DbEnvSource {
-	return {
-		POSTGRES_SSL_MODE: parsed.searchParams.get('sslmode') ?? undefined
-	};
-}
-
 function resolveDbCredentials(source: DbEnvSource): {
 	host: string;
 	port: number;
@@ -79,20 +50,6 @@ function resolveDbCredentials(source: DbEnvSource): {
 	user: string;
 	password: string;
 } | null {
-	const databaseUrl = pickEnvTrimmed(source, 'DATABASE_URL');
-	if (databaseUrl) {
-		const fromUrl = configFromDatabaseUrl(databaseUrl);
-		if (fromUrl && typeof fromUrl !== 'string') {
-			return {
-				host: fromUrl.host,
-				port: fromUrl.port,
-				database: fromUrl.database,
-				user: fromUrl.user,
-				password: fromUrl.password
-			};
-		}
-	}
-
 	const host = pickEnvTrimmed(source, 'POSTGRES_HOST', 'PGHOST');
 	if (!host) return null;
 
@@ -116,7 +73,7 @@ export function getPostgresConfigFromEnv(source: DbEnvSource = processEnv): Post
 	const credentials = resolveDbCredentials(source);
 	if (!credentials) {
 		throw new Error(
-			'Configuration base de données manquante : définir POSTGRES_HOST + POSTGRES_PASSWORD (ou DATABASE_URL, ou PGHOST + PGPASSWORD)'
+			'Configuration base de données manquante : définir POSTGRES_HOST + POSTGRES_PASSWORD'
 		);
 	}
 
@@ -131,10 +88,9 @@ export function getPostgresConfig(): PostgresConfig {
 	return getPostgresConfigFromEnv(processEnv);
 }
 
-/** URL pour drizzle-kit (dbCredentials.url). */
+/** URL dérivée des variables d’environnement — pour drizzle-kit (`dbCredentials.url`). */
 export function getDatabaseUrl(source: DbEnvSource = processEnv): string {
 	const config = getPostgresConfigFromEnv(source);
-	if (typeof config === 'string') return config;
 
 	const base = `postgresql://${encodeURIComponent(config.user)}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${encodeURIComponent(config.database)}`;
 	if (config.ssl === false) return base;

@@ -6,7 +6,13 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 ENV NODE_ENV=production
-ENV DATABASE_URL=postgresql://docker-build:docker-build@127.0.0.1:5432/docker-build
+# Placeholders pour le build (pas de Postgres réel requis si la DB n’est pas sollicitée au build)
+ENV POSTGRES_HOST=127.0.0.1
+ENV POSTGRES_PORT=5432
+ENV POSTGRES_DB=docker-build
+ENV POSTGRES_USER=docker-build
+ENV POSTGRES_PASSWORD=docker-build
+ENV POSTGRES_SSL_MODE=disable
 RUN bun run build
 
 FROM node:24-alpine AS runner
