@@ -5,6 +5,12 @@
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
+		isIntegrated,
+		isNoTranslation,
+		normalizeTranslationTversion,
+		requiresTranslationVersion
+	} from '$lib/utils/game-form-validation';
+	import {
 		getStatusBadge,
 		getTypeBadge,
 		getTypeLabel,
@@ -167,6 +173,37 @@
 	});
 
 	const isDeleteSubmission = $derived(submission?.type === 'delete');
+	const translationVersionRequired = $derived(requiresTranslationVersion(editTranslationTname));
+	const translationVersionLocked = $derived(
+		isNoTranslation(editTranslationTname) || isIntegrated(editTranslationTname)
+	);
+
+	const onEditTranslationTnameChange = () => {
+		if (isNoTranslation(editTranslationTname)) {
+			editTranslationTversion = '';
+			editTranslationTlink = '';
+			editTranslationTtype = 'hs';
+		} else if (isIntegrated(editTranslationTname)) {
+			editTranslationTversion = 'Intégrée';
+			editTranslationTlink = '';
+		} else if (editTranslationTversion === 'Intégrée') {
+			editTranslationTversion = '';
+		}
+	};
+
+	const buildEditTranslationPayload = () => ({
+		translationName: editTranslationTranslationName.trim() || null,
+		version: editTranslationVersion.trim() || null,
+		tversion: normalizeTranslationTversion(editTranslationTname, editTranslationTversion),
+		status: editTranslationStatus,
+		ttype: editTranslationTtype,
+		gameType: editTranslationGameType,
+		tlink: editTranslationTlink.trim() || null,
+		tname: editTranslationTname,
+		translatorId: editTranslationTranslatorId || null,
+		proofreaderId: editTranslationProofreaderId || null,
+		ac: editTranslationAc
+	});
 
 	const submissionDataJsonHidden = $derived(() => {
 		if (!submission) return '';
@@ -185,19 +222,7 @@
 
 		if (submission.type === 'translation') {
 			return JSON.stringify({
-				translation: {
-					translationName: editTranslationTranslationName.trim() || null,
-					version: editTranslationVersion.trim() || null,
-					tversion: editTranslationTversion,
-					status: editTranslationStatus,
-					ttype: editTranslationTtype,
-					gameType: editTranslationGameType,
-					tlink: editTranslationTlink.trim() || null,
-					tname: editTranslationTname,
-					translatorId: editTranslationTranslatorId || null,
-					proofreaderId: editTranslationProofreaderId || null,
-					ac: editTranslationAc
-				}
+				translation: buildEditTranslationPayload()
 			});
 		}
 
@@ -217,19 +242,7 @@
 		const out: Record<string, unknown> = { game: gameObj };
 
 		if (includeTranslation) {
-			out.translation = {
-				translationName: editTranslationTranslationName.trim() || null,
-				version: editTranslationVersion.trim() || null,
-				tversion: editTranslationTversion,
-				status: editTranslationStatus,
-				ttype: editTranslationTtype,
-				gameType: editTranslationGameType,
-				tlink: editTranslationTlink.trim() || null,
-				tname: editTranslationTname,
-				translatorId: editTranslationTranslatorId || null,
-				proofreaderId: editTranslationProofreaderId || null,
-				ac: editTranslationAc
-			};
+			out.translation = buildEditTranslationPayload();
 		}
 
 		return JSON.stringify(out);
@@ -1261,7 +1274,8 @@
 														class="input-bordered input w-full"
 														type="text"
 														bind:value={editTranslationTversion}
-														required
+														required={translationVersionRequired}
+														disabled={translationVersionLocked}
 													/>
 												</div>
 												<div class="form-control">
@@ -1273,6 +1287,7 @@
 														name="editTranslationTname"
 														class="select-bordered select w-full"
 														bind:value={editTranslationTname}
+														onchange={onEditTranslationTnameChange}
 														required
 													>
 														<option value="no_translation">Pas de traduction</option>
