@@ -109,6 +109,21 @@ function gameLinkEmbedField(gameLink: string | null | undefined) {
 	};
 }
 
+/** Remplace les champs « Nom du jeu » / « Lien du jeu » sans les dupliquer. */
+function replaceGameEmbedFields(
+	fields: { name: string; value: string; inline?: boolean }[],
+	gameName: string,
+	gameLink: string | null | undefined
+): { name: string; value: string; inline?: boolean }[] {
+	const rest = fields.filter((f) => f.name !== 'Nom du jeu' && f.name !== 'Lien du jeu');
+	const header: { name: string; value: string; inline?: boolean }[] = [
+		{ name: 'Nom du jeu', value: trimFieldValue(gameName), inline: false }
+	];
+	const linkField = gameLinkEmbedField(gameLink);
+	if (linkField) header.push(linkField);
+	return [...header, ...rest];
+}
+
 async function fetchGameForWebhook(gameId: string): Promise<GameRow | null> {
 	const rows = await db
 		.select({
@@ -229,11 +244,11 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 
 	const baseFooter = { text: `F95 France · ${args.submissionId.slice(0, 8)}…` };
 
-	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: 'Nom du jeu', value: trimFieldValue(gameName), inline: false }
-	];
-	const linkField = gameLinkEmbedField(gameLink);
-	if (linkField) fields.push(linkField);
+	let fields: { name: string; value: string; inline?: boolean }[] = replaceGameEmbedFields(
+		[],
+		gameName,
+		gameLink
+	);
 
 	let title = 'Soumission acceptée';
 	let color = 0x2ecc71;
@@ -306,9 +321,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			const g = await fetchGameForWebhook(gameId);
 			if (g) {
 				const gLink = resolveGameLinkFromRow(g);
-				fields[0] = { name: 'Nom du jeu', value: trimFieldValue(g.name), inline: false };
-				const linkFieldDelete = gameLinkEmbedField(gLink);
-				if (linkFieldDelete) fields.splice(1, 0, linkFieldDelete);
+				fields = replaceGameEmbedFields(fields, g.name, gLink);
 				const u = embedImageUrl(g.image);
 				if (u) embed.image = { url: u };
 				if (gLink) embed.url = gLink;
@@ -327,9 +340,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			);
 		} else if (originalGame) {
 			const ogLink = resolveGameLinkFromRow(originalGame as GameRow);
-			fields[0] = { name: 'Nom du jeu', value: trimFieldValue(originalGame.name), inline: false };
-			const ogLinkField = gameLinkEmbedField(ogLink);
-			if (ogLinkField) fields.splice(1, 0, ogLinkField);
+			fields = replaceGameEmbedFields(fields, originalGame.name, ogLink);
 			const u = embedImageUrl(originalGame.image);
 			if (u) embed.image = { url: u };
 			if (ogLink) embed.url = ogLink;
