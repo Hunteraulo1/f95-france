@@ -91,14 +91,17 @@
 </script>
 
 <svelte:head>
-	<title>Logs API - Tableau de bord</title>
+	<title>Logs des requêtes - Tableau de bord</title>
 </svelte:head>
 
 <div class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<div>
-			<h1 class="text-3xl font-bold text-base-content">Logs de l'API</h1>
-			<p class="text-base-content/70">Historique des appels effectués vers les routes /api.</p>
+			<h1 class="text-3xl font-bold text-base-content">Logs des requêtes</h1>
+			<p class="text-base-content/70">
+				Historique des routes API, du tableau de bord et de la maintenance (hors polling
+				notifications et appels extension-api).
+			</p>
 		</div>
 	</div>
 
