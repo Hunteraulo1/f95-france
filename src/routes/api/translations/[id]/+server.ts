@@ -1,7 +1,4 @@
-import {
-	getTranslatorFkResolver,
-	mapTranslationForPublicApi
-} from '$lib/server/api/translation-public';
+import { mapTranslationsForPublicApi } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { gameTranslation } from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
@@ -41,8 +38,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			return json({ error: 'Traduction introuvable.' }, { status: 404, headers: corsHeaders });
 		}
 
-		const resolveFk = await getTranslatorFkResolver();
-		return json(mapTranslationForPublicApi(rows[0], resolveFk), { headers: corsHeaders });
+		const [mapped] = await mapTranslationsForPublicApi(rows);
+		return json(mapped, { headers: corsHeaders });
 	} catch (error) {
 		console.error('Error fetching translation:', error);
 		return json(

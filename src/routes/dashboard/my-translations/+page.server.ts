@@ -1,3 +1,4 @@
+import { effectiveTranslationVersion } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
@@ -113,8 +114,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
 	const translationsWithFlags = translations
 		.map((t) => {
-			// Référence = version enregistrée sur la traduction, sinon version du jeu.
-			const referenceVersion = strTrim(t.version) || strTrim(t.game.gameVersion);
+			const referenceVersion = effectiveTranslationVersion(t.version, t.game.gameVersion) ?? '';
 			const isIntegrated = tradVerIndicatesIntegrated(t.tversion, t.tname);
 			const versionsMatch = referenceVersion === strTrim(t.tversion);
 			const isOutdated = !isIntegrated && !versionsMatch;
