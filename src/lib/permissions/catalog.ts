@@ -15,6 +15,7 @@ export const PERMISSION_KEYS = [
 	'api.management',
 	'config.view',
 	'config.edit',
+	'maintenance.manage',
 	'logs.view',
 	'dev.panel',
 	'dev.impersonate',
@@ -118,7 +119,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 	{
 		key: 'config.edit',
 		label: 'Configuration (écriture)',
-		description: 'Modifier la configuration applicative',
+		description: 'Modifier le nom de l’application, Google Sheets et OAuth (hors mode maintenance)',
+		group: 'Système'
+	},
+	{
+		key: 'maintenance.manage',
+		label: 'Activer la maintenance',
+		description: 'Activer ou désactiver le mode maintenance du site',
 		group: 'Système'
 	},
 	{
