@@ -149,7 +149,7 @@
 			access: 'config.view'
 		},
 		{
-			label: 'Logs API',
+			label: 'Logs',
 			href: '/dashboard/logs',
 			icon: ScrollText,
 			access: 'logs.view'
