@@ -113,15 +113,14 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
 	const translationsWithFlags = translations
 		.map((t) => {
-			// Du point de vue traducteur : « à jour » si la version traduite correspond
-			// à la référence (tversion === version), ou si la traduction est intégrée.
-			// La version du jeu n'intervient pas ici : c'est l'auto-check qui notifie
-			// séparément lorsqu'il faut bumper la référence.
+			// Référence = version enregistrée sur la traduction, sinon version du jeu.
+			const referenceVersion = strTrim(t.version) || strTrim(t.game.gameVersion);
 			const isIntegrated = tradVerIndicatesIntegrated(t.tversion, t.tname);
-			const versionsMatch = strTrim(t.version) === strTrim(t.tversion);
+			const versionsMatch = referenceVersion === strTrim(t.tversion);
 			const isOutdated = !isIntegrated && !versionsMatch;
 			return {
 				...t,
+				referenceVersion,
 				isOutdated
 			};
 		})
