@@ -54,9 +54,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const row = config[0] ?? DEFAULT_CONFIG_ROW;
+	const clientConfig = toConfigClientSafe(row);
 
 	return {
-		config: toConfigClientSafe(row),
+		config: {
+			...clientConfig,
+			// Valeur éditable en base (pas l’ID effectif issu de l’env pour l’affichage formulaire).
+			googleSpreadsheetId: row.googleSpreadsheetId?.trim() ?? ''
+		},
 		canEditConfig,
 		canManageMaintenance,
 		canSave: canEditConfig || canManageMaintenance

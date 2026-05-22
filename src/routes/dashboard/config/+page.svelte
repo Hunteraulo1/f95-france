@@ -20,6 +20,16 @@
 	let configError = $state<string | null>(null);
 	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
+	let appName = $state('');
+	let googleSpreadsheetId = $state('');
+	let maintenanceMode = $state(false);
+
+	$effect(() => {
+		appName = data.config?.appName ?? 'F95 France';
+		googleSpreadsheetId = data.config?.googleSpreadsheetId ?? '';
+		maintenanceMode = Boolean(data.config?.maintenanceMode);
+	});
+
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
 		const oauthErr = urlParams.get('oauth_error');
@@ -67,7 +77,7 @@
 						configError = null;
 						return async function ({ result, update }) {
 							if (result.type === 'success') {
-								await update();
+								await update({ invalidateAll: true });
 								configError = null;
 							} else if (result.type === 'failure' && result.data) {
 								const message =
@@ -90,7 +100,7 @@
 								type="text"
 								class="input-bordered input w-full"
 								class:input-error={configError}
-								value={data.config?.appName || 'F95 France'}
+								bind:value={appName}
 								required={canEditConfig}
 								disabled={!canEditConfig}
 								readonly={!canEditConfig}
@@ -107,7 +117,7 @@
 									name="maintenanceMode"
 									type="checkbox"
 									class="checkbox checkbox-sm"
-									checked={Boolean(data.config?.maintenanceMode)}
+									bind:checked={maintenanceMode}
 									disabled={!canManageMaintenance}
 								/>
 								<span class="label-text text-wrap">
@@ -198,7 +208,7 @@
 								name="googleSpreadsheetId"
 								type="text"
 								class="input-bordered input w-full"
-								value={data.config?.googleSpreadsheetId || ''}
+								bind:value={googleSpreadsheetId}
 								placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
 								disabled={!canEditConfig}
 								readonly={!canEditConfig}
