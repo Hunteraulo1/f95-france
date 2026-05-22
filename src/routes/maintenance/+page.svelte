@@ -47,7 +47,7 @@
 
 			if (ratio >= 1) {
 				isRefreshing = true;
-				window.location.reload();
+				window.location.replace('/');
 			}
 		};
 
@@ -126,7 +126,7 @@
 					<button
 						type="button"
 						class="btn gap-2 btn-outline btn-primary"
-						onclick={() => window.location.reload()}
+						onclick={() => window.location.replace('/')}
 					>
 						<RefreshCw size={18} aria-hidden="true" />
 						Réessayer

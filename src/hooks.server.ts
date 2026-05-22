@@ -164,6 +164,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 						})
 					);
 				}
+			} else {
+				const path = event.url.pathname;
+				if (path === '/maintenance' || path.startsWith('/maintenance/')) {
+					const dest = event.locals.user ? '/dashboard' : '/';
+					return applySecurityHeaders(Response.redirect(new URL(dest, event.url.origin), 302));
+				}
 			}
 		} catch (error) {
 			console.warn('Maintenance check skipped:', error);
