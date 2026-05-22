@@ -173,33 +173,49 @@
 				<Copy size="1rem" />
 			</button>
 		{:else if name === 'link'}
-			<a
-				href={game.link}
-				target="_blank"
-				class="btn mt-1 w-min"
-				class:btn-disable={!game.link}
-				class:btn-primary={game.link}
-			>
-				{#if game.link}
+			{@const gameLinkHref = typeof game.link === 'string' ? game.link.trim() : ''}
+			{#if gameLinkHref}
+				<a
+					href={gameLinkHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn mt-1 w-min btn-primary"
+					aria-label="Ouvrir le lien du jeu"
+				>
 					<Link2 size="1rem" />
-				{:else}
+				</a>
+			{:else}
+				<button
+					type="button"
+					class="btn mt-1 w-min btn-disable"
+					disabled
+					aria-label="Lien du jeu indisponible"
+				>
 					<Link2Off size="1rem" />
-				{/if}
-			</a>
+				</button>
+			{/if}
 		{:else if name === 'tlink'}
-			<a
-				href={game.tlink}
-				target="_blank"
-				class="btn mt-1 w-min"
-				class:btn-disable={!game.tlink}
-				class:btn-primary={game.tlink}
-			>
-				{#if game.tlink}
+			{@const translationLinkHref = typeof game.tlink === 'string' ? game.tlink.trim() : ''}
+			{#if translationLinkHref}
+				<a
+					href={translationLinkHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn mt-1 w-min btn-primary"
+					aria-label="Ouvrir le lien de traduction"
+				>
 					<Link2 size="1rem" />
-				{:else}
+				</a>
+			{:else}
+				<button
+					type="button"
+					class="btn mt-1 w-min btn-disable"
+					disabled
+					aria-label="Lien de traduction indisponible"
+				>
 					<Link2Off size="1rem" />
-				{/if}
-			</a>
+				</button>
+			{/if}
 		{/if}
 		{@render children?.()}
 	</div>
