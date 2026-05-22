@@ -16,8 +16,11 @@ const config = {
 		typescript: {
 			config(config) {
 				config.include.push('../drizzle.config.ts');
-				// Les segments `.foo` ne sont pas couverts par `src/**/*.ts` (RFC 9116 security.txt, etc.)
+				// Les segments avec `.` ne sont pas couverts par `src/**/*.ts` (security.txt, robots.txt, etc.)
 				config.include.push('../src/**/.well-known/**/*.ts');
+				config.include.push('../src/routes/robot.txt/**/*.ts');
+				config.include.push('../src/routes/robots.txt/**/*.ts');
+				config.include.push('../src/routes/sitemap.xml/**/*.ts');
 			}
 		},
 		adapter: adapter({ runtime: 'nodejs24.x' }),

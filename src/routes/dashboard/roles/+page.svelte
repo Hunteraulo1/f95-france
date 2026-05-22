@@ -16,6 +16,7 @@
 	const selectedRole = $derived(
 		data.roles.find((r) => r.slug === data.selectedSlug) ?? data.roles[0]
 	);
+	const canManageSelected = $derived(data.selectedCanManage);
 
 	const roleHref = (slug: string) =>
 		resolve(
@@ -70,6 +71,11 @@
 
 		{#if selectedRole}
 			<div class="flex flex-col gap-6">
+				{#if !canManageSelected && data.selectedManageBlockedReason}
+					<div role="alert" class="alert alert-warning">
+						<span>{data.selectedManageBlockedReason}</span>
+					</div>
+				{/if}
 				<div class="card border border-base-300 bg-base-100 shadow">
 					<div class="card-body gap-4">
 						<div class="flex flex-wrap items-start justify-between gap-2">
@@ -80,7 +86,7 @@
 									<span class="mt-1 badge badge-sm badge-info">Rôle système</span>
 								{/if}
 							</div>
-							{#if !selectedRole.isSystem}
+							{#if !selectedRole.isSystem && canManageSelected}
 								<form
 									method="POST"
 									action="?/deleteRole"
@@ -114,6 +120,7 @@
 							action="?/updateRole"
 							class="flex flex-col gap-3"
 							use:enhance={() => {
+								if (!canManageSelected) return () => {};
 								return async ({ result, update }) => {
 									if (result.type === 'failure') {
 										errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
@@ -177,9 +184,11 @@
 									{/each}
 								</div>
 							</fieldset>
-							<button type="submit" class="btn w-fit btn-sm btn-primary">
-								{selectedRole.isSystem ? 'Enregistrer le mode' : 'Enregistrer'}
-							</button>
+							{#if canManageSelected}
+								<button type="submit" class="btn w-fit btn-sm btn-primary">
+									{selectedRole.isSystem ? 'Enregistrer le mode' : 'Enregistrer'}
+								</button>
+							{/if}
 						</form>
 					</div>
 				</div>
@@ -189,6 +198,7 @@
 					action="?/updatePermissions"
 					class="card border border-base-300 bg-base-100 shadow"
 					use:enhance={() => {
+						if (!canManageSelected) return () => {};
 						return async ({ result, update }) => {
 							if (result.type === 'failure') {
 								errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
@@ -204,31 +214,47 @@
 					<input type="hidden" name="slug" value={selectedRole.slug} />
 					<div class="card-body gap-4">
 						<h3 class="card-title text-base">Permissions</h3>
-						{#each data.permissionGroups as group (group.group)}
-							<div class="flex flex-col gap-2">
-								<p class="text-sm font-semibold text-base-content/80">{group.group}</p>
-								<div class="grid gap-2 sm:grid-cols-2">
-									{#each group.items as perm (perm.key)}
-										<label
-											class="flex cursor-pointer items-start gap-2 rounded-lg border border-base-300 p-3 hover:bg-base-200"
-										>
-											<input
-												type="checkbox"
-												name="permissions"
-												value={perm.key}
-												class="checkbox mt-0.5 checkbox-sm"
-												checked={data.selectedPermissions.includes(perm.key)}
-											/>
-											<span class="flex flex-col gap-0.5">
-												<span class="text-sm font-medium">{perm.label}</span>
-												<span class="text-xs opacity-70">{perm.description}</span>
-											</span>
-										</label>
-									{/each}
+						{#if !canManageSelected}
+							<ul class="flex flex-wrap gap-2">
+								{#each data.selectedPermissionDetails as perm (perm.key)}
+									<li class="badge badge-outline">{perm.label}</li>
+								{/each}
+							</ul>
+						{/if}
+						{#if canManageSelected}
+							{#each data.permissionGroups as group (group.group)}
+								<div class="flex flex-col gap-2">
+									<p class="text-sm font-semibold text-base-content/80">{group.group}</p>
+									<div class="grid gap-2 sm:grid-cols-2">
+										{#each group.items as perm (perm.key)}
+											<label
+												class="flex items-start gap-2 rounded-lg border border-base-300 p-3 {canManageSelected
+													? 'cursor-pointer hover:bg-base-200'
+													: ''}"
+											>
+												<input
+													type="checkbox"
+													name="permissions"
+													value={perm.key}
+													class="checkbox mt-0.5 checkbox-sm"
+													checked={data.selectedPermissions.includes(perm.key)}
+													disabled={!canManageSelected}
+												/>
+												<span class="flex flex-col gap-0.5">
+													<span class="text-sm font-medium">{perm.label}</span>
+													<span class="text-xs opacity-70">{perm.description}</span>
+												</span>
+											</label>
+										{/each}
+									</div>
 								</div>
-							</div>
-						{/each}
-						<button type="submit" class="btn w-fit btn-primary">Enregistrer les permissions</button>
+							{/each}
+						{/if}
+						{#if canManageSelected}
+							<button type="submit" class="btn w-fit btn-primary"
+								>Enregistrer les permissions</button
+							>
+						{/if}
 					</div>
 				</form>
 			</div>

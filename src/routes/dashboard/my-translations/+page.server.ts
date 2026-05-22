@@ -1,3 +1,4 @@
+import { effectiveTranslationVersion } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
@@ -113,15 +114,13 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 
 	const translationsWithFlags = translations
 		.map((t) => {
-			// Du point de vue traducteur : « à jour » si la version traduite correspond
-			// à la référence (tversion === version), ou si la traduction est intégrée.
-			// La version du jeu n'intervient pas ici : c'est l'auto-check qui notifie
-			// séparément lorsqu'il faut bumper la référence.
+			const referenceVersion = effectiveTranslationVersion(t.version, t.game.gameVersion) ?? '';
 			const isIntegrated = tradVerIndicatesIntegrated(t.tversion, t.tname);
-			const versionsMatch = strTrim(t.version) === strTrim(t.tversion);
+			const versionsMatch = referenceVersion === strTrim(t.tversion);
 			const isOutdated = !isIntegrated && !versionsMatch;
 			return {
 				...t,
+				referenceVersion,
 				isOutdated
 			};
 		})

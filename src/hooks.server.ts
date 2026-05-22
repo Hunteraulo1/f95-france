@@ -35,6 +35,46 @@ function urlSearchIncludes(url: URL, fragment: string): boolean {
 	}
 }
 
+function isStaticAssetPath(pathname: string): boolean {
+	return (
+		pathname.startsWith('/_app/') ||
+		pathname.startsWith('/favicon') ||
+		pathname.startsWith('/robots.txt') ||
+		pathname === '/robot.txt' ||
+		pathname === '/sitemap.xml' ||
+		/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/.test(pathname)
+	);
+}
+
+/** Routes à journaliser (API + dashboard + maintenance), hors assets et polling. */
+function getRequestLoggingDecision(
+	pathname: string,
+	method: string,
+	url: URL
+): { shouldLog: boolean; shouldCaptureBody: boolean } {
+	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
+	const isHighFrequencyPollRoute = pathname.startsWith('/api/notifications');
+	const isDashboardRoute = pathname.startsWith('/dashboard');
+	const isMaintenanceRoute = pathname === '/maintenance' || pathname.startsWith('/maintenance/');
+	const isSensitiveSettingsAction =
+		pathname === '/dashboard/settings' &&
+		(urlSearchIncludes(url, '/changePassword') || urlSearchIncludes(url, '/disable2FA'));
+	const isSensitiveBodyRoute =
+		pathname === '/dashboard/login' ||
+		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/logout' ||
+		isSensitiveSettingsAction;
+
+	const shouldLog =
+		!isStaticAssetPath(pathname) &&
+		!isHighFrequencyPollRoute &&
+		(isApiRequest || isDashboardRoute || isMaintenanceRoute);
+	const shouldCaptureBody =
+		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
+
+	return { shouldLog, shouldCaptureBody };
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
 
@@ -124,6 +164,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 						})
 					);
 				}
+			} else {
+				const path = event.url.pathname;
+				if (path === '/maintenance' || path.startsWith('/maintenance/')) {
+					const dest = event.locals.user ? '/dashboard' : '/';
+					return applySecurityHeaders(Response.redirect(new URL(dest, event.url.origin), 302));
+				}
 			}
 		} catch (error) {
 			console.warn('Maintenance check skipped:', error);
@@ -200,36 +246,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	let capturedBody: string | null = null;
 
-	// Exclure les fichiers statiques du logging pour éviter la surcharge
-	const isStaticAsset =
-		pathname.startsWith('/_app/') ||
-		pathname.startsWith('/favicon') ||
-		pathname.startsWith('/robots.txt') ||
-		pathname === '/robot.txt' ||
-		pathname === '/sitemap.xml' ||
-		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
-
-	const isApiRequest = pathname.startsWith('/api/');
-	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
-	const isDashboardAction =
-		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
-	const isSubmissionRoute =
-		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
-	const isSensitiveSettingsAction =
-		pathname === '/dashboard/settings' &&
-		(urlSearchIncludes(event.url, '/changePassword') ||
-			urlSearchIncludes(event.url, '/disable2FA'));
-	const isSensitiveBodyRoute =
-		pathname === '/dashboard/login' ||
-		pathname === '/dashboard/register' ||
-		pathname === '/dashboard/logout' ||
-		isSensitiveSettingsAction;
-	const shouldLog =
-		!isStaticAsset &&
-		!isNotificationsApiRoute &&
-		(isApiRequest || isDashboardAction || isSubmissionRoute);
-	const shouldCaptureBody =
-		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
+	const { shouldLog, shouldCaptureBody } = getRequestLoggingDecision(pathname, method, event.url);
 
 	if (shouldCaptureBody) {
 		try {
@@ -293,25 +310,7 @@ export const handleError = async ({
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
 
-	// Exclure les fichiers statiques du logging pour éviter la surcharge
-	const isStaticAsset =
-		pathname.startsWith('/_app/') ||
-		pathname.startsWith('/favicon') ||
-		pathname.startsWith('/robots.txt') ||
-		pathname === '/robot.txt' ||
-		pathname === '/sitemap.xml' ||
-		pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
-
-	const isApiRequest = pathname.startsWith('/api/');
-	const isNotificationsApiRoute = pathname.startsWith('/api/notifications');
-	const isDashboardAction =
-		pathname.startsWith('/dashboard') && !['GET', 'HEAD', 'OPTIONS'].includes(method);
-	const isSubmissionRoute =
-		pathname.startsWith('/dashboard/submit') || pathname.startsWith('/dashboard/submits');
-	const shouldLog =
-		!isStaticAsset &&
-		!isNotificationsApiRoute &&
-		(isApiRequest || isDashboardAction || isSubmissionRoute);
+	const { shouldLog } = getRequestLoggingDecision(pathname, method, event.url);
 
 	if (shouldLog && status >= 500) {
 		const route = requestRouteLabel(event.url);

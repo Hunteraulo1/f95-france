@@ -21,6 +21,12 @@ import {
 	setRolePermissions
 } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
+import {
+	assertCanManageRole,
+	filterPermissionsAssignableByActor,
+	getActorPermissionSet,
+	isRolesManagementSuperadmin
+} from '$lib/server/role-management-guard';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,27 +55,63 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const selectedSlug = url.searchParams.get('role') ?? orderedSlugs[0] ?? 'user';
 	const selectedPermissions = selectedSlug ? await listRolePermissions(selectedSlug) : [];
 
-	const permissionGroups = [...permissionCatalogGrouped().entries()].map(([group, items]) => ({
-		group,
-		items
-	}));
+	const isSuperadmin = isRolesManagementSuperadmin(locals);
+	const actorPermissions = await getActorPermissionSet(locals);
+
+	const rolesWithAccess = await Promise.all(
+		roles.map(async (r) => {
+			const targetPerms = await listRolePermissions(r.slug);
+			const access = isSuperadmin
+				? ({ allowed: true } as const)
+				: await assertCanManageRole(locals, r.slug, targetPerms);
+			return {
+				...r,
+				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+				editMode:
+					r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
+				userCount: userCounts[r.slug] ?? 0,
+				permissionCount: permissionCounts[r.slug] ?? 0,
+				canManage: access.allowed,
+				manageBlockedReason: access.allowed ? null : access.message
+			};
+		})
+	);
+
+	const permissionGroups = [...permissionCatalogGrouped().entries()]
+		.map(([group, items]) => ({
+			group,
+			items: items.filter((p) => isSuperadmin || actorPermissions.has(p.key))
+		}))
+		.filter((g) => g.items.length > 0);
+
+	const selectedRoleMeta = rolesWithAccess.find((r) => r.slug === selectedSlug);
+
+	const selectedPermissionDetails = PERMISSION_CATALOG.filter((p) =>
+		selectedPermissions.includes(p.key)
+	);
 
 	return {
-		roles: roles.map((r) => ({
-			...r,
-			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-			editMode:
-				r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
-			userCount: userCounts[r.slug] ?? 0,
-			permissionCount: permissionCounts[r.slug] ?? 0
-		})),
+		isSuperadmin,
+		roles: rolesWithAccess,
 		selectedSlug,
 		selectedPermissions,
+		selectedPermissionDetails,
+		selectedCanManage: selectedRoleMeta?.canManage ?? false,
+		selectedManageBlockedReason: selectedRoleMeta?.manageBlockedReason ?? null,
 		permissionGroups,
 		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key),
 		editModeOptions: ROLE_EDIT_MODE_OPTIONS
 	};
 };
+
+async function rejectUnlessCanManageRole(
+	locals: App.Locals,
+	targetSlug: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+	const check = await assertCanManageRole(locals, targetSlug);
+	if (!check.allowed) return { ok: false, message: check.message };
+	return { ok: true };
+}
 
 export const actions: Actions = {
 	createRole: async ({ request, locals }) => {
@@ -95,6 +137,25 @@ export const actions: Actions = {
 			return fail(409, { message: 'Un rôle avec cet identifiant existe déjà' });
 		}
 
+		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const actorPermissions = await getActorPermissionSet(locals);
+		const initialKeys = [
+			'dashboard.view',
+			'profile.view',
+			'settings.view',
+			'api_keys.own'
+		] as PermissionKey[];
+		const { keys: assignableInitial, rejected } = filterPermissionsAssignableByActor(
+			actorPermissions,
+			initialKeys,
+			isSuperadmin
+		);
+		if (!isSuperadmin && rejected.length > 0) {
+			return fail(403, {
+				message: 'Impossible de créer un rôle : permissions de base indisponibles pour votre compte'
+			});
+		}
+
 		try {
 			await db.insert(table.appRole).values({
 				slug,
@@ -103,12 +164,7 @@ export const actions: Actions = {
 				editMode,
 				isSystem: false
 			});
-			await setRolePermissions(slug, [
-				'dashboard.view',
-				'profile.view',
-				'settings.view',
-				'api_keys.own'
-			]);
+			await setRolePermissions(slug, assignableInitial);
 			return { success: true, message: 'Rôle créé', selectedSlug: slug };
 		} catch (error) {
 			console.error('createRole:', error);
@@ -142,6 +198,9 @@ export const actions: Actions = {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
 
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
+
 		try {
 			await db
 				.update(table.appRole)
@@ -174,10 +233,32 @@ export const actions: Actions = {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
 
-		const keys = formData
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
+
+		const requested = formData
 			.getAll('permissions')
 			.map((v) => String(v))
 			.filter((k): k is PermissionKey => PERMISSION_CATALOG.some((p) => p.key === k));
+
+		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const actorPermissions = await getActorPermissionSet(locals);
+		const { keys, rejected } = filterPermissionsAssignableByActor(
+			actorPermissions,
+			requested,
+			isSuperadmin
+		);
+
+		if (!isSuperadmin && rejected.length > 0) {
+			return fail(403, {
+				message: 'Vous ne pouvez pas attribuer des droits que vous ne possédez pas'
+			});
+		}
+
+		const afterCheck = await assertCanManageRole(locals, slug, keys);
+		if (!afterCheck.allowed) {
+			return fail(403, { message: afterCheck.message });
+		}
 
 		try {
 			await setRolePermissions(slug, keys);
@@ -208,6 +289,9 @@ export const actions: Actions = {
 		if (role.isSystem) {
 			return fail(403, { message: 'Les rôles système ne peuvent pas être supprimés' });
 		}
+
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
 
 		const counts = await countUsersWithRoles([slug]);
 		if ((counts[slug] ?? 0) > 0) {

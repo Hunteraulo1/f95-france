@@ -9,6 +9,40 @@ export function isIntegrated(tname: string | null | undefined): boolean {
 	return (tname ?? '') === 'integrated';
 }
 
+export function requiresTranslationVersion(tname: string | null | undefined): boolean {
+	return !isNoTranslation(tname);
+}
+
+/** Valeur `tversion` à persister selon le statut de traduction. */
+export function normalizeTranslationTversion(
+	tname: string | null | undefined,
+	tversion: string | null | undefined
+): string {
+	if (isNoTranslation(tname)) return '';
+	if (isIntegrated(tname)) return 'Intégrée';
+	return trimStr(tversion);
+}
+
+/** Message d’erreur si `tversion` est incohérent avec `tname`, sinon `null`. */
+export function validateTranslationTversion(
+	tname: string | null | undefined,
+	tversion: string | null | undefined
+): string | null {
+	const tv = trimStr(tversion);
+	if (isNoTranslation(tname)) {
+		if (tv) return 'La version de traduction doit rester vide pour « Pas de traduction »';
+		return null;
+	}
+	if (isIntegrated(tname)) {
+		if (tv && tv !== 'Intégrée') {
+			return 'La version de traduction doit être « Intégrée » pour une traduction intégrée';
+		}
+		return null;
+	}
+	if (!tv) return 'La version de traduction est obligatoire';
+	return null;
+}
+
 function trimStr(v: unknown): string {
 	if (v == null) return '';
 	return String(v).trim();

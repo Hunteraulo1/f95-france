@@ -13,8 +13,22 @@
 
 	let { data }: Props = $props();
 
+	const canEditConfig = $derived(data.canEditConfig);
+	const canManageMaintenance = $derived(data.canManageMaintenance);
+	const canSave = $derived(data.canSave);
+
 	let configError = $state<string | null>(null);
 	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
+
+	let appName = $state('');
+	let googleSpreadsheetId = $state('');
+	let maintenanceMode = $state(false);
+
+	$effect(() => {
+		appName = data.config?.appName ?? 'F95 France';
+		googleSpreadsheetId = data.config?.googleSpreadsheetId ?? '';
+		maintenanceMode = Boolean(data.config?.maintenanceMode);
+	});
 
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
@@ -40,6 +54,13 @@
 	<!-- Configuration de l'application -->
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Configuration de l'application</h2>
+		{#if !canSave}
+			<div role="alert" class="alert alert-info">
+				<span
+					>Accès en lecture seule — les modifications nécessitent les droits d’écriture appropriés.</span
+				>
+			</div>
+		{/if}
 
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:p-8">
@@ -52,10 +73,11 @@
 					method="POST"
 					action="?/updateConfig"
 					use:enhance={() => {
+						if (!canSave) return () => {};
 						configError = null;
 						return async function ({ result, update }) {
 							if (result.type === 'success') {
-								await update();
+								await update({ invalidateAll: true });
 								configError = null;
 							} else if (result.type === 'failure' && result.data) {
 								const message =
@@ -78,24 +100,35 @@
 								type="text"
 								class="input-bordered input w-full"
 								class:input-error={configError}
-								value={data.config?.appName || 'F95 France'}
-								required
+								bind:value={appName}
+								required={canEditConfig}
+								disabled={!canEditConfig}
+								readonly={!canEditConfig}
 							/>
 						</div>
 						<div class="divider">Sécurité / Accès</div>
 						<div class="form-control w-full">
-							<label for="maintenanceMode" class="label cursor-pointer justify-start gap-3">
+							<label
+								for="maintenanceMode"
+								class="label {canManageMaintenance ? 'cursor-pointer' : ''} justify-start gap-3"
+							>
 								<input
 									id="maintenanceMode"
 									name="maintenanceMode"
 									type="checkbox"
 									class="checkbox checkbox-sm"
-									checked={Boolean(data.config?.maintenanceMode)}
+									bind:checked={maintenanceMode}
+									disabled={!canManageMaintenance}
 								/>
 								<span class="label-text text-wrap">
-									Mode maintenance (bloque tous les utilisateurs sauf superadmin)
+									Mode maintenance (bloque les utilisateurs sans « Contourner la maintenance »)
 								</span>
 							</label>
+							{#if !canManageMaintenance}
+								<p class="label-text-alt text-base-content/60">
+									Droit « Activer la maintenance » requis pour modifier ce réglage.
+								</p>
+							{/if}
 						</div>
 						<div class="divider">Secrets (variables d’environnement)</div>
 						<div class="alert text-sm alert-info">
@@ -175,11 +208,13 @@
 								name="googleSpreadsheetId"
 								type="text"
 								class="input-bordered input w-full"
-								value={data.config?.googleSpreadsheetId || ''}
+								bind:value={googleSpreadsheetId}
 								placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+								disabled={!canEditConfig}
+								readonly={!canEditConfig}
 							/>
 						</div>
-						{#if data.config?.canUseGoogleOAuth}
+						{#if data.config?.canUseGoogleOAuth && canEditConfig}
 							<div class="mb-4 rounded-lg bg-base-200 p-4">
 								<p class="mb-2 text-sm font-semibold text-wrap">
 									URI de redirection à configurer dans Google Cloud Console :
@@ -229,9 +264,13 @@
 								<span>{oauthMessage.text}</span>
 							</div>
 						{/if}
-						<div class="form-control mt-4">
-							<button type="submit" class="btn btn-primary"> Enregistrer la configuration </button>
-						</div>
+						{#if canSave}
+							<div class="form-control mt-4">
+								<button type="submit" class="btn btn-primary">
+									Enregistrer la configuration
+								</button>
+							</div>
+						{/if}
 					</div>
 				</form>
 			</div>
