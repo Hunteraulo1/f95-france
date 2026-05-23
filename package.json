@@ -21,7 +21,7 @@
 		"db:pull": "drizzle-kit pull",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx src/lib/server/db/migrate.ts",
-		"db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
+		"db:stamp-migrations": "tsx src/lib/server/db/stamp-migrations-from-journal.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
 		"db:dev:down": "docker compose -f docker-compose.dev.yml down",

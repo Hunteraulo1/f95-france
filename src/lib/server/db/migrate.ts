@@ -19,7 +19,11 @@ async function runMigrations() {
 		// Sur une base déjà peuplée, ADD CONSTRAINT (FK) valide toute la table et peut dépasser
 		// le statement_timeout du fournisseur (ex. Neon ~2 min) → erreur 57014.
 		await client.unsafe('SET statement_timeout = 0');
-		await migrate(db, { migrationsFolder: './drizzle' });
+		await migrate(db, {
+			migrationsFolder: './drizzle',
+			migrationsSchema: 'drizzle',
+			migrationsTable: '__drizzle_migrations'
+		});
 		console.log('Migrations terminées avec succès !');
 		await client.end({ timeout: 5 });
 		process.exit(0);

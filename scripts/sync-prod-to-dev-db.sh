@@ -69,7 +69,7 @@ export_pg_env() {
 	export PGSSLMODE="${PG_SSLMODE}"
 }
 
-# Vide tous les schémas applicatifs sur la dev (public, auth, etc.) avant import.
+# Vide schémas applicatifs + reliques Supabase (publications, abonnements) avant import.
 wipe_dev_database() {
 	export_pg_env
 	psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -77,6 +77,26 @@ SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = current_database()
   AND pid <> pg_backend_pid();
+
+DO $drop_sub$
+DECLARE
+	sub record;
+BEGIN
+	FOR sub IN SELECT subname FROM pg_subscription LOOP
+		EXECUTE format('DROP SUBSCRIPTION IF EXISTS %I', sub.subname);
+	END LOOP;
+END
+$drop_sub$;
+
+DO $drop_pub$
+DECLARE
+	pub record;
+BEGIN
+	FOR pub IN SELECT pubname FROM pg_publication LOOP
+		EXECUTE format('DROP PUBLICATION IF EXISTS %I', pub.pubname);
+	END LOOP;
+END
+$drop_pub$;
 
 DO $wipe$
 DECLARE
@@ -92,9 +112,6 @@ BEGIN
 	END LOOP;
 END
 $wipe$;
-
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO public;
 SQL
 }
 
@@ -164,7 +181,7 @@ PG_PASSWORD="${DEV_PASSWORD}"
 PG_SSLMODE="${DEV_SSLMODE}"
 wipe_dev_database
 
-echo "Import depuis prod..."
+echo "Import depuis prod (schéma public uniquement — sans auth/storage/realtime Supabase)..."
 PG_HOST="${PROD_HOST}"
 PG_PORT="${PROD_PORT}"
 PG_DB="${PROD_DB}"
@@ -173,18 +190,28 @@ PG_PASSWORD="${PROD_PASSWORD}"
 PG_SSLMODE="${PROD_SSLMODE}"
 export_pg_env
 # Sans --clean : le schéma dev est déjà vide, l’ordre CREATE évite les conflits FK.
-pg_dump --no-owner --no-privileges --no-tablespaces | {
-	PG_HOST="${DEV_HOST}"
-	PG_PORT="${DEV_PORT}"
-	PG_DB="${DEV_DB}"
-	PG_USER="${DEV_USER}"
-	PG_PASSWORD="${DEV_PASSWORD}"
-	PG_SSLMODE="${DEV_SSLMODE}"
-	export_pg_env
-	psql -v ON_ERROR_STOP=1 -q
-}
+# --schema=public : données applicatives seulement (plus de dump Supabase complet).
+pg_dump --no-owner --no-privileges --no-tablespaces --schema=public |
+	sed -E \
+		-e '/^(CREATE|ALTER|DROP) PUBLICATION /d' \
+		-e '/^(CREATE|ALTER|DROP) SUBSCRIPTION /d' \
+		-e '/^CREATE EVENT TRIGGER /d' \
+		-e '/^ALTER EVENT TRIGGER /d' |
+	{
+		PG_HOST="${DEV_HOST}"
+		PG_PORT="${DEV_PORT}"
+		PG_DB="${DEV_DB}"
+		PG_USER="${DEV_USER}"
+		PG_PASSWORD="${DEV_PASSWORD}"
+		PG_SSLMODE="${DEV_SSLMODE}"
+		export_pg_env
+		psql -v ON_ERROR_STOP=1 -q
+	}
 
 echo "Terminé: base dev synchronisée depuis prod."
 
-echo "Application des migrations Drizzle (colonnes du code absentes du dump prod)..."
+echo "Marquage des migrations Drizzle (schéma déjà présent dans le dump prod)..."
+(cd "${ROOT_DIR}" && bun run db:stamp-migrations)
+
+echo "Application des migrations Drizzle en attente (code plus récent que prod)..."
 (cd "${ROOT_DIR}" && bun run db:migrate)
