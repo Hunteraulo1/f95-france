@@ -539,6 +539,20 @@
 		await scrapeData({ threadId: tid, website: game.website });
 	};
 
+	/** Superadmin : relance le scrape forum (étape Infos jeu et suivantes). */
+	const runForceScrape = async (): Promise<void> => {
+		const tid = threadIdForDuplicateCheck(game.threadId);
+		if (!tid || !supportsThreadScrape) {
+			newToast({
+				alertType: 'warning',
+				message: 'Renseignez un ID de thread valide avant le scrape.'
+			});
+			return;
+		}
+		savedId = null;
+		await scrapeData({ threadId: tid, website: game.website });
+	};
+
 	/** Après scrape auto depuis ?threadId= : sauter thread/infos ou rester sur l’étape à corriger. */
 	const applyStepAfterQueryThreadScrape = () => {
 		if (game.website === 'f95z') {
@@ -1045,6 +1059,16 @@
 						Précédent
 					</button>
 				{/if}
+				{#if safeCheckRole(['superadmin']) && supportsThreadScrape && step >= 2}
+					<button
+						type="button"
+						class="btn w-full btn-outline btn-secondary md:w-38"
+						disabled={scraping}
+						onclick={() => void runForceScrape()}
+					>
+						Force scrape
+					</button>
+				{/if}
 				{#if (game.website === 'lc' || game.website === 'f95z') && step === 2}
 					<Insert
 						bind:game
@@ -1091,20 +1115,8 @@
 				{#if safeCheckRole(['superadmin'])}
 					<Dev
 						bind:game
-						{step}
 						onDevDataApplied={() => {
 							step = maxStep;
-						}}
-						onForceScrape={async () => {
-							const tid = threadIdForDuplicateCheck(game.threadId);
-							if (!tid) {
-								newToast({
-									alertType: 'warning',
-									message: 'Renseignez un ID de thread valide avant le scrape.'
-								});
-								return;
-							}
-							await handleThreadIdFieldBlur();
 						}}
 					/>
 				{/if}
