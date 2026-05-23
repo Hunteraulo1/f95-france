@@ -1116,7 +1116,7 @@
 						}}
 					/>
 				{/if}
-				{#if safeCheckRole(['superadmin']) && false}
+				{#if safeCheckRole(['superadmin'])}
 					<Dev
 						bind:game
 						onDevDataApplied={() => {

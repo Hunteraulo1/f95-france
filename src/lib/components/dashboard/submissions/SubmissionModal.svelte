@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import { effectivePermissions } from '$lib/permissions/client';
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
@@ -261,7 +262,20 @@
 	const hasNotesError = $derived(
 		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
 	);
-	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
+	/** Modérateurs (ex. superadmin) : statut + pas de verrou « listeur en cours » sur Mes soumissions. */
+	const canReviewSubmissions = $derived($effectivePermissions.includes('submissions.review'));
+	const canModerateSubmission = $derived(canEditStatus || canReviewSubmissions);
+	const statusFormAction = $derived(
+		canEditStatus ? '?/updateStatus' : `${resolve('/dashboard/submits')}?/updateStatus`
+	);
+	const submissionDataFormAction = $derived(
+		canModerateSubmission && !canEditStatus
+			? `${resolve('/dashboard/submits')}?/updateSubmissionData`
+			: '?/updateSubmissionData'
+	);
+	const canCancelSubmission = $derived(
+		Boolean(!canModerateSubmission && submission?.status === 'pending')
+	);
 	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
@@ -277,7 +291,7 @@
 	/** Admin : en attente ou ouverte, sauf soumissions de suppression. */
 	const canEditSubmissionDataAsAdmin = $derived(
 		Boolean(
-			canEditStatus &&
+			canModerateSubmission &&
 			!isDeleteSubmission &&
 			(submission?.status === 'pending' || submission?.status === 'opened')
 		)
@@ -286,12 +300,12 @@
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
 	/** Formulaire admin (statut) sans champs de données éditables (ex. suppression). */
-	const canAdminManageStatusOnly = $derived(Boolean(canEditStatus && isDeleteSubmission));
+	const canAdminManageStatusOnly = $derived(Boolean(canModerateSubmission && isDeleteSubmission));
 	const showAdminSubmissionForm = $derived(
 		canEditSubmissionDataAllowed || canAdminManageStatusOnly
 	);
 	const isOpenedReadOnlyForUser = $derived(
-		Boolean(!canEditStatus && submission?.status === 'opened')
+		Boolean(!canModerateSubmission && submission?.status === 'opened')
 	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
@@ -1024,11 +1038,11 @@
 							<form
 								id="submission-save-form"
 								method="POST"
-								action={canEditStatus ? '?/updateStatus' : '?/updateSubmissionData'}
+								action={canModerateSubmission ? statusFormAction : submissionDataFormAction}
 								use:enhance={(e) => {
 									submissionEditError = null;
 									statusError = null;
-									if (canEditStatus) {
+									if (canModerateSubmission) {
 										const validationError = validateStatusChange(selectedStatus, adminNotesText);
 										if (validationError) {
 											statusError = validationError;
@@ -1063,7 +1077,7 @@
 												typeof result.data === 'object' && 'message' in result.data
 													? String(result.data.message)
 													: 'Erreur lors de la mise à jour';
-											if (canEditStatus) {
+											if (canModerateSubmission) {
 												statusError = message;
 											} else {
 												submissionEditError = message;
@@ -1077,7 +1091,7 @@
 									<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 									<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
 								{/if}
-								{#if canEditStatus}
+								{#if canModerateSubmission}
 									<input type="hidden" name="status" value={selectedStatus} />
 									<input type="hidden" name="adminNotes" value={adminNotesText} />
 								{/if}
@@ -1456,7 +1470,7 @@
 										</div>
 									{/if}
 								</fieldset>
-								{#if !canEditStatus && submission?.status !== 'opened'}
+								{#if !canModerateSubmission && submission?.status !== 'opened'}
 									<div class="modal-action mt-4">
 										<button type="button" class="btn" onclick={onClose}>Annuler</button>
 										<button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -1497,7 +1511,7 @@
 					{/if}
 
 					<!-- Section de modification du statut -->
-					{#if canEditStatus}
+					{#if canModerateSubmission}
 						<div class="mt-6 border-t border-base-300 pt-4">
 							<h4 class="text-md mb-4 font-semibold">Modifier le statut</h4>
 
