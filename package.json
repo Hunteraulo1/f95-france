@@ -1,14 +1,14 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.2.10",
+	"version": "4.2.11",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "NODE_ENV=production vite build",
+		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
 		"start": "node build/index.js",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
@@ -27,7 +27,7 @@
 		"db:dev:down": "docker compose -f docker-compose.dev.yml down",
 		"db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
 		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh",
-		"cron:check-version": "node scripts/cron-check-version.mjs",
+		"cron:check-version": "node cron/check-version.mjs",
 		"sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
 	},
 	"devDependencies": {
