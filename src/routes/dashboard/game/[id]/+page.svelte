@@ -420,7 +420,7 @@
 				},
 				body: JSON.stringify({
 					name: game.name,
-					description: game.description ?? '',
+					description: data.description ?? game.description ?? '',
 					type: data.gameType ?? (translations[0]?.gameType as string | undefined) ?? 'other',
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
@@ -937,11 +937,18 @@
 											<span class="font-semibold">toi</span>
 										{:else if sub.username}
 											· <span class="text-base-content/70">créée par</span>
-											<span class="font-semibold">{sub.username}</span>
+											<a
+												class="font-semibold link link-hover"
+												href={`/dashboard/profile/${sub.username}`}>{sub.username}</a
+											>
 										{/if}
 										{#if sub.openedByUsername}
 											· <span class="text-base-content/70">ouverte par</span>
-											<span class="font-semibold">{sub.openedByUsername}</span>
+											<a
+												class="font-semibold link link-hover"
+												href={`/dashboard/profile/${sub.openedByUsername}`}
+												>{sub.openedByUsername}</a
+											>
 										{/if}
 										· {formatSubmissionDate(sub.createdAt)}
 										{#if sub.status === 'opened'}
