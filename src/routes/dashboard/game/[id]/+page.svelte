@@ -58,8 +58,15 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
-	/** Actualisation manuelle depuis le thread : réservée aux jeux F95Zone */
-	const refreshManualBlocked = $derived(game.website !== 'f95z');
+	/** Actualisation manuelle depuis le thread : F95Zone + auto-check jeu activé */
+	const refreshManualBlocked = $derived(game.website !== 'f95z' || game.gameAutoCheck === false);
+	const refreshManualBlockedReason = $derived(
+		game.website !== 'f95z'
+			? "L'actualisation manuelle n'est disponible que pour les jeux F95Zone."
+			: game.gameAutoCheck === false
+				? "L'actualisation manuelle nécessite l'auto-check jeu activé."
+				: undefined
+	);
 
 	/**
 	 * Peut activer l’auto-check sur une traduction : F95 + auto-check jeu.
@@ -378,6 +385,14 @@
 			newToast({
 				alertType: 'warning',
 				message: "L'actualisation manuelle n'est disponible que pour les jeux F95Zone."
+			});
+			return;
+		}
+
+		if (game.gameAutoCheck === false) {
+			newToast({
+				alertType: 'warning',
+				message: "L'actualisation manuelle nécessite l'auto-check jeu activé."
 			});
 			return;
 		}
@@ -1050,9 +1065,7 @@
 								class="btn btn-sm btn-secondary"
 								onclick={refreshGame}
 								disabled={refreshManualBlocked}
-								title={refreshManualBlocked
-									? 'L’actualisation manuelle n’est disponible que pour les jeux F95Zone.'
-									: undefined}
+								title={refreshManualBlockedReason}
 							>
 								<RefreshCcw size={16} />
 								Actualiser le jeu
