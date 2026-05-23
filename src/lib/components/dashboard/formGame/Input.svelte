@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Link2 from '@lucide/svelte/icons/link-2';
@@ -135,7 +136,8 @@
 			onblur={handleBlur}
 			disabled={(name === 'link' && gameLinkLocked) ||
 				(name === 'tlink' && tlinkLocked) ||
-				(name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)) ||
+				(name === 'ac' &&
+					(!gameAutoCheckEnabledForWebsite(game.website) || game.gameAutoCheck === false)) ||
 				(name === 'threadId' && game.website === 'other') ||
 				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}

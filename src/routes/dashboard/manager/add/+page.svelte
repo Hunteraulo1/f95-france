@@ -14,6 +14,7 @@
 	import { newToast } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import {
 		computeGameFormFieldState,
 		gameImageRequiredForWebsite
@@ -266,8 +267,13 @@
 		}
 	});
 
-	/** Auto-check traduction seulement si auto-check jeu (F95) ; pas l’inverse : on peut désactiver `ac`. */
+	/** Auto-check : uniquement F95Zone ; traduction seulement si auto-check jeu actif. */
 	$effect(() => {
+		if (!gameAutoCheckEnabledForWebsite(game.website)) {
+			game.gameAutoCheck = false;
+			game.ac = false;
+			return;
+		}
 		if (game.gameAutoCheck === false) {
 			game.ac = false;
 		}
@@ -327,6 +333,10 @@
 		}
 
 		if (targetStep === 2 && infosStepFilledByScrape) {
+			targetStep += amount;
+		}
+
+		if (targetStep === 4 && !gameAutoCheckEnabledForWebsite(game.website)) {
 			targetStep += amount;
 		}
 
@@ -1012,6 +1022,8 @@
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
 					{#if name === 'image' && game.website === 'lc' && !lcShowImageField}
 						<!-- LC : pas de champ image tant que le scrape n’a pas fourni d’URL -->
+					{:else if (name === 'gameAutoCheck' || name === 'ac') && !gameAutoCheckEnabledForWebsite(game.website)}
+						<!-- Auto-check réservé à F95Zone -->
 					{:else if !adminOnly || isAdmin}
 						{#if needsTranslators && Component === Datalist}
 							<Datalist
