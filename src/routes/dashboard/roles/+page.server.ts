@@ -17,6 +17,7 @@ import {
 	invalidateRolePermissionsCache,
 	listAppRoles,
 	listRolePermissions,
+	listRolePermissionsStored,
 	roleExists,
 	setRolePermissions
 } from '$lib/server/permissions';
@@ -53,7 +54,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const orderedSlugs = roleSlugs;
 
 	const selectedSlug = url.searchParams.get('role') ?? orderedSlugs[0] ?? 'user';
-	const selectedPermissions = selectedSlug ? await listRolePermissions(selectedSlug) : [];
+	const selectedPermissionsEffective = selectedSlug ? await listRolePermissions(selectedSlug) : [];
+	const selectedPermissions = selectedSlug ? await listRolePermissionsStored(selectedSlug) : [];
 
 	const isSuperadmin = isRolesManagementSuperadmin(locals);
 	const actorPermissions = await getActorPermissionSet(locals);
@@ -87,7 +89,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const selectedRoleMeta = rolesWithAccess.find((r) => r.slug === selectedSlug);
 
 	const selectedPermissionDetails = PERMISSION_CATALOG.filter((p) =>
-		selectedPermissions.includes(p.key)
+		selectedPermissionsEffective.includes(p.key)
 	);
 
 	return {
@@ -255,13 +257,19 @@ export const actions: Actions = {
 			});
 		}
 
-		const afterCheck = await assertCanManageRole(locals, slug, keys);
+		const storedKeys = await listRolePermissionsStored(slug);
+		const preservedKeys = isSuperadmin
+			? []
+			: storedKeys.filter((key) => !actorPermissions.has(key));
+		const keysToSave = [...new Set([...preservedKeys, ...keys])];
+
+		const afterCheck = await assertCanManageRole(locals, slug, keysToSave);
 		if (!afterCheck.allowed) {
 			return fail(403, { message: afterCheck.message });
 		}
 
 		try {
-			await setRolePermissions(slug, keys);
+			await setRolePermissions(slug, keysToSave);
 			return { success: true, message: 'Permissions enregistrées', selectedSlug: slug };
 		} catch (error) {
 			console.error('updatePermissions:', error);

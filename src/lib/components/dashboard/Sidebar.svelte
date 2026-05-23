@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import type { PermissionKey } from '$lib/permissions/catalog';
 	import { checkPermission } from '$lib/permissions/client';
 	import { user } from '$lib/stores';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
+	import CornerUpLeft from '@lucide/svelte/icons/corner-up-left';
 	import Inbox from '@lucide/svelte/icons/inbox';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Languages from '@lucide/svelte/icons/languages';
@@ -23,13 +25,24 @@
 	interface Props {
 		pendingSubmissionsCount?: number;
 		hasLinkedTranslator?: boolean;
+		canReturnToOwnAccount?: boolean;
+		devOriginUsername?: string | null;
 	}
 
 	let {
 		pendingSubmissionsCount = 0,
-		hasLinkedTranslator = false
-	}: Pick<Props, 'pendingSubmissionsCount' | 'hasLinkedTranslator'> = $props();
+		hasLinkedTranslator = false,
+		canReturnToOwnAccount = false,
+		devOriginUsername = null
+	}: Pick<
+		Props,
+		| 'pendingSubmissionsCount'
+		| 'hasLinkedTranslator'
+		| 'canReturnToOwnAccount'
+		| 'devOriginUsername'
+	> = $props();
 	let isDrawerOpen = $state(true);
+	let returnUserError = $state<string | null>(null);
 
 	const isDesktop = () => window.matchMedia('(min-width: 840px)').matches;
 
@@ -149,7 +162,7 @@
 			access: 'config.view'
 		},
 		{
-			label: 'Logs API',
+			label: 'Logs',
 			href: '/dashboard/logs',
 			icon: ScrollText,
 			access: 'logs.view'
@@ -234,6 +247,48 @@
 					{/if}
 				{/if}
 			{/each}
+			{#if canReturnToOwnAccount}
+				<div class="divider"></div>
+				<li>
+					<form
+						method="POST"
+						action="/dashboard/settings?/returnToOwnAccount"
+						class="w-full"
+						use:enhance={() => {
+							returnUserError = null;
+							return async function ({ result, update }) {
+								if (result.type === 'success') {
+									await update();
+									window.location.href = '/dashboard';
+									return;
+								}
+								if (result.type === 'failure' && result.data) {
+									returnUserError =
+										typeof result.data === 'object' && 'message' in result.data
+											? String(result.data.message)
+											: 'Erreur lors du retour au compte';
+								}
+							};
+						}}
+					>
+						<button
+							type="submit"
+							class="flex h-8 gap-2 w-full items-center font-semibold text-secondary is-drawer-close:tooltip is-drawer-close:tooltip-right"
+							data-tip={devOriginUsername
+								? `Revenir à ${devOriginUsername}`
+								: 'Revenir à mon compte'}
+						>
+							<CornerUpLeft size={16} />
+							<span class="leading-4 text-nowrap is-drawer-close:hidden">
+								Revenir à mon compte
+							</span>
+						</button>
+					</form>
+					{#if returnUserError}
+						<p class="px-4 text-xs text-error is-drawer-close:hidden">{returnUserError}</p>
+					{/if}
+				</li>
+			{/if}
 		</ul>
 	</div>
 </aside>

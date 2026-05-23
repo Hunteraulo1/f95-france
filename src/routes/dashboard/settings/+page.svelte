@@ -20,7 +20,6 @@
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
-	let returnUserError = $state<string | null>(null);
 	let passwordError = $state<string | null>(null);
 	let passwordInfo = $state<string | null>(null);
 	let twoFactorError = $state<string | null>(null);
@@ -859,52 +858,6 @@
 							</label>
 							<button class="btn btn-primary" type="submit">Basculer</button>
 						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if data.canReturnToOwnAccount}
-		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Retour au compte d'origine</h2>
-			<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
-				<div class="card-body gap-6 sm:p-8">
-					{#if returnUserError}
-						<div class="mb-4 alert alert-error">
-							<span>{returnUserError}</span>
-						</div>
-					{/if}
-					<div class="flex w-full items-center justify-between gap-4">
-						<span class="opacity-70">
-							Session actuellement en mode dev.
-							{#if data.devOriginUsername}
-								Retour possible vers <strong>{data.devOriginUsername}</strong>.
-							{/if}
-						</span>
-					</div>
-					<form
-						method="POST"
-						action="?/returnToOwnAccount"
-						class="w-full"
-						use:enhance={() => {
-							returnUserError = null;
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update();
-									window.location.href = '/dashboard';
-									return;
-								}
-								if (result.type === 'failure' && result.data) {
-									returnUserError =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: 'Erreur lors du retour au compte';
-								}
-							};
-						}}
-					>
-						<button class="btn btn-secondary" type="submit">Revenir à mon compte</button>
 					</form>
 				</div>
 			</div>
