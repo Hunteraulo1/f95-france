@@ -14,36 +14,36 @@ const url = `${baseUrl}/api/cron/check-version`;
 const timeoutMs = Number.parseInt(process.env.CRON_HTTP_TIMEOUT_MS ?? '30000', 10);
 
 if (!secret) {
-  console.error('[cron-check-version] CRON_SECRET manquant');
-  process.exit(1);
+	console.error('[cron-check-version] CRON_SECRET manquant');
+	process.exit(1);
 }
 
 try {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      'Content-Type': 'application/json'
-    },
-    signal: AbortSignal.timeout(Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30_000)
-  });
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${secret}`,
+			'Content-Type': 'application/json'
+		},
+		signal: AbortSignal.timeout(Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30_000)
+	});
 
-  const body = await response.text();
-  let parsed = body;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    // corps non JSON
-  }
+	const body = await response.text();
+	let parsed = body;
+	try {
+		parsed = JSON.parse(body);
+	} catch {
+		// corps non JSON
+	}
 
-  if (response.ok) {
-    console.info('[cron-check-version] OK', response.status, parsed);
-    process.exit(0);
-  }
+	if (response.ok) {
+		console.info('[cron-check-version] OK', response.status, parsed);
+		process.exit(0);
+	}
 
-  console.error('[cron-check-version] échec HTTP', response.status, parsed);
-  process.exit(1);
+	console.error('[cron-check-version] échec HTTP', response.status, parsed);
+	process.exit(1);
 } catch (error) {
-  console.error('[cron-check-version] erreur réseau:', error);
-  process.exit(1);
+	console.error('[cron-check-version] erreur réseau:', error);
+	process.exit(1);
 }
