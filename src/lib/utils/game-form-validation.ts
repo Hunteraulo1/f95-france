@@ -48,6 +48,11 @@ function trimStr(v: unknown): string {
 	return String(v).trim();
 }
 
+/** LewdCorner peut être enregistré sans vignette (scrape impossible ou sans image). */
+export function gameImageRequiredForWebsite(website: string | null | undefined): boolean {
+	return trimStr(website) !== 'lc';
+}
+
 /** Erreurs bloquantes + avertissement description (ne bloque pas) */
 export function computeGameFormFieldState(
 	game: FormGameType,

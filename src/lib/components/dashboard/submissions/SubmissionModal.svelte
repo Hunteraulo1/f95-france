@@ -5,6 +5,7 @@
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
+		gameImageRequiredForWebsite,
 		isIntegrated,
 		isNoTranslation,
 		normalizeTranslationTversion,
@@ -247,6 +248,8 @@
 
 		return JSON.stringify(out);
 	});
+
+	const requireGameImage = $derived(gameImageRequiredForWebsite(editGameWebsite));
 
 	const isStatusRequiringAdminNote = $derived(
 		selectedStatus === 'rejected' || selectedStatus === 'to_fix'
@@ -1196,16 +1199,20 @@
 												</div>
 												<div class="form-control md:col-span-2">
 													<label class="label" for="editGameImage">
-														<span class="label-text">Image</span>
+														<span class="label-text">
+															Image{requireGameImage ? '' : ' (optionnel pour LewdCorner)'}
+														</span>
 													</label>
 													<input
 														id="editGameImage"
 														name="editGameImage"
 														class="input-bordered input w-full"
 														type="url"
-														placeholder="https://..."
+														placeholder={requireGameImage
+															? 'https://...'
+															: 'Laisser vide si aucune vignette'}
 														bind:value={editGameImage}
-														required
+														required={requireGameImage}
 													/>
 												</div>
 												<div class="form-control md:col-span-2">

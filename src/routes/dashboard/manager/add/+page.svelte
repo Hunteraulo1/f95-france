@@ -13,7 +13,10 @@
 	import { newToast } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
-	import { computeGameFormFieldState } from '$lib/utils/game-form-validation';
+	import {
+		computeGameFormFieldState,
+		gameImageRequiredForWebsite
+	} from '$lib/utils/game-form-validation';
 	import {
 		formHasTranslatorInputIssue,
 		getTranslatorFieldErrors
@@ -124,9 +127,14 @@
 			: ['Site', 'Thread', 'Infos jeu', 'Traduction']
 	);
 
+	/** LC sans image scrape (échec ou absent) : vignette optionnelle. */
+	const requireGameImage = $derived(
+		gameImageRequiredForWebsite(game.website) && (game.website !== 'lc' || lcShowImageField)
+	);
+
 	let fieldFormState = $derived(
 		computeGameFormFieldState(game, {
-			requireImage: game.website !== 'lc' || lcShowImageField
+			requireImage: requireGameImage
 		})
 	);
 	let translatorFieldErrors = $derived(
@@ -571,7 +579,9 @@
 			return;
 		}
 
-		const fieldState = computeGameFormFieldState(game);
+		const fieldState = computeGameFormFieldState(game, {
+			requireImage: requireGameImage
+		});
 		if (fieldState.hasBlockingError) {
 			newToast({
 				alertType: 'error',
