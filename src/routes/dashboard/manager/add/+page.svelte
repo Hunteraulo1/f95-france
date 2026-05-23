@@ -42,7 +42,7 @@
 		id: '',
 		name: '',
 		tags: '',
-		gameType: 'other',
+		gameType: 'renpy',
 		image: '',
 		website: 'f95z',
 		threadId: null,
@@ -326,35 +326,26 @@
 			await handleThreadIdFieldBlur();
 		}
 
-		const skipInfosStep =
-			(game.website === 'f95z' && !f95ScrapeFailed) ||
-			(game.website === 'lc' && lcScrapeStatus !== 'failed');
-
-		if (targetStep === 2 && skipInfosStep) {
+		if (targetStep === 2 && infosStepFilledByScrape) {
 			targetStep += amount;
 		}
 
-		// Scrape F95 en échec : rester sur l’étape Thread pour corriger l’ID ou réessayer.
-		if (amount > 0 && game.website === 'f95z' && f95ScrapeFailed && previousStep === 1) {
-			targetStep = 1;
-		}
-
-		// Scrape LC en échec : depuis Traduction, « Précédent » doit revenir aux infos (pas au thread).
+		// Scrape en échec ou pas encore tenté : depuis Traduction+, « Précédent » doit pouvoir revenir aux infos.
 		if (
 			amount < 0 &&
-			game.website === 'lc' &&
-			lcScrapeStatus === 'failed' &&
+			(game.website === 'f95z' || game.website === 'lc') &&
+			!infosStepFilledByScrape &&
 			previousStep >= 3 &&
 			targetStep === 1
 		) {
 			targetStep = 2;
 		}
 
-		// Scrape LC en échec : obliger l’étape « Infos jeu » (saisie manuelle).
+		// Scrape F95/LC en échec ou manuel : obliger l’étape « Infos jeu » avant la traduction.
 		if (
 			amount > 0 &&
-			game.website === 'lc' &&
-			lcScrapeStatus === 'failed' &&
+			(game.website === 'f95z' || game.website === 'lc') &&
+			!infosStepFilledByScrape &&
 			previousStep < 2 &&
 			targetStep > 2
 		) {
@@ -373,6 +364,12 @@
 	const hasValidThreadIdForNextStep = $derived(threadIdForDuplicateCheck(game.threadId) !== null);
 	const blockNextStepForMissingThread = $derived(
 		requiresThreadIdForNextStep && !hasValidThreadIdForNextStep
+	);
+
+	/** Infos jeu déjà remplies par un scrape réussi — on peut sauter l’étape 2. */
+	const infosStepFilledByScrape = $derived(
+		(game.website === 'f95z' && scrapeBaseline !== null && !f95ScrapeFailed) ||
+			(game.website === 'lc' && (lcScrapeStatus === 'ok' || lcScrapeStatus === 'no_image'))
 	);
 
 	const scrapeData = async ({
@@ -446,7 +443,7 @@
 					...game,
 					name: '',
 					tags: '',
-					gameType: 'other',
+					gameType: 'renpy',
 					image: '',
 					gameVersion: null,
 					description: null,
@@ -547,7 +544,7 @@
 		if (game.website === 'f95z') {
 			if (f95ScrapeFailed) {
 				skipThreadStepFromQueryParam = false;
-				step = 1;
+				step = 2;
 				return;
 			}
 			step = 3;
@@ -758,22 +755,6 @@
 			name: 'tags'
 		},
 		{
-			Component: Select,
-			active: [2, 5],
-			title: 'Moteur du jeu',
-			name: 'gameType',
-			selectOptions: [
-				{ value: 'renpy', label: 'RenPy' },
-				{ value: 'rpgm', label: 'RPGM' },
-				{ value: 'unity', label: 'Unity' },
-				{ value: 'unreal', label: 'Unreal' },
-				{ value: 'flash', label: 'Flash' },
-				{ value: 'html', label: 'HTML' },
-				{ value: 'qsp', label: 'QSP' },
-				{ value: 'other', label: 'Autre' }
-			]
-		},
-		{
 			Component: InputImage,
 			active: [2, 5],
 			title: "Lien de l'image du jeu",
@@ -798,6 +779,22 @@
 			title: 'Nom de la traduction',
 			name: 'translationName',
 			type: 'text'
+		},
+		{
+			Component: Select,
+			active: [3, 5],
+			title: 'Moteur',
+			name: 'gameType',
+			selectOptions: [
+				{ value: 'renpy', label: 'RenPy' },
+				{ value: 'rpgm', label: 'RPGM' },
+				{ value: 'unity', label: 'Unity' },
+				{ value: 'unreal', label: 'Unreal' },
+				{ value: 'flash', label: 'Flash' },
+				{ value: 'html', label: 'HTML' },
+				{ value: 'qsp', label: 'QSP' },
+				{ value: 'other', label: 'Autre' }
+			]
 		},
 		{
 			Component: Input,
@@ -922,8 +919,8 @@
 			{#if lcScrapeFailed}
 				<div class="alert text-sm alert-warning" role="status">
 					<span>
-						Scrape LewdCorner impossible — complétez le nom, les tags, le moteur, la version et la
-						description du jeu (étape Infos jeu). Aucune vignette ne sera ajoutée.
+						Scrape LewdCorner impossible — complétez le nom, les tags, la version et la description
+						du jeu (étape Infos jeu). Aucune vignette ne sera ajoutée.
 					</span>
 				</div>
 			{:else if lcImageLocked}
@@ -1094,8 +1091,20 @@
 				{#if safeCheckRole(['superadmin'])}
 					<Dev
 						bind:game
+						{step}
 						onDevDataApplied={() => {
 							step = maxStep;
+						}}
+						onForceScrape={async () => {
+							const tid = threadIdForDuplicateCheck(game.threadId);
+							if (!tid) {
+								newToast({
+									alertType: 'warning',
+									message: 'Renseignez un ID de thread valide avant le scrape.'
+								});
+								return;
+							}
+							await handleThreadIdFieldBlur();
 						}}
 					/>
 				{/if}
