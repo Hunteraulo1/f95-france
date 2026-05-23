@@ -18,15 +18,23 @@
 		data.roles.find((r) => r.slug === data.selectedSlug) ?? data.roles[0]
 	);
 	const canManageSelected = $derived(data.selectedCanManage);
+	const isSelectedSuperadmin = $derived(data.isSelectedRoleSuperadmin);
+	const roleFieldsLocked = $derived(!canManageSelected || isSelectedSuperadmin);
 
 	$effect(() => {
 		const slug = data.selectedSlug;
 		const selected = data.selectedPermissions;
 		const groups = data.permissionGroups;
 		const next: Record<string, boolean> = {};
-		for (const group of groups) {
-			for (const item of group.items) {
-				next[item.key] = selected.includes(item.key);
+		if (data.isSelectedRoleSuperadmin) {
+			for (const key of data.allPermissionKeys) {
+				next[key] = true;
+			}
+		} else {
+			for (const group of groups) {
+				for (const item of group.items) {
+					next[item.key] = selected.includes(item.key);
+				}
 			}
 		}
 		void slug;
@@ -95,7 +103,14 @@
 
 		{#if selectedRole}
 			<div class="flex flex-col gap-6">
-				{#if !canManageSelected && data.selectedManageBlockedReason}
+				{#if isSelectedSuperadmin}
+					<div role="alert" class="alert alert-info">
+						<span
+							>Le rôle Super administrateur possède automatiquement tous les droits. Ces paramètres
+							ne peuvent pas être modifiés.</span
+						>
+					</div>
+				{:else if !canManageSelected && data.selectedManageBlockedReason}
 					<div role="alert" class="alert alert-warning">
 						<span>{data.selectedManageBlockedReason}</span>
 					</div>
@@ -141,7 +156,7 @@
 							action="?/updateRole"
 							class="flex flex-col gap-3"
 							use:enhance={() => {
-								if (!canManageSelected) return () => {};
+								if (roleFieldsLocked) return () => {};
 								return async ({ result, update }) => {
 									if (result.type === 'failure') {
 										errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
@@ -158,22 +173,24 @@
 								<legend class="fieldset-legend">Libellé</legend>
 								<input
 									type="text"
-									name={selectedRole.isSystem ? undefined : 'label'}
+									name={selectedRole.isSystem || isSelectedSuperadmin ? undefined : 'label'}
 									class="input w-full"
-									class:opacity-60={selectedRole.isSystem}
+									class:opacity-60={selectedRole.isSystem || isSelectedSuperadmin}
 									value={selectedRole.label}
-									readonly={selectedRole.isSystem}
-									required={!selectedRole.isSystem}
+									readonly={selectedRole.isSystem || isSelectedSuperadmin}
+									disabled={isSelectedSuperadmin}
+									required={!selectedRole.isSystem && !isSelectedSuperadmin}
 								/>
 							</fieldset>
 							<fieldset class="fieldset">
 								<legend class="fieldset-legend">Description</legend>
 								<textarea
-									name={selectedRole.isSystem ? undefined : 'description'}
+									name={selectedRole.isSystem || isSelectedSuperadmin ? undefined : 'description'}
 									class="textarea w-full"
-									class:opacity-60={selectedRole.isSystem}
+									class:opacity-60={selectedRole.isSystem || isSelectedSuperadmin}
 									rows="2"
-									readonly={selectedRole.isSystem}>{selectedRole.description ?? ''}</textarea
+									readonly={selectedRole.isSystem || isSelectedSuperadmin}
+									disabled={isSelectedSuperadmin}>{selectedRole.description ?? ''}</textarea
 								>
 							</fieldset>
 							<fieldset class="fieldset">
@@ -185,7 +202,9 @@
 								<div class="flex flex-col gap-2">
 									{#each data.editModeOptions as option (option.value)}
 										<label
-											class="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3 hover:bg-base-200"
+											class="flex items-start gap-3 rounded-lg border border-base-300 p-3 {isSelectedSuperadmin
+												? 'opacity-60'
+												: 'cursor-pointer hover:bg-base-200'}"
 										>
 											<input
 												type="radio"
@@ -193,6 +212,7 @@
 												value={option.value}
 												class="radio mt-0.5 radio-sm"
 												checked={selectedRole.editMode === option.value}
+												disabled={isSelectedSuperadmin}
 											/>
 											<span class="flex flex-col gap-0.5">
 												<span class="text-sm font-medium">{option.label}</span>
@@ -202,7 +222,7 @@
 									{/each}
 								</div>
 							</fieldset>
-							{#if canManageSelected}
+							{#if canManageSelected && !isSelectedSuperadmin}
 								<button type="submit" class="btn w-fit btn-sm btn-primary">
 									{selectedRole.isSystem ? 'Enregistrer le mode' : 'Enregistrer'}
 								</button>
@@ -216,7 +236,7 @@
 					action="?/updatePermissions"
 					class="card border border-base-300 bg-base-100 shadow"
 					use:enhance={() => {
-						if (!canManageSelected) return () => {};
+						if (roleFieldsLocked) return () => {};
 						return async ({ result, update }) => {
 							if (result.type === 'failure') {
 								errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
@@ -228,33 +248,34 @@
 					<input type="hidden" name="slug" value={selectedRole.slug} />
 					<div class="card-body gap-4">
 						<h3 class="card-title text-base">Permissions</h3>
-						{#if !canManageSelected}
+						{#if !canManageSelected && !isSelectedSuperadmin}
 							<ul class="flex flex-wrap gap-2">
 								{#each data.selectedPermissionDetails as perm (perm.key)}
 									<li class="badge badge-outline">{perm.label}</li>
 								{/each}
 							</ul>
 						{/if}
-						{#if canManageSelected}
+						{#if canManageSelected || isSelectedSuperadmin}
 							{#each data.permissionGroups as group (group.group)}
 								<div class="flex flex-col gap-2">
 									<p class="text-sm font-semibold text-base-content/80">{group.group}</p>
 									<div class="grid gap-2 sm:grid-cols-2">
 										{#each group.items as perm (perm.key)}
 											<label
-												class="flex items-start gap-2 rounded-lg border border-base-300 p-3 {canManageSelected
+												class="flex items-start gap-2 rounded-lg border border-base-300 p-3 {canManageSelected &&
+												!isSelectedSuperadmin
 													? 'cursor-pointer hover:bg-base-200'
-													: ''}"
+													: 'opacity-80'}"
 											>
 												<input
 													type="checkbox"
 													name="permissions"
 													value={perm.key}
 													class="checkbox mt-0.5 checkbox-sm"
-													checked={permissionChecks[perm.key] ?? false}
+													checked={isSelectedSuperadmin || (permissionChecks[perm.key] ?? false)}
 													onchange={(event) =>
 														setPermissionChecked(perm.key, event.currentTarget.checked)}
-													disabled={!canManageSelected}
+													disabled={roleFieldsLocked}
 												/>
 												<span class="flex flex-col gap-0.5">
 													<span class="text-sm font-medium">{perm.label}</span>
@@ -266,7 +287,7 @@
 								</div>
 							{/each}
 						{/if}
-						{#if canManageSelected}
+						{#if canManageSelected && !isSelectedSuperadmin}
 							<button type="submit" class="btn w-fit btn-primary"
 								>Enregistrer les permissions</button
 							>

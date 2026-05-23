@@ -11,7 +11,7 @@
 	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { checkPermission } from '$lib/permissions/client';
+	import { effectivePermissions } from '$lib/permissions/client';
 	import { newToast } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
@@ -124,7 +124,7 @@
 	};
 
 	const isAdmin = safeCheckRole(['admin', 'superadmin']);
-	const canManageGameAutoCheck = $derived(checkPermission('games.auto_check'));
+	const canManageGameAutoCheck = $derived($effectivePermissions.includes('games.auto_check'));
 	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
 		canManageGameAutoCheck
@@ -644,6 +644,7 @@
 				link: string | null;
 				image: string;
 				gameVersion: string | null;
+				gameAutoCheck: boolean;
 				scrapeUnchanged: boolean;
 			};
 
@@ -657,6 +658,7 @@
 				tname: FormGameType['tname'];
 				translatorId: string | null;
 				proofreaderId: string | null;
+				ac: boolean;
 			};
 
 			const payload: { game: GamePayload; translation?: TranslationPayload } = {
@@ -670,6 +672,7 @@
 					link: game.link?.trim() || null,
 					image: game.image.trim() || '',
 					gameVersion: game.gameVersion?.trim() || null,
+					gameAutoCheck: Boolean(game.gameAutoCheck),
 					scrapeUnchanged: isScrapeUnchanged()
 				}
 			};
@@ -698,7 +701,8 @@
 					tlink: game.tlink?.trim() || null,
 					tname: game.tname,
 					translatorId: game.translatorId?.trim() || null,
-					proofreaderId: game.proofreaderId?.trim() || null
+					proofreaderId: game.proofreaderId?.trim() || null,
+					ac: Boolean(game.ac)
 				};
 			}
 

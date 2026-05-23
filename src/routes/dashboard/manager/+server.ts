@@ -6,13 +6,18 @@ import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
-import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
+import {
+	clampTranslationAc,
+	gameAutoCheckEnabledForWebsite,
+	resolveGameAutoCheckForWebsite
+} from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
@@ -23,6 +28,13 @@ import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+function parseOptionalBoolean(value: unknown): boolean | undefined {
+	if (typeof value === 'boolean') return value;
+	if (value === 'true' || value === 1) return true;
+	if (value === 'false' || value === 0) return false;
+	return undefined;
+}
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	// Vérifier que l'utilisateur est authentifié
@@ -123,16 +135,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Extraire les données du jeu
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
-		const computedGameAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
+		const canSetAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
+		const scrapeDefaultAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
+		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+			website,
+			canSetAutoCheck ? parseOptionalBoolean(game?.gameAutoCheck) : undefined,
+			scrapeDefaultAutoCheck
+		);
 		const translationTname = typeof translation?.tname === 'string' ? translation.tname.trim() : '';
 		const isIntegratedTranslation = translationTname === 'integrated';
 		const isNoTranslation = translationTname === 'no_translation';
-		const computedTranslationAc =
-			computedGameAutoCheck &&
+		const inferredTranslationAc =
+			nextGameAutoCheck &&
 			(isNoTranslation ||
 				isIntegratedTranslation ||
 				(normVersion(translation?.version).length > 0 &&
 					normVersion(translation?.version) === normVersion(gameVersion)));
+		const requestedTranslationAc = parseOptionalBoolean(translation?.ac);
+		const nextTranslationAc =
+			translation && canSetAutoCheck && requestedTranslationAc !== undefined
+				? clampTranslationAc(nextGameAutoCheck, requestedTranslationAc)
+				: inferredTranslationAc;
 
 		// Valider les données requises
 		const imageValue = typeof image === 'string' ? image.trim() : '';
@@ -234,7 +257,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tags: tags || null,
 					link: link || null,
 					image: imageValue,
-					gameAutoCheck: computedGameAutoCheck,
+					gameAutoCheck: nextGameAutoCheck,
 					gameVersion:
 						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
 				},
@@ -254,7 +277,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 									: String(type),
 							translatorId: translation.translatorId || null,
 							proofreaderId: translation.proofreaderId || null,
-							ac: computedTranslationAc
+							ac: nextTranslationAc
 						}
 					: undefined
 			);
@@ -280,7 +303,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			tags: tags || null,
 			link: link || null,
 			image: imageValue,
-			gameAutoCheck: computedGameAutoCheck,
+			gameAutoCheck: nextGameAutoCheck,
 			gameVersion:
 				typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
 			createdAt: new Date(),
@@ -328,7 +351,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					tlink: translation.tlink || '',
 					translatorId: translation.translatorId || null,
 					proofreaderId: translation.proofreaderId || null,
-					ac: computedTranslationAc,
+					ac: nextTranslationAc,
 					createdAt: new Date(),
 					updatedAt: new Date()
 				})

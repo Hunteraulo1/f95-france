@@ -25,6 +25,12 @@ export const PERMISSION_KEYS = [
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
+export const SUPERADMIN_ROLE_SLUG = 'superadmin' as const;
+
+export function isSuperadminRole(roleSlug: string | null | undefined): boolean {
+	return roleSlug === SUPERADMIN_ROLE_SLUG;
+}
+
 export type PermissionDefinition = {
 	key: PermissionKey;
 	label: string;

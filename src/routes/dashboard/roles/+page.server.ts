@@ -1,4 +1,5 @@
 import {
+	isSuperadminRole,
 	PERMISSION_CATALOG,
 	SYSTEM_ROLE_LABELS,
 	type PermissionKey
@@ -76,8 +77,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (selectedSlug !== roleParam) {
 		redirect(303, rolePageUrl(selectedSlug));
 	}
-	const selectedPermissionsEffective = selectedSlug ? await listRolePermissions(selectedSlug) : [];
-	const selectedPermissions = selectedSlug ? await listRolePermissionsStored(selectedSlug) : [];
+	const isSelectedRoleSuperadmin = isSuperadminRole(selectedSlug);
+	const selectedPermissionsEffective = isSelectedRoleSuperadmin
+		? PERMISSION_CATALOG.map((p) => p.key)
+		: selectedSlug
+			? await listRolePermissions(selectedSlug)
+			: [];
+	const selectedPermissions = isSelectedRoleSuperadmin
+		? [...selectedPermissionsEffective]
+		: selectedSlug
+			? await listRolePermissionsStored(selectedSlug)
+			: [];
 
 	const isSuperadmin = isRolesManagementSuperadmin(locals);
 	const actorPermissions = await getActorPermissionSet(locals);
@@ -94,7 +104,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				editMode:
 					r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
 				userCount: userCounts[r.slug] ?? 0,
-				permissionCount: permissionCounts[r.slug] ?? 0,
+				permissionCount: isSuperadminRole(r.slug)
+					? PERMISSION_CATALOG.length
+					: (permissionCounts[r.slug] ?? 0),
 				canManage: access.allowed,
 				manageBlockedReason: access.allowed ? null : access.message
 			};
@@ -104,7 +116,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const permissionGroups = [...permissionCatalogGrouped().entries()]
 		.map(([group, items]) => ({
 			group,
-			items: items.filter((p) => isSuperadmin || actorPermissions.has(p.key))
+			items:
+				isSelectedRoleSuperadmin || isSuperadmin
+					? items
+					: items.filter((p) => actorPermissions.has(p.key))
 		}))
 		.filter((g) => g.items.length > 0);
 
@@ -122,6 +137,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		isSuperadmin,
+		isSelectedRoleSuperadmin,
 		roles: rolesWithAccess,
 		noticeMessage,
 		selectedSlug,

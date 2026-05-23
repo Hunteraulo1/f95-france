@@ -192,25 +192,46 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const nextGameVersion =
 			typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null;
 
+		const textFieldChanged = (next: unknown, prev: string | null | undefined) =>
+			(typeof next === 'string' ? next.trim() : '') !== (prev ?? '').trim();
+
 		const hasNonVersionChanges =
 			!isF95VersionRefresh &&
-			((name ?? '') !== (existingGame.name ?? '') ||
-				(description || null) !== (existingGame.description ?? null) ||
-				(website ?? '') !== (existingGame.website ?? '') ||
+			(textFieldChanged(name, existingGame.name) ||
+				textFieldChanged(description, existingGame.description) ||
+				textFieldChanged(website, existingGame.website) ||
 				nextThreadId !== (existingGame.threadId ?? null) ||
-				(tags || null) !== (existingGame.tags ?? null) ||
-				(link || null) !== (existingGame.link ?? null) ||
-				(image ?? '') !== (existingGame.image ?? ''));
+				textFieldChanged(tags, existingGame.tags) ||
+				textFieldChanged(link, existingGame.link) ||
+				textFieldChanged(image, existingGame.image));
 
-		let nextGameAutoCheck = hasNonVersionChanges
-			? false
-			: resolveGameAutoCheckForWebsite(
-					website,
-					canManuallyToggleGameAutoCheck && typeof gameAutoCheck === 'boolean'
-						? gameAutoCheck
-						: undefined,
-					prevGameAutoCheck ?? true
-				);
+		const parseOptionalBoolean = (value: unknown): boolean | undefined => {
+			if (typeof value === 'boolean') return value;
+			if (value === 'true' || value === 1) return true;
+			if (value === 'false' || value === 0) return false;
+			return undefined;
+		};
+
+		const explicitGameAutoCheck = canManuallyToggleGameAutoCheck
+			? parseOptionalBoolean(gameAutoCheck)
+			: undefined;
+
+		let nextGameAutoCheck: boolean;
+		if (explicitGameAutoCheck !== undefined) {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				explicitGameAutoCheck,
+				prevGameAutoCheck ?? true
+			);
+		} else if (hasNonVersionChanges) {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(website, false, false);
+		} else {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				undefined,
+				prevGameAutoCheck ?? true
+			);
+		}
 
 		let checkerVersionUnknown = false;
 		let normalizedCheckerVersion: string | null = null;
@@ -229,6 +250,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			if (!normalizedCheckerVersion) {
 				checkerVersionUnknown = true;
 				nextGameAutoCheck = false;
+			} else if (explicitGameAutoCheck !== undefined) {
+				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+					website,
+					explicitGameAutoCheck,
+					prevGameAutoCheck ?? true
+				);
 			} else {
 				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 					website,

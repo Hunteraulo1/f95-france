@@ -1,6 +1,6 @@
 <script lang="ts">
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
-	import { checkPermission } from '$lib/permissions/client';
+	import { effectivePermissions } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import {
@@ -36,7 +36,9 @@
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
-	const canManageGameAutoCheck = $derived(checkPermission('games.auto_check'));
+	const canManageGameAutoCheck = $derived(
+		data.canManageGameAutoCheck === true || $effectivePermissions.includes('games.auto_check')
+	);
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 
 	const submissionTypeLabel = (type: string, translationId: string | null): string => {
@@ -432,6 +434,7 @@
 					tags: data.tags ?? game.tags ?? '',
 					link: game.link ?? '',
 					image: data.image ?? game.image ?? '',
+					gameAutoCheck: game.gameAutoCheck ?? true,
 					gameVersion: checkerVersionUnknown ? (data.version ?? 'Unknown') : checkerVersion,
 					f95VersionRefresh: true,
 					directMode: true
@@ -920,7 +923,8 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					...editingGame
+					...editingGame,
+					gameAutoCheck: Boolean(editingGame.gameAutoCheck)
 				})
 			});
 
@@ -1105,6 +1109,16 @@
 								<span class="badge badge-lg badge-accent" title="Version du jeu"
 									>Version jeu : {game.gameVersion}</span
 								>
+							{/if}
+							{#if canManageGameAutoCheck && game.website === 'f95z'}
+								<span
+									class="badge badge-lg {game.gameAutoCheck !== false
+										? 'badge-success'
+										: 'badge-ghost'}"
+									title="Suivi automatique des versions F95 sur ce jeu"
+								>
+									Auto-check jeu : {game.gameAutoCheck !== false ? 'activé' : 'désactivé'}
+								</span>
 							{/if}
 							{#if isSuperAdmin}
 								<button
@@ -1892,8 +1906,14 @@
 									référence suit le jeu ; pour une traduction <strong>intégrée</strong>, la Trad.
 									Ver. reste « Intégrée ».
 								</p>
+							{:else if !canManageGameAutoCheck}
+								<p>
+									Vous n’avez pas le droit <strong>Auto-check (jeu et traductions)</strong>. Un
+									administrateur peut l’activer pour votre rôle dans
+									<a href="/dashboard/roles" class="link link-primary">Gestion des rôles</a>.
+								</p>
 							{:else}
-								<p>L’auto-check de cette traduction n’est pas modifiable avec votre rôle.</p>
+								<p>L’auto-check de cette traduction n’est pas modifiable dans cet état.</p>
 							{/if}
 						</div>
 					</div>
