@@ -1,10 +1,11 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
 import { getPermissionsForRole, hasPermission, userHasPermission } from '$lib/server/permissions';
 import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	let pendingSubmissionsCount = 0;
 	let permissions: string[] = [];
 	let canManageConfig = false;
@@ -74,12 +75,16 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	const devOriginUser = locals.user ? await getDevImpersonationOriginUser(cookies) : null;
+
 	return {
 		user: locals.user,
 		permissions,
 		pendingSubmissionsCount,
 		hasLinkedTranslator,
 		maintenanceMode,
-		canManageConfig
+		canManageConfig,
+		canReturnToOwnAccount: Boolean(devOriginUser),
+		devOriginUsername: devOriginUser?.username ?? null
 	};
 };

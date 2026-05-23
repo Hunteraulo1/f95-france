@@ -5,9 +5,9 @@ import * as table from '$lib/server/db/schema';
 import {
 	DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
 	DEV_IMPERSONATION_ORIGIN_COOKIE,
-	isDevImpersonationTargetAllowed
+	isDevImpersonationTargetAllowed,
+	returnToOwnAccount as returnToOwnAccountAction
 } from '$lib/server/dev-impersonation';
-import { userHasPermission } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
@@ -39,16 +39,6 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 				.where(notInArray(table.user.role, [...DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES]))
 		: [];
 
-	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-	const canReturnToOwnAccount = Boolean(devOriginUserId);
-	const [devOriginUser] =
-		devOriginUserId && canReturnToOwnAccount
-			? await db
-					.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-					.from(table.user)
-					.where(eq(table.user.id, devOriginUserId))
-					.limit(1)
-			: [];
 	const passkeys = await db
 		.select({
 			id: table.passkey.id,
@@ -79,9 +69,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 					name: linkedTranslator.name,
 					pages: JSON.parse(linkedTranslator.pages || '[]') as Array<{ name: string; link: string }>
 				}
-			: null,
-		canReturnToOwnAccount: Boolean(canReturnToOwnAccount && devOriginUser),
-		devOriginUsername: devOriginUser?.username ?? null
+			: null
 	};
 };
 
@@ -559,33 +547,6 @@ export const actions: Actions = {
 			return fail(401, { message: 'Session introuvable' });
 		}
 
-		const originUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-		if (!originUserId) {
-			return fail(400, { message: "Aucun compte d'origine à restaurer" });
-		}
-
-		const [originUser] = await db
-			.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-			.from(table.user)
-			.where(eq(table.user.id, originUserId))
-			.limit(1);
-
-		if (!originUser || !(await userHasPermission(originUser, 'dev.impersonate'))) {
-			return fail(403, {
-				message: "Le compte d'origine est invalide ou n'a pas le droit de changement d'utilisateur"
-			});
-		}
-
-		try {
-			await db
-				.update(table.session)
-				.set({ userId: originUser.id })
-				.where(eq(table.session.id, locals.session.id));
-			cookies.delete(DEV_IMPERSONATION_ORIGIN_COOKIE, { path: '/' });
-			return { success: true, message: `Retour sur ${originUser.username}` };
-		} catch (error: unknown) {
-			console.error("Erreur lors du retour au compte d'origine:", error);
-			return fail(500, { message: "Erreur lors du retour au compte d'origine" });
-		}
+		return returnToOwnAccountAction(locals.session.id, cookies);
 	}
 };

@@ -26,6 +26,8 @@
 		<Sidebar
 			pendingSubmissionsCount={data.pendingSubmissionsCount}
 			hasLinkedTranslator={data.hasLinkedTranslator}
+			canReturnToOwnAccount={data.canReturnToOwnAccount}
+			devOriginUsername={data.devOriginUsername}
 		/>
 	{/if}
 </main>
