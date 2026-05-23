@@ -1,4 +1,5 @@
 <script lang="ts">
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
@@ -2073,6 +2074,7 @@
 								</a>
 							</div>
 						</div>
+						<OtherSiteImageWarning website={editingGame.website} class="w-full" />
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-image">
 								<span class="label-text">URL de l'image</span>

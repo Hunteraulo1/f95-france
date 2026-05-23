@@ -2,6 +2,7 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
@@ -933,6 +934,7 @@
 					</span>
 				</div>
 			{/if}
+			<OtherSiteImageWarning website={game.website} />
 			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">

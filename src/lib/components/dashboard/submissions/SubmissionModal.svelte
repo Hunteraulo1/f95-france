@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
@@ -1115,6 +1116,7 @@
 									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages' && submission.type !== 'delete'}
 										<div class="mt-2 space-y-4">
 											<h5 class="text-md font-semibold">Détails du jeu</h5>
+											<OtherSiteImageWarning website={editGameWebsite} />
 											<div class="grid gap-4 md:grid-cols-2">
 												<div class="form-control">
 													<label class="label" for="editGameName">
