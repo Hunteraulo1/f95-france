@@ -149,7 +149,35 @@
 		return '';
 	};
 
+	const applyExtractDraft = (draft: NonNullable<PageData['extractDraft']>) => {
+		game.website = draft.website;
+		game.threadId = draft.threadId;
+		game.name = draft.name;
+		game.tags = draft.tags;
+		game.gameType = draft.gameType;
+		game.image = draft.image;
+		game.link = draft.link;
+		game.description = draft.description;
+		game.gameVersion = draft.gameVersion;
+		game.gameAutoCheck = draft.gameAutoCheck;
+		game.ac = false;
+		skipThreadStepFromQueryParam = true;
+		if (draft.website === 'f95z') {
+			f95ScrapeFailed = true;
+			step = 1;
+		} else if (draft.website === 'lc') {
+			lcScrapeStatus = 'failed';
+			step = 2;
+		}
+		void runThreadDuplicateCheckForTid(draft.threadId);
+	};
+
 	onMount(() => {
+		if (data.extractDraft) {
+			applyExtractDraft(data.extractDraft);
+			return;
+		}
+
 		const threadIdRaw = new URLSearchParams(window.location.search).get('threadId');
 		if (!threadIdRaw) return;
 		const parsed = Number.parseInt(threadIdRaw, 10);

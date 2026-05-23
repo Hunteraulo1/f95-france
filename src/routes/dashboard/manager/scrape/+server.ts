@@ -1,3 +1,4 @@
+import { canUseExtract } from '$lib/server/extract-thread-game';
 import { scrapeThread, type ScrapeWebsite } from '$lib/server/scrape';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -5,6 +6,13 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
+	}
+
+	if (!(await canUseExtract(locals))) {
+		return json(
+			{ error: 'Accès réservé aux comptes avec la permission « Gestion des jeux »' },
+			{ status: 403 }
+		);
 	}
 
 	try {
