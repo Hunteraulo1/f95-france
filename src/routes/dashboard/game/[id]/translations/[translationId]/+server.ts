@@ -13,6 +13,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
 	hasGameTranslationGameTypeColumn,
@@ -141,7 +142,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
-		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyEditTranslationAc = hasPermission(locals.permissions, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.

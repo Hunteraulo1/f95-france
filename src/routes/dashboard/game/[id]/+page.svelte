@@ -1,5 +1,6 @@
 <script lang="ts">
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import { checkPermission } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import {
@@ -34,6 +35,7 @@
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
+	const canManageGameAutoCheck = $derived(checkPermission('games.auto_check'));
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 
 	const submissionTypeLabel = (type: string, translationId: string | null): string => {
@@ -61,9 +63,11 @@
 	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
-	const canManuallyEditTranslationAc = $derived(isAdmin && game.gameAutoCheck === true);
-	/** Admins : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
-	const canShowTranslationAcCheckbox = $derived(isAdmin && game.website === 'f95z');
+	const canManuallyEditTranslationAc = $derived(
+		canManageGameAutoCheck && game.gameAutoCheck === true
+	);
+	/** Droits auto-check : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
+	const canShowTranslationAcCheckbox = $derived(canManageGameAutoCheck && game.website === 'f95z');
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -1007,7 +1011,7 @@
 							<SquarePen size={16} />
 							Modifier le jeu
 						</button>
-						{#if isAdmin}
+						{#if canManageGameAutoCheck}
 							<button
 								class="btn btn-sm btn-secondary"
 								onclick={refreshGame}
@@ -1488,7 +1492,7 @@
 				</div>
 			</div>
 
-			{#if isAdmin}
+			{#if canManageGameAutoCheck}
 				<div class="mt-5 rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
 					<div class="mb-4">
 						<h4 class="text-sm font-semibold text-base-content/80">Auto-check</h4>
@@ -1846,7 +1850,7 @@
 									<strong>false</strong>
 									(même si la ligne était marquée en auto-check auparavant).
 								</p>
-								{#if isAdmin}
+								{#if canManageGameAutoCheck}
 									<p class="mt-2 text-base-content/70">
 										Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
 										page), puis cochez l’auto-check jeu pour ce thread F95.
@@ -2134,7 +2138,7 @@
 					</div>
 				</div>
 
-				{#if isAdmin}
+				{#if canManageGameAutoCheck}
 					<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
 						<div class="mb-4">
 							<h4 class="text-sm font-semibold text-base-content/80">Paramètres avancés</h4>

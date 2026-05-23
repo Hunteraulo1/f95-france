@@ -5,6 +5,7 @@ export const PERMISSION_KEYS = [
 	'settings.view',
 	'api_keys.own',
 	'games.manage',
+	'games.auto_check',
 	'translations.own',
 	'submissions.own',
 	'submissions.review',
@@ -60,6 +61,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		key: 'games.manage',
 		label: 'Gestion des jeux',
 		description: 'Ajouter et modifier les fiches jeux',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.auto_check',
+		label: 'Auto-check (jeu et traductions)',
+		description:
+			'Activer ou désactiver l’auto-check sur les fiches F95, modifier l’auto-check des traductions et actualiser les versions via le checker',
 		group: 'Contenu'
 	},
 	{
@@ -172,6 +180,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'settings.view',
 		'api_keys.own',
 		'games.manage',
+		'games.auto_check',
 		'translations.own',
 		'submissions.own',
 		'submissions.review',

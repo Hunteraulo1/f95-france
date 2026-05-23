@@ -12,6 +12,7 @@ import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
@@ -167,7 +168,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		const canManuallyToggleGameAutoCheck = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyToggleGameAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
 		const parsedThreadId =
 			threadId !== null && threadId !== undefined && threadId !== ''
 				? parseInt(String(threadId), 10)

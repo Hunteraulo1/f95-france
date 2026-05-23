@@ -11,6 +11,7 @@
 	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
+	import { checkPermission } from '$lib/permissions/client';
 	import { newToast } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
@@ -122,9 +123,10 @@
 	};
 
 	const isAdmin = safeCheckRole(['admin', 'superadmin']);
-	const maxStep = $derived(isAdmin ? 5 : 3);
+	const canManageGameAutoCheck = $derived(checkPermission('games.auto_check'));
+	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
-		isAdmin
+		canManageGameAutoCheck
 			? ['Site', 'Thread', 'Infos jeu', 'Traduction', 'Auto-check', 'Validation']
 			: ['Site', 'Thread', 'Infos jeu', 'Traduction']
 	);
@@ -1024,7 +1026,7 @@
 						<!-- LC : pas de champ image tant que le scrape n’a pas fourni d’URL -->
 					{:else if (name === 'gameAutoCheck' || name === 'ac') && !gameAutoCheckEnabledForWebsite(game.website)}
 						<!-- Auto-check réservé à F95Zone -->
-					{:else if !adminOnly || isAdmin}
+					{:else if !adminOnly || canManageGameAutoCheck}
 						{#if needsTranslators && Component === Datalist}
 							<Datalist
 								{step}
