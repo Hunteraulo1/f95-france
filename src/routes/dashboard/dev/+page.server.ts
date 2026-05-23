@@ -1067,7 +1067,7 @@ export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
 		await assertPermission(locals, 'dev.panel');
 		try {
-			const result = await runAutoCheckVersions();
+			const result = await runAutoCheckVersions({ refreshWebhookUrls: true });
 			await db
 				.update(table.config)
 				.set({
@@ -1078,7 +1078,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} aligné(s) (auto-check désactivé)`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} aligné(s) (auto-check désactivé), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
 				details: result
 			};
 		} catch (error: unknown) {

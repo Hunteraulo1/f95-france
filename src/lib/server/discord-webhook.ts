@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
 import { strTrim } from '$lib/server/translation-notify-rules';
+import { absoluteUrl, siteOrigin } from '$lib/site';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { eq } from 'drizzle-orm';
@@ -120,11 +121,26 @@ type GameRow = {
 	website: string;
 };
 
+function resolveAppOriginForWebhooks(): string {
+	return siteOrigin(privateEnv('APP_ORIGIN') ?? privateEnv('PUBLIC_APP_ORIGIN'));
+}
+
 function gameLinkEmbedField(gameLink: string | null | undefined) {
 	if (!gameLink) return null;
 	return {
 		name: 'Lien du jeu',
 		value: `[Ouvrir le fil](${gameLink})`,
+		inline: false as const
+	};
+}
+
+function dashboardGameEmbedField(gameId: string | null | undefined) {
+	const id = gameId?.trim();
+	if (!id) return null;
+	const url = absoluteUrl(`/dashboard/game/${id}`, resolveAppOriginForWebhooks());
+	return {
+		name: 'Page du jeu',
+		value: `[Ouvrir dans le dashboard](${url})`,
 		inline: false as const
 	};
 }
@@ -504,9 +520,9 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 }
 
 export type TranslatorVersionBumpLine = {
+	gameId: string;
 	gameName: string;
 	gameImage?: string | null;
-	gameLink?: string | null;
 	translationName?: string | null;
 	oldVersion: string;
 	newVersion: string;
@@ -522,19 +538,18 @@ function buildAutoCheckVersionBumpEmbed(
 	const tr = line.translationName?.trim();
 	const ver = `${trimFieldValue(line.oldVersion || '—', 400)} → ${trimFieldValue(line.newVersion, 400)}`;
 	const versionValue = line.discordMention ? `${ver}\n${line.discordMention}` : ver;
-	const linkField = gameLinkEmbedField(line.gameLink);
+	const dashboardField = dashboardGameEmbedField(line.gameId);
 	const embed: DiscordEmbed = {
 		title: trimFieldValue(line.gameName, 256),
 		color: 0x3498db,
 		fields: [
-			...(linkField ? [linkField] : []),
+			...(dashboardField ? [dashboardField] : []),
 			...(tr ? [{ name: 'Traduction', value: trimFieldValue(tr, 256), inline: false }] : []),
 			{ name: 'Version', value: trimFieldValue(versionValue, 1024), inline: false }
 		],
 		author: { name: 'Auto-Check' },
 		footer: { text: footerText }
 	};
-	if (line.gameLink) embed.url = line.gameLink;
 	const coverUrl = embedImageUrl(line.gameImage);
 	if (coverUrl) embed.image = { url: coverUrl };
 	return embed;
@@ -559,18 +574,22 @@ async function sendAutoCheckVersionBumpEmbed(
 
 /** Auto-check : canal traducteurs (`DISCORD_WEBHOOK_TRANSLATORS`). */
 export async function sendDiscordWebhookTranslatorsVersionBumps(
-	lines: TranslatorVersionBumpLine[]
-): Promise<void> {
-	const { translators } = await getWebhookUrls();
+	lines: TranslatorVersionBumpLine[],
+	options?: { forceRefreshWebhookUrls?: boolean }
+): Promise<number> {
+	const { translators } = await getWebhookUrls(options?.forceRefreshWebhookUrls ?? false);
 	await sendAutoCheckVersionBumpEmbed(translators, lines, 'F95 France');
+	return lines.length;
 }
 
 /** Auto-check : même embed que les traducteurs, canal relecteurs (`DISCORD_WEBHOOK_ADMIN`). */
 export async function sendDiscordWebhookProofreadersVersionBumps(
-	lines: TranslatorVersionBumpLine[]
-): Promise<void> {
-	const { admin } = await getWebhookUrls();
+	lines: TranslatorVersionBumpLine[],
+	options?: { forceRefreshWebhookUrls?: boolean }
+): Promise<number> {
+	const { admin } = await getWebhookUrls(options?.forceRefreshWebhookUrls ?? false);
 	await sendAutoCheckVersionBumpEmbed(admin, lines, 'F95 France · Relecteurs');
+	return lines.length;
 }
 
 /** Canal updates : annonce d'une montée de version détectée par l'auto-check. */
