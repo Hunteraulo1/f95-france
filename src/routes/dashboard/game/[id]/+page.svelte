@@ -10,6 +10,7 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -486,6 +487,15 @@
 			return;
 		}
 
+		const tlinkError = validateTranslationLinkField({
+			tlink: linkNotRequired ? '' : newTranslation.tlink,
+			tname: newTranslation.tname
+		});
+		if (tlinkError) {
+			newToast({ alertType: 'error', message: tlinkError });
+			return;
+		}
+
 		try {
 			// Convertir les noms de traducteurs/relecteurs en IDs
 			let translatorIdValue: string | null = null;
@@ -626,6 +636,15 @@
 						: 'Veuillez remplir les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (y compris le lien)'
 			});
+			return;
+		}
+
+		const editTlinkError = validateTranslationLinkField({
+			tlink: linkNotRequired ? '' : editingTranslation.tlink,
+			tname: editingTranslation.tname
+		});
+		if (editTlinkError) {
+			newToast({ alertType: 'error', message: editTlinkError });
 			return;
 		}
 
@@ -883,6 +902,17 @@
 	};
 
 	const editGame = async () => {
+		const gameLinkError = validateGameLinkFields({
+			link: editingGame.link,
+			image: editingGame.image,
+			requireLink: true,
+			requireImage: requireEditGameImage
+		});
+		if (gameLinkError) {
+			newToast({ alertType: 'error', message: gameLinkError });
+			return;
+		}
+
 		try {
 			const response = await fetch(`/dashboard/game/${game.id}`, {
 				method: 'PUT',

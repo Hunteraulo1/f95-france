@@ -12,6 +12,7 @@
 		normalizeTranslationTversion,
 		requiresTranslationVersion
 	} from '$lib/utils/game-form-validation';
+	import { validateSubmissionEditLinks } from '$lib/utils/link-validation';
 	import {
 		getStatusBadge,
 		getTypeBadge,
@@ -224,6 +225,8 @@
 
 		if (submission.type === 'translation') {
 			return JSON.stringify({
+				gameId: submission.gameId ?? submission.parsedData?.gameId ?? null,
+				translationId: submission.translationId ?? submission.parsedData?.translationId ?? null,
 				translation: buildEditTranslationPayload()
 			});
 		}
@@ -1029,6 +1032,24 @@
 										const validationError = validateStatusChange(selectedStatus, adminNotesText);
 										if (validationError) {
 											statusError = validationError;
+											e.cancel();
+											return;
+										}
+									}
+									if (canEditSubmissionDataAllowed && submission) {
+										const linkError = validateSubmissionEditLinks({
+											submissionType: submission.type,
+											gameLink: editGameLink,
+											gameImage: editGameImage,
+											gameWebsite: editGameWebsite,
+											translationTlink: editTranslationTlink,
+											translationTname: editTranslationTname,
+											includeTranslation: Boolean(submission.parsedData?.translation),
+											translatorPages: editTranslatorPages,
+											requireGameImage: requireGameImage
+										});
+										if (linkError) {
+											submissionEditError = linkError;
 											e.cancel();
 											return;
 										}

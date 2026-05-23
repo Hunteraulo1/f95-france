@@ -1,9 +1,15 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
+	gameImageRequiredForWebsite,
 	normalizeTranslationTversion,
 	validateTranslationTversion
 } from '$lib/utils/game-form-validation';
+import {
+	validateGameLinkFields,
+	validateTranslationLinkField,
+	validateTranslatorPageLinks
+} from '$lib/utils/link-validation';
 import { eq } from 'drizzle-orm';
 
 export type SubmissionPayloadParseResult =
@@ -64,13 +70,8 @@ export function validateSubmissionPayloadForType(
 			if (!page || typeof page !== 'object') {
 				return 'Données invalides: chaque page doit être un objet';
 			}
-			const name = String((page as { name?: unknown }).name ?? '').trim();
-			const link = String((page as { link?: unknown }).link ?? '').trim();
-			if (!name || !link) {
-				return 'Chaque page doit avoir un nom et un lien';
-			}
 		}
-		return null;
+		return validateTranslatorPageLinks(data.pages as Array<{ name?: string; link?: string }>);
 	}
 	if (type === 'delete') {
 		const reason = String(data.reason ?? '').trim();
@@ -80,13 +81,34 @@ export function validateSubmissionPayloadForType(
 		return null;
 	}
 	if (type === 'translation') {
-		return validateTranslationBlock(data.translation);
+		const versionError = validateTranslationBlock(data.translation);
+		if (versionError) return versionError;
+		const tr = data.translation as Record<string, unknown>;
+		return validateTranslationLinkField({
+			tlink: tr.tlink,
+			tname: typeof tr.tname === 'string' ? tr.tname : ''
+		});
 	}
 	if (!('game' in data) || data.game === null) {
 		return 'Données invalides: clé `game` manquante';
 	}
+	const game = data.game as Record<string, unknown>;
+	const gameLinkError = validateGameLinkFields({
+		link: game.link,
+		image: game.image,
+		requireLink: true,
+		requireImage: gameImageRequiredForWebsite(typeof game.website === 'string' ? game.website : '')
+	});
+	if (gameLinkError) return gameLinkError;
+
 	if ('translation' in data && data.translation != null) {
-		return validateTranslationBlock(data.translation);
+		const versionError = validateTranslationBlock(data.translation);
+		if (versionError) return versionError;
+		const tr = data.translation as Record<string, unknown>;
+		return validateTranslationLinkField({
+			tlink: tr.tlink,
+			tname: typeof tr.tname === 'string' ? tr.tname : ''
+		});
 	}
 	return null;
 }
@@ -96,10 +118,28 @@ export async function persistSubmissionPayload(
 	data: Record<string, unknown>
 ): Promise<void> {
 	normalizeTranslationInPayload(data);
+
+	const [sub] = await db
+		.select({
+			gameId: table.submission.gameId,
+			translationId: table.submission.translationId
+		})
+		.from(table.submission)
+		.where(eq(table.submission.id, submissionId))
+		.limit(1);
+
+	const enriched: Record<string, unknown> = { ...data };
+	if (sub?.gameId && typeof enriched.gameId !== 'string') {
+		enriched.gameId = sub.gameId;
+	}
+	if (sub?.translationId && typeof enriched.translationId !== 'string') {
+		enriched.translationId = sub.translationId;
+	}
+
 	await db
 		.update(table.submission)
 		.set({
-			data: JSON.stringify(data),
+			data: JSON.stringify(enriched),
 			updatedAt: new Date()
 		})
 		.where(eq(table.submission.id, submissionId));

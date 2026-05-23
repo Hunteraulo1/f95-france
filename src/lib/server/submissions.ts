@@ -620,6 +620,8 @@ export async function applySubmission(submissionId: string) {
 				// Sauvegarder les anciennes valeurs dans les données de la soumission
 				const updatedData = {
 					...parsedData,
+					gameId: sub.gameId ?? parsedData.gameId,
+					translationId: sub.translationId ?? parsedData.translationId,
 					originalTranslation: {
 						translationName: originalTranslation.translationName,
 						version: originalTranslation.version,

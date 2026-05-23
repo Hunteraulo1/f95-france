@@ -2,7 +2,10 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
-import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
@@ -14,6 +17,7 @@ import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -137,6 +141,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		if (!imageValue && gameImageRequiredForWebsite(website)) {
 			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
+		}
+
+		const linkValue = typeof link === 'string' ? link.trim() : '';
+		const gameLinkError = validateGameLinkFields({
+			link: linkValue,
+			image: imageValue,
+			requireLink: true,
+			requireImage: gameImageRequiredForWebsite(website)
+		});
+		if (gameLinkError) {
+			return json({ error: gameLinkError }, { status: 400 });
+		}
+
+		if (translation) {
+			const translationLinkError = validateTranslationLinkField({
+				tlink: translation.tlink,
+				tname: translationTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
+			}
 		}
 
 		const parsedThreadId =
@@ -276,6 +301,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			await createGameUpdateRow(gameId, 'adding');
 		}
 
+		let createdTranslationId: string | undefined;
 		// Créer la traduction si elle est fournie
 		if (translation && gameId) {
 			const [createdTranslation] = await db
@@ -308,6 +334,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				})
 				.returning({ id: table.gameTranslation.id });
 
+			createdTranslationId = createdTranslation?.id;
 			if (createdTranslation?.id) {
 				void syncTranslationToGoogleSheet(createdTranslation.id).catch((err) => {
 					console.warn('[google-sheets-sync] manager add translation failed:', err);
@@ -324,6 +351,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 			}
 		}
+
+		if (gameId) {
+			const dataJson = JSON.stringify({
+				gameId,
+				translationId: createdTranslationId,
+				game: {
+					name,
+					image: imageValue,
+					link: link || null,
+					threadId: validThreadId,
+					website
+				},
+				translation: translation
+					? {
+							translationName: translation.translationName,
+							version:
+								typeof translation.version === 'string' ? translation.version.trim() || null : null,
+							tversion: translation.tversion,
+							translatorId: translation.translatorId || null
+						}
+					: undefined
+			});
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: gameId,
+				submissionType: 'game',
+				dataJson
+			});
+		}
+
 		await incrementUserGameCounter(currentUser.id, 'add', translation && gameId ? 2 : 1);
 		return json({
 			message: translation ? 'Jeu et traduction ajoutés avec succès' : 'Jeu ajouté avec succès',

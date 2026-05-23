@@ -20,6 +20,7 @@
 		computeGameFormFieldState,
 		gameImageRequiredForWebsite
 	} from '$lib/utils/game-form-validation';
+	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import {
 		formHasTranslatorInputIssue,
 		getTranslatorFieldErrors
@@ -607,9 +608,16 @@
 			requireImage: requireGameImage
 		});
 		if (fieldState.hasBlockingError) {
+			const linkError =
+				validateGameLinkFields({
+					link: game.link,
+					image: game.image,
+					requireLink: true,
+					requireImage: requireGameImage
+				}) ?? validateTranslationLinkField({ tlink: game.tlink, tname: game.tname });
 			newToast({
 				alertType: 'error',
-				message: 'Corrigez les champs obligatoires en erreur (bordure rouge).'
+				message: linkError ?? 'Corrigez les champs obligatoires en erreur (bordure rouge).'
 			});
 			return;
 		}

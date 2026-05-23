@@ -247,14 +247,17 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	);
 	const staffRows = staffIds.length
 		? await db
-				.select({ id: table.translator.id, discordId: table.translator.discordId })
+				.select({
+					id: table.translator.id,
+					name: table.translator.name,
+					discordId: table.translator.discordId
+				})
 				.from(table.translator)
 				.where(inArray(table.translator.id, staffIds))
 		: [];
 	const staffMentionById = new Map(
 		staffRows.map((s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const)
 	);
-
 	const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
 	const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
 
@@ -350,6 +353,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 					gameImage: game.gameImage,
 					gameLink: game.threadUrl,
 					translationName: t.translationName,
+					translatorId: t.translatorId,
 					oldVersion: game.gameVersion,
 					newVersion
 				});

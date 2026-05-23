@@ -2,7 +2,7 @@ import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
-import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import { strTrim } from '$lib/server/translation-notify-rules';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { eq } from 'drizzle-orm';
@@ -65,8 +65,7 @@ function trimFieldValue(s: string, max = 1000): string {
 
 /**
  * Webhook canal « updates » : pour une modification de traduction déjà en base,
- * n’envoyer que si la version de traduction change, ou si la version jeu (ligne) change
- * pour une entrée intégrée / Trad. Ver. « Intégrée ».
+ * n’envoyer que si la version de traduction ou la version de référence change.
  */
 function shouldNotifyTranslationModificationForUpdatesChannel(
 	next: Record<string, unknown>,
@@ -74,8 +73,7 @@ function shouldNotifyTranslationModificationForUpdatesChannel(
 ): boolean {
 	const tversionChanged = strTrim(next.tversion) !== strTrim(prev.tversion);
 	const versionChanged = strTrim(next.version) !== strTrim(prev.version);
-	const integratedTradVer = tradVerIndicatesIntegrated(next.tversion, next.tname);
-	return tversionChanged || (versionChanged && integratedTradVer);
+	return tversionChanged || versionChanged;
 }
 
 /** Discord n’accepte que des URLs absolues pour les images d’embed. */
@@ -89,8 +87,30 @@ function embedImageUrl(raw: string | null | undefined): string | undefined {
 
 type TrRow = {
 	translationName?: string | null;
+	version?: string | null;
 	tversion: string;
+	translatorId?: string | null;
 };
+
+/** « Nom du jeu » ou « Nom du jeu - Nom de la traduction » si ce dernier est renseigné. */
+function formatGameEmbedName(gameName: string, translationName?: string | null): string {
+	const base = trimFieldValue(gameName || '—', 200);
+	const tr = translationName?.trim();
+	return tr ? `${base} - ${trimFieldValue(tr, 200)}` : base;
+}
+
+async function fetchTranslatorDisplayName(
+	translatorId: string | null | undefined
+): Promise<string> {
+	const id = translatorId?.trim();
+	if (!id) return '—';
+	const rows = await db
+		.select({ name: table.translator.name })
+		.from(table.translator)
+		.where(eq(table.translator.id, id))
+		.limit(1);
+	return rows[0]?.name?.trim() || '—';
+}
 
 type GameRow = {
 	name: string;
@@ -113,15 +133,105 @@ function gameLinkEmbedField(gameLink: string | null | undefined) {
 function replaceGameEmbedFields(
 	fields: { name: string; value: string; inline?: boolean }[],
 	gameName: string,
-	gameLink: string | null | undefined
+	gameLink: string | null | undefined,
+	translationName?: string | null
 ): { name: string; value: string; inline?: boolean }[] {
-	const rest = fields.filter((f) => f.name !== 'Nom du jeu' && f.name !== 'Lien du jeu');
+	const rest = fields.filter(
+		(f) =>
+			f.name !== 'Nom du jeu' &&
+			f.name !== 'Lien du jeu' &&
+			f.name !== 'Nom de la traduction' &&
+			f.name !== 'Nom du traducteur'
+	);
 	const header: { name: string; value: string; inline?: boolean }[] = [
-		{ name: 'Nom du jeu', value: trimFieldValue(gameName), inline: false }
+		{ name: 'Nom du jeu', value: formatGameEmbedName(gameName, translationName), inline: false }
 	];
 	const linkField = gameLinkEmbedField(gameLink);
 	if (linkField) header.push(linkField);
 	return [...header, ...rest];
+}
+
+function translatorEmbedField(translatorName: string) {
+	return {
+		name: 'Nom du traducteur',
+		value: trimFieldValue(translatorName, 200),
+		inline: false as const
+	};
+}
+
+async function fetchSubmissionMetaForWebhook(
+	submissionId: string,
+	data: Record<string, unknown>
+): Promise<{ gameId?: string; translationId?: string }> {
+	const gameIdFromData = typeof data.gameId === 'string' ? data.gameId.trim() : '';
+	const translationIdFromData =
+		typeof data.translationId === 'string' ? data.translationId.trim() : '';
+
+	if (gameIdFromData && translationIdFromData) {
+		return { gameId: gameIdFromData, translationId: translationIdFromData };
+	}
+
+	const [sub] = await db
+		.select({
+			gameId: table.submission.gameId,
+			translationId: table.submission.translationId
+		})
+		.from(table.submission)
+		.where(eq(table.submission.id, submissionId))
+		.limit(1);
+
+	return {
+		gameId: gameIdFromData || sub?.gameId || undefined,
+		translationId: translationIdFromData || sub?.translationId || undefined
+	};
+}
+
+async function fetchTranslationRowForWebhook(translationId: string): Promise<TrRow | null> {
+	const [row] = await db
+		.select({
+			translationName: table.gameTranslation.translationName,
+			version: table.gameTranslation.version,
+			tversion: table.gameTranslation.tversion,
+			translatorId: table.gameTranslation.translatorId
+		})
+		.from(table.gameTranslation)
+		.where(eq(table.gameTranslation.id, translationId))
+		.limit(1);
+	return row ?? null;
+}
+
+function pickString(...values: unknown[]): string | null {
+	for (const value of values) {
+		if (typeof value === 'string' && value.trim()) return value.trim();
+	}
+	return null;
+}
+
+function mergeTranslationForWebhook(
+	translation: TrRow | undefined,
+	originalTranslation: TrRow | undefined,
+	dbRow: TrRow | null
+): { current: TrRow | undefined; original: TrRow | undefined } {
+	const current: TrRow = {
+		translationName:
+			pickString(translation?.translationName) ?? pickString(dbRow?.translationName) ?? null,
+		version: pickString(translation?.version) ?? pickString(dbRow?.version) ?? null,
+		tversion: pickString(translation?.tversion) ?? pickString(dbRow?.tversion) ?? '—',
+		translatorId: pickString(translation?.translatorId) ?? pickString(dbRow?.translatorId) ?? null
+	};
+	const original: TrRow | undefined = originalTranslation
+		? {
+				translationName:
+					pickString(originalTranslation.translationName) ??
+					pickString(dbRow?.translationName) ??
+					null,
+				version: pickString(originalTranslation.version) ?? pickString(dbRow?.version) ?? null,
+				tversion: pickString(originalTranslation.tversion) ?? pickString(dbRow?.tversion) ?? '—',
+				translatorId:
+					pickString(originalTranslation.translatorId) ?? pickString(dbRow?.translatorId) ?? null
+			}
+		: undefined;
+	return { current, original };
 }
 
 async function fetchGameForWebhook(gameId: string): Promise<GameRow | null> {
@@ -212,12 +322,20 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		return;
 	}
 
-	const gameId = typeof data.gameId === 'string' ? data.gameId : undefined;
+	const meta = await fetchSubmissionMetaForWebhook(args.submissionId, data);
+	const gameId = meta.gameId;
+	const translationId = meta.translationId;
+
 	const game = data.game as GameRow | undefined;
 	const originalGame = data.originalGame as GameRow | undefined;
-	const translation = data.translation as TrRow | undefined;
-	const originalTranslation = data.originalTranslation as TrRow | undefined;
+	let translation = data.translation as TrRow | undefined;
+	let originalTranslation = data.originalTranslation as TrRow | undefined;
 	const originalTranslations = data.originalTranslations as TrRow[] | undefined;
+
+	const dbTranslation = translationId ? await fetchTranslationRowForWebhook(translationId) : null;
+	const merged = mergeTranslationForWebhook(translation, originalTranslation, dbTranslation);
+	translation = merged.current;
+	originalTranslation = merged.original;
 
 	const partial = (game ?? originalGame) as Partial<GameRow> | undefined;
 	let resolvedGame: GameRow | null = gameId ? await fetchGameForWebhook(gameId) : null;
@@ -253,7 +371,6 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	let title = 'Soumission acceptée';
 	let color = 0x2ecc71;
 	let embed: DiscordEmbed = { title, color, fields, footer: baseFooter };
-	if (gameLink) embed.url = gameLink;
 	if (coverUrl) embed.image = { url: coverUrl };
 
 	const st = args.submissionType;
@@ -262,47 +379,50 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		const hasTr = translation && (translation.translationName || translation.tversion);
 		title = hasTr ? 'Ajout de jeu et traduction' : 'Ajout de jeu';
 		color = 0x2ecc71;
-		if (hasTr) {
-			fields.push(
-				{
-					name: 'Nom de la traduction',
-					value: trimFieldValue(translation.translationName || '—', 200),
-					inline: false
-				},
-				{
-					name: 'Version de la traduction',
-					value: trimFieldValue(translation.tversion ?? '—', 120),
-					inline: true
-				}
-			);
+		if (hasTr && translation) {
+			fields = replaceGameEmbedFields(fields, gameName, gameLink, translation.translationName);
+			const translatorName = await fetchTranslatorDisplayName(translation.translatorId);
+			fields.push(translatorEmbedField(translatorName), {
+				name: 'Version de la traduction',
+				value: trimFieldValue(translation.tversion ?? '—', 120),
+				inline: true
+			});
 		}
-		embed = { ...embed, title, color };
+		embed = { ...embed, title, color, fields };
 	} else if (st === 'translation') {
 		const isEdit = args.translationWasUpdate === true;
 		title = isEdit ? 'Modification de traduction' : 'Ajout de traduction';
 		color = isEdit ? 0x3498db : 0x2ecc71;
 
-		const trNameVal =
-			isEdit && originalTranslation && translation
-				? originalTranslation.translationName === translation.translationName
-					? trimFieldValue(translation.translationName || '—', 200)
-					: trimFieldValue(
-							`${originalTranslation.translationName || '—'} → ${translation.translationName || '—'}`,
-							200
-						)
-				: trimFieldValue(translation?.translationName || '—', 200);
-		fields.push({
-			name: 'Nom de la traduction',
-			value: trNameVal,
-			inline: false
-		});
+		fields = replaceGameEmbedFields(
+			fields,
+			gameName,
+			gameLink,
+			translation?.translationName ?? originalTranslation?.translationName
+		);
+		const translatorName = await fetchTranslatorDisplayName(
+			translation?.translatorId ?? originalTranslation?.translatorId
+		);
+		fields.push(translatorEmbedField(translatorName));
 
 		if (isEdit && originalTranslation && translation) {
-			fields.push({
-				name: 'Version de la traduction (avant → après)',
-				value: trimFieldValue(`${originalTranslation.tversion} → ${translation.tversion}`, 200),
-				inline: false
-			});
+			if (strTrim(translation.tversion) !== strTrim(originalTranslation.tversion)) {
+				fields.push({
+					name: 'Version de traduction (avant → après)',
+					value: trimFieldValue(`${originalTranslation.tversion} → ${translation.tversion}`, 200),
+					inline: false
+				});
+			}
+			if (strTrim(translation.version) !== strTrim(originalTranslation.version)) {
+				fields.push({
+					name: 'Version de référence (avant → après)',
+					value: trimFieldValue(
+						`${originalTranslation.version ?? '—'} → ${translation.version ?? '—'}`,
+						200
+					),
+					inline: false
+				});
+			}
 		} else if (translation) {
 			fields.push({
 				name: 'Version de la traduction',
@@ -310,7 +430,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 				inline: true
 			});
 		}
-		embed = { ...embed, title, color };
+		embed = { ...embed, title, color, fields };
 	} else if (st === 'delete') {
 		title =
 			originalTranslation && !originalGame ? 'Suppression de traduction' : 'Suppression de jeu';
@@ -321,33 +441,30 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			const g = await fetchGameForWebhook(gameId);
 			if (g) {
 				const gLink = resolveGameLinkFromRow(g);
-				fields = replaceGameEmbedFields(fields, g.name, gLink);
+				fields = replaceGameEmbedFields(fields, g.name, gLink, originalTranslation.translationName);
 				const u = embedImageUrl(g.image);
 				if (u) embed.image = { url: u };
-				if (gLink) embed.url = gLink;
 			}
-			fields.push(
-				{
-					name: 'Traduction',
-					value: trimFieldValue(originalTranslation.translationName || '—', 200),
-					inline: false
-				},
-				{
-					name: 'Version de traduction',
-					value: trimFieldValue(originalTranslation.tversion ?? '—', 300),
-					inline: false
-				}
-			);
-		} else if (originalGame) {
-			const ogLink = resolveGameLinkFromRow(originalGame as GameRow);
-			fields = replaceGameEmbedFields(fields, originalGame.name, ogLink);
-			const u = embedImageUrl(originalGame.image);
-			if (u) embed.image = { url: u };
-			if (ogLink) embed.url = ogLink;
+			const translatorName = await fetchTranslatorDisplayName(originalTranslation.translatorId);
+			fields.push(translatorEmbedField(translatorName), {
+				name: 'Version de traduction',
+				value: trimFieldValue(originalTranslation.tversion ?? '—', 300),
+				inline: false
+			});
+		} else if (originalGame || (gameId && !originalTranslation)) {
+			const og =
+				(originalGame as GameRow | undefined) ??
+				(gameId ? await fetchGameForWebhook(gameId) : null);
+			if (og) {
+				const ogLink = resolveGameLinkFromRow(og);
+				fields = replaceGameEmbedFields(fields, og.name, ogLink);
+				const u = embedImageUrl(og.image);
+				if (u) embed.image = { url: u };
+			}
 
 			if (originalTranslations && originalTranslations.length > 0) {
 				const lines = originalTranslations.map(
-					(t, i) => `${i + 1}. ${t.translationName || 'Sans nom'} — trad ${t.tversion}`
+					(t, i) => `${i + 1}. ${t.translationName ? t.translationName + ' — ' : ''}${t.tversion}`
 				);
 				fields.push({
 					name: 'Traductions supprimées',
@@ -364,7 +481,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			value: trimFieldValue(reasonText, 900),
 			inline: false
 		});
-		embed = { ...embed, title, color };
+		embed = { ...embed, title, color, fields };
 	}
 
 	if (
@@ -462,24 +579,26 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	gameImage?: string | null;
 	gameLink?: string | null;
 	translationName?: string | null;
+	translatorId?: string | null;
 	oldVersion?: string | null;
 	newVersion: string;
 }): Promise<void> {
 	const { updates } = await getWebhookUrls();
 	if (!updates) return;
 
-	const trLabel = args.translationName?.trim() ? ` - ${args.translationName.trim()}` : '';
 	const linkField = gameLinkEmbedField(args.gameLink);
+	const translatorName = await fetchTranslatorDisplayName(args.translatorId);
 	const embed: DiscordEmbed = {
 		title: 'Traduction mise à jour',
 		color: 0x58b9ff,
 		fields: [
 			{
-				name: 'Jeu',
-				value: `${trimFieldValue(args.gameName, 200)}${trimFieldValue(trLabel, 200)}`,
+				name: 'Nom du jeu',
+				value: formatGameEmbedName(args.gameName, args.translationName),
 				inline: false
 			},
 			...(linkField ? [linkField] : []),
+			translatorEmbedField(translatorName),
 			{
 				name: 'Version',
 				value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
@@ -488,7 +607,6 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 		],
 		footer: { text: 'Auto-Check · F95 France' }
 	};
-	if (args.gameLink) embed.url = args.gameLink;
 	const coverUrl = embedImageUrl(args.gameImage);
 	if (coverUrl) embed.image = { url: coverUrl };
 	await executeDiscordWebhook(updates, { embeds: [embed] });

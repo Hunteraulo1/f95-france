@@ -1,5 +1,6 @@
 import type { FormGameType } from '$lib/types';
 import { isGameImageGalleryPageUrl } from '$lib/utils/game-image-url';
+import { safeParseRequiredHttpUrl } from '$lib/utils/link-validation';
 
 export function isNoTranslation(tname: string | null | undefined): boolean {
 	return (tname ?? '') === 'no_translation';
@@ -79,9 +80,19 @@ export function computeGameFormFieldState(
 	const fieldErrors: Record<string, boolean> = {};
 
 	if (!trimStr(game.name)) fieldErrors.name = true;
-	if (!trimStr(game.link)) fieldErrors.link = true;
+	const linkVal = trimStr(game.link);
+	if (!linkVal) {
+		fieldErrors.link = true;
+	} else if (!safeParseRequiredHttpUrl(linkVal).success) {
+		fieldErrors.link = true;
+	}
 	if (!trimStr(game.tags)) fieldErrors.tags = true;
-	if (requireImage && !trimStr(game.image)) fieldErrors.image = true;
+	const imageVal = trimStr(game.image);
+	if (requireImage && !imageVal) {
+		fieldErrors.image = true;
+	} else if (imageVal && !safeParseRequiredHttpUrl(imageVal).success) {
+		fieldErrors.image = true;
+	}
 	if (!trimStr(game.gameVersion)) fieldErrors.gameVersion = true;
 
 	if (noTr) {
@@ -92,10 +103,15 @@ export function computeGameFormFieldState(
 		if (!trimStr(game.tversion)) fieldErrors.tversion = true;
 	}
 
+	const tlinkVal = trimStr(game.tlink);
 	if (noTr || integ) {
-		if (trimStr(game.tlink)) fieldErrors.tlink = true;
+		if (tlinkVal && !safeParseRequiredHttpUrl(tlinkVal).success) fieldErrors.tlink = true;
 	} else {
-		if (!trimStr(game.tlink)) fieldErrors.tlink = true;
+		if (!tlinkVal) {
+			fieldErrors.tlink = true;
+		} else if (!safeParseRequiredHttpUrl(tlinkVal).success) {
+			fieldErrors.tlink = true;
+		}
 	}
 
 	const fieldWarns: Record<string, boolean> = {};

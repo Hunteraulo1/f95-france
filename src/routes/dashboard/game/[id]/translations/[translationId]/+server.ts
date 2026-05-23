@@ -24,6 +24,7 @@ import {
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -130,6 +131,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					},
 					{ status: 400 }
 				);
+			}
+
+			const translationLinkError = validateTranslationLinkField({
+				tlink: tlinkStored,
+				tname: effectiveTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
 			}
 		}
 
@@ -251,7 +260,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
-				version: before.version,
+				version: before.version ?? null,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,

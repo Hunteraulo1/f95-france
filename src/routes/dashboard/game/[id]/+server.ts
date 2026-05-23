@@ -1,7 +1,10 @@
 import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	clearAllTranslationAutoCheckForGame,
 	disableGameAndTranslationAutoCheck,
@@ -18,6 +21,7 @@ import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/ser
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+import { validateGameLinkFields } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -130,6 +134,16 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 		if (!imageValue && gameImageRequiredForWebsite(website)) {
 			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
+		}
+
+		const gameLinkError = validateGameLinkFields({
+			link: typeof link === 'string' ? link.trim() : '',
+			image: imageValue,
+			requireLink: true,
+			requireImage: gameImageRequiredForWebsite(website)
+		});
+		if (gameLinkError) {
+			return json({ error: gameLinkError }, { status: 400 });
 		}
 
 		// Vérifier que le jeu existe
@@ -393,6 +407,54 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Mode direct pour les admins ou superadmins en mode direct
+		const gameSnapshot = await db
+			.select()
+			.from(table.game)
+			.where(eq(table.game.id, gameId))
+			.limit(1);
+		const translationsSnapshot = await db
+			.select()
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gameId));
+
+		if (gameSnapshot.length > 0) {
+			const g = gameSnapshot[0];
+			const dataJson = JSON.stringify({
+				gameId,
+				reason,
+				originalGame: {
+					name: g.name,
+					description: g.description,
+					website: g.website,
+					threadId: g.threadId,
+					tags: g.tags,
+					link: g.link,
+					image: g.image,
+					gameAutoCheck: g.gameAutoCheck ?? true,
+					gameVersion: g.gameVersion ?? null
+				},
+				originalTranslations: translationsSnapshot.map((t) => ({
+					translationName: t.translationName,
+					version: t.version,
+					tversion: t.tversion,
+					status: t.status,
+					ttype: t.ttype,
+					tlink: t.tlink,
+					tname: t.tname,
+					translatorId: t.translatorId,
+					proofreaderId: t.proofreaderId,
+					ac: t.ac,
+					gameType: t.gameType
+				}))
+			});
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: gameId,
+				submissionType: 'delete',
+				dataJson,
+				adminNotes: reason
+			});
+		}
+
 		let deletedTranslationIds: string[] = [];
 		await db.transaction(async (tx) => {
 			// Détacher les FK de submission avant suppression physique.

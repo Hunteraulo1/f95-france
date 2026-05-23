@@ -2,6 +2,7 @@
 	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
 	import { coerceGameEngineType } from '$lib/utils/game-engine-type';
+	import { safeParseRequiredHttpUrl } from '$lib/utils/link-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 	import {
 		type InferOutput,
@@ -35,7 +36,7 @@
 	let insertObject = $state('');
 	let isValid = $state(false);
 
-	const applyExtractorToGame = (raw: InferOutput<typeof ExtractorPayload>): void => {
+	const applyExtractorToGame = (raw: InferOutput<typeof ExtractorPayload>): boolean => {
 		const name = raw.name?.trim();
 		if (name) game.name = name;
 
@@ -53,9 +54,20 @@
 		}
 
 		const image = raw.image?.trim();
-		if (image) game.image = image;
+		if (image) {
+			const imageUrl = safeParseRequiredHttpUrl(image);
+			if (!imageUrl.success) {
+				newToast({
+					alertType: 'error',
+					message: "URL d'image invalide dans les données de l'extractor"
+				});
+				return false;
+			}
+			game.image = image;
+		}
 
 		// `status` extractor = statut thread forum, pas le statut traduction du formulaire.
+		return true;
 	};
 
 	const handleClickInsert = (): void => {
@@ -88,7 +100,8 @@
 			return;
 		}
 
-		applyExtractorToGame(validScrape.output);
+		if (!applyExtractorToGame(validScrape.output)) return;
+
 		const hasImage = Boolean(validScrape.output.image?.trim());
 		onApplied?.({ hasImage });
 
