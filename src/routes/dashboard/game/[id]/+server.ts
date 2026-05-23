@@ -20,7 +20,10 @@ import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
-import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+import {
+	gameImageRequiredForEdit,
+	normalizeGameImageForStorage
+} from '$lib/utils/game-form-validation';
 import { validateGameLinkFields } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
@@ -126,27 +129,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
-		const imageValue = typeof image === 'string' ? image.trim() : '';
-
-		// Valider les données requises (le moteur est par traduction ; `type` optionnel = appliquer à toutes les lignes si fourni, ex. refresh F95)
-		if (!name || !website) {
-			return json({ error: 'Nom et site web sont requis' }, { status: 400 });
-		}
-		if (!imageValue && gameImageRequiredForWebsite(website)) {
-			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
-		}
-
-		const gameLinkError = validateGameLinkFields({
-			link: typeof link === 'string' ? link.trim() : '',
-			image: imageValue,
-			requireLink: true,
-			requireImage: gameImageRequiredForWebsite(website)
-		});
-		if (gameLinkError) {
-			return json({ error: gameLinkError }, { status: 400 });
-		}
-
-		// Vérifier que le jeu existe
+		// Vérifier que le jeu existe (avant validation image, pour connaître l’auto-check actuel)
 		const existingGameRows = await db
 			.select({
 				id: table.game.id,
@@ -233,6 +216,33 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
+		if (!name || !website) {
+			return json({ error: 'Nom et site web sont requis' }, { status: 400 });
+		}
+
+		const imageWebsite =
+			typeof website === 'string' && website.trim() ? website.trim() : existingGame.website;
+		const isLcGame = existingGame.website === 'lc';
+		const storedImage = normalizeGameImageForStorage(isLcGame ? 'lc' : imageWebsite, image, {
+			gameAutoCheck: isLcGame ? false : nextGameAutoCheck
+		});
+		const requireImage = gameImageRequiredForEdit(existingGame.website, imageWebsite, {
+			gameAutoCheck: nextGameAutoCheck
+		});
+		if (!storedImage && requireImage) {
+			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
+		}
+
+		const gameLinkError = validateGameLinkFields({
+			link: typeof link === 'string' ? link.trim() : '',
+			image: storedImage,
+			requireLink: true,
+			requireImage
+		});
+		if (gameLinkError) {
+			return json({ error: gameLinkError }, { status: 400 });
+		}
+
 		let checkerVersionUnknown = false;
 		let normalizedCheckerVersion: string | null = null;
 		let acTranslationsForRefresh: { ac: boolean; version: string | null }[] | null = null;
@@ -285,14 +295,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				threadId: nextThreadId,
 				tags: tags || null,
 				link: link || null,
-				image,
+				image: storedImage,
 				gameAutoCheck: nextGameAutoCheck,
 				gameVersion: dbGameVersion
 			});
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameName: name,
-				gameImage: image
+				gameImage: storedImage || undefined
 			});
 
 			return json({
@@ -314,7 +324,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				threadId: threadId ? parseInt(threadId) : null,
 				tags: tags || null,
 				link: link || null,
-				image,
+				image: storedImage,
 				gameAutoCheck: nextGameAutoCheck,
 				gameVersion: dbGameVersion,
 				updatedAt: new Date()

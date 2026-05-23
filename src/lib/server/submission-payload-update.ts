@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
 	gameImageRequiredForWebsite,
+	normalizeGameImageForStorage,
 	normalizeTranslationTversion,
 	validateTranslationTversion
 } from '$lib/utils/game-form-validation';
@@ -93,11 +94,16 @@ export function validateSubmissionPayloadForType(
 		return 'Données invalides: clé `game` manquante';
 	}
 	const game = data.game as Record<string, unknown>;
+	const website = typeof game.website === 'string' ? game.website : '';
+	const gameAutoCheck = typeof game.gameAutoCheck === 'boolean' ? game.gameAutoCheck : undefined;
+	const storedImage = normalizeGameImageForStorage(website, game.image, { gameAutoCheck });
+	game.image = storedImage;
+	const requireImage = gameImageRequiredForWebsite(website, { gameAutoCheck });
 	const gameLinkError = validateGameLinkFields({
 		link: game.link,
-		image: game.image,
+		image: storedImage,
 		requireLink: true,
-		requireImage: gameImageRequiredForWebsite(typeof game.website === 'string' ? game.website : '')
+		requireImage
 	});
 	if (gameLinkError) return gameLinkError;
 

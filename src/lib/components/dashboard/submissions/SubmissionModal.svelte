@@ -10,6 +10,7 @@
 		gameImageRequiredForWebsite,
 		isIntegrated,
 		isNoTranslation,
+		normalizeGameImageForStorage,
 		normalizeTranslationTversion,
 		requiresTranslationVersion
 	} from '$lib/utils/game-form-validation';
@@ -143,7 +144,13 @@
 			editGameThreadId = game?.threadId != null ? String(game.threadId) : '';
 			editGameTags = (game?.tags ?? '') as string;
 			editGameLink = (game?.link ?? '') as string;
-			editGameImage = (game?.image ?? '') as string;
+			editGameImage = normalizeGameImageForStorage(
+				(game?.website ?? 'f95z') as string,
+				game?.image ?? '',
+				{
+					gameAutoCheck: typeof game?.gameAutoCheck === 'boolean' ? game.gameAutoCheck : undefined
+				}
+			);
 			editGameGameVersion = (game?.gameVersion ?? '') as string;
 			editGameAutoCheck = typeof game?.gameAutoCheck === 'boolean' ? game?.gameAutoCheck : true;
 
@@ -240,7 +247,9 @@
 			threadId: editGameThreadId.trim() || null,
 			tags: editGameTags.trim() || null,
 			link: editGameLink.trim() || null,
-			image: editGameImage.trim(),
+			image: normalizeGameImageForStorage(editGameWebsite, editGameImage, {
+				gameAutoCheck: editGameAutoCheck
+			}),
 			gameAutoCheck: editGameAutoCheck,
 			gameVersion: editGameGameVersion.trim() || null
 		};
@@ -254,7 +263,9 @@
 		return JSON.stringify(out);
 	});
 
-	const requireGameImage = $derived(gameImageRequiredForWebsite(editGameWebsite));
+	const requireGameImage = $derived(
+		gameImageRequiredForWebsite(editGameWebsite, { gameAutoCheck: editGameAutoCheck })
+	);
 
 	const isStatusRequiringAdminNote = $derived(
 		selectedStatus === 'rejected' || selectedStatus === 'to_fix'

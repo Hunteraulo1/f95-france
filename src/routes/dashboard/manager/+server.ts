@@ -23,6 +23,7 @@ import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
 	gameImageRequiredForWebsite,
+	normalizeGameImageForStorage,
 	normalizeTranslationTversion
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
@@ -167,11 +168,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				: inferredTranslationAc;
 
 		// Valider les données requises
-		const imageValue = typeof image === 'string' ? image.trim() : '';
 		if (!name || !type || !website) {
 			return json({ error: 'Nom, type et site web sont requis' }, { status: 400 });
 		}
-		if (!imageValue && gameImageRequiredForWebsite(website)) {
+
+		const imageValue = normalizeGameImageForStorage(website, image, {
+			gameAutoCheck: nextGameAutoCheck
+		});
+		const requireImage = gameImageRequiredForWebsite(website, {
+			gameAutoCheck: nextGameAutoCheck,
+			lcScrapeProvidedImage: website === 'lc' && Boolean(imageValue)
+		});
+		if (!imageValue && requireImage) {
 			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
 		}
 
@@ -180,7 +188,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			link: linkValue,
 			image: imageValue,
 			requireLink: true,
-			requireImage: gameImageRequiredForWebsite(website)
+			requireImage
 		});
 		if (gameLinkError) {
 			return json({ error: gameLinkError }, { status: 400 });

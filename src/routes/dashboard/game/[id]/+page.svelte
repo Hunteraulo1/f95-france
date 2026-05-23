@@ -8,7 +8,10 @@
 		normalizeCheckerVersion
 	} from '$lib/utils/f95-checker-alignment';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+	import {
+		gameImageRequiredForEdit,
+		normalizeGameImageForStorage
+	} from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
@@ -877,8 +880,12 @@
 		}
 	};
 
-	const editGameAutoCheckAllowed = $derived(editingGame.website.trim() === 'f95z');
-	const requireEditGameImage = $derived(gameImageRequiredForWebsite(editingGame.website));
+	const editGameAutoCheckAllowed = $derived(game.website === 'f95z');
+	const requireEditGameImage = $derived(
+		gameImageRequiredForEdit(game.website, editingGame.website, {
+			gameAutoCheck: game.website === 'f95z' ? editingGame.gameAutoCheck : false
+		})
+	);
 
 	$effect(() => {
 		if (showEditGameModal && !editGameAutoCheckAllowed) {
@@ -889,6 +896,7 @@
 	const openEditGameModal = () => {
 		showEditGameImagePreview = false;
 		const isF95 = game.website === 'f95z';
+		const gameAutoCheck = isF95 ? (game.gameAutoCheck ?? true) : (game.gameAutoCheck ?? false);
 		editingGame = {
 			name: game.name,
 			description: game.description || '',
@@ -896,8 +904,8 @@
 			threadId: game.threadId ? String(game.threadId) : '',
 			tags: game.tags || '',
 			link: game.link || '',
-			image: game.image,
-			gameAutoCheck: isF95 ? (game.gameAutoCheck ?? true) : false,
+			image: normalizeGameImageForStorage(game.website, game.image, { gameAutoCheck }),
+			gameAutoCheck,
 			gameVersion: game.gameVersion?.trim() || ''
 		};
 		showEditGameModal = true;
@@ -920,9 +928,13 @@
 	};
 
 	const editGame = async () => {
+		const editGameAutoCheck = game.website === 'f95z' ? editingGame.gameAutoCheck : false;
+		const storedImage = normalizeGameImageForStorage(game.website, editingGame.image, {
+			gameAutoCheck: editGameAutoCheck
+		});
 		const gameLinkError = validateGameLinkFields({
 			link: editingGame.link,
-			image: editingGame.image,
+			image: storedImage,
 			requireLink: true,
 			requireImage: requireEditGameImage
 		});
@@ -939,7 +951,9 @@
 				},
 				body: JSON.stringify({
 					...editingGame,
-					gameAutoCheck: Boolean(editingGame.gameAutoCheck)
+					website: game.website,
+					image: storedImage,
+					gameAutoCheck: Boolean(editGameAutoCheck)
 				})
 			});
 
@@ -1048,12 +1062,12 @@
 									referrerpolicy="no-referrer"
 								/>
 							</button>
-						{:else if game.image?.trim()}
+						{:else}
 							<div
 								class="flex h-64 w-48 items-center justify-center rounded-lg bg-base-200 px-3 text-center text-xs text-base-content/60"
-								title="URL de page galerie (ex. ibb.co/…) — utiliser le lien direct i.ibb.co"
+								title="Aucune vignette disponible"
 							>
-								Vignette indisponible (lien galerie)
+								Aucune vignette disponible
 							</div>
 						{/if}
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
@@ -2072,14 +2086,34 @@
 							<label class="label" for="edit-game-website">
 								<span class="label-text">Site web</span>
 							</label>
-							<input
-								id="edit-game-website"
-								type="text"
-								placeholder="Ex: F95Zone"
-								class="input-bordered input w-full"
-								bind:value={editingGame.website}
-								required
-							/>
+							{#if game.website === 'lc'}
+								<input
+									id="edit-game-website"
+									type="text"
+									class="input-bordered input w-full"
+									value="LewdCorner (lc)"
+									readonly
+									disabled
+								/>
+							{:else if game.website === 'f95z'}
+								<input
+									id="edit-game-website"
+									type="text"
+									class="input-bordered input w-full"
+									value="F95Zone (f95z)"
+									readonly
+									disabled
+								/>
+							{:else}
+								<input
+									id="edit-game-website"
+									type="text"
+									placeholder="other"
+									class="input-bordered input w-full"
+									bind:value={editingGame.website}
+									required
+								/>
+							{/if}
 						</div>
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-threadId">
@@ -2143,7 +2177,7 @@
 								</a>
 							</div>
 						</div>
-						<OtherSiteImageWarning website={editingGame.website} class="w-full" />
+						<OtherSiteImageWarning website={game.website} class="w-full" />
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-image">
 								<span class="label-text">

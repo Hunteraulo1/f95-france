@@ -1,3 +1,4 @@
+import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 import { literal, minLength, pipe, safeParse, string, trim, union, url } from 'valibot';
 
 const RequiredHttpUrlSchema = pipe(
@@ -66,8 +67,8 @@ export function validateGameLinkFields(input: {
 	}
 
 	const image = trimValue(input.image);
-	if (input.requireImage && !image) return null;
-	if (image) {
+	if (input.requireImage) {
+		if (!image) return 'URL de l’image requise';
 		const parsed = safeParseRequiredHttpUrl(image);
 		if (!parsed.success) return formatHttpUrlIssue('Image', parsed);
 	}
@@ -141,11 +142,14 @@ export function validateSubmissionEditLinks(input: {
 	}
 
 	if (input.submissionType === 'game' || input.submissionType === 'update') {
+		const requireImage =
+			input.requireGameImage ??
+			gameImageRequiredForWebsite(typeof input.gameWebsite === 'string' ? input.gameWebsite : '');
 		const gameError = validateGameLinkFields({
 			link: input.gameLink,
 			image: input.gameImage,
 			requireLink: true,
-			requireImage: input.requireGameImage ?? true
+			requireImage
 		});
 		if (gameError) return gameError;
 
