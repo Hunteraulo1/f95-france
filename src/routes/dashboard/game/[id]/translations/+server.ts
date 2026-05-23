@@ -14,6 +14,7 @@ import {
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -87,9 +88,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
+		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
+		const translationLinkError = validateTranslationLinkField({ tlink, tname: tnameNorm });
+		if (translationLinkError) {
+			return json({ error: translationLinkError }, { status: 400 });
+		}
+
 		const gv = normVersion(game[0].gameVersion);
 		const vv = normVersion(version);
-		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
 		/** Règle auto-check: true si version ref = version jeu, ou traduction intégrée, ou pas de traduction. */
 		const acValue =
 			game[0].gameAutoCheck === true &&

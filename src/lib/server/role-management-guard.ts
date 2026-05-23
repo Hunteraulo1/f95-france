@@ -1,4 +1,4 @@
-import type { PermissionKey } from '$lib/permissions/catalog';
+import { isSuperadminRole, type PermissionKey } from '$lib/permissions/catalog';
 import { getPermissionsForRole } from '$lib/server/permissions';
 
 const SYSTEM_ROLE_ORDER = ['user', 'translator', 'admin', 'superadmin'] as const;
@@ -32,6 +32,13 @@ export async function assertCanManageRole(
 	targetSlug: string,
 	targetPermissionKeys?: readonly string[]
 ): Promise<RoleManageCheckResult> {
+	if (isSuperadminRole(targetSlug)) {
+		return {
+			allowed: false,
+			message:
+				'Le rôle Super administrateur possède tous les droits et ne peut pas être modifié depuis cette page'
+		};
+	}
 	if (isRolesManagementSuperadmin(locals)) return { allowed: true };
 	if (!locals.user) return { allowed: false, message: 'Non connecté' };
 

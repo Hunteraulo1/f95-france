@@ -140,6 +140,8 @@
 					updatedGames: number;
 					updatedTranslations: number;
 					disabledAlignedGames: number;
+					translatorWebhooksSent?: number;
+					proofreaderWebhooksSent?: number;
 			  }
 			| null;
 	};
@@ -257,7 +259,8 @@
 										Jeux scannés: {autoCheckManualResult.details.scannedGames} | Jeux mis à jour:
 										{autoCheckManualResult.details.updatedGames} | Alignés (auto-check off):
 										{autoCheckManualResult.details.disabledAlignedGames} | Traductions impactées:
-										{autoCheckManualResult.details.updatedTranslations}
+										{autoCheckManualResult.details.updatedTranslations} | Webhooks traducteurs:
+										{autoCheckManualResult.details.translatorWebhooksSent ?? 0}
 									</p>
 								{:else if typeof autoCheckManualResult.details === 'string'}
 									<p class="mt-1 text-sm">{autoCheckManualResult.details}</p>

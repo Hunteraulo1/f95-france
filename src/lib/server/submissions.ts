@@ -17,6 +17,7 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 
 /**
@@ -37,7 +38,7 @@ export async function createGameSubmission(
 		gameVersion?: string | null;
 	},
 	translationData?: {
-		translationName: string;
+		translationName: string | null;
 		version?: string | null;
 		tversion: string;
 		status: string;
@@ -378,45 +379,48 @@ export async function applySubmission(submissionId: string) {
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
-		// Créer le jeu
-		await db.insert(table.game).values({
-			name: gameData.name,
-			description: gameData.description || null,
-			website: gameData.website as 'f95z' | 'lc' | 'other',
-			threadId: gameData.threadId
-				? typeof gameData.threadId === 'string'
-					? parseInt(gameData.threadId)
-					: gameData.threadId
-				: null,
-			tags: gameData.tags || '',
-			link: gameData.link || '',
-			image: gameData.image,
-			gameAutoCheck: resolveGameAutoCheckForWebsite(
-				String(gameData.website),
-				gameData.gameAutoCheck,
-				true
-			),
-			gameVersion:
-				gameData.gameVersion !== undefined &&
-				gameData.gameVersion !== null &&
-				String(gameData.gameVersion).trim()
-					? String(gameData.gameVersion).trim()
+		const [insertedGame] = await db
+			.insert(table.game)
+			.values({
+				name: gameData.name,
+				description: gameData.description || null,
+				website: gameData.website as 'f95z' | 'lc' | 'other',
+				threadId: gameData.threadId
+					? typeof gameData.threadId === 'string'
+						? parseInt(gameData.threadId)
+						: gameData.threadId
 					: null,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		});
+				tags: gameData.tags || '',
+				link: gameData.link || '',
+				image: gameData.image,
+				gameAutoCheck: resolveGameAutoCheckForWebsite(
+					String(gameData.website),
+					gameData.gameAutoCheck,
+					true
+				),
+				gameVersion:
+					gameData.gameVersion !== undefined &&
+					gameData.gameVersion !== null &&
+					String(gameData.gameVersion).trim()
+						? String(gameData.gameVersion).trim()
+						: null,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			})
+			.returning({ id: table.game.id });
 
-		// Récupérer l'ID du jeu créé
-		const createdGame = await db
-			.select({ id: table.game.id })
-			.from(table.game)
-			.where(eq(table.game.name, gameData.name))
-			.limit(1);
+		const gameId = insertedGame?.id;
+		if (!gameId) {
+			throw new Error('Impossible de récupérer le jeu créé');
+		}
 
-		const gameId = createdGame[0]?.id;
+		const translationTname =
+			typeof parsedData.translation?.tname === 'string'
+				? parsedData.translation.tname.trim()
+				: 'translation';
 
-		// Créer la traduction si elle est fournie
-		if (parsedData.translation && parsedData.translation.translationName) {
+		// Créer la traduction si elle est fournie (nom optionnel)
+		if (parsedData.translation && !isNoTranslation(translationTname)) {
 			const translationData = parsedData.translation;
 			const engineNewTr =
 				translationData.gameType !== undefined &&
@@ -429,12 +433,16 @@ export async function applySubmission(submissionId: string) {
 				.insert(table.gameTranslation)
 				.values({
 					gameId: gameId!,
-					translationName: translationData.translationName || null,
+					translationName:
+						typeof translationData.translationName === 'string' &&
+						translationData.translationName.trim()
+							? translationData.translationName.trim()
+							: null,
 					version:
 						typeof translationData.version === 'string'
 							? translationData.version.trim() || null
 							: null,
-					tversion: translationData.tversion,
+					tversion: normalizeTranslationTversion(translationTname, translationData.tversion),
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: translationData.ttype as
 						| 'auto'
@@ -443,6 +451,11 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
+					tname: translationTname as
+						| 'no_translation'
+						| 'integrated'
+						| 'translation'
+						| 'translation_with_mods',
 					gameType: engineNewTr,
 					tlink: translationData.tlink || '',
 					translatorId: translationData.translatorId ?? null,
@@ -620,6 +633,8 @@ export async function applySubmission(submissionId: string) {
 				// Sauvegarder les anciennes valeurs dans les données de la soumission
 				const updatedData = {
 					...parsedData,
+					gameId: sub.gameId ?? parsedData.gameId,
+					translationId: sub.translationId ?? parsedData.translationId,
 					originalTranslation: {
 						translationName: originalTranslation.translationName,
 						version: originalTranslation.version,

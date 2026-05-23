@@ -1,4 +1,5 @@
 import {
+	isSuperadminRole,
 	PERMISSION_CATALOG,
 	SYSTEM_ROLE_PERMISSIONS,
 	type PermissionKey
@@ -72,10 +73,17 @@ export async function getPermissionsForRole(roleSlug: string): Promise<string[]>
 
 export function hasPermission(
 	permissions: string[] | undefined,
-	key: PermissionKey | string
+	key: PermissionKey | string,
+	roleSlug?: string | null
 ): boolean {
+	if (isSuperadminRole(roleSlug)) return true;
 	if (!permissions?.length) return false;
 	return permissions.includes(key);
+}
+
+/** Vérifie une permission à partir des `locals` (bypass superadmin). */
+export function hasPermissionForLocals(locals: App.Locals, key: PermissionKey | string): boolean {
+	return hasPermission(locals.permissions, key, locals.user?.role);
 }
 
 export async function userHasPermission(
@@ -83,8 +91,9 @@ export async function userHasPermission(
 	key: PermissionKey | string
 ): Promise<boolean> {
 	if (!user?.role) return false;
+	if (isSuperadminRole(user.role)) return true;
 	const permissions = await getPermissionsForRole(user.role);
-	return hasPermission(permissions, key);
+	return hasPermission(permissions, key, user.role);
 }
 
 export function requireUserPermission(
@@ -95,8 +104,9 @@ export function requireUserPermission(
 	if (!locals.user) {
 		error(401, message);
 	}
+	if (isSuperadminRole(locals.user.role)) return;
 	// permissions chargées de façon synchrone via locals.permissions quand disponible
-	if (locals.permissions && hasPermission(locals.permissions, key)) {
+	if (locals.permissions && hasPermission(locals.permissions, key, locals.user.role)) {
 		return;
 	}
 	error(403, message);

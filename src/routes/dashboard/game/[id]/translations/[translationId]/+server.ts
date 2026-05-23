@@ -13,6 +13,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
 	hasGameTranslationGameTypeColumn,
@@ -23,6 +24,7 @@ import {
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -130,6 +132,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					{ status: 400 }
 				);
 			}
+
+			const translationLinkError = validateTranslationLinkField({
+				tlink: tlinkStored,
+				tname: effectiveTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
+			}
 		}
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -141,7 +151,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
-		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyEditTranslationAc = hasPermission(locals.permissions, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
@@ -250,7 +260,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
-				version: before.version,
+				version: before.version ?? null,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,

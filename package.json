@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.2.12",
+	"version": "4.2.13",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -21,7 +21,7 @@
 		"db:pull": "drizzle-kit pull",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx src/lib/server/db/migrate.ts",
-		"db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
+		"db:stamp-migrations": "tsx src/lib/server/db/stamp-migrations-from-journal.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
 		"db:dev:down": "docker compose -f docker-compose.dev.yml down",
@@ -73,7 +73,8 @@
 		"postgres": "^3.4.9",
 		"qrcode": "^1.5.4",
 		"redoc": "2.5.2",
-		"theme-change": "2.5.0"
+		"theme-change": "2.5.0",
+		"valibot": "1.4.0"
 	},
 	"config": {
 		"commitizen": {

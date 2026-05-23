@@ -1,12 +1,10 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { hasGameAutoCheckColumn } from '$lib/server/schema-column-compat';
+import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 import { eq } from 'drizzle-orm';
 
-/** L’auto-check jeu (et donc sur les traductions) n’a de sens que pour les jeux F95Zone. */
-export function gameAutoCheckEnabledForWebsite(website: string): boolean {
-	return website === 'f95z';
-}
+export { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 
 /**
  * Valeur à persister pour `game.game_auto_check` : forcée à `false` si le site n’est pas F95Zone.

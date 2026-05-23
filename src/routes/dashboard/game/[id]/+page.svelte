@@ -1,8 +1,19 @@
 <script lang="ts">
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import { effectivePermissions } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
+	import {
+		isF95CheckerVersionAligned,
+		normalizeCheckerVersion
+	} from '$lib/utils/f95-checker-alignment';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import {
+		gameImageRequiredForEdit,
+		normalizeGameImageForStorage
+	} from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -28,6 +39,9 @@
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
+	const canManageGameAutoCheck = $derived(
+		data.canManageGameAutoCheck === true || $effectivePermissions.includes('games.auto_check')
+	);
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 
 	const submissionTypeLabel = (type: string, translationId: string | null): string => {
@@ -47,17 +61,26 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
-	/** Actualisation manuelle depuis le thread : réservée aux jeux F95Zone */
-	const refreshManualBlocked = $derived(game.website !== 'f95z');
+	/** Actualisation manuelle depuis le thread : F95Zone + auto-check jeu activé */
+	const refreshManualBlocked = $derived(game.website !== 'f95z' || game.gameAutoCheck === false);
+	const refreshManualBlockedReason = $derived(
+		game.website !== 'f95z'
+			? "L'actualisation manuelle n'est disponible que pour les jeux F95Zone."
+			: game.gameAutoCheck === false
+				? "L'actualisation manuelle nécessite l'auto-check jeu activé."
+				: undefined
+	);
 
 	/**
 	 * Peut activer l’auto-check sur une traduction : F95 + auto-check jeu.
 	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
 	 */
 	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
-	const canManuallyEditTranslationAc = $derived(isAdmin && game.gameAutoCheck === true);
-	/** Admins : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
-	const canShowTranslationAcCheckbox = $derived(isAdmin && game.website === 'f95z');
+	const canManuallyEditTranslationAc = $derived(
+		canManageGameAutoCheck && game.gameAutoCheck === true
+	);
+	/** Droits auto-check : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
+	const canShowTranslationAcCheckbox = $derived(canManageGameAutoCheck && game.website === 'f95z');
 
 	// État pour le modal d'ajout de traduction
 	let showAddTranslationModal = $state(false);
@@ -369,6 +392,14 @@
 			return;
 		}
 
+		if (game.gameAutoCheck === false) {
+			newToast({
+				alertType: 'warning',
+				message: "L'actualisation manuelle nécessite l'auto-check jeu activé."
+			});
+			return;
+		}
+
 		if (!game.threadId) {
 			newToast({
 				alertType: 'warning',
@@ -397,21 +428,15 @@
 
 			const data = payload.data as ScrapedThreadGame;
 
-			if (!data.version) {
-				newToast({
-					alertType: 'warning',
-					message: 'Version introuvable sur le thread, rafraîchissement annulé.'
-				});
-				return;
-			}
-
-			const checkerVersion = (data.version ?? '').trim();
+			const checkerVersion = normalizeCheckerVersion(data.version);
+			const checkerVersionUnknown = checkerVersion === null;
+			const acTranslationRows = translations.map((t) => ({
+				ac: t.ac,
+				version: t.version
+			}));
 			const wasAligned =
-				checkerVersion.length > 0 &&
-				checkerVersion === (game.gameVersion ?? '').trim() &&
-				(!acTranslation ||
-					(acTranslation.version ?? '').trim() === '' ||
-					(acTranslation.version ?? '').trim() === checkerVersion);
+				checkerVersion !== null &&
+				isF95CheckerVersionAligned(checkerVersion, game.gameVersion, acTranslationRows);
 
 			const gameUpdateRes = await fetch(`/dashboard/game/${game.id}`, {
 				method: 'PUT',
@@ -427,7 +452,8 @@
 					tags: data.tags ?? game.tags ?? '',
 					link: game.link ?? '',
 					image: data.image ?? game.image ?? '',
-					gameVersion: checkerVersion,
+					gameAutoCheck: game.gameAutoCheck ?? true,
+					gameVersion: checkerVersionUnknown ? (data.version ?? 'Unknown') : checkerVersion,
 					f95VersionRefresh: true,
 					directMode: true
 				})
@@ -442,11 +468,13 @@
 
 			newToast({
 				alertType: 'success',
-				message: wasAligned
-					? 'Version à jour : auto-check désactivé sur le jeu et les traductions'
-					: acTranslation
-						? 'Fiche jeu et versions de référence (auto-check) mises à jour'
-						: 'Fiche jeu rafraîchie'
+				message: checkerVersionUnknown
+					? 'Version inconnue (Unknown) : auto-check désactivé, fiche rafraîchie'
+					: wasAligned
+						? 'Version à jour — fiche rafraîchie (auto-check conservé)'
+						: acTranslation
+							? 'Fiche jeu et versions de référence (auto-check) mises à jour'
+							: 'Fiche jeu rafraîchie'
 			});
 
 			window.location.reload();
@@ -477,6 +505,15 @@
 						: 'Veuillez remplir tous les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (version de traduction, lien, etc.)'
 			});
+			return;
+		}
+
+		const tlinkError = validateTranslationLinkField({
+			tlink: linkNotRequired ? '' : newTranslation.tlink,
+			tname: newTranslation.tname
+		});
+		if (tlinkError) {
+			newToast({ alertType: 'error', message: tlinkError });
 			return;
 		}
 
@@ -620,6 +657,15 @@
 						: 'Veuillez remplir les champs requis (statut, type)'
 					: 'Veuillez remplir tous les champs requis (y compris le lien)'
 			});
+			return;
+		}
+
+		const editTlinkError = validateTranslationLinkField({
+			tlink: linkNotRequired ? '' : editingTranslation.tlink,
+			tname: editingTranslation.tname
+		});
+		if (editTlinkError) {
+			newToast({ alertType: 'error', message: editTlinkError });
 			return;
 		}
 
@@ -834,7 +880,12 @@
 		}
 	};
 
-	const editGameAutoCheckAllowed = $derived(editingGame.website.trim() === 'f95z');
+	const editGameAutoCheckAllowed = $derived(game.website === 'f95z');
+	const requireEditGameImage = $derived(
+		gameImageRequiredForEdit(game.website, editingGame.website, {
+			gameAutoCheck: game.website === 'f95z' ? editingGame.gameAutoCheck : false
+		})
+	);
 
 	$effect(() => {
 		if (showEditGameModal && !editGameAutoCheckAllowed) {
@@ -845,6 +896,7 @@
 	const openEditGameModal = () => {
 		showEditGameImagePreview = false;
 		const isF95 = game.website === 'f95z';
+		const gameAutoCheck = isF95 ? (game.gameAutoCheck ?? true) : (game.gameAutoCheck ?? false);
 		editingGame = {
 			name: game.name,
 			description: game.description || '',
@@ -852,8 +904,8 @@
 			threadId: game.threadId ? String(game.threadId) : '',
 			tags: game.tags || '',
 			link: game.link || '',
-			image: game.image,
-			gameAutoCheck: isF95 ? (game.gameAutoCheck ?? true) : false,
+			image: normalizeGameImageForStorage(game.website, game.image, { gameAutoCheck }),
+			gameAutoCheck,
 			gameVersion: game.gameVersion?.trim() || ''
 		};
 		showEditGameModal = true;
@@ -876,6 +928,21 @@
 	};
 
 	const editGame = async () => {
+		const editGameAutoCheck = game.website === 'f95z' ? editingGame.gameAutoCheck : false;
+		const storedImage = normalizeGameImageForStorage(game.website, editingGame.image, {
+			gameAutoCheck: editGameAutoCheck
+		});
+		const gameLinkError = validateGameLinkFields({
+			link: editingGame.link,
+			image: storedImage,
+			requireLink: true,
+			requireImage: requireEditGameImage
+		});
+		if (gameLinkError) {
+			newToast({ alertType: 'error', message: gameLinkError });
+			return;
+		}
+
 		try {
 			const response = await fetch(`/dashboard/game/${game.id}`, {
 				method: 'PUT',
@@ -883,7 +950,10 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					...editingGame
+					...editingGame,
+					website: game.website,
+					image: storedImage,
+					gameAutoCheck: Boolean(editGameAutoCheck)
 				})
 			});
 
@@ -992,26 +1062,24 @@
 									referrerpolicy="no-referrer"
 								/>
 							</button>
-						{:else if game.image?.trim()}
+						{:else}
 							<div
 								class="flex h-64 w-48 items-center justify-center rounded-lg bg-base-200 px-3 text-center text-xs text-base-content/60"
-								title="URL de page galerie (ex. ibb.co/…) — utiliser le lien direct i.ibb.co"
+								title="Aucune vignette disponible"
 							>
-								Vignette indisponible (lien galerie)
+								Aucune vignette disponible
 							</div>
 						{/if}
 						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
 							<SquarePen size={16} />
 							Modifier le jeu
 						</button>
-						{#if isAdmin}
+						{#if canManageGameAutoCheck}
 							<button
 								class="btn btn-sm btn-secondary"
 								onclick={refreshGame}
 								disabled={refreshManualBlocked}
-								title={refreshManualBlocked
-									? 'L’actualisation manuelle n’est disponible que pour les jeux F95Zone.'
-									: undefined}
+								title={refreshManualBlockedReason}
 							>
 								<RefreshCcw size={16} />
 								Actualiser le jeu
@@ -1068,6 +1136,16 @@
 								<span class="badge badge-lg badge-accent" title="Version du jeu"
 									>Version jeu : {game.gameVersion}</span
 								>
+							{/if}
+							{#if canManageGameAutoCheck && game.website === 'f95z'}
+								<span
+									class="badge badge-lg {game.gameAutoCheck !== false
+										? 'badge-success'
+										: 'badge-ghost'}"
+									title="Suivi automatique des versions F95 sur ce jeu"
+								>
+									Auto-check jeu : {game.gameAutoCheck !== false ? 'activé' : 'désactivé'}
+								</span>
 							{/if}
 							{#if isSuperAdmin}
 								<button
@@ -1485,7 +1563,7 @@
 				</div>
 			</div>
 
-			{#if isAdmin}
+			{#if canManageGameAutoCheck}
 				<div class="mt-5 rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
 					<div class="mb-4">
 						<h4 class="text-sm font-semibold text-base-content/80">Auto-check</h4>
@@ -1843,7 +1921,7 @@
 									<strong>false</strong>
 									(même si la ligne était marquée en auto-check auparavant).
 								</p>
-								{#if isAdmin}
+								{#if canManageGameAutoCheck}
 									<p class="mt-2 text-base-content/70">
 										Pour pouvoir l’activer ici : ouvrez <strong>Modifier le jeu</strong> (en haut de la
 										page), puis cochez l’auto-check jeu pour ce thread F95.
@@ -1855,8 +1933,14 @@
 									référence suit le jeu ; pour une traduction <strong>intégrée</strong>, la Trad.
 									Ver. reste « Intégrée ».
 								</p>
+							{:else if !canManageGameAutoCheck}
+								<p>
+									Vous n’avez pas le droit <strong>Auto-check (jeu et traductions)</strong>. Un
+									administrateur peut l’activer pour votre rôle dans
+									<a href="/dashboard/roles" class="link link-primary">Gestion des rôles</a>.
+								</p>
 							{:else}
-								<p>L’auto-check de cette traduction n’est pas modifiable avec votre rôle.</p>
+								<p>L’auto-check de cette traduction n’est pas modifiable dans cet état.</p>
 							{/if}
 						</div>
 					</div>
@@ -2002,14 +2086,34 @@
 							<label class="label" for="edit-game-website">
 								<span class="label-text">Site web</span>
 							</label>
-							<input
-								id="edit-game-website"
-								type="text"
-								placeholder="Ex: F95Zone"
-								class="input-bordered input w-full"
-								bind:value={editingGame.website}
-								required
-							/>
+							{#if game.website === 'lc'}
+								<input
+									id="edit-game-website"
+									type="text"
+									class="input-bordered input w-full"
+									value="LewdCorner (lc)"
+									readonly
+									disabled
+								/>
+							{:else if game.website === 'f95z'}
+								<input
+									id="edit-game-website"
+									type="text"
+									class="input-bordered input w-full"
+									value="F95Zone (f95z)"
+									readonly
+									disabled
+								/>
+							{:else}
+								<input
+									id="edit-game-website"
+									type="text"
+									placeholder="other"
+									class="input-bordered input w-full"
+									bind:value={editingGame.website}
+									required
+								/>
+							{/if}
 						</div>
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-threadId">
@@ -2073,20 +2177,25 @@
 								</a>
 							</div>
 						</div>
+						<OtherSiteImageWarning website={game.website} class="w-full" />
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-image">
-								<span class="label-text">URL de l'image</span>
+								<span class="label-text">
+									URL de l'image{requireEditGameImage ? '' : ' (optionnel)'}
+								</span>
 							</label>
 							<div class="relative">
 								<input
 									id="edit-game-image"
 									type="url"
-									placeholder="https://..."
+									placeholder={requireEditGameImage
+										? 'https://...'
+										: 'Laisser vide si aucune vignette'}
 									class="input-bordered input w-full"
 									bind:value={editingGame.image}
 									onfocus={() => (showEditGameImagePreview = true)}
 									onblur={() => (showEditGameImagePreview = false)}
-									required
+									required={requireEditGameImage}
 								/>
 								{#if showEditGameImagePreview && editingGame.image?.trim()}
 									<div
@@ -2126,7 +2235,7 @@
 					</div>
 				</div>
 
-				{#if isAdmin}
+				{#if canManageGameAutoCheck}
 					<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
 						<div class="mb-4">
 							<h4 class="text-sm font-semibold text-base-content/80">Paramètres avancés</h4>

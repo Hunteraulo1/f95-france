@@ -13,6 +13,7 @@
         "qrcode": "latest",
         "redoc": "latest",
         "theme-change": "latest",
+        "valibot": "latest",
       },
       "devDependencies": {
         "@eslint/js": "latest",
@@ -1190,6 +1191,8 @@
     "util-deprecate": ["util-deprecate@1.0.2", "", {}, ""],
 
     "uuid": ["uuid@11.1.1", "", { "bin": "dist/esm/bin/uuid" }, ""],
+
+    "valibot": ["valibot@1.4.0", "", { "peerDependencies": { "typescript": ">=5" }, "optionalPeers": ["typescript"] }, "sha512-iC/x7fVcSyOwlm/VSt7RlHnzNGLGvR9GnxdifUeWoCJo0q4ZZvrVkIHC6faTlkxG47I2Y4UrFquPuVHCrOnrLg=="],
 
     "validate-npm-package-license": ["validate-npm-package-license@3.0.4", "", { "dependencies": { "spdx-correct": "^3.0.0", "spdx-expression-parse": "^3.0.0" } }, ""],
 
