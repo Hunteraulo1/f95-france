@@ -4,12 +4,26 @@
  *
  * Variables :
  * - CRON_SECRET (requis)
- * - CRON_BASE_URL (optionnel, défaut http://127.0.0.1:3000)
- *   Utiliser https://f95france.site si la tâche s’exécute hors du conteneur app.
+ * - CRON_BASE_URL (optionnel, prioritaire)
+ * - sinon PUBLIC_APP_ORIGIN, APP_ORIGIN ou ORIGIN
+ * - sinon http://127.0.0.1:3000 (dev local uniquement)
  */
 
 const secret = process.env.CRON_SECRET?.trim();
-const baseUrl = (process.env.CRON_BASE_URL?.trim() || 'http://127.0.0.1:3000').replace(/\/$/, '');
+
+function resolveCronBaseUrl() {
+	const explicit = process.env.CRON_BASE_URL?.trim();
+	if (explicit) return explicit.replace(/\/$/, '');
+
+	for (const key of ['PUBLIC_APP_ORIGIN', 'APP_ORIGIN', 'ORIGIN']) {
+		const value = process.env[key]?.trim();
+		if (value) return value.replace(/\/$/, '');
+	}
+
+	return 'http://127.0.0.1:3000';
+}
+
+const baseUrl = resolveCronBaseUrl();
 const url = `${baseUrl}/api/cron/check-version`;
 const timeoutMs = Number.parseInt(process.env.CRON_HTTP_TIMEOUT_MS ?? '30000', 10);
 
@@ -37,13 +51,13 @@ try {
 	}
 
 	if (response.ok) {
-		console.info('[cron-check-version] OK', response.status, parsed);
+		console.info('[cron-check-version] OK', response.status, url, parsed);
 		process.exit(0);
 	}
 
-	console.error('[cron-check-version] échec HTTP', response.status, parsed);
+	console.error('[cron-check-version] échec HTTP', response.status, url, parsed);
 	process.exit(1);
 } catch (error) {
-	console.error('[cron-check-version] erreur réseau:', error);
+	console.error('[cron-check-version] erreur réseau vers', url, error);
 	process.exit(1);
 }
