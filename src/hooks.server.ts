@@ -18,12 +18,22 @@ import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 
-/** `url.search` est interdit sur les routes en prerender — évite un second crash dans les hooks. */
+/** Chemin seul (sans query) — la query va dans `payload` du log API. */
 function requestRouteLabel(url: URL): string {
 	try {
-		return `${url.pathname}${url.search}`;
-	} catch {
 		return url.pathname;
+	} catch {
+		return '/';
+	}
+}
+
+function requestQueryForLog(url: URL): string | null {
+	try {
+		const search = url.search;
+		if (!search || search === '?') return null;
+		return search;
+	} catch {
+		return null;
 	}
 }
 
@@ -254,11 +264,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 			const bodyText = await clone.text();
 			const trimmed = bodyText.trim();
 			if (trimmed.length > 0) {
-				capturedBody = trimmed.length > 4000 ? `${trimmed.slice(0, 4000)}…` : trimmed;
+				capturedBody = trimmed;
 			}
 		} catch (error) {
 			console.error('Impossible de lire le corps de la requête pour les logs:', error);
 		}
+	} else if (shouldLog && method === 'GET') {
+		capturedBody = requestQueryForLog(event.url);
 	}
 
 	const response = await resolve(event);

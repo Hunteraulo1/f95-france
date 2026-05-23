@@ -223,7 +223,7 @@ export const apiLog = pgTable('api_log', {
 		onUpdate: 'cascade'
 	}),
 	method: varchar('method', { length: 16 }).notNull(),
-	route: varchar('route', { length: 255 }).notNull(),
+	route: text('route').notNull(),
 	status: integer('status').notNull(),
 	ipAddress: varchar('ip_address', { length: 64 }),
 	payload: text('payload'),

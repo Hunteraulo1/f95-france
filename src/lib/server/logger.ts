@@ -34,11 +34,7 @@ export const logApiAction = async ({
 			status,
 			userId: userId ?? null,
 			payload: payload ?? null,
-			errorMessage: errorMessage
-				? errorMessage.length > 10000
-					? `${errorMessage.slice(0, 10000)}…`
-					: errorMessage
-				: null
+			errorMessage: errorMessage ?? null
 		});
 	} catch (error) {
 		if (isDbTimeoutError(error)) {
