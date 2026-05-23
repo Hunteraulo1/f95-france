@@ -13,6 +13,7 @@ import {
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -134,7 +135,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!name || !type || !website) {
 			return json({ error: 'Nom, type et site web sont requis' }, { status: 400 });
 		}
-		if (!imageValue && website !== 'lc') {
+		if (!imageValue && gameImageRequiredForWebsite(website)) {
 			return json({ error: 'Nom, type, site web et image sont requis' }, { status: 400 });
 		}
 

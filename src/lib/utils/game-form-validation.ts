@@ -48,9 +48,19 @@ function trimStr(v: unknown): string {
 	return String(v).trim();
 }
 
-/** LewdCorner peut être enregistré sans vignette (scrape impossible ou sans image). */
-export function gameImageRequiredForWebsite(website: string | null | undefined): boolean {
-	return trimStr(website) !== 'lc';
+/**
+ * F95Zone : vignette obligatoire.
+ * LewdCorner : obligatoire seulement si le scrape a fourni une image (formulaire add).
+ * Autre : jamais obligatoire.
+ */
+export function gameImageRequiredForWebsite(
+	website: string | null | undefined,
+	opts?: { lcScrapeProvidedImage?: boolean }
+): boolean {
+	const w = trimStr(website);
+	if (w === 'f95z') return true;
+	if (w === 'lc') return Boolean(opts?.lcScrapeProvidedImage);
+	return false;
 }
 
 /** Erreurs bloquantes + avertissement description (ne bloque pas) */

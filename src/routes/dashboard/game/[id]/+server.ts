@@ -16,6 +16,7 @@ import {
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -120,8 +121,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
+		const imageValue = typeof image === 'string' ? image.trim() : '';
+
 		// Valider les données requises (le moteur est par traduction ; `type` optionnel = appliquer à toutes les lignes si fourni, ex. refresh F95)
-		if (!name || !website || !image) {
+		if (!name || !website) {
+			return json({ error: 'Nom et site web sont requis' }, { status: 400 });
+		}
+		if (!imageValue && gameImageRequiredForWebsite(website)) {
 			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
 		}
 

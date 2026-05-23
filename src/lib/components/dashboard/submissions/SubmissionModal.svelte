@@ -1202,7 +1202,7 @@
 												<div class="form-control md:col-span-2">
 													<label class="label" for="editGameImage">
 														<span class="label-text">
-															Image{requireGameImage ? '' : ' (optionnel pour LewdCorner)'}
+															Image{requireGameImage ? '' : ' (optionnel)'}
 														</span>
 													</label>
 													<input

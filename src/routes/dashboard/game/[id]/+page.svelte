@@ -3,6 +3,7 @@
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
@@ -836,6 +837,7 @@
 	};
 
 	const editGameAutoCheckAllowed = $derived(editingGame.website.trim() === 'f95z');
+	const requireEditGameImage = $derived(gameImageRequiredForWebsite(editingGame.website));
 
 	$effect(() => {
 		if (showEditGameModal && !editGameAutoCheckAllowed) {
@@ -2077,18 +2079,22 @@
 						<OtherSiteImageWarning website={editingGame.website} class="w-full" />
 						<div class="form-control w-full">
 							<label class="label" for="edit-game-image">
-								<span class="label-text">URL de l'image</span>
+								<span class="label-text">
+									URL de l'image{requireEditGameImage ? '' : ' (optionnel)'}
+								</span>
 							</label>
 							<div class="relative">
 								<input
 									id="edit-game-image"
 									type="url"
-									placeholder="https://..."
+									placeholder={requireEditGameImage
+										? 'https://...'
+										: 'Laisser vide si aucune vignette'}
 									class="input-bordered input w-full"
 									bind:value={editingGame.image}
 									onfocus={() => (showEditGameImagePreview = true)}
 									onblur={() => (showEditGameImagePreview = false)}
-									required
+									required={requireEditGameImage}
 								/>
 								{#if showEditGameImagePreview && editingGame.image?.trim()}
 									<div

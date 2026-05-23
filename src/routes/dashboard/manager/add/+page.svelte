@@ -130,7 +130,7 @@
 
 	/** LC sans image scrape (échec ou absent) : vignette optionnelle. */
 	const requireGameImage = $derived(
-		gameImageRequiredForWebsite(game.website) && (game.website !== 'lc' || lcShowImageField)
+		gameImageRequiredForWebsite(game.website, { lcScrapeProvidedImage: lcShowImageField })
 	);
 
 	let fieldFormState = $derived(
