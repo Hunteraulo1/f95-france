@@ -1,90 +1,94 @@
 {
-  "name": "f95-france",
-  "private": true,
-  "version": "4.2.4",
-  "type": "module",
-  "engines": {
-    "node": ">=24.0.0"
-  },
-  "scripts": {
-    "dev": "vite dev",
-    "build": "NODE_ENV=production vite build",
-    "start": "node build/index.js",
-    "preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
-    "prepare": "svelte-kit sync || echo ''",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "format": "prettier --write .",
-    "lint": "prettier --write . && eslint .",
-    "db:push": "drizzle-kit push",
-    "db:pull": "drizzle-kit pull",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/lib/server/db/migrate.ts",
-    "db:init-migrations": "tsx src/lib/server/db/init-migrations.ts",
-    "db:studio": "drizzle-kit studio",
-    "db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
-    "db:dev:down": "docker compose -f docker-compose.dev.yml down",
-    "db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
-    "db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh",
-    "sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
-  },
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@oslojs/crypto": "^1.0.1",
-    "@oslojs/encoding": "^1.1.0",
-    "@sveltejs/adapter-node": "5.5.4",
-    "@sveltejs/kit": "^2.60.1",
-    "@sveltejs/vite-plugin-svelte": "^7.1.2",
-    "@tailwindcss/forms": "^0.5.11",
-    "@tailwindcss/vite": "^4.3.0",
-    "@types/node": "25.9.1",
-    "@types/qrcode": "^1.5.6",
-    "commitizen": "4.3.1",
-    "cz-emoji": "1.3.2-canary.2",
-    "daisyui": "5.5.20",
-    "dotenv": "^17.4.2",
-    "drizzle-kit": "0.31.10",
-    "drizzle-orm": "^0.45.2",
-    "eslint": "^10.4.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-svelte": "^3.17.1",
-    "globals": "^17.6.0",
-    "prettier": "^3.8.3",
-    "prettier-plugin-svelte": "^3.5.2",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "svelte": "^5.55.8",
-    "svelte-check": "^4.4.8",
-    "tailwindcss": "^4.3.0",
-    "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.4",
-    "vite": "^8.0.13",
-    "vite-plugin-devtools-json": "^1.0.0"
-  },
-  "dependencies": {
-    "@lucide/svelte": "1.16.0",
-    "@simplewebauthn/browser": "^13.3.0",
-    "@simplewebauthn/server": "^13.3.0",
-    "linkedom": "^0.18.12",
-    "otpauth": "^9.5.1",
-    "postgres": "^3.4.9",
-    "qrcode": "^1.5.4",
-    "redoc": "2.5.2",
-    "theme-change": "2.5.0"
-  },
-  "config": {
-    "commitizen": {
-      "path": "cz-emoji"
-    },
-    "cz-emoji": {
-      "scopes": [
-        "backend",
-        "frontend"
-      ],
-      "skipQuestions": [
-        "body",
-        "breaking"
-      ]
-    }
-  }
+	"name": "f95-france",
+	"private": true,
+	"version": "4.2.13",
+	"type": "module",
+	"engines": {
+		"node": ">=24.0.0"
+	},
+	"scripts": {
+		"dev": "vite dev",
+		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
+		"start": "node build/index.js",
+		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
+		"prepare": "svelte-kit sync || echo ''",
+		"postinstall": "patch-package",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"format": "prettier --write .",
+		"lint": "prettier --write . && eslint .",
+		"db:push": "drizzle-kit push",
+		"db:pull": "drizzle-kit pull",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "tsx src/lib/server/db/migrate.ts",
+		"db:stamp-migrations": "tsx src/lib/server/db/stamp-migrations-from-journal.ts",
+		"db:studio": "drizzle-kit studio",
+		"db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
+		"db:dev:down": "docker compose -f docker-compose.dev.yml down",
+		"db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
+		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh",
+		"cron:check-version": "node cron/check-version.mjs",
+		"sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@oslojs/crypto": "^1.0.1",
+		"@oslojs/encoding": "^1.1.0",
+		"@sveltejs/adapter-node": "5.5.4",
+		"@sveltejs/kit": "^2.61.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@tailwindcss/forms": "^0.5.11",
+		"@tailwindcss/vite": "^4.3.0",
+		"@types/node": "25.9.1",
+		"@types/qrcode": "^1.5.6",
+		"commitizen": "4.3.1",
+		"cz-emoji": "1.3.2-canary.2",
+		"daisyui": "5.5.20",
+		"dotenv": "^17.4.2",
+		"drizzle-kit": "0.31.10",
+		"drizzle-orm": "^0.45.2",
+		"eslint": "^10.4.0",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.17.1",
+		"globals": "^17.6.0",
+		"patch-package": "^8.0.1",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.0.1",
+		"prettier-plugin-tailwindcss": "^0.8.0",
+		"svelte": "^5.55.9",
+		"svelte-check": "^4.4.8",
+		"tailwindcss": "^4.3.0",
+		"tsx": "^4.22.3",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.59.4",
+		"vite": "^8.0.14",
+		"vite-plugin-devtools-json": "^1.0.0"
+	},
+	"dependencies": {
+		"@lucide/svelte": "1.16.0",
+		"@simplewebauthn/browser": "^13.3.0",
+		"@simplewebauthn/server": "^13.3.0",
+		"linkedom": "^0.18.12",
+		"otpauth": "^9.5.1",
+		"postgres": "^3.4.9",
+		"qrcode": "^1.5.4",
+		"redoc": "2.5.2",
+		"theme-change": "2.5.0",
+		"valibot": "1.4.0"
+	},
+	"config": {
+		"commitizen": {
+			"path": "cz-emoji"
+		},
+		"cz-emoji": {
+			"scopes": [
+				"backend",
+				"frontend"
+			],
+			"skipQuestions": [
+				"body",
+				"breaking"
+			]
+		}
+	}
 }

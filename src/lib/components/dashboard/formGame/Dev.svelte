@@ -4,7 +4,6 @@
 	interface Props {
 		game: FormGameType;
 		onDevDataApplied?: () => void;
-		// scrapeData: (args: ScrapeDataArgs) => Promise<void>;
 	}
 
 	let { game = $bindable(), onDevDataApplied }: Props = $props();
@@ -19,7 +18,7 @@
 			status: 'abandoned',
 			tags: 'no sexual content',
 			description: 'TEST, DEV, NE PAS TOUCHER',
-			gameType: 'other',
+			gameType: 'renpy',
 			gameVersion: 'v666',
 			version: 'v666',
 			tversion: 'v42',
@@ -38,17 +37,3 @@
 </script>
 
 <button class="btn w-full btn-info md:w-38" type="button" onclick={handleClick}> Dev data </button>
-
-{#if game && game.website === 'f95z'}
-	<button
-		class="btn w-full btn-info md:w-38"
-		type="button"
-		onclick={() => {
-			if (!game) throw new Error('no game data');
-
-			// scrapeData({ id: game.id, website: 'f95z' })
-		}}
-	>
-		Force scrape
-	</button>
-{/if}

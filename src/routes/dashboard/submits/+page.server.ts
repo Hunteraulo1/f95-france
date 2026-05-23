@@ -6,11 +6,13 @@ import { assertPermission } from '$lib/server/permissions-guard';
 import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
-  parseSubmissionPayloadJson,
-  persistSubmissionPayload,
-  validateSubmissionPayloadForType
+	normalizeTranslationInPayload,
+	parseSubmissionPayloadJson,
+	persistSubmissionPayload,
+	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
+import { normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 import { fail } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -39,19 +41,25 @@ const formDataToSubmissionPayload = (
 		return defaultValue;
 	};
 
-	const buildTranslation = (): Record<string, unknown> => ({
-		translationName: maybeTrim(formData.get('editTranslationTranslationName')) || null,
-		version: maybeTrim(formData.get('editTranslationVersion')) || null,
-		tversion: maybeTrim(formData.get('editTranslationTversion')),
-		status: maybeTrim(formData.get('editTranslationStatus')),
-		ttype: maybeTrim(formData.get('editTranslationTtype')),
-		gameType: maybeTrim(formData.get('editTranslationGameType')),
-		tlink: maybeTrim(formData.get('editTranslationTlink')) || null,
-		tname: maybeTrim(formData.get('editTranslationTname')),
-		translatorId: maybeTrim(formData.get('editTranslationTranslatorId')) || null,
-		proofreaderId: maybeTrim(formData.get('editTranslationProofreaderId')) || null,
-		ac: boolFromForm(formData.get('editTranslationAc'), false)
-	});
+	const buildTranslation = (): Record<string, unknown> => {
+		const tname = maybeTrim(formData.get('editTranslationTname'));
+		return {
+			translationName: maybeTrim(formData.get('editTranslationTranslationName')) || null,
+			version: maybeTrim(formData.get('editTranslationVersion')) || null,
+			tversion: normalizeTranslationTversion(
+				tname,
+				maybeTrim(formData.get('editTranslationTversion'))
+			),
+			status: maybeTrim(formData.get('editTranslationStatus')),
+			ttype: maybeTrim(formData.get('editTranslationTtype')),
+			gameType: maybeTrim(formData.get('editTranslationGameType')),
+			tlink: maybeTrim(formData.get('editTranslationTlink')) || null,
+			tname,
+			translatorId: maybeTrim(formData.get('editTranslationTranslatorId')) || null,
+			proofreaderId: maybeTrim(formData.get('editTranslationProofreaderId')) || null,
+			ac: boolFromForm(formData.get('editTranslationAc'), false)
+		};
+	};
 
 	const buildGame = (): Record<string, unknown> => ({
 		name: maybeTrim(formData.get('editGameName')),
@@ -382,6 +390,7 @@ export const actions: Actions = {
 			parsed = { ok: true, data: rebuiltPayload };
 		}
 
+		normalizeTranslationInPayload(parsed.data);
 		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);
 		if (shapeError) return fail(400, { message: shapeError });
 
@@ -452,6 +461,7 @@ export const actions: Actions = {
 					if (!rebuiltPayload) return fail(400, { message: parsed.message });
 					parsed = { ok: true, data: rebuiltPayload };
 				}
+				normalizeTranslationInPayload(parsed.data);
 				const shapeError = validateSubmissionPayloadForType(submissionType, parsed.data);
 				if (shapeError) {
 					return fail(400, { message: shapeError });

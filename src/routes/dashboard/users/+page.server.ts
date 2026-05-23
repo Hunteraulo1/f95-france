@@ -129,11 +129,7 @@ export const actions: Actions = {
 				});
 			}
 
-			if (
-				currentUserRole === 'admin' &&
-				!canAssignAdmin &&
-				locals.user!.id !== userId
-			) {
+			if (currentUserRole === 'admin' && !canAssignAdmin && locals.user!.id !== userId) {
 				return fail(403, {
 					message: 'Vous ne pouvez pas modifier un autre administrateur'
 				});

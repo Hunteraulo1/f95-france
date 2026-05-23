@@ -1,3 +1,4 @@
+import { isSuperadminRole } from '$lib/permissions/catalog';
 import { error } from '@sveltejs/kit';
 import { hasPermission, userHasPermission } from './permissions';
 
@@ -6,7 +7,8 @@ export async function assertPermission(
 	key: string,
 	message = 'Accès non autorisé'
 ): Promise<void> {
-	if (locals.permissions && hasPermission(locals.permissions, key)) {
+	if (isSuperadminRole(locals.user?.role)) return;
+	if (locals.permissions && hasPermission(locals.permissions, key, locals.user?.role)) {
 		return;
 	}
 	if (locals.user && (await userHasPermission(locals.user, key))) {
@@ -20,8 +22,9 @@ export async function assertAnyPermission(
 	keys: string[],
 	message = 'Accès non autorisé'
 ): Promise<void> {
+	if (isSuperadminRole(locals.user?.role)) return;
 	for (const key of keys) {
-		if (locals.permissions && hasPermission(locals.permissions, key)) {
+		if (locals.permissions && hasPermission(locals.permissions, key, locals.user?.role)) {
 			return;
 		}
 		if (locals.user && (await userHasPermission(locals.user, key))) {

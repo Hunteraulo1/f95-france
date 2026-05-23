@@ -1,9 +1,13 @@
 import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
+import {
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
+} from '$lib/server/discord-webhook';
 import {
 	clearAllTranslationAutoCheckForGame,
+	disableGameAndTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
@@ -11,8 +15,16 @@ import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
+import {
+	gameImageRequiredForEdit,
+	normalizeGameImageForStorage
+} from '$lib/utils/game-form-validation';
+import { validateGameLinkFields } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -111,15 +123,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			directMode,
 			silentMode,
 			gameAutoCheck,
-			gameVersion
+			gameVersion,
+			f95VersionRefresh
 		} = body;
 
-		// Valider les données requises (le moteur est par traduction ; `type` optionnel = appliquer à toutes les lignes si fourni, ex. refresh F95)
-		if (!name || !website || !image) {
-			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
-		}
+		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
-		// Vérifier que le jeu existe
+		// Vérifier que le jeu existe (avant validation image, pour connaître l’auto-check actuel)
 		const existingGameRows = await db
 			.select({
 				id: table.game.id,
@@ -155,37 +165,129 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		const canManuallyToggleGameAutoCheck = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyToggleGameAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
 		const parsedThreadId =
 			threadId !== null && threadId !== undefined && threadId !== ''
 				? parseInt(String(threadId), 10)
 				: null;
 		const nextThreadId =
 			parsedThreadId !== null && !Number.isNaN(parsedThreadId) ? parsedThreadId : null;
+		const nextGameVersion =
+			typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null;
+
+		const textFieldChanged = (next: unknown, prev: string | null | undefined) =>
+			(typeof next === 'string' ? next.trim() : '') !== (prev ?? '').trim();
+
 		const hasNonVersionChanges =
-			(name ?? '') !== (existingGame.name ?? '') ||
-			(description || null) !== (existingGame.description ?? null) ||
-			(website ?? '') !== (existingGame.website ?? '') ||
-			nextThreadId !== (existingGame.threadId ?? null) ||
-			(tags || null) !== (existingGame.tags ?? null) ||
-			(link || null) !== (existingGame.link ?? null) ||
-			(image ?? '') !== (existingGame.image ?? '');
-		const nextGameAutoCheck = hasNonVersionChanges
-			? false
-			: resolveGameAutoCheckForWebsite(
+			!isF95VersionRefresh &&
+			(textFieldChanged(name, existingGame.name) ||
+				textFieldChanged(description, existingGame.description) ||
+				textFieldChanged(website, existingGame.website) ||
+				nextThreadId !== (existingGame.threadId ?? null) ||
+				textFieldChanged(tags, existingGame.tags) ||
+				textFieldChanged(link, existingGame.link) ||
+				textFieldChanged(image, existingGame.image));
+
+		const parseOptionalBoolean = (value: unknown): boolean | undefined => {
+			if (typeof value === 'boolean') return value;
+			if (value === 'true' || value === 1) return true;
+			if (value === 'false' || value === 0) return false;
+			return undefined;
+		};
+
+		const explicitGameAutoCheck = canManuallyToggleGameAutoCheck
+			? parseOptionalBoolean(gameAutoCheck)
+			: undefined;
+
+		let nextGameAutoCheck: boolean;
+		if (explicitGameAutoCheck !== undefined) {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				explicitGameAutoCheck,
+				prevGameAutoCheck ?? true
+			);
+		} else if (hasNonVersionChanges) {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(website, false, false);
+		} else {
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				undefined,
+				prevGameAutoCheck ?? true
+			);
+		}
+
+		if (!name || !website) {
+			return json({ error: 'Nom et site web sont requis' }, { status: 400 });
+		}
+
+		const imageWebsite =
+			typeof website === 'string' && website.trim() ? website.trim() : existingGame.website;
+		const isLcGame = existingGame.website === 'lc';
+		const storedImage = normalizeGameImageForStorage(isLcGame ? 'lc' : imageWebsite, image, {
+			gameAutoCheck: isLcGame ? false : nextGameAutoCheck
+		});
+		const requireImage = gameImageRequiredForEdit(existingGame.website, imageWebsite, {
+			gameAutoCheck: nextGameAutoCheck
+		});
+		if (!storedImage && requireImage) {
+			return json({ error: 'Nom, site web et image sont requis' }, { status: 400 });
+		}
+
+		const gameLinkError = validateGameLinkFields({
+			link: typeof link === 'string' ? link.trim() : '',
+			image: storedImage,
+			requireLink: true,
+			requireImage
+		});
+		if (gameLinkError) {
+			return json({ error: gameLinkError }, { status: 400 });
+		}
+
+		let checkerVersionUnknown = false;
+		let normalizedCheckerVersion: string | null = null;
+		let acTranslationsForRefresh: { ac: boolean; version: string | null }[] | null = null;
+
+		if (isF95VersionRefresh && website === 'f95z') {
+			normalizedCheckerVersion = normalizeCheckerVersion(nextGameVersion);
+			acTranslationsForRefresh = await db
+				.select({
+					ac: table.gameTranslation.ac,
+					version: table.gameTranslation.version
+				})
+				.from(table.gameTranslation)
+				.where(eq(table.gameTranslation.gameId, gameId));
+
+			if (!normalizedCheckerVersion) {
+				checkerVersionUnknown = true;
+				nextGameAutoCheck = false;
+			} else if (explicitGameAutoCheck !== undefined) {
+				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 					website,
-					canManuallyToggleGameAutoCheck && typeof gameAutoCheck === 'boolean'
-						? gameAutoCheck
-						: undefined,
+					explicitGameAutoCheck,
 					prevGameAutoCheck ?? true
 				);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
+			} else {
+				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+					website,
+					undefined,
+					prevGameAutoCheck ?? true
+				);
+			}
+		}
+
+		const dbGameVersion = checkerVersionUnknown
+			? existingGame.gameVersion
+			: isF95VersionRefresh && normalizedCheckerVersion
+				? normalizedCheckerVersion
+				: nextGameVersion;
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameUpdateSubmission(currentUser.id, gameId, {
 				name,
 				description: description || null,
@@ -193,14 +295,14 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				threadId: nextThreadId,
 				tags: tags || null,
 				link: link || null,
-				image,
+				image: storedImage,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion: typeof gameVersion === 'string' ? gameVersion : null
+				gameVersion: dbGameVersion
 			});
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameName: name,
-				gameImage: image
+				gameImage: storedImage || undefined
 			});
 
 			return json({
@@ -222,16 +324,31 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				threadId: threadId ? parseInt(threadId) : null,
 				tags: tags || null,
 				link: link || null,
-				image,
+				image: storedImage,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion:
-					typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+				gameVersion: dbGameVersion,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
 
-		if (!nextGameAutoCheck) {
+		if (checkerVersionUnknown) {
+			await disableGameAndTranslationAutoCheck(gameId);
+		} else if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(gameId);
+		} else if (
+			isF95VersionRefresh &&
+			normalizedCheckerVersion &&
+			acTranslationsForRefresh &&
+			needsF95VersionBump(
+				normalizedCheckerVersion,
+				existingGame.gameVersion,
+				acTranslationsForRefresh
+			)
+		) {
+			await db
+				.update(table.gameTranslation)
+				.set({ version: normalizedCheckerVersion, updatedAt: new Date() })
+				.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
 		}
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);
@@ -299,13 +416,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameDeleteSubmission(currentUser.id, gameId, reason);
 			const gameNameRow = await db
 				.select({ name: table.game.name })
@@ -326,6 +444,54 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Mode direct pour les admins ou superadmins en mode direct
+		const gameSnapshot = await db
+			.select()
+			.from(table.game)
+			.where(eq(table.game.id, gameId))
+			.limit(1);
+		const translationsSnapshot = await db
+			.select()
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gameId));
+
+		if (gameSnapshot.length > 0) {
+			const g = gameSnapshot[0];
+			const dataJson = JSON.stringify({
+				gameId,
+				reason,
+				originalGame: {
+					name: g.name,
+					description: g.description,
+					website: g.website,
+					threadId: g.threadId,
+					tags: g.tags,
+					link: g.link,
+					image: g.image,
+					gameAutoCheck: g.gameAutoCheck ?? true,
+					gameVersion: g.gameVersion ?? null
+				},
+				originalTranslations: translationsSnapshot.map((t) => ({
+					translationName: t.translationName,
+					version: t.version,
+					tversion: t.tversion,
+					status: t.status,
+					ttype: t.ttype,
+					tlink: t.tlink,
+					tname: t.tname,
+					translatorId: t.translatorId,
+					proofreaderId: t.proofreaderId,
+					ac: t.ac,
+					gameType: t.gameType
+				}))
+			});
+			void sendDiscordWebhookUpdatesSubmissionApplied({
+				submissionId: gameId,
+				submissionType: 'delete',
+				dataJson,
+				adminNotes: reason
+			});
+		}
+
 		let deletedTranslationIds: string[] = [];
 		await db.transaction(async (tx) => {
 			// Détacher les FK de submission avant suppression physique.

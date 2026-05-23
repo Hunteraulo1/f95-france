@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { hasPermission } from '$lib/server/permissions';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { error, isHttpError } from '@sveltejs/kit';
@@ -129,7 +130,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			translations,
 			translators,
 			pendingSubmissions,
-			user: locals.user
+			user: locals.user,
+			canManageGameAutoCheck: hasPermission(locals.permissions, 'games.auto_check')
 		};
 	} catch (err) {
 		if (isHttpError(err)) {

@@ -1,33 +1,11 @@
 import { env } from '$env/dynamic/private';
 import { runAutoCheckVersions } from '$lib/server/check-version';
+import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { Buffer } from 'node:buffer';
-import { timingSafeEqual } from 'node:crypto';
 import type { RequestHandler } from './$types';
-
-function safeCompareToken(a: string, b: string): boolean {
-	const bufA = Buffer.from(a, 'utf8');
-	const bufB = Buffer.from(b, 'utf8');
-	return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
-}
-
-function hasCronAuth(request: Request): boolean {
-	const secret = env.CRON_SECRET?.trim();
-	if (!secret) return false;
-
-	const uaRule = env.CRON_ALLOWED_USER_AGENT?.trim();
-	if (uaRule) {
-		const ua = request.headers.get('user-agent') ?? '';
-		if (!ua.includes(uaRule)) return false;
-	}
-
-	const authHeader = request.headers.get('authorization')?.trim();
-	const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-	return safeCompareToken(bearer, secret);
-}
 
 function parseCronMaxWaitMs(raw: string | undefined): number {
 	const parsed = Number.parseInt((raw ?? '').trim(), 10);
@@ -36,9 +14,18 @@ function parseCronMaxWaitMs(raw: string | undefined): number {
 	return 25_000;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
-	if (!hasCronAuth(request)) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+async function handleCheckVersion(request: Request): Promise<Response> {
+	const auth = verifyCronAuth(request);
+	if (!auth.ok) {
+		console.warn('[cron/check-version] auth refusée:', auth.reason);
+		return json(
+			{
+				error: 'Unauthorized',
+				reason: auth.reason,
+				message: cronAuthFailureMessage(auth.reason)
+			},
+			{ status: 401 }
+		);
 	}
 
 	console.info('[cron/check-version] déclenché à', new Date().toISOString());
@@ -123,4 +110,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('[cron/check-version] erreur:', error);
 		return json({ ok: false, error: 'Auto-check failed' }, { status: 500 });
 	}
-};
+}
+
+export const POST: RequestHandler = async ({ request }) => handleCheckVersion(request);
+
+/** Compatibilité avec les planificateurs configurés en GET. */
+export const GET: RequestHandler = async ({ request }) => handleCheckVersion(request);

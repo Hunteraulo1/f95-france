@@ -1,22 +1,35 @@
 import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_LABELS,
-  type PermissionKey
+	isSuperadminRole,
+	PERMISSION_CATALOG,
+	SYSTEM_ROLE_LABELS,
+	type PermissionKey
 } from '$lib/permissions/catalog';
+import {
+	isRoleEditMode,
+	legacyEditModeForRoleSlug,
+	ROLE_EDIT_MODE_OPTIONS
+} from '$lib/permissions/edit-mode';
 import { permissionCatalogGrouped } from '$lib/permissions/legacy';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  countPermissionsByRoles,
-  countUsersWithRoles,
-  invalidateRolePermissionsCache,
-  listAppRoles,
-  listRolePermissions,
-  roleExists,
-  setRolePermissions
+	countPermissionsByRoles,
+	countUsersWithRoles,
+	invalidateRolePermissionsCache,
+	listAppRoles,
+	listRolePermissions,
+	listRolePermissionsStored,
+	roleExists,
+	setRolePermissions
 } from '$lib/server/permissions';
 import { assertPermission } from '$lib/server/permissions-guard';
-import { fail } from '@sveltejs/kit';
+import {
+	assertCanManageRole,
+	filterPermissionsAssignableByActor,
+	getActorPermissionSet,
+	isRolesManagementSuperadmin
+} from '$lib/server/role-management-guard';
+import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -30,6 +43,19 @@ function slugifyRole(input: string): string {
 		.slice(0, 64);
 }
 
+const ROLE_NOTICE_MESSAGES: Record<string, string> = {
+	created: 'Rôle créé',
+	updated: 'Rôle mis à jour',
+	permissions: 'Permissions enregistrées',
+	deleted: 'Rôle supprimé'
+};
+
+function rolePageUrl(slug: string, notice?: keyof typeof ROLE_NOTICE_MESSAGES): string {
+	const params = new URLSearchParams({ role: slug });
+	if (notice) params.set('notice', notice);
+	return `/dashboard/roles?${params}`;
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'roles.manage');
 
@@ -40,28 +66,99 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		countPermissionsByRoles(roleSlugs)
 	]);
 	const orderedSlugs = roleSlugs;
+	const defaultSlug = orderedSlugs[0] ?? 'user';
+	const roleParam = url.searchParams.get('role');
 
-	const selectedSlug = url.searchParams.get('role') ?? orderedSlugs[0] ?? 'user';
-	const selectedPermissions = selectedSlug ? await listRolePermissions(selectedSlug) : [];
+	if (!roleParam) {
+		redirect(303, rolePageUrl(defaultSlug));
+	}
 
-	const permissionGroups = [...permissionCatalogGrouped().entries()].map(([group, items]) => ({
-		group,
-		items
-	}));
+	const selectedSlug = roleSlugs.includes(roleParam) ? roleParam : defaultSlug;
+	if (selectedSlug !== roleParam) {
+		redirect(303, rolePageUrl(selectedSlug));
+	}
+	const isSelectedRoleSuperadmin = isSuperadminRole(selectedSlug);
+	const selectedPermissionsEffective = isSelectedRoleSuperadmin
+		? PERMISSION_CATALOG.map((p) => p.key)
+		: selectedSlug
+			? await listRolePermissions(selectedSlug)
+			: [];
+	const selectedPermissions = isSelectedRoleSuperadmin
+		? [...selectedPermissionsEffective]
+		: selectedSlug
+			? await listRolePermissionsStored(selectedSlug)
+			: [];
+
+	const isSuperadmin = isRolesManagementSuperadmin(locals);
+	const actorPermissions = await getActorPermissionSet(locals);
+
+	const rolesWithAccess = await Promise.all(
+		roles.map(async (r) => {
+			const targetPerms = await listRolePermissions(r.slug);
+			const access = isSuperadmin
+				? ({ allowed: true } as const)
+				: await assertCanManageRole(locals, r.slug, targetPerms);
+			return {
+				...r,
+				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+				editMode:
+					r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
+				userCount: userCounts[r.slug] ?? 0,
+				permissionCount: isSuperadminRole(r.slug)
+					? PERMISSION_CATALOG.length
+					: (permissionCounts[r.slug] ?? 0),
+				canManage: access.allowed,
+				manageBlockedReason: access.allowed ? null : access.message
+			};
+		})
+	);
+
+	const permissionGroups = [...permissionCatalogGrouped().entries()]
+		.map(([group, items]) => ({
+			group,
+			items:
+				isSelectedRoleSuperadmin || isSuperadmin
+					? items
+					: items.filter((p) => actorPermissions.has(p.key))
+		}))
+		.filter((g) => g.items.length > 0);
+
+	const selectedRoleMeta = rolesWithAccess.find((r) => r.slug === selectedSlug);
+
+	const selectedPermissionDetails = PERMISSION_CATALOG.filter((p) =>
+		selectedPermissionsEffective.includes(p.key)
+	);
+
+	const noticeKey = url.searchParams.get('notice');
+	const noticeMessage =
+		noticeKey && noticeKey in ROLE_NOTICE_MESSAGES
+			? ROLE_NOTICE_MESSAGES[noticeKey as keyof typeof ROLE_NOTICE_MESSAGES]
+			: null;
 
 	return {
-		roles: roles.map((r) => ({
-			...r,
-			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-			userCount: userCounts[r.slug] ?? 0,
-			permissionCount: permissionCounts[r.slug] ?? 0
-		})),
+		isSuperadmin,
+		isSelectedRoleSuperadmin,
+		roles: rolesWithAccess,
+		noticeMessage,
 		selectedSlug,
 		selectedPermissions,
+		selectedPermissionDetails,
+		selectedCanManage: selectedRoleMeta?.canManage ?? false,
+		selectedManageBlockedReason: selectedRoleMeta?.manageBlockedReason ?? null,
 		permissionGroups,
-		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key)
+		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key),
+		editModeOptions: ROLE_EDIT_MODE_OPTIONS
 	};
 };
+
+async function rejectUnlessCanManageRole(
+	locals: App.Locals,
+	targetSlug: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+	const check = await assertCanManageRole(locals, targetSlug);
+	if (!check.allowed) return { ok: false, message: check.message };
+	return { ok: true };
+}
 
 export const actions: Actions = {
 	createRole: async ({ request, locals }) => {
@@ -70,6 +167,8 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
+		const editModeRaw = String(formData.get('editMode') ?? 'direct').trim();
+		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : 'direct';
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 
@@ -85,16 +184,37 @@ export const actions: Actions = {
 			return fail(409, { message: 'Un rôle avec cet identifiant existe déjà' });
 		}
 
+		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const actorPermissions = await getActorPermissionSet(locals);
+		const initialKeys = [
+			'dashboard.view',
+			'profile.view',
+			'settings.view',
+			'api_keys.own'
+		] as PermissionKey[];
+		const { keys: assignableInitial, rejected } = filterPermissionsAssignableByActor(
+			actorPermissions,
+			initialKeys,
+			isSuperadmin
+		);
+		if (!isSuperadmin && rejected.length > 0) {
+			return fail(403, {
+				message: 'Impossible de créer un rôle : permissions de base indisponibles pour votre compte'
+			});
+		}
+
 		try {
 			await db.insert(table.appRole).values({
 				slug,
 				label,
 				description,
+				editMode,
 				isSystem: false
 			});
-			await setRolePermissions(slug, ['dashboard.view', 'profile.view', 'settings.view', 'api_keys.own']);
-			return { success: true, message: 'Rôle créé', selectedSlug: slug };
+			await setRolePermissions(slug, assignableInitial);
+			redirect(303, rolePageUrl(slug, 'created'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('createRole:', error);
 			return fail(500, { message: 'Impossible de créer le rôle' });
 		}
@@ -107,28 +227,43 @@ export const actions: Actions = {
 		const slug = (formData.get('slug') as string)?.trim();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
+		const editModeRaw = String(formData.get('editMode') ?? '').trim();
+		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : null;
 
 		if (!slug || !label) {
 			return fail(400, { message: 'Champs requis manquants' });
 		}
+		if (!editMode) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
+		}
 
-		const [role] = await db.select().from(table.appRole).where(eq(table.appRole.slug, slug)).limit(1);
+		const [role] = await db
+			.select()
+			.from(table.appRole)
+			.where(eq(table.appRole.slug, slug))
+			.limit(1);
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
+
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
 
 		try {
 			await db
 				.update(table.appRole)
 				.set({
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
-					description,
+					description: role.isSystem ? role.description : description,
+					editMode,
 					updatedAt: new Date()
 				})
 				.where(eq(table.appRole.slug, slug));
+			invalidateRolePermissionsCache(slug);
 
-			return { success: true, message: 'Rôle mis à jour', selectedSlug: slug };
+			redirect(303, rolePageUrl(slug, 'updated'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('updateRole:', error);
 			return fail(500, { message: 'Impossible de mettre à jour le rôle' });
 		}
@@ -147,17 +282,44 @@ export const actions: Actions = {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
 
-		const keys = formData
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
+
+		const requested = formData
 			.getAll('permissions')
 			.map((v) => String(v))
-			.filter((k): k is PermissionKey =>
-				PERMISSION_CATALOG.some((p) => p.key === k)
-			);
+			.filter((k): k is PermissionKey => PERMISSION_CATALOG.some((p) => p.key === k));
+
+		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const actorPermissions = await getActorPermissionSet(locals);
+		const { keys, rejected } = filterPermissionsAssignableByActor(
+			actorPermissions,
+			requested,
+			isSuperadmin
+		);
+
+		if (!isSuperadmin && rejected.length > 0) {
+			return fail(403, {
+				message: 'Vous ne pouvez pas attribuer des droits que vous ne possédez pas'
+			});
+		}
+
+		const storedKeys = await listRolePermissionsStored(slug);
+		const preservedKeys = isSuperadmin
+			? []
+			: storedKeys.filter((key) => !actorPermissions.has(key));
+		const keysToSave = [...new Set([...preservedKeys, ...keys])];
+
+		const afterCheck = await assertCanManageRole(locals, slug, keysToSave);
+		if (!afterCheck.allowed) {
+			return fail(403, { message: afterCheck.message });
+		}
 
 		try {
-			await setRolePermissions(slug, keys);
-			return { success: true, message: 'Permissions enregistrées', selectedSlug: slug };
+			await setRolePermissions(slug, keysToSave);
+			redirect(303, rolePageUrl(slug, 'permissions'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('updatePermissions:', error);
 			return fail(500, { message: 'Impossible d’enregistrer les permissions' });
 		}
@@ -172,13 +334,20 @@ export const actions: Actions = {
 			return fail(400, { message: 'Rôle requis' });
 		}
 
-		const [role] = await db.select().from(table.appRole).where(eq(table.appRole.slug, slug)).limit(1);
+		const [role] = await db
+			.select()
+			.from(table.appRole)
+			.where(eq(table.appRole.slug, slug))
+			.limit(1);
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
 		if (role.isSystem) {
 			return fail(403, { message: 'Les rôles système ne peuvent pas être supprimés' });
 		}
+
+		const guard = await rejectUnlessCanManageRole(locals, slug);
+		if (!guard.ok) return fail(403, { message: guard.message });
 
 		const counts = await countUsersWithRoles([slug]);
 		if ((counts[slug] ?? 0) > 0) {
@@ -190,8 +359,11 @@ export const actions: Actions = {
 		try {
 			await db.delete(table.appRole).where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
-			return { success: true, message: 'Rôle supprimé' };
+			const roles = await listAppRoles();
+			const nextSlug = roles[0]?.slug ?? 'user';
+			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('deleteRole:', error);
 			return fail(500, { message: 'Impossible de supprimer le rôle' });
 		}

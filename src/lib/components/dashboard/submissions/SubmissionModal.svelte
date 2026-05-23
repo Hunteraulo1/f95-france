@@ -2,8 +2,19 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import { effectivePermissions } from '$lib/permissions/client';
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
+	import {
+		gameImageRequiredForWebsite,
+		isIntegrated,
+		isNoTranslation,
+		normalizeGameImageForStorage,
+		normalizeTranslationTversion,
+		requiresTranslationVersion
+	} from '$lib/utils/game-form-validation';
+	import { validateSubmissionEditLinks } from '$lib/utils/link-validation';
 	import {
 		getStatusBadge,
 		getTypeBadge,
@@ -133,7 +144,13 @@
 			editGameThreadId = game?.threadId != null ? String(game.threadId) : '';
 			editGameTags = (game?.tags ?? '') as string;
 			editGameLink = (game?.link ?? '') as string;
-			editGameImage = (game?.image ?? '') as string;
+			editGameImage = normalizeGameImageForStorage(
+				(game?.website ?? 'f95z') as string,
+				game?.image ?? '',
+				{
+					gameAutoCheck: typeof game?.gameAutoCheck === 'boolean' ? game.gameAutoCheck : undefined
+				}
+			);
 			editGameGameVersion = (game?.gameVersion ?? '') as string;
 			editGameAutoCheck = typeof game?.gameAutoCheck === 'boolean' ? game?.gameAutoCheck : true;
 
@@ -167,6 +184,37 @@
 	});
 
 	const isDeleteSubmission = $derived(submission?.type === 'delete');
+	const translationVersionRequired = $derived(requiresTranslationVersion(editTranslationTname));
+	const translationVersionLocked = $derived(
+		isNoTranslation(editTranslationTname) || isIntegrated(editTranslationTname)
+	);
+
+	const onEditTranslationTnameChange = () => {
+		if (isNoTranslation(editTranslationTname)) {
+			editTranslationTversion = '';
+			editTranslationTlink = '';
+			editTranslationTtype = 'hs';
+		} else if (isIntegrated(editTranslationTname)) {
+			editTranslationTversion = 'Intégrée';
+			editTranslationTlink = '';
+		} else if (editTranslationTversion === 'Intégrée') {
+			editTranslationTversion = '';
+		}
+	};
+
+	const buildEditTranslationPayload = () => ({
+		translationName: editTranslationTranslationName.trim() || null,
+		version: editTranslationVersion.trim() || null,
+		tversion: normalizeTranslationTversion(editTranslationTname, editTranslationTversion),
+		status: editTranslationStatus,
+		ttype: editTranslationTtype,
+		gameType: editTranslationGameType,
+		tlink: editTranslationTlink.trim() || null,
+		tname: editTranslationTname,
+		translatorId: editTranslationTranslatorId || null,
+		proofreaderId: editTranslationProofreaderId || null,
+		ac: editTranslationAc
+	});
 
 	const submissionDataJsonHidden = $derived(() => {
 		if (!submission) return '';
@@ -185,19 +233,9 @@
 
 		if (submission.type === 'translation') {
 			return JSON.stringify({
-				translation: {
-					translationName: editTranslationTranslationName.trim() || null,
-					version: editTranslationVersion.trim() || null,
-					tversion: editTranslationTversion,
-					status: editTranslationStatus,
-					ttype: editTranslationTtype,
-					gameType: editTranslationGameType,
-					tlink: editTranslationTlink.trim() || null,
-					tname: editTranslationTname,
-					translatorId: editTranslationTranslatorId || null,
-					proofreaderId: editTranslationProofreaderId || null,
-					ac: editTranslationAc
-				}
+				gameId: submission.gameId ?? submission.parsedData?.gameId ?? null,
+				translationId: submission.translationId ?? submission.parsedData?.translationId ?? null,
+				translation: buildEditTranslationPayload()
 			});
 		}
 
@@ -209,7 +247,9 @@
 			threadId: editGameThreadId.trim() || null,
 			tags: editGameTags.trim() || null,
 			link: editGameLink.trim() || null,
-			image: editGameImage.trim(),
+			image: normalizeGameImageForStorage(editGameWebsite, editGameImage, {
+				gameAutoCheck: editGameAutoCheck
+			}),
 			gameAutoCheck: editGameAutoCheck,
 			gameVersion: editGameGameVersion.trim() || null
 		};
@@ -217,23 +257,15 @@
 		const out: Record<string, unknown> = { game: gameObj };
 
 		if (includeTranslation) {
-			out.translation = {
-				translationName: editTranslationTranslationName.trim() || null,
-				version: editTranslationVersion.trim() || null,
-				tversion: editTranslationTversion,
-				status: editTranslationStatus,
-				ttype: editTranslationTtype,
-				gameType: editTranslationGameType,
-				tlink: editTranslationTlink.trim() || null,
-				tname: editTranslationTname,
-				translatorId: editTranslationTranslatorId || null,
-				proofreaderId: editTranslationProofreaderId || null,
-				ac: editTranslationAc
-			};
+			out.translation = buildEditTranslationPayload();
 		}
 
 		return JSON.stringify(out);
 	});
+
+	const requireGameImage = $derived(
+		gameImageRequiredForWebsite(editGameWebsite, { gameAutoCheck: editGameAutoCheck })
+	);
 
 	const isStatusRequiringAdminNote = $derived(
 		selectedStatus === 'rejected' || selectedStatus === 'to_fix'
@@ -241,7 +273,20 @@
 	const hasNotesError = $derived(
 		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
 	);
-	const canCancelSubmission = $derived(Boolean(!canEditStatus && submission?.status === 'pending'));
+	/** Modérateurs (ex. superadmin) : statut + pas de verrou « listeur en cours » sur Mes soumissions. */
+	const canReviewSubmissions = $derived($effectivePermissions.includes('submissions.review'));
+	const canModerateSubmission = $derived(canEditStatus || canReviewSubmissions);
+	const statusFormAction = $derived(
+		canEditStatus ? '?/updateStatus' : `${resolve('/dashboard/submits')}?/updateStatus`
+	);
+	const submissionDataFormAction = $derived(
+		canModerateSubmission && !canEditStatus
+			? `${resolve('/dashboard/submits')}?/updateSubmissionData`
+			: '?/updateSubmissionData'
+	);
+	const canCancelSubmission = $derived(
+		Boolean(!canModerateSubmission && submission?.status === 'pending')
+	);
 	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
@@ -257,7 +302,7 @@
 	/** Admin : en attente ou ouverte, sauf soumissions de suppression. */
 	const canEditSubmissionDataAsAdmin = $derived(
 		Boolean(
-			canEditStatus &&
+			canModerateSubmission &&
 			!isDeleteSubmission &&
 			(submission?.status === 'pending' || submission?.status === 'opened')
 		)
@@ -266,12 +311,12 @@
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
 	/** Formulaire admin (statut) sans champs de données éditables (ex. suppression). */
-	const canAdminManageStatusOnly = $derived(Boolean(canEditStatus && isDeleteSubmission));
+	const canAdminManageStatusOnly = $derived(Boolean(canModerateSubmission && isDeleteSubmission));
 	const showAdminSubmissionForm = $derived(
 		canEditSubmissionDataAllowed || canAdminManageStatusOnly
 	);
 	const isOpenedReadOnlyForUser = $derived(
-		Boolean(!canEditStatus && submission?.status === 'opened')
+		Boolean(!canModerateSubmission && submission?.status === 'opened')
 	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
 
@@ -1004,14 +1049,32 @@
 							<form
 								id="submission-save-form"
 								method="POST"
-								action={canEditStatus ? '?/updateStatus' : '?/updateSubmissionData'}
+								action={canModerateSubmission ? statusFormAction : submissionDataFormAction}
 								use:enhance={(e) => {
 									submissionEditError = null;
 									statusError = null;
-									if (canEditStatus) {
+									if (canModerateSubmission) {
 										const validationError = validateStatusChange(selectedStatus, adminNotesText);
 										if (validationError) {
 											statusError = validationError;
+											e.cancel();
+											return;
+										}
+									}
+									if (canEditSubmissionDataAllowed && submission) {
+										const linkError = validateSubmissionEditLinks({
+											submissionType: submission.type,
+											gameLink: editGameLink,
+											gameImage: editGameImage,
+											gameWebsite: editGameWebsite,
+											translationTlink: editTranslationTlink,
+											translationTname: editTranslationTname,
+											includeTranslation: Boolean(submission.parsedData?.translation),
+											translatorPages: editTranslatorPages,
+											requireGameImage: requireGameImage
+										});
+										if (linkError) {
+											submissionEditError = linkError;
 											e.cancel();
 											return;
 										}
@@ -1025,7 +1088,7 @@
 												typeof result.data === 'object' && 'message' in result.data
 													? String(result.data.message)
 													: 'Erreur lors de la mise à jour';
-											if (canEditStatus) {
+											if (canModerateSubmission) {
 												statusError = message;
 											} else {
 												submissionEditError = message;
@@ -1039,7 +1102,7 @@
 									<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 									<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
 								{/if}
-								{#if canEditStatus}
+								{#if canModerateSubmission}
 									<input type="hidden" name="status" value={selectedStatus} />
 									<input type="hidden" name="adminNotes" value={adminNotesText} />
 								{/if}
@@ -1099,6 +1162,7 @@
 									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages' && submission.type !== 'delete'}
 										<div class="mt-2 space-y-4">
 											<h5 class="text-md font-semibold">Détails du jeu</h5>
+											<OtherSiteImageWarning website={editGameWebsite} />
 											<div class="grid gap-4 md:grid-cols-2">
 												<div class="form-control">
 													<label class="label" for="editGameName">
@@ -1183,16 +1247,20 @@
 												</div>
 												<div class="form-control md:col-span-2">
 													<label class="label" for="editGameImage">
-														<span class="label-text">Image</span>
+														<span class="label-text">
+															Image{requireGameImage ? '' : ' (optionnel)'}
+														</span>
 													</label>
 													<input
 														id="editGameImage"
 														name="editGameImage"
 														class="input-bordered input w-full"
 														type="url"
-														placeholder="https://..."
+														placeholder={requireGameImage
+															? 'https://...'
+															: 'Laisser vide si aucune vignette'}
 														bind:value={editGameImage}
-														required
+														required={requireGameImage}
 													/>
 												</div>
 												<div class="form-control md:col-span-2">
@@ -1261,7 +1329,8 @@
 														class="input-bordered input w-full"
 														type="text"
 														bind:value={editTranslationTversion}
-														required
+														required={translationVersionRequired}
+														disabled={translationVersionLocked}
 													/>
 												</div>
 												<div class="form-control">
@@ -1273,6 +1342,7 @@
 														name="editTranslationTname"
 														class="select-bordered select w-full"
 														bind:value={editTranslationTname}
+														onchange={onEditTranslationTnameChange}
 														required
 													>
 														<option value="no_translation">Pas de traduction</option>
@@ -1411,7 +1481,7 @@
 										</div>
 									{/if}
 								</fieldset>
-								{#if !canEditStatus && submission?.status !== 'opened'}
+								{#if !canModerateSubmission && submission?.status !== 'opened'}
 									<div class="modal-action mt-4">
 										<button type="button" class="btn" onclick={onClose}>Annuler</button>
 										<button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -1452,7 +1522,7 @@
 					{/if}
 
 					<!-- Section de modification du statut -->
-					{#if canEditStatus}
+					{#if canModerateSubmission}
 						<div class="mt-6 border-t border-base-300 pt-4">
 							<h4 class="text-md mb-4 font-semibold">Modifier le statut</h4>
 

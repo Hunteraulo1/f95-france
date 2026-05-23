@@ -6,11 +6,17 @@ import {
 	sendDiscordWebhookUpdatesAutoCheckVersionBump,
 	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
+import {
+	isF95CheckerVersionAligned,
+	needsF95VersionBump,
+	normalizeCheckerVersion
+} from '$lib/server/f95-checker-alignment';
+import { disableGameAndTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
-import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
+import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -92,11 +98,19 @@ async function fetchF95Versions(
 	return versions;
 }
 
-type AutoCheckResult = {
+export type AutoCheckResult = {
 	scannedGames: number;
 	updatedGames: number;
 	updatedTranslations: number;
+	disabledAlignedGames: number;
+	translatorWebhooksSent: number;
+	proofreaderWebhooksSent: number;
 	issues: AutoCheckIssue[];
+};
+
+export type RunAutoCheckVersionsOptions = {
+	/** Recharge les URL webhook depuis l’env (utile après changement de config / exécution manuelle). */
+	refreshWebhookUrls?: boolean;
 };
 
 /**
@@ -112,7 +126,10 @@ function autoCheckGamePatchFromScrape(scraped: ScrapedThreadGame) {
 }
 
 /** API POST /api/cron/check-version / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
-export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
+export async function runAutoCheckVersions(
+	options?: RunAutoCheckVersionsOptions
+): Promise<AutoCheckResult> {
+	const refreshWebhookUrls = options?.refreshWebhookUrls ?? false;
 	const issues: AutoCheckIssue[] = [];
 	const rows = await db
 		.select({
@@ -144,7 +161,15 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		);
 
 	if (rows.length === 0) {
-		return { scannedGames: 0, updatedGames: 0, updatedTranslations: 0, issues };
+		return {
+			scannedGames: 0,
+			updatedGames: 0,
+			updatedTranslations: 0,
+			disabledAlignedGames: 0,
+			translatorWebhooksSent: 0,
+			proofreaderWebhooksSent: 0,
+			issues
+		};
 	}
 
 	const uniqueByGame = new Map<
@@ -191,52 +216,80 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		threadUrl: string | null;
 	};
 
-	/** Bump si la fiche jeu OU une traduction auto-check a une « version jeu » (ligne) différente du checker. */
-	const gameNeedsCheckerBump = (g: UniqueGameRow) => {
-		const nextRaw = versions.get(g.threadId);
-		if (!nextRaw || nextRaw === 'Unknown') return false;
-		const next = nextRaw.trim();
-		if ((g.gameVersion ?? '').trim() !== next) return true;
-		for (const r of rows) {
-			if (r.gameId !== g.gameId || !r.ac) continue;
-			const rowV = (r.version ?? '').trim();
-			if (rowV !== '' && rowV !== next) return true;
-		}
-		return false;
-	};
+	const gameTranslationsFor = (gameId: string) =>
+		rows.filter((r) => r.gameId === gameId).map((r) => ({ ac: r.ac, version: r.version }));
+
+	const gameNeedsCheckerBump = (g: UniqueGameRow) =>
+		needsF95VersionBump(versions.get(g.threadId), g.gameVersion, gameTranslationsFor(g.gameId));
+
+	const gameIsCheckerAligned = (g: UniqueGameRow) =>
+		isF95CheckerVersionAligned(
+			versions.get(g.threadId),
+			g.gameVersion,
+			gameTranslationsFor(g.gameId)
+		);
 
 	const changedGames = Array.from(uniqueByGame.values()).filter(gameNeedsCheckerBump);
+	const alignedGames = Array.from(uniqueByGame.values()).filter(
+		(g) => !gameNeedsCheckerBump(g) && gameIsCheckerAligned(g)
+	);
+
+	for (const game of alignedGames) {
+		await disableGameAndTranslationAutoCheck(game.gameId);
+	}
 
 	if (changedGames.length === 0) {
-		return { scannedGames: uniqueByGame.size, updatedGames: 0, updatedTranslations: 0, issues };
+		return {
+			scannedGames: uniqueByGame.size,
+			updatedGames: 0,
+			updatedTranslations: 0,
+			disabledAlignedGames: alignedGames.length,
+			translatorWebhooksSent: 0,
+			proofreaderWebhooksSent: 0,
+			issues
+		};
 	}
 
 	const changedGameIds = changedGames.map((g) => g.gameId);
 	const impactedTranslations = rows.filter((r) => changedGameIds.includes(r.gameId));
+	const bumpTranslations = await db
+		.select({
+			gameId: table.gameTranslation.gameId,
+			translationName: table.gameTranslation.translationName,
+			version: table.gameTranslation.version,
+			tversion: table.gameTranslation.tversion,
+			tname: table.gameTranslation.tname,
+			translatorId: table.gameTranslation.translatorId,
+			proofreaderId: table.gameTranslation.proofreaderId
+		})
+		.from(table.gameTranslation)
+		.where(inArray(table.gameTranslation.gameId, changedGameIds));
 	const staffIds = Array.from(
 		new Set(
-			impactedTranslations.flatMap((r) =>
+			bumpTranslations.flatMap((r) =>
 				[r.translatorId, r.proofreaderId].filter((v): v is string => typeof v === 'string')
 			)
 		)
 	);
 	const staffRows = staffIds.length
 		? await db
-				.select({ id: table.translator.id, discordId: table.translator.discordId })
+				.select({
+					id: table.translator.id,
+					name: table.translator.name,
+					discordId: table.translator.discordId
+				})
 				.from(table.translator)
 				.where(inArray(table.translator.id, staffIds))
 		: [];
 	const staffMentionById = new Map(
 		staffRows.map((s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const)
 	);
-
 	const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
 	const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
 
 	for (const game of changedGames) {
-		const newVersionRaw = versions.get(game.threadId);
-		if (!newVersionRaw || newVersionRaw === 'Unknown') continue;
-		const newVersion = newVersionRaw.trim();
+		const newVersion = normalizeCheckerVersion(versions.get(game.threadId));
+		if (!newVersion) continue;
 
 		await db
 			.update(table.game)
@@ -281,23 +334,12 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			});
 		}
 
-		for (const t of impactedTranslations.filter((r) => r.gameId === game.gameId)) {
-			if (
-				!shouldNotifyTranslatorOnAutoCheckVersionBump(
-					{
-						version: t.version,
-						tversion: t.tversion,
-						tname: t.tname
-					},
-					newVersion
-				)
-			) {
-				continue;
-			}
+		for (const t of bumpTranslations.filter((r) => r.gameId === game.gameId)) {
+			if (tradVerIndicatesIntegrated(t.tversion, t.tname)) continue;
 			translatorWebhookLines.push({
+				gameId: game.gameId,
 				gameName: game.gameName,
 				gameImage: game.gameImage,
-				gameLink: game.threadUrl,
 				translationName: t.translationName,
 				oldVersion: game.gameVersion ?? '—',
 				newVersion,
@@ -305,9 +347,9 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 			});
 			if (t.proofreaderId) {
 				proofreaderWebhookLines.push({
+					gameId: game.gameId,
 					gameName: game.gameName,
 					gameImage: game.gameImage,
-					gameLink: game.threadUrl,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion ?? '—',
 					newVersion,
@@ -326,6 +368,7 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 					gameImage: game.gameImage,
 					gameLink: game.threadUrl,
 					translationName: t.translationName,
+					translatorId: t.translatorId,
 					oldVersion: game.gameVersion,
 					newVersion
 				});
@@ -349,9 +392,14 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		}
 	}
 
+	let translatorWebhooksSent = 0;
+	let proofreaderWebhooksSent = 0;
 	if (translatorWebhookLines.length > 0) {
 		try {
-			await sendDiscordWebhookTranslatorsVersionBumps(translatorWebhookLines);
+			translatorWebhooksSent = await sendDiscordWebhookTranslatorsVersionBumps(
+				translatorWebhookLines,
+				{ forceRefreshWebhookUrls: refreshWebhookUrls }
+			);
 		} catch (error) {
 			issues.push({
 				stage: 'webhook_translators',
@@ -362,7 +410,10 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 	}
 	if (proofreaderWebhookLines.length > 0) {
 		try {
-			await sendDiscordWebhookProofreadersVersionBumps(proofreaderWebhookLines);
+			proofreaderWebhooksSent = await sendDiscordWebhookProofreadersVersionBumps(
+				proofreaderWebhookLines,
+				{ forceRefreshWebhookUrls: refreshWebhookUrls }
+			);
 		} catch (error) {
 			issues.push({
 				stage: 'webhook_proofreaders',
@@ -388,6 +439,9 @@ export async function runAutoCheckVersions(): Promise<AutoCheckResult> {
 		scannedGames: uniqueByGame.size,
 		updatedGames: changedGames.length,
 		updatedTranslations: impactedTranslations.length,
+		disabledAlignedGames: alignedGames.length,
+		translatorWebhooksSent,
+		proofreaderWebhooksSent,
 		issues
 	};
 }

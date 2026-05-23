@@ -1,9 +1,9 @@
 import {
-  createApiKey,
-  listApiKeysForAdmin,
-  restoreRevokedApiKeyAdmin,
-  revokeApiKeyForActor,
-  updateApiKeyLimitsAdmin
+	createApiKey,
+	listApiKeysForAdmin,
+	restoreRevokedApiKeyAdmin,
+	revokeApiKeyForActor,
+	updateApiKeyLimitsAdmin
 } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';

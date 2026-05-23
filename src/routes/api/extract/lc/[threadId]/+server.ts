@@ -1,5 +1,6 @@
+import { respondExtractThreadGame } from '$lib/server/extract-response';
 import { corsHeadersExtract, runExtractThreadGame } from '$lib/server/extract-thread-game';
-import { json, redirect, type RequestHandler } from '@sveltejs/kit';
+import { type RequestHandler } from '@sveltejs/kit';
 
 const WEBSITE = 'lc' as const;
 
@@ -19,19 +20,7 @@ export const GET: RequestHandler = async (event) => {
 		...h
 	});
 
-	if (!out.ok) {
-		return json(out.body, { status: out.status, headers: mergeHeaders() });
-	}
-
-	const accept = event.request.headers.get('accept') ?? '';
-	if (accept.includes('text/html')) {
-		return redirect(302, out.redirectPath);
-	}
-
-	return json(
-		{ created: out.created, gameId: out.gameId, redirect: out.redirectPath },
-		{ headers: mergeHeaders() }
-	);
+	return respondExtractThreadGame(event, out, mergeHeaders);
 };
 
 export const POST: RequestHandler = async (event) => {
@@ -47,12 +36,5 @@ export const POST: RequestHandler = async (event) => {
 		...h
 	});
 
-	if (!out.ok) {
-		return json(out.body, { status: out.status, headers: mergeHeaders() });
-	}
-
-	return json(
-		{ created: out.created, gameId: out.gameId, redirect: out.redirectPath },
-		{ headers: mergeHeaders() }
-	);
+	return respondExtractThreadGame(event, out, mergeHeaders);
 };

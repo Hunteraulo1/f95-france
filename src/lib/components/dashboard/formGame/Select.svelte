@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
@@ -63,7 +64,7 @@
 		(game[name] as FormGameType[keyof FormGameType]) = val;
 
 		if (name === 'website') {
-			if (game.website !== 'f95z') {
+			if (!gameAutoCheckEnabledForWebsite(game.website)) {
 				game.ac = false;
 				game.gameAutoCheck = false;
 			} else {

@@ -1,16 +1,16 @@
 import { env } from '$env/dynamic/private';
 import {
-  getEffectiveConfig,
-  getEffectiveConfigFromRow,
-  toConfigClientSafe
+	getEffectiveConfig,
+	getEffectiveConfigFromRow,
+	toConfigClientSafe
 } from '$lib/server/app-config';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-  deleteGameTranslationsFromGoogleSheet,
-  syncDbToSpreadsheetBulk
+	deleteGameTranslationsFromGoogleSheet,
+	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
 import { assertPermission } from '$lib/server/permissions-guard';
@@ -1067,7 +1067,7 @@ export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
 		await assertPermission(locals, 'dev.panel');
 		try {
-			const result = await runAutoCheckVersions();
+			const result = await runAutoCheckVersions({ refreshWebhookUrls: true });
 			await db
 				.update(table.config)
 				.set({
@@ -1078,7 +1078,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check lancé: ${result.updatedGames} jeu(x) mis à jour`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} aligné(s) (auto-check désactivé), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
 				details: result
 			};
 		} catch (error: unknown) {

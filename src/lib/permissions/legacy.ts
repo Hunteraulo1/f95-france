@@ -1,8 +1,4 @@
-import {
-  PERMISSION_CATALOG,
-  SYSTEM_ROLE_PERMISSIONS,
-  type PermissionKey
-} from './catalog';
+import { PERMISSION_CATALOG, SYSTEM_ROLE_PERMISSIONS, type PermissionKey } from './catalog';
 
 export function legacyPermissionsForRole(roleSlug: string): PermissionKey[] {
 	const mapped = SYSTEM_ROLE_PERMISSIONS[roleSlug];

@@ -23,6 +23,7 @@
 					{@render modalAction()}
 				{/if}
 				<button
+					type="button"
 					class="btn"
 					onclick={() => {
 						showModal = false;

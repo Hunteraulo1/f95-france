@@ -11,8 +11,10 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -86,9 +88,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return json({ error: 'Jeu non trouvé' }, { status: 404 });
 		}
 
+		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
+		const translationLinkError = validateTranslationLinkField({ tlink, tname: tnameNorm });
+		if (translationLinkError) {
+			return json({ error: translationLinkError }, { status: 400 });
+		}
+
 		const gv = normVersion(game[0].gameVersion);
 		const vv = normVersion(version);
-		const tnameNorm = typeof tname === 'string' && tname.length > 0 ? tname : 'translation';
 		/** Règle auto-check: true si version ref = version jeu, ou traduction intégrée, ou pas de traduction. */
 		const acValue =
 			game[0].gameAutoCheck === true &&
@@ -106,13 +113,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationSubmission(currentUser.id, gameId, {
 				translationName: translationName || null,
 				version: typeof version === 'string' ? version.trim() || null : null,

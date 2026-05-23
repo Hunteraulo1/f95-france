@@ -2,26 +2,29 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-  sendDiscordWebhookAdminNewSubmission,
-  sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-  deleteTranslationFromGoogleSheet,
-  syncTranslationToGoogleSheet,
-  syncTranslatorToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	syncTranslationToGoogleSheet,
+	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
+import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
-  hasGameTranslationGameTypeColumn,
-  publicErrorFromUnknown
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-  createTranslationDeleteSubmission,
-  createTranslationUpdateSubmission
+	createTranslationDeleteSubmission,
+	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -54,8 +57,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			silentMode,
 			ac,
 			translatorId,
-			proofreaderId
+			proofreaderId,
+			f95VersionRefresh
 		} = body;
+
+		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
 		const beforeRows = await db
 			.select()
@@ -70,8 +76,22 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const before = beforeRows[0];
-		const normalizedVersion =
-			typeof version === 'string' ? version.trim() || null : (before.version ?? null);
+		const normalizedVersion = isF95VersionRefresh
+			? typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null)
+			: typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null);
+
+		const resolvedTranslatorId =
+			'translatorId' in body ? (translatorId ? String(translatorId) : null) : before.translatorId;
+		const resolvedProofreaderId =
+			'proofreaderId' in body
+				? proofreaderId
+					? String(proofreaderId)
+					: null
+				: before.proofreaderId;
 
 		const TNAMES = [
 			'no_translation',
@@ -85,23 +105,41 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const linkNotRequired = effectiveTname === 'integrated' || effectiveTname === 'no_translation';
 		const requiresTranslationVersion = effectiveTname !== 'no_translation';
-		const tlinkStored = linkNotRequired ? '' : typeof tlink === 'string' ? tlink : '';
-		if (
-			(requiresTranslationVersion && !tversion) ||
-			!status ||
-			!ttype ||
-			(!linkNotRequired && !tlinkStored.trim())
-		) {
-			return json(
-				{
-					error: linkNotRequired
-						? requiresTranslationVersion
-							? 'Version de traduction, statut et type sont requis'
-							: 'Statut et type sont requis'
-						: 'Tous les champs sont requis (y compris le lien de traduction)'
-				},
-				{ status: 400 }
-			);
+		const tlinkStored = linkNotRequired
+			? ''
+			: typeof tlink === 'string'
+				? tlink
+				: (before.tlink ?? '');
+		const effectiveTversion = isF95VersionRefresh ? before.tversion : tversion;
+		const effectiveStatus = isF95VersionRefresh ? before.status : status;
+		const effectiveTtype = isF95VersionRefresh ? before.ttype : ttype;
+
+		if (!isF95VersionRefresh) {
+			if (
+				(requiresTranslationVersion && !effectiveTversion) ||
+				!effectiveStatus ||
+				!effectiveTtype ||
+				(!linkNotRequired && !tlinkStored.trim())
+			) {
+				return json(
+					{
+						error: linkNotRequired
+							? requiresTranslationVersion
+								? 'Version de traduction, statut et type sont requis'
+								: 'Statut et type sont requis'
+							: 'Tous les champs sont requis (y compris le lien de traduction)'
+					},
+					{ status: 400 }
+				);
+			}
+
+			const translationLinkError = validateTranslationLinkField({
+				tlink: tlinkStored,
+				tname: effectiveTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
+			}
 		}
 
 		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
@@ -113,24 +151,27 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
 		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
-		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const canManuallyEditTranslationAc = hasPermission(locals.permissions, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
 		const gameAllowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
-		const acValue = !gameAllowsTranslationAc
-			? false
-			: canManuallyEditTranslationAc && acRequested !== undefined
-				? acRequested
-				: (before.ac ?? false);
+		const acValue = isF95VersionRefresh
+			? (before.ac ?? false)
+			: !gameAllowsTranslationAc
+				? false
+				: canManuallyEditTranslationAc && acRequested !== undefined
+					? acRequested
+					: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
 				translationName: translationName || null,
 				version: normalizedVersion,
@@ -142,8 +183,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
 					? { gameType: gameTypeBody.trim() }
 					: {}),
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
+				translatorId: resolvedTranslatorId,
+				proofreaderId: resolvedProofreaderId,
 				ac: acValue
 			});
 			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
@@ -177,15 +218,15 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: translationName || null,
+			translationName: isF95VersionRefresh ? before.translationName : translationName || null,
 			version: normalizedVersion,
-			tversion,
-			status,
-			ttype,
-			tlink: tlinkStored,
+			tversion: effectiveTversion,
+			status: effectiveStatus,
+			ttype: effectiveTtype,
+			tlink: isF95VersionRefresh ? before.tlink : tlinkStored,
 			tname: effectiveTname,
-			translatorId: translatorId || null,
-			proofreaderId: proofreaderId || null,
+			translatorId: resolvedTranslatorId,
+			proofreaderId: resolvedProofreaderId,
 			ac: acValue,
 			updatedAt: new Date()
 		};
@@ -200,10 +241,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.gameTranslation)
 			.set(directSet)
 			.where(
-				and(
-					eq(table.gameTranslation.id, translationId),
-					eq(table.gameTranslation.gameId, gameId)
-				)
+				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
 			);
 
 		const dataJson = JSON.stringify({
@@ -222,7 +260,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
-				version: before.version,
+				version: before.version ?? null,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,
@@ -324,13 +362,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+		});
 
 		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,

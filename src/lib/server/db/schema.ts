@@ -1,13 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
-  integer,
-  pgEnum,
-  pgTable,
-  primaryKey,
-  text,
-  timestamp,
-  varchar
+	boolean,
+	integer,
+	pgEnum,
+	pgTable,
+	primaryKey,
+	text,
+	timestamp,
+	varchar
 } from 'drizzle-orm/pg-core';
 
 export const themeEnum = pgEnum('theme_enum', ['system', 'light', 'dark']);
@@ -223,7 +223,7 @@ export const apiLog = pgTable('api_log', {
 		onUpdate: 'cascade'
 	}),
 	method: varchar('method', { length: 16 }).notNull(),
-	route: varchar('route', { length: 255 }).notNull(),
+	route: text('route').notNull(),
 	status: integer('status').notNull(),
 	ipAddress: varchar('ip_address', { length: 64 }),
 	payload: text('payload'),
@@ -255,6 +255,8 @@ export const appRole = pgTable('app_role', {
 	slug: varchar('slug', { length: 64 }).primaryKey(),
 	label: varchar('label', { length: 255 }).notNull(),
 	description: text('description'),
+	/** direct | submission | user_direct_mode — voir `$lib/permissions/edit-mode`. */
+	editMode: varchar('edit_mode', { length: 32 }).notNull().default('direct'),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

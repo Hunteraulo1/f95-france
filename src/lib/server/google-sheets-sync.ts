@@ -670,11 +670,13 @@ async function applyAcColumnFromJeuxSheetToDb(
 					.from(table.gameTranslation)
 					.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
 				const hasAc = (row?.n ?? 0) > 0;
-				const gameAutoCheck = gameAutoCheckEnabledForWebsite(g.website ?? '') && hasAc;
-				await db
-					.update(table.game)
-					.set({ gameAutoCheck, updatedAt: new Date() })
-					.where(eq(table.game.id, gameId));
+				// Ne désactive le jeu que s’il n’y a plus aucune traduction en AC (ne force pas true sans AC).
+				if (!hasAc && gameAutoCheckEnabledForWebsite(g.website ?? '')) {
+					await db
+						.update(table.game)
+						.set({ gameAutoCheck: false, updatedAt: new Date() })
+						.where(eq(table.game.id, gameId));
+				}
 			})
 		);
 	}

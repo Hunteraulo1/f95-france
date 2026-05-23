@@ -127,6 +127,34 @@
       "when": 1779284827467,
       "tag": "0017_abandoned_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1779297610459,
+      "tag": "0018_sad_domino",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0019_dev_impersonate",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779301000000,
+      "tag": "0020_maintenance_manage",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779532322829,
+      "tag": "0021_api_log_route_text",
+      "breakpoints": true
     }
   ]
 }

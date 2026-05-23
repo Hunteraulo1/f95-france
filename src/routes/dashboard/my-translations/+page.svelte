@@ -262,7 +262,7 @@
 								class="max-w-40 overflow-hidden text-sm text-nowrap text-ellipsis hover:overflow-visible"
 							>
 								<div class="flex flex-col">
-									<span>Ref: {t.version || '—'}</span>
+									<span>Ref: {t.referenceVersion || '—'}</span>
 									<span>Trad: {t.tversion || '—'}</span>
 									<span class="text-xs opacity-70">Jeu: {t.game.gameVersion || '—'}</span>
 								</div>

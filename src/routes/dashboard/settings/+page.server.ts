@@ -2,46 +2,43 @@ import { hasEffectivePermission } from '$lib/permissions/effective';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import {
+	DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
+	DEV_IMPERSONATION_ORIGIN_COOKIE,
+	isDevImpersonationTargetAllowed,
+	returnToOwnAccount as returnToOwnAccountAction
+} from '$lib/server/dev-impersonation';
 import { assertPermission } from '$lib/server/permissions-guard';
+import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, notInArray } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		throw new Error('Non authentifié');
 	}
 
-	const canUseDevTools = hasEffectivePermission(
+	const canImpersonateUsers = hasEffectivePermission(
 		locals.user.role,
 		locals.permissions,
-		'dev.panel'
+		'dev.impersonate'
 	);
 
-	const devUsers = canUseDevTools
-			? await db
-					.select({
-						id: table.user.id,
-						username: table.user.username,
-						role: table.user.role
-					})
-					.from(table.user)
-			: [];
+	const devUsers = canImpersonateUsers
+		? await db
+				.select({
+					id: table.user.id,
+					username: table.user.username,
+					role: table.user.role
+				})
+				.from(table.user)
+				.where(notInArray(table.user.role, [...DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES]))
+		: [];
 
-	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-	const canReturnToOwnAccount = Boolean(devOriginUserId);
-	const [devOriginUser] =
-		devOriginUserId && canReturnToOwnAccount
-			? await db
-					.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-					.from(table.user)
-					.where(eq(table.user.id, devOriginUserId))
-					.limit(1)
-			: [];
 	const passkeys = await db
 		.select({
 			id: table.passkey.id,
@@ -59,8 +56,11 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		.from(table.translator)
 		.where(eq(table.translator.userId, locals.user.id))
 		.limit(1);
+	const roleEditMode = await getRoleEditMode(locals.user.role);
+
 	return {
 		user: locals.user,
+		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
 		passkeys,
 		linkedTranslator: linkedTranslator
@@ -69,9 +69,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 					name: linkedTranslator.name,
 					pages: JSON.parse(linkedTranslator.pages || '[]') as Array<{ name: string; link: string }>
 				}
-			: null,
-		canReturnToOwnAccount: Boolean(canReturnToOwnAccount && devOriginUser),
-		devOriginUsername: devOriginUser?.username ?? null
+			: null
 	};
 };
 
@@ -288,12 +286,12 @@ export const actions: Actions = {
 				message: 'Revenez sur votre compte pour modifier le mode direct.'
 			});
 		}
-		const role = locals.user.role.trim();
-		const canEdit =
-			role === 'superadmin' ||
-			hasEffectivePermission(role, locals.permissions, 'dev.panel');
-		if (!canEdit) {
-			return fail(403, { message: 'Accès non autorisé' });
+		const roleEditMode = await getRoleEditMode(locals.user.role);
+		if (roleEditMode !== 'user_direct_mode') {
+			return fail(403, {
+				message:
+					'Votre rôle n’utilise pas le mode direct personnel. Demandez à un administrateur de modifier le mode d’enregistrement du rôle.'
+			});
 		}
 
 		const formData = await request.formData();
@@ -486,7 +484,7 @@ export const actions: Actions = {
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
-		await assertPermission(locals, 'dev.panel');
+		await assertPermission(locals, 'dev.impersonate');
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });
 		}
@@ -503,7 +501,8 @@ export const actions: Actions = {
 		const [targetUser] = await db
 			.select({
 				id: table.user.id,
-				username: table.user.username
+				username: table.user.username,
+				role: table.user.role
 			})
 			.from(table.user)
 			.where(eq(table.user.id, targetUserId))
@@ -511,6 +510,9 @@ export const actions: Actions = {
 
 		if (!targetUser) {
 			return fail(404, { message: 'Utilisateur introuvable' });
+		}
+		if (!isDevImpersonationTargetAllowed(targetUser.role)) {
+			return fail(403, { message: 'Impossible de basculer vers un super administrateur' });
 		}
 
 		try {
@@ -545,31 +547,6 @@ export const actions: Actions = {
 			return fail(401, { message: 'Session introuvable' });
 		}
 
-		const originUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-		if (!originUserId) {
-			return fail(400, { message: "Aucun compte d'origine à restaurer" });
-		}
-
-		const [originUser] = await db
-			.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-			.from(table.user)
-			.where(eq(table.user.id, originUserId))
-			.limit(1);
-
-		if (!originUser || originUser.role !== 'superadmin') {
-			return fail(403, { message: "Le compte d'origine est invalide ou n'est pas superadmin" });
-		}
-
-		try {
-			await db
-				.update(table.session)
-				.set({ userId: originUser.id })
-				.where(eq(table.session.id, locals.session.id));
-			cookies.delete(DEV_IMPERSONATION_ORIGIN_COOKIE, { path: '/' });
-			return { success: true, message: `Retour sur ${originUser.username}` };
-		} catch (error: unknown) {
-			console.error("Erreur lors du retour au compte d'origine:", error);
-			return fail(500, { message: "Erreur lors du retour au compte d'origine" });
-		}
+		return returnToOwnAccountAction(locals.session.id, cookies);
 	}
 };
