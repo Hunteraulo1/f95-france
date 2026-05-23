@@ -1048,8 +1048,26 @@
 						Précédent
 					</button>
 				{/if}
-				{#if game.website === 'lc' || game.website === 'f95z'}
-					<Insert bind:game />
+				{#if (game.website === 'lc' || game.website === 'f95z') && step === 2}
+					<Insert
+						bind:game
+						onApplied={({ hasImage }) => {
+							if (game.website === 'lc') {
+								lcScrapeStatus = hasImage ? 'ok' : 'no_image';
+							}
+							if (game.website === 'f95z') {
+								f95ScrapeFailed = false;
+								scrapeBaseline = {
+									name: normScrapeField(game.name),
+									tags: normScrapeField(game.tags),
+									gameType: normScrapeField(game.gameType),
+									image: normScrapeField(game.image),
+									gameVersion: normScrapeField(game.gameVersion),
+									description: normScrapeField(game.description)
+								};
+							}
+						}}
+					/>
 				{/if}
 				{#if step < maxStep}
 					<button

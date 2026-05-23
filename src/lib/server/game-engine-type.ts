@@ -4,15 +4,7 @@ import { asc, eq } from 'drizzle-orm';
 
 export type GameEngineColumn = (typeof table.gameTranslation.$inferSelect)['gameType'];
 
-const ALLOWED = ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other'] as const;
-
-export function coerceGameEngineType(value: string | null | undefined): GameEngineColumn {
-	const v = String(value ?? 'other')
-		.toLowerCase()
-		.trim();
-	if ((ALLOWED as readonly string[]).includes(v)) return v as GameEngineColumn;
-	return 'other';
-}
+export { coerceGameEngineType } from '$lib/utils/game-engine-type';
 
 export async function defaultGameTypeForGame(gameId: string): Promise<GameEngineColumn> {
 	const [r] = await db

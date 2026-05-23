@@ -73,7 +73,8 @@
 		"postgres": "^3.4.9",
 		"qrcode": "^1.5.4",
 		"redoc": "2.5.2",
-		"theme-change": "2.5.0"
+		"theme-change": "2.5.0",
+		"valibot": "1.4.0"
 	},
 	"config": {
 		"commitizen": {
