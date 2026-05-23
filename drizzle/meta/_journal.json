@@ -141,6 +141,13 @@
       "when": 1779300000000,
       "tag": "0019_dev_impersonate",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779301000000,
+      "tag": "0020_maintenance_manage",
+      "breakpoints": true
     }
   ]
 }

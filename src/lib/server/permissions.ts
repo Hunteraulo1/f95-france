@@ -165,6 +165,19 @@ export async function listRolePermissions(roleSlug: string): Promise<string[]> {
 	return getPermissionsForRole(roleSlug);
 }
 
+/** Permissions réellement enregistrées en base pour un rôle (sans repli legacy). */
+export async function listRolePermissionsStored(roleSlug: string): Promise<string[]> {
+	try {
+		const rows = await db
+			.select({ permissionKey: table.appRolePermission.permissionKey })
+			.from(table.appRolePermission)
+			.where(eq(table.appRolePermission.roleSlug, roleSlug));
+		return rows.map((row) => row.permissionKey);
+	} catch {
+		return [];
+	}
+}
+
 export async function roleExists(slug: string): Promise<boolean> {
 	try {
 		const [row] = await db
@@ -178,13 +191,37 @@ export async function roleExists(slug: string): Promise<boolean> {
 	}
 }
 
+/** Insère les permissions du catalogue absentes en base (ex. après ajout d’une nouvelle clé). */
+export async function syncPermissionsCatalog(): Promise<void> {
+	try {
+		const existing = await db.select({ key: table.appPermission.key }).from(table.appPermission);
+		const existingKeys = new Set(existing.map((row) => row.key));
+		const missing = PERMISSION_CATALOG.filter((p) => !existingKeys.has(p.key));
+		if (missing.length === 0) return;
+
+		await db.insert(table.appPermission).values(
+			missing.map((p) => ({
+				key: p.key,
+				label: p.label,
+				description: p.description,
+				group: p.group
+			}))
+		);
+	} catch (err) {
+		console.warn('syncPermissionsCatalog:', err);
+	}
+}
+
 export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 	try {
 		const existing = await db
 			.select({ key: table.appPermission.key })
 			.from(table.appPermission)
 			.limit(1);
-		if (existing.length > 0) return;
+		if (existing.length > 0) {
+			await syncPermissionsCatalog();
+			return;
+		}
 	} catch {
 		return;
 	}
@@ -223,6 +260,8 @@ export async function setRolePermissions(
 	roleSlug: string,
 	permissionKeys: string[]
 ): Promise<void> {
+	await syncPermissionsCatalog();
+
 	const validKeys = new Set(PERMISSION_CATALOG.map((p) => p.key));
 	const filtered = [...new Set(permissionKeys.filter((k) => validKeys.has(k as PermissionKey)))];
 

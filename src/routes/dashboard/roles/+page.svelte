@@ -12,11 +12,30 @@
 	let showCreateModal = $state(false);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
+	let permissionChecks = $state<Record<string, boolean>>({});
 
 	const selectedRole = $derived(
 		data.roles.find((r) => r.slug === data.selectedSlug) ?? data.roles[0]
 	);
 	const canManageSelected = $derived(data.selectedCanManage);
+
+	$effect(() => {
+		const slug = data.selectedSlug;
+		const selected = data.selectedPermissions;
+		const groups = data.permissionGroups;
+		const next: Record<string, boolean> = {};
+		for (const group of groups) {
+			for (const item of group.items) {
+				next[item.key] = selected.includes(item.key);
+			}
+		}
+		void slug;
+		permissionChecks = next;
+	});
+
+	function setPermissionChecked(key: string, checked: boolean) {
+		permissionChecks = { ...permissionChecks, [key]: checked };
+	}
 
 	const roleHref = (slug: string) =>
 		resolve(
@@ -207,7 +226,7 @@
 									(result.data as { message?: string })?.message ?? 'Permissions enregistrées';
 								errorMessage = null;
 							}
-							await update();
+							await update({ reset: false });
 						};
 					}}
 				>
@@ -237,7 +256,9 @@
 													name="permissions"
 													value={perm.key}
 													class="checkbox mt-0.5 checkbox-sm"
-													checked={data.selectedPermissions.includes(perm.key)}
+													checked={permissionChecks[perm.key] ?? false}
+													onchange={(event) =>
+														setPermissionChecked(perm.key, event.currentTarget.checked)}
 													disabled={!canManageSelected}
 												/>
 												<span class="flex flex-col gap-0.5">
