@@ -12,13 +12,15 @@
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
 	import { effectivePermissions } from '$lib/permissions/client';
-	import { newToast } from '$lib/stores';
+	import { newToast, user } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
 	import { checkRole } from '$lib/utils';
 	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import {
 		computeGameFormFieldState,
-		gameImageRequiredForWebsite
+		gameImageRequiredForWebsite,
+		isNoTranslation,
+		normalizeTranslationTversion
 	} from '$lib/utils/game-form-validation';
 	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import {
@@ -27,7 +29,7 @@
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { get, writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -649,13 +651,14 @@
 			};
 
 			type TranslationPayload = {
-				translationName: string;
+				translationName: string | null;
 				version: string | null;
 				tversion: string;
 				status: FormGameType['status'];
 				ttype: FormGameType['ttype'];
 				tlink: string | null;
 				tname: FormGameType['tname'];
+				gameType: GameEngineType;
 				translatorId: string | null;
 				proofreaderId: string | null;
 				ac: boolean;
@@ -677,41 +680,38 @@
 				}
 			};
 
-			const hasTranslationData =
-				(game.translationName && game.translationName.trim().length > 0) ||
-				(game.version && game.version.trim().length > 0) ||
-				(game.tversion && game.tversion.trim().length > 0) ||
-				(game.tlink && game.tlink.trim().length > 0) ||
-				(game.translatorId && game.translatorId.trim().length > 0) ||
-				(game.proofreaderId && game.proofreaderId.trim().length > 0) ||
-				game.tname !== 'no_translation';
+			const includeTranslation = !isNoTranslation(game.tname);
 
-			if (hasTranslationData) {
-				const translationName =
-					game.translationName?.trim().length && game.translationName?.trim().length > 0
-						? game.translationName.trim()
-						: `${payload.game.name} - traduction`;
+			if (includeTranslation) {
+				const translationName = game.translationName?.trim() ? game.translationName.trim() : null;
 
 				payload.translation = {
 					translationName,
 					version: game.version?.trim() || null,
-					tversion: game.tversion?.trim() || '',
+					tversion: normalizeTranslationTversion(game.tname, game.tversion),
 					status: game.status,
 					ttype: game.ttype,
 					tlink: game.tlink?.trim() || null,
 					tname: game.tname,
+					gameType: game.gameType,
 					translatorId: game.translatorId?.trim() || null,
 					proofreaderId: game.proofreaderId?.trim() || null,
 					ac: Boolean(game.ac)
 				};
 			}
 
+			const currentUser = get(user);
+			const requestBody = {
+				...payload,
+				directMode: currentUser?.directMode ?? true
+			};
+
 			const response = await fetch('/dashboard/manager', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(payload)
+				body: JSON.stringify(requestBody)
 			});
 
 			const result = await response.json();
@@ -722,7 +722,11 @@
 
 			newToast({
 				alertType: 'success',
-				message: result.message || 'Le jeu a bien été ajouté'
+				message:
+					result.message ||
+					(result.translationId
+						? 'Le jeu et la traduction ont bien été ajoutés'
+						: 'Le jeu a bien été ajouté')
 			});
 
 			// eslint-disable-next-line svelte/no-navigation-without-resolve

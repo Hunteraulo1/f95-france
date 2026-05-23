@@ -21,13 +21,22 @@ import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
-import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+import {
+	gameImageRequiredForWebsite,
+	normalizeTranslationTversion
+} from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+const normalizeTranslationName = (value: unknown): string | null => {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
 
 function parseOptionalBoolean(value: unknown): boolean | undefined {
 	if (typeof value === 'boolean') return value;
@@ -144,10 +153,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 		const translationTname = typeof translation?.tname === 'string' ? translation.tname.trim() : '';
 		const isIntegratedTranslation = translationTname === 'integrated';
-		const isNoTranslation = translationTname === 'no_translation';
+		const translationIsNoTranslation = translationTname === 'no_translation';
 		const inferredTranslationAc =
 			nextGameAutoCheck &&
-			(isNoTranslation ||
+			(translationIsNoTranslation ||
 				isIntegratedTranslation ||
 				(normVersion(translation?.version).length > 0 &&
 					normVersion(translation?.version) === normVersion(gameVersion)));
@@ -177,13 +186,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: gameLinkError }, { status: 400 });
 		}
 
-		if (translation) {
+		if (translation && !translationIsNoTranslation) {
 			const translationLinkError = validateTranslationLinkField({
 				tlink: translation.tlink,
 				tname: translationTname
 			});
 			if (translationLinkError) {
 				return json({ error: translationLinkError }, { status: 400 });
+			}
+			const normalizedTversion = normalizeTranslationTversion(
+				translationTname,
+				translation.tversion
+			);
+			if (!isIntegratedTranslation && !normalizedTversion) {
+				return json({ error: 'La version de traduction est obligatoire' }, { status: 400 });
 			}
 		}
 
@@ -237,12 +253,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const userRole = currentUser.role;
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+		const explicitDirectMode = parseOptionalBoolean(directMode);
+		let shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
 			roleSlug: userRole,
-			userDirectMode: currentUser.directMode ?? true,
-			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
+			userDirectMode: currentUser.directMode ?? true
 		});
+		// Priorité au choix explicite du client (paramètres utilisateur / formulaire).
+		if (explicitDirectMode === true) {
+			shouldCreateSubmission = false;
+		} else if (explicitDirectMode === false) {
+			shouldCreateSubmission = true;
+		}
 
 		if (shouldCreateSubmission) {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
@@ -254,19 +275,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					type,
 					website,
 					threadId: validThreadId,
-					tags: tags || null,
-					link: link || null,
+					tags: typeof tags === 'string' ? tags.trim() || '' : '',
+					link: linkValue,
 					image: imageValue,
 					gameAutoCheck: nextGameAutoCheck,
 					gameVersion:
 						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null
 				},
-				translation
+				translation && !translationIsNoTranslation
 					? {
-							translationName: translation.translationName,
+							translationName: normalizeTranslationName(translation.translationName),
 							version:
 								typeof translation.version === 'string' ? translation.version.trim() || null : null,
-							tversion: translation.tversion,
+							tversion: normalizeTranslationTversion(translationTname, translation.tversion),
 							status: translation.status,
 							ttype: translation.ttype,
 							tlink: translation.tlink || null,
@@ -294,81 +315,90 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Mode direct pour les admins ou superadmins en mode direct
-		// Créer le nouveau jeu
-		await db.insert(table.game).values({
-			name,
-			description: description || null,
-			website,
-			threadId: validThreadId,
-			tags: tags || null,
-			link: link || null,
-			image: imageValue,
-			gameAutoCheck: nextGameAutoCheck,
-			gameVersion:
-				typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
-			createdAt: new Date(),
-			updatedAt: new Date()
+		const shouldCreateTranslation = Boolean(translation) && !translationIsNoTranslation;
+		const normalizedTranslationTversion = shouldCreateTranslation
+			? normalizeTranslationTversion(translationTname, translation?.tversion)
+			: '';
+
+		const { gameId, createdTranslationId } = await db.transaction(async (tx) => {
+			const [insertedGame] = await tx
+				.insert(table.game)
+				.values({
+					name,
+					description: description || null,
+					website,
+					threadId: validThreadId,
+					tags: typeof tags === 'string' ? tags.trim() || '' : '',
+					link: linkValue,
+					image: imageValue,
+					gameAutoCheck: nextGameAutoCheck,
+					gameVersion:
+						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+					createdAt: new Date(),
+					updatedAt: new Date()
+				})
+				.returning({ id: table.game.id });
+
+			const newGameId = insertedGame?.id;
+			if (!newGameId) {
+				throw new Error('GAME_INSERT_FAILED');
+			}
+
+			let newTranslationId: string | undefined;
+			if (shouldCreateTranslation && translation) {
+				const [createdTranslation] = await tx
+					.insert(table.gameTranslation)
+					.values({
+						gameId: newGameId,
+						translationName: normalizeTranslationName(translation.translationName),
+						version:
+							typeof translation.version === 'string' ? translation.version.trim() || null : null,
+						tversion: normalizedTranslationTversion,
+						status: translation.status,
+						ttype: translation.ttype,
+						tname:
+							(translation.tname as
+								| 'no_translation'
+								| 'integrated'
+								| 'translation'
+								| 'translation_with_mods') || 'translation',
+						gameType: coerceGameEngineType(
+							typeof translation.gameType === 'string' && translation.gameType.trim()
+								? translation.gameType
+								: type
+						),
+						tlink: translation.tlink || '',
+						translatorId: translation.translatorId || null,
+						proofreaderId: translation.proofreaderId || null,
+						ac: nextTranslationAc,
+						createdAt: new Date(),
+						updatedAt: new Date()
+					})
+					.returning({ id: table.gameTranslation.id });
+
+				newTranslationId = createdTranslation?.id;
+				if (!newTranslationId) {
+					throw new Error('TRANSLATION_INSERT_FAILED');
+				}
+			}
+
+			return { gameId: newGameId, createdTranslationId: newTranslationId };
 		});
 
-		// Récupérer l'ID du jeu créé (threadId si présent, sinon nom — les noms peuvent être dupliqués)
-		const createdGame = await db
-			.select({ id: table.game.id })
-			.from(table.game)
-			.where(
-				validThreadId !== null ? eq(table.game.threadId, validThreadId) : eq(table.game.name, name)
-			)
-			.limit(1);
-
-		const gameId = createdGame[0]?.id;
 		if (gameId) {
 			await createGameUpdateRow(gameId, 'adding');
 		}
 
-		let createdTranslationId: string | undefined;
-		// Créer la traduction si elle est fournie
-		if (translation && gameId) {
-			const [createdTranslation] = await db
-				.insert(table.gameTranslation)
-				.values({
-					gameId: gameId,
-					translationName: translation.translationName,
-					version:
-						typeof translation.version === 'string' ? translation.version.trim() || null : null,
-					tversion: translation.tversion,
-					status: translation.status,
-					ttype: translation.ttype,
-					tname:
-						(translation.tname as
-							| 'no_translation'
-							| 'integrated'
-							| 'translation'
-							| 'translation_with_mods') || 'translation',
-					gameType: coerceGameEngineType(
-						typeof translation.gameType === 'string' && translation.gameType.trim()
-							? translation.gameType
-							: type
-					),
-					tlink: translation.tlink || '',
-					translatorId: translation.translatorId || null,
-					proofreaderId: translation.proofreaderId || null,
-					ac: nextTranslationAc,
-					createdAt: new Date(),
-					updatedAt: new Date()
-				})
-				.returning({ id: table.gameTranslation.id });
-
-			createdTranslationId = createdTranslation?.id;
-			if (createdTranslation?.id) {
-				void syncTranslationToGoogleSheet(createdTranslation.id).catch((err) => {
-					console.warn('[google-sheets-sync] manager add translation failed:', err);
-				});
-			}
-			if (translation.translatorId) {
+		if (shouldCreateTranslation && createdTranslationId) {
+			void syncTranslationToGoogleSheet(createdTranslationId).catch((err) => {
+				console.warn('[google-sheets-sync] manager add translation failed:', err);
+			});
+			if (translation?.translatorId) {
 				void syncTranslatorToGoogleSheet(String(translation.translatorId)).catch((err) => {
 					console.warn('[google-sheets-sync] manager add translator failed:', err);
 				});
 			}
-			if (translation.proofreaderId) {
+			if (translation?.proofreaderId) {
 				void syncTranslatorToGoogleSheet(String(translation.proofreaderId)).catch((err) => {
 					console.warn('[google-sheets-sync] manager add proofreader failed:', err);
 				});
@@ -388,7 +418,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				},
 				translation: translation
 					? {
-							translationName: translation.translationName,
+							translationName: normalizeTranslationName(translation.translationName),
 							version:
 								typeof translation.version === 'string' ? translation.version.trim() || null : null,
 							tversion: translation.tversion,
@@ -403,13 +433,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		await incrementUserGameCounter(currentUser.id, 'add', translation && gameId ? 2 : 1);
+		await incrementUserGameCounter(
+			currentUser.id,
+			'add',
+			shouldCreateTranslation && createdTranslationId ? 2 : 1
+		);
+		if (shouldCreateTranslation && !createdTranslationId) {
+			console.error('[manager/add] Traduction attendue mais non créée', {
+				translationTname,
+				hasTranslationPayload: Boolean(translation)
+			});
+			return json(
+				{
+					error:
+						'Le jeu a été créé mais la traduction n’a pas pu être enregistrée. Vérifiez les champs de traduction.'
+				},
+				{ status: 500 }
+			);
+		}
+
 		return json({
-			message: translation ? 'Jeu et traduction ajoutés avec succès' : 'Jeu ajouté avec succès',
-			gameId: gameId
+			message:
+				shouldCreateTranslation && createdTranslationId
+					? 'Jeu et traduction ajoutés avec succès'
+					: 'Jeu ajouté avec succès',
+			gameId: gameId,
+			translationId: createdTranslationId ?? null
 		});
 	} catch (error) {
 		console.error("Erreur lors de l'ajout du jeu:", error);
+		if (error instanceof Error && error.message === 'GAME_INSERT_FAILED') {
+			return json({ error: 'Impossible de créer le jeu' }, { status: 500 });
+		}
+		if (error instanceof Error && error.message === 'TRANSLATION_INSERT_FAILED') {
+			return json(
+				{ error: 'Le jeu a été créé mais la traduction n’a pas pu être enregistrée' },
+				{ status: 500 }
+			);
+		}
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
