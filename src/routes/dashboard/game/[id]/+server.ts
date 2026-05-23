@@ -2,7 +2,6 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookAdminNewSubmission } from '$lib/server/discord-webhook';
-import { isF95CheckerVersionAligned } from '$lib/server/f95-checker-alignment';
 import {
 	clearAllTranslationAutoCheckForGame,
 	disableGameAndTranslationAutoCheck,
@@ -16,6 +15,7 @@ import {
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
@@ -197,10 +197,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					prevGameAutoCheck ?? true
 				);
 
-		let checkerAlignedOnRefresh = false;
+		let checkerVersionUnknown = false;
+		let normalizedCheckerVersion: string | null = null;
 		let acTranslationsForRefresh: { ac: boolean; version: string | null }[] | null = null;
 
-		if (isF95VersionRefresh && website === 'f95z' && nextGameVersion) {
+		if (isF95VersionRefresh && website === 'f95z') {
+			normalizedCheckerVersion = normalizeCheckerVersion(nextGameVersion);
 			acTranslationsForRefresh = await db
 				.select({
 					ac: table.gameTranslation.ac,
@@ -209,13 +211,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.gameId, gameId));
 
-			checkerAlignedOnRefresh = isF95CheckerVersionAligned(
-				nextGameVersion,
-				existingGame.gameVersion,
-				acTranslationsForRefresh
-			);
-
-			if (checkerAlignedOnRefresh) {
+			if (!normalizedCheckerVersion) {
+				checkerVersionUnknown = true;
 				nextGameAutoCheck = false;
 			} else {
 				nextGameAutoCheck = resolveGameAutoCheckForWebsite(
@@ -225,6 +222,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				);
 			}
 		}
+
+		const dbGameVersion = checkerVersionUnknown
+			? existingGame.gameVersion
+			: isF95VersionRefresh && normalizedCheckerVersion
+				? normalizedCheckerVersion
+				: nextGameVersion;
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
 			roleSlug: userRole,
@@ -242,7 +245,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion: nextGameVersion
+				gameVersion: dbGameVersion
 			});
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
@@ -271,21 +274,28 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				link: link || null,
 				image,
 				gameAutoCheck: nextGameAutoCheck,
-				gameVersion: nextGameVersion,
+				gameVersion: dbGameVersion,
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, gameId));
 
-		if (!nextGameAutoCheck) {
-			if (checkerAlignedOnRefresh) {
-				await disableGameAndTranslationAutoCheck(gameId);
-			} else {
-				await clearAllTranslationAutoCheckForGame(gameId);
-			}
-		} else if (isF95VersionRefresh && nextGameVersion) {
+		if (checkerVersionUnknown) {
+			await disableGameAndTranslationAutoCheck(gameId);
+		} else if (!nextGameAutoCheck) {
+			await clearAllTranslationAutoCheckForGame(gameId);
+		} else if (
+			isF95VersionRefresh &&
+			normalizedCheckerVersion &&
+			acTranslationsForRefresh &&
+			needsF95VersionBump(
+				normalizedCheckerVersion,
+				existingGame.gameVersion,
+				acTranslationsForRefresh
+			)
+		) {
 			await db
 				.update(table.gameTranslation)
-				.set({ version: nextGameVersion, updatedAt: new Date() })
+				.set({ version: normalizedCheckerVersion, updatedAt: new Date() })
 				.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
 		}
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {

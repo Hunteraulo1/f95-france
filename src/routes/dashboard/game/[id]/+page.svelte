@@ -2,6 +2,10 @@
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
+	import {
+		isF95CheckerVersionAligned,
+		normalizeCheckerVersion
+	} from '$lib/utils/f95-checker-alignment';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
@@ -399,21 +403,15 @@
 
 			const data = payload.data as ScrapedThreadGame;
 
-			if (!data.version) {
-				newToast({
-					alertType: 'warning',
-					message: 'Version introuvable sur le thread, rafraîchissement annulé.'
-				});
-				return;
-			}
-
-			const checkerVersion = (data.version ?? '').trim();
+			const checkerVersion = normalizeCheckerVersion(data.version);
+			const checkerVersionUnknown = checkerVersion === null;
+			const acTranslationRows = translations.map((t) => ({
+				ac: t.ac,
+				version: t.version
+			}));
 			const wasAligned =
-				checkerVersion.length > 0 &&
-				checkerVersion === (game.gameVersion ?? '').trim() &&
-				(!acTranslation ||
-					(acTranslation.version ?? '').trim() === '' ||
-					(acTranslation.version ?? '').trim() === checkerVersion);
+				checkerVersion !== null &&
+				isF95CheckerVersionAligned(checkerVersion, game.gameVersion, acTranslationRows);
 
 			const gameUpdateRes = await fetch(`/dashboard/game/${game.id}`, {
 				method: 'PUT',
@@ -429,7 +427,7 @@
 					tags: data.tags ?? game.tags ?? '',
 					link: game.link ?? '',
 					image: data.image ?? game.image ?? '',
-					gameVersion: checkerVersion,
+					gameVersion: checkerVersionUnknown ? (data.version ?? 'Unknown') : checkerVersion,
 					f95VersionRefresh: true,
 					directMode: true
 				})
@@ -444,11 +442,13 @@
 
 			newToast({
 				alertType: 'success',
-				message: wasAligned
-					? 'Version à jour : auto-check désactivé sur le jeu et les traductions'
-					: acTranslation
-						? 'Fiche jeu et versions de référence (auto-check) mises à jour'
-						: 'Fiche jeu rafraîchie'
+				message: checkerVersionUnknown
+					? 'Version inconnue (Unknown) : auto-check désactivé, fiche rafraîchie'
+					: wasAligned
+						? 'Version à jour — fiche rafraîchie (auto-check conservé)'
+						: acTranslation
+							? 'Fiche jeu et versions de référence (auto-check) mises à jour'
+							: 'Fiche jeu rafraîchie'
 			});
 
 			window.location.reload();
