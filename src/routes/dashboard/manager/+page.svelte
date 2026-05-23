@@ -32,7 +32,7 @@
 	let searchGeneration = 0;
 
 	const searchGames = async (query: string, generation: number) => {
-		if (!query || query.trim().length < 1) {
+		if (!query || query.length < 1) {
 			searchResults = [];
 			showResults = false;
 			return;
@@ -70,8 +70,7 @@
 
 		debounceTimer = setTimeout(() => {
 			debounceTimer = null;
-			const trimmed = query.trim();
-			if (trimmed.length < 1) {
+			if (query.length < 1) {
 				searchResults = [];
 				showResults = false;
 				isLoading = false;
@@ -96,12 +95,12 @@
 
 	const handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
-		searchQuery = target.value;
+		searchQuery = target.value.trim();
 		debouncedSearch(searchQuery);
 	};
 
 	const getAddGameHref = () => {
-		const q = searchQuery.trim();
+		const q = searchQuery;
 		// Uniquement si la recherche est entièrement un threadId (pas "2 machintruck")
 		if (/^\d+$/.test(q)) {
 			const threadId = Number.parseInt(q, 10);
