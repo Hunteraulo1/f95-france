@@ -28,7 +28,7 @@ import {
 	getActorPermissionSet,
 	isRolesManagementSuperadmin
 } from '$lib/server/role-management-guard';
-import { fail } from '@sveltejs/kit';
+import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -42,6 +42,19 @@ function slugifyRole(input: string): string {
 		.slice(0, 64);
 }
 
+const ROLE_NOTICE_MESSAGES: Record<string, string> = {
+	created: 'Rôle créé',
+	updated: 'Rôle mis à jour',
+	permissions: 'Permissions enregistrées',
+	deleted: 'Rôle supprimé'
+};
+
+function rolePageUrl(slug: string, notice?: keyof typeof ROLE_NOTICE_MESSAGES): string {
+	const params = new URLSearchParams({ role: slug });
+	if (notice) params.set('notice', notice);
+	return `/dashboard/roles?${params}`;
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'roles.manage');
 
@@ -52,8 +65,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		countPermissionsByRoles(roleSlugs)
 	]);
 	const orderedSlugs = roleSlugs;
+	const defaultSlug = orderedSlugs[0] ?? 'user';
+	const roleParam = url.searchParams.get('role');
 
-	const selectedSlug = url.searchParams.get('role') ?? orderedSlugs[0] ?? 'user';
+	if (!roleParam) {
+		redirect(303, rolePageUrl(defaultSlug));
+	}
+
+	const selectedSlug = roleSlugs.includes(roleParam) ? roleParam : defaultSlug;
+	if (selectedSlug !== roleParam) {
+		redirect(303, rolePageUrl(selectedSlug));
+	}
 	const selectedPermissionsEffective = selectedSlug ? await listRolePermissions(selectedSlug) : [];
 	const selectedPermissions = selectedSlug ? await listRolePermissionsStored(selectedSlug) : [];
 
@@ -92,9 +114,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selectedPermissionsEffective.includes(p.key)
 	);
 
+	const noticeKey = url.searchParams.get('notice');
+	const noticeMessage =
+		noticeKey && noticeKey in ROLE_NOTICE_MESSAGES
+			? ROLE_NOTICE_MESSAGES[noticeKey as keyof typeof ROLE_NOTICE_MESSAGES]
+			: null;
+
 	return {
 		isSuperadmin,
 		roles: rolesWithAccess,
+		noticeMessage,
 		selectedSlug,
 		selectedPermissions,
 		selectedPermissionDetails,
@@ -167,8 +196,9 @@ export const actions: Actions = {
 				isSystem: false
 			});
 			await setRolePermissions(slug, assignableInitial);
-			return { success: true, message: 'Rôle créé', selectedSlug: slug };
+			redirect(303, rolePageUrl(slug, 'created'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('createRole:', error);
 			return fail(500, { message: 'Impossible de créer le rôle' });
 		}
@@ -215,8 +245,9 @@ export const actions: Actions = {
 				.where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
 
-			return { success: true, message: 'Rôle mis à jour', selectedSlug: slug };
+			redirect(303, rolePageUrl(slug, 'updated'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('updateRole:', error);
 			return fail(500, { message: 'Impossible de mettre à jour le rôle' });
 		}
@@ -270,8 +301,9 @@ export const actions: Actions = {
 
 		try {
 			await setRolePermissions(slug, keysToSave);
-			return { success: true, message: 'Permissions enregistrées', selectedSlug: slug };
+			redirect(303, rolePageUrl(slug, 'permissions'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('updatePermissions:', error);
 			return fail(500, { message: 'Impossible d’enregistrer les permissions' });
 		}
@@ -311,8 +343,11 @@ export const actions: Actions = {
 		try {
 			await db.delete(table.appRole).where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
-			return { success: true, message: 'Rôle supprimé' };
+			const roles = await listAppRoles();
+			const nextSlug = roles[0]?.slug ?? 'user';
+			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
+			if (isRedirect(error)) throw error;
 			console.error('deleteRole:', error);
 			return fail(500, { message: 'Impossible de supprimer le rôle' });
 		}

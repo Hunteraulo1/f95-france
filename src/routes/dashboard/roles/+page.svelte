@@ -38,9 +38,14 @@
 	}
 
 	const roleHref = (slug: string) =>
-		resolve(
-			`/dashboard/roles${slug === data.roles[0]?.slug ? '' : `?role=${slug}`}` as '/dashboard/roles'
-		);
+		`${resolve('/dashboard/roles')}?role=${encodeURIComponent(slug)}`;
+
+	$effect(() => {
+		if (data.noticeMessage) {
+			message = data.noticeMessage;
+			errorMessage = null;
+		}
+	});
 </script>
 
 <section class="flex flex-col gap-6">
@@ -114,9 +119,6 @@
 											if (result.type === 'failure') {
 												errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
 												message = null;
-											} else if (result.type === 'success') {
-												message = (result.data as { message?: string })?.message ?? 'Rôle supprimé';
-												errorMessage = null;
 											}
 											await update();
 										};
@@ -143,9 +145,6 @@
 								return async ({ result, update }) => {
 									if (result.type === 'failure') {
 										errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
-									} else if (result.type === 'success') {
-										message = (result.data as { message?: string })?.message ?? 'Enregistré';
-										errorMessage = null;
 									}
 									await update();
 								};
@@ -221,12 +220,8 @@
 						return async ({ result, update }) => {
 							if (result.type === 'failure') {
 								errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
-							} else if (result.type === 'success') {
-								message =
-									(result.data as { message?: string })?.message ?? 'Permissions enregistrées';
-								errorMessage = null;
 							}
-							await update({ reset: false });
+							await update();
 						};
 					}}
 				>
@@ -296,14 +291,8 @@
 						if (result.type === 'failure') {
 							errorMessage = (result.data as { message?: string })?.message ?? 'Erreur';
 							message = null;
-						} else if (result.type === 'success') {
-							const slug = (result.data as { selectedSlug?: string })?.selectedSlug;
-							message = (result.data as { message?: string })?.message ?? 'Rôle créé';
-							errorMessage = null;
+						} else if (result.type === 'redirect') {
 							showCreateModal = false;
-							if (slug) {
-								window.location.href = roleHref(slug);
-							}
 						}
 						await update();
 					};
