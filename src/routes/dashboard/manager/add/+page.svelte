@@ -1116,9 +1116,17 @@
 						}}
 					/>
 				{/if}
+				{#if safeCheckRole(['superadmin']) && false}
+					<Dev
+						bind:game
+						onDevDataApplied={() => {
+							step = maxStep;
+						}}
+					/>
+				{/if}
 				{#if step < maxStep}
 					<button
-						class="btn w-full btn-primary md:w-38"
+						class="btn w-full btn-primary md:w-38 only:ml-auto"
 						type="button"
 						onclick={() => changeStep(1)}
 						disabled={blockNextStepForMissingThread}
@@ -1137,14 +1145,6 @@
 					>
 						Ajouter le jeu
 					</button>
-				{/if}
-				{#if safeCheckRole(['superadmin'])}
-					<Dev
-						bind:game
-						onDevDataApplied={() => {
-							step = maxStep;
-						}}
-					/>
 				{/if}
 			</div>
 		</form>
