@@ -127,6 +127,7 @@
 						class="input-ghost"
 						placeholder="Rechercher un jeu par nom ou threadId..."
 						oninput={handleInput}
+						value={searchQuery}
 					/>
 					{#if searchQuery}
 						<button type="button" class="btn btn-ghost btn-sm" onclick={clearSearch}>
