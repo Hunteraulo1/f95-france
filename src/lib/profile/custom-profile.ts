@@ -8,6 +8,12 @@ export type CustomProfileTheme = {
 };
 
 export const PROFILE_BIO_MAX_LENGTH = 2000;
+/** Dimensions recommandées pour l’image de fond du profil public. */
+export const PROFILE_BACKGROUND_WIDTH = 1500;
+export const PROFILE_BACKGROUND_HEIGHT = 900;
+/** Ratio d’affichage du bandeau (1500×900 = 5:3). */
+export const PROFILE_BACKGROUND_ASPECT_RATIO = '5 / 3' as const;
+export const PROFILE_BACKGROUND_SIZE_LABEL = `${PROFILE_BACKGROUND_WIDTH}×${PROFILE_BACKGROUND_HEIGHT}px`;
 /** Taille d’affichage du curseur personnalisé sur la zone profil (px). */
 export const PROFILE_CURSOR_DISPLAY_PX = 32;
 const PROFILE_MEDIA_URL_MAX_LENGTH = 2048;

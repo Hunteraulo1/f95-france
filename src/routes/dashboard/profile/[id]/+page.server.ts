@@ -1,7 +1,7 @@
 import { buildCustomProfileTheme, hasCustomProfilePresentation } from '$lib/profile/custom-profile';
-import { loadProfileStats } from '$lib/server/profile-stats';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { loadProfileStats } from '$lib/server/profile-stats';
 import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
 import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
 import { error } from '@sveltejs/kit';
@@ -28,7 +28,7 @@ function parseTranslationsPage(url: URL): number {
 	return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 }
 
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const { id } = params;
 	const profileRef = String(id ?? '').trim();
 
@@ -61,6 +61,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		loadProfileStats(userId)
 	]);
 
+	const isOwnProfile = locals.user?.id === userId;
+
 	return {
 		user: row,
 		profileStats,
@@ -72,6 +74,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		translationsPage: translationBundle.page,
 		translationsPageSize: translationBundle.pageSize,
 		translationsTotalPages: translationBundle.totalPages,
-		profileSlug: row.username
+		profileSlug: row.username,
+		isOwnProfile,
+		editProfileHref: isOwnProfile ? '/dashboard/profile' : null
 	};
 };
