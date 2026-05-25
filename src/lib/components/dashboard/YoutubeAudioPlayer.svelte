@@ -35,36 +35,36 @@
 	function handleEmbedMessage(event: MessageEvent) {
 		if (!isYoutubeEmbedPostMessageOrigin(event.origin)) return;
 
-		let data: { event?: string; info?: number | { playerState?: number } } | null = null;
 		try {
-			data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+			const data: { event?: string; info?: number | { playerState?: number } } =
+				typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+			if (!data || typeof data !== 'object') return;
+
+			if (data.event === 'onReady') {
+				ready = true;
+				playing = true;
+				return;
+			}
+
+			if (data.event === 'onStateChange' && typeof data.info === 'number') {
+				ready = true;
+				playing = data.info === YT_PLAYING;
+				if (data.info === YT_ENDED) playing = false;
+				return;
+			}
+
+			if (
+				data.event === 'infoDelivery' &&
+				data.info &&
+				typeof data.info === 'object' &&
+				typeof data.info.playerState === 'number'
+			) {
+				ready = true;
+				playing = data.info.playerState === YT_PLAYING;
+				if (data.info.playerState === YT_ENDED) playing = false;
+			}
 		} catch {
-			return;
-		}
-		if (!data || typeof data !== 'object') return;
-
-		if (data.event === 'onReady') {
-			ready = true;
-			playing = true;
-			return;
-		}
-
-		if (data.event === 'onStateChange' && typeof data.info === 'number') {
-			ready = true;
-			playing = data.info === YT_PLAYING;
-			if (data.info === YT_ENDED) playing = false;
-			return;
-		}
-
-		if (
-			data.event === 'infoDelivery' &&
-			data.info &&
-			typeof data.info === 'object' &&
-			typeof data.info.playerState === 'number'
-		) {
-			ready = true;
-			playing = data.info.playerState === YT_PLAYING;
-			if (data.info.playerState === YT_ENDED) playing = false;
+			/* message non JSON ou format inconnu */
 		}
 	}
 
