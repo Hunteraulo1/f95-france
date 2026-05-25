@@ -12,7 +12,6 @@
 
 	type DevUserLite = Pick<User, 'id' | 'username' | 'role'>;
 	let users = $state<DevUserLite[]>([]);
-	let profileError = $state<string | null>(null);
 	let discordError = $state<string | null>(null);
 	let discordInfo = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
@@ -140,117 +139,66 @@
 
 <section class="flex flex-col gap-8">
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-base-content">Informations de profil</h2>
+		<h2 class="text-lg font-semibold text-base-content">Discord</h2>
 
-		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
-			{#if profileError}
-				<div class="mb-4 alert alert-error">
-					<span>{profileError}</span>
-				</div>
-			{/if}
+		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+			<div class="card-body gap-6 sm:py-8">
+				<p class="text-sm text-base-content/70">
+					Liez votre compte Discord pour les fonctionnalités qui en dépendent. Le pseudo et la photo
+					de profil se modifient dans
+					<a href="/dashboard/profile" class="link link-hover">Personnaliser le profil</a>.
+				</p>
 
-			<form
-				method="POST"
-				action="?/updateProfile"
-				use:enhance={() => {
-					profileError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							await loadUserData(); // Recharger les données utilisateur
-							profileError = null;
-						} else if (result.type === 'failure' && result.data) {
-							const message =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
-							profileError = message;
-						}
-					};
-				}}
-			>
-				<div class="mb-4 flex w-full items-center justify-between gap-4">
-					<span class="opacity-70"
-						>Les informations dans cette section sont affichées sur votre page de profil.</span
-					>
-				</div>
-				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
-					<label class="input flex w-full">
-						Pseudo
-						<input
-							type="text"
-							name="username"
-							class="grow ring-0"
-							placeholder="Pseudo"
-							value={$user?.username || ''}
-							required
-						/>
-					</label>
-					<label class="input flex w-full">
-						Photo de profil
-						<input
-							type="url"
-							name="avatar"
-							class="grow ring-0"
-							placeholder="monlien.com/photo.jpg"
-							value={$user?.avatar || ''}
-						/>
-					</label>
-				</div>
-				<div class="mt-4 flex justify-end">
-					<button type="submit" class="btn btn-primary"> Enregistrer </button>
-				</div>
-			</form>
+				{#if discordError}
+					<div class="alert alert-error">
+						<span>{discordError}</span>
+					</div>
+				{/if}
+				{#if discordInfo}
+					<div class="alert alert-success">
+						<span>{discordInfo}</span>
+					</div>
+				{/if}
 
-			<div class="divider my-2">Discord</div>
-
-			{#if discordError}
-				<div class="alert w-full alert-error">
-					<span>{discordError}</span>
-				</div>
-			{/if}
-			{#if discordInfo}
-				<div class="alert w-full alert-success">
-					<span>{discordInfo}</span>
-				</div>
-			{/if}
-
-			<div
-				class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
-			>
-				<div class="flex justify-end">
+				<div
+					class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
+				>
+					<div class="flex justify-end">
+						{#if $user?.discordId}
+							<form
+								class="w-full"
+								method="POST"
+								action="?/unlinkDiscord"
+								use:enhance={() => {
+									discordError = null;
+									discordInfo = null;
+									return async ({ result, update }) => {
+										if (result.type === 'success') {
+											await update();
+											await loadUserData();
+											discordInfo = 'Compte Discord délié avec succès.';
+										} else if (result.type === 'failure' && result.data) {
+											const message =
+												typeof result.data === 'object' && 'message' in result.data
+													? String(result.data.message)
+													: 'Erreur lors du déliage Discord';
+											discordError = message;
+										}
+									};
+								}}
+							>
+								<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+							</form>
+						{:else}
+							<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+						{/if}
+					</div>
 					{#if $user?.discordId}
-						<form
-							class="w-full"
-							method="POST"
-							action="?/unlinkDiscord"
-							use:enhance={() => {
-								discordError = null;
-								discordInfo = null;
-								return async ({ result, update }) => {
-									if (result.type === 'success') {
-										await update();
-										await loadUserData();
-										discordInfo = 'Compte Discord délié avec succès.';
-									} else if (result.type === 'failure' && result.data) {
-										const message =
-											typeof result.data === 'object' && 'message' in result.data
-												? String(result.data.message)
-												: 'Erreur lors du déliage Discord';
-										discordError = message;
-									}
-								};
-							}}
-						>
-							<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
-						</form>
-					{:else}
-						<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+						<div class="text-sm text-base-content/80">
+							Discord actuel : <strong>{$user.discordId}</strong>
+						</div>
 					{/if}
 				</div>
-				{#if $user?.discordId}
-					<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
-				{/if}
 			</div>
 		</div>
 	</div>

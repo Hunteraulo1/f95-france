@@ -15,6 +15,7 @@ import type { Actions, PageServerLoad } from './$types';
 const userProfileSelect = {
 	id: table.user.id,
 	username: table.user.username,
+	avatar: table.user.avatar,
 	profileBio: table.user.profileBio,
 	profileBackgroundUrl: table.user.profileBackgroundUrl,
 	profileMusicUrl: table.user.profileMusicUrl,
@@ -56,6 +57,49 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
+	updateProfile: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const username = String(formData.get('username') ?? '').trim();
+		const avatar = String(formData.get('avatar') ?? '').trim();
+
+		if (!username) {
+			return fail(400, { message: "Le nom d'utilisateur est requis" });
+		}
+
+		try {
+			await db
+				.update(table.user)
+				.set({
+					username,
+					avatar: avatar || '',
+					updatedAt: new Date()
+				})
+				.where(eq(table.user.id, locals.user.id));
+
+			return { success: true, message: 'Profil mis à jour avec succès' };
+		} catch (error: unknown) {
+			console.error('Erreur lors de la mise à jour du profil:', error);
+
+			const mysqlError =
+				error && typeof error === 'object' && 'cause' in error
+					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+					: null;
+
+			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
+				if (mysqlError.sqlMessage?.includes('username')) {
+					return fail(409, { message: `Un utilisateur avec le nom « ${username} » existe déjà` });
+				}
+				return fail(409, { message: "Ce nom d'utilisateur existe déjà" });
+			}
+
+			return fail(500, { message: 'Erreur lors de la mise à jour du profil' });
+		}
+	},
+
 	updateCustomProfile: async ({ request, locals }) => {
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });

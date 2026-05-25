@@ -12,6 +12,7 @@
 
 <ProfileEdit
 	username={data.user.username}
+	avatar={data.user.avatar ?? ''}
 	publicProfileHref={resolve(`/dashboard/profile/${data.user.id}`)}
 	profileCustomize={data.profileCustomize}
 	customProfile={data.customProfile}

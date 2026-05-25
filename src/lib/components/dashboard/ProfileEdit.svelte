@@ -7,6 +7,7 @@
 		PROFILE_BIO_MAX_LENGTH,
 		PROFILE_CURSOR_DISPLAY_PX
 	} from '$lib/profile/custom-profile';
+	import { loadUserData } from '$lib/stores';
 
 	type LinkedTranslator = {
 		id: string;
@@ -16,6 +17,7 @@
 
 	interface Props {
 		username: string;
+		avatar: string;
 		publicProfileHref: string;
 		profileCustomize: ProfileCustomizeFlags;
 		customProfile?: CustomProfileTheme | null;
@@ -24,11 +26,17 @@
 
 	let {
 		username,
+		avatar,
 		publicProfileHref,
 		profileCustomize,
 		customProfile = null,
 		linkedTranslator = null
 	}: Props = $props();
+
+	let profileUsername = $state('');
+	let profileAvatar = $state('');
+	let profileInfoError = $state<string | null>(null);
+	let profileInfoSuccess = $state<string | null>(null);
 
 	let profileBio = $state('');
 	let profileBackgroundUrl = $state('');
@@ -40,6 +48,11 @@
 	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 	let translatorPagesError = $state<string | null>(null);
 	let translatorPagesInfo = $state<string | null>(null);
+
+	$effect(() => {
+		profileUsername = username;
+		profileAvatar = avatar;
+	});
 
 	$effect(() => {
 		if (profileCustomize.any && customProfile) {
@@ -76,6 +89,78 @@
 			</p>
 		</div>
 		<a href={publicProfileHref} class="btn btn-outline btn-sm">Voir mon profil</a>
+	</div>
+
+	<div class="card border border-base-300 bg-base-100 shadow-sm">
+		<div class="card-body gap-4">
+			<h2 class="text-lg font-semibold text-base-content">Informations du profil</h2>
+			<p class="text-sm text-base-content/70">
+				Ces champs sont affichés sur votre
+				<a href={publicProfileHref} class="link link-hover">profil public</a>.
+			</p>
+
+			{#if profileInfoError}
+				<div class="alert alert-error">
+					<span>{profileInfoError}</span>
+				</div>
+			{/if}
+			{#if profileInfoSuccess}
+				<div class="alert alert-success">
+					<span>{profileInfoSuccess}</span>
+				</div>
+			{/if}
+
+			<form
+				method="POST"
+				action="?/updateProfile"
+				use:enhance={() => {
+					profileInfoError = null;
+					profileInfoSuccess = null;
+					return async ({ result, update }) => {
+						if (result.type === 'success') {
+							await update();
+							await loadUserData();
+							profileInfoSuccess =
+								typeof result.data === 'object' && result.data && 'message' in result.data
+									? String(result.data.message)
+									: 'Profil mis à jour avec succès';
+						} else if (result.type === 'failure' && result.data) {
+							profileInfoError =
+								typeof result.data === 'object' && 'message' in result.data
+									? String(result.data.message)
+									: 'Erreur lors de la mise à jour';
+						}
+					};
+				}}
+			>
+				<div class="flex w-full flex-col gap-4 md:flex-row">
+					<label class="input flex w-full items-start">
+						<span class="label h-full">Pseudo</span>
+						<input
+							type="text"
+							name="username"
+							class="grow w-full"
+							placeholder="Pseudo"
+							bind:value={profileUsername}
+							required
+						/>
+					</label>
+					<label class="input flex w-full items-start">
+						<span class="label h-full">Photo de profil</span>
+						<input
+							type="url"
+							name="avatar"
+							class="grow w-full"
+							placeholder="https://exemple.com/photo.jpg"
+							bind:value={profileAvatar}
+						/>
+					</label>
+				</div>
+				<div class="mt-4 flex justify-end">
+					<button type="submit" class="btn btn-primary">Enregistrer</button>
+				</div>
+			</form>
+		</div>
 	</div>
 
 	{#if linkedTranslator}

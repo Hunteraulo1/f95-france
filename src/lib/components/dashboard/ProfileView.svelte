@@ -120,7 +120,7 @@
 			class:profile-theme-sidebar--with-bg={hasBackground}
 		>
 			<div
-				class="flex h-32 w-32 items-center justify-center rounded-full bg-base-300 p-4 shadow-md"
+				class="flex h-32 w-32 items-center justify-center rounded-full bg-base-300 p-1 shadow-md"
 			>
 				{#if user.avatar && user.avatar !== ''}
 					<img
