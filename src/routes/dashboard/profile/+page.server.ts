@@ -4,14 +4,18 @@ import {
 	normalizeProfileBio,
 	validateOptionalHttpUrl
 } from '$lib/profile/custom-profile';
+import { loadProfileStats } from '$lib/server/profile-stats';
 import { validateOptionalYoutubeMusicUrl } from '$lib/profile/youtube-music';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertPermission } from '$lib/server/permissions-guard';
-import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
+import {
+	loadProfileTranslationsForUser,
+	PROFILE_TRANSLATIONS_PAGE_SIZE
+} from '$lib/server/profile-translations';
 import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
 import { fail } from '@sveltejs/kit';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const userProfileSelect = {
@@ -22,8 +26,6 @@ const userProfileSelect = {
 	avatar: table.user.avatar,
 	role: table.user.role,
 	directMode: table.user.directMode,
-	gameAdd: table.user.gameAdd,
-	gameEdit: table.user.gameEdit,
 	profileBio: table.user.profileBio,
 	profileBackgroundUrl: table.user.profileBackgroundUrl,
 	profileMusicUrl: table.user.profileMusicUrl,
@@ -32,84 +34,25 @@ const userProfileSelect = {
 	updatedAt: table.user.updatedAt
 } as const;
 
-async function loadSubmissionStats(userId: string) {
-	let gameAddSubmissions = 0;
-	let gameEditSubmissions = 0;
-	let submissionAdd = 0;
-	let submissionEdit = 0;
-
-	try {
-		const gameAddResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(
-				and(
-					eq(table.submission.userId, userId),
-					eq(table.submission.status, 'accepted'),
-					eq(table.submission.type, 'game')
-				)
-			);
-		gameAddSubmissions = gameAddResult[0]?.count || 0;
-
-		const gameEditResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(
-				and(
-					eq(table.submission.userId, userId),
-					eq(table.submission.status, 'accepted'),
-					eq(table.submission.type, 'update')
-				)
-			);
-		gameEditSubmissions = gameEditResult[0]?.count || 0;
-
-		const submissionAddResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(
-				and(
-					eq(table.submission.userId, userId),
-					eq(table.submission.status, 'accepted'),
-					inArray(table.submission.type, ['game', 'translation'])
-				)
-			);
-		submissionAdd = submissionAddResult[0]?.count || 0;
-
-		const submissionEditResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(
-				and(
-					eq(table.submission.userId, userId),
-					eq(table.submission.status, 'accepted'),
-					inArray(table.submission.type, ['update', 'delete'])
-				)
-			);
-		submissionEdit = submissionEditResult[0]?.count || 0;
-	} catch (error: unknown) {
-		console.warn('Erreur lors du chargement des statistiques de soumissions:', error);
-	}
-
-	return {
-		gameAdd: gameAddSubmissions,
-		gameEdit: gameEditSubmissions,
-		submissionAdd,
-		submissionEdit
-	};
+function parseTranslationsPage(url: URL): number {
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		return {
 			user: null,
-			stats: null,
+			profileStats: null,
 			canCustomizeProfile: false,
 			customProfile: null,
 			translatorLinks: [],
 			linkedTranslator: null,
 			translations: [],
 			translationsTotal: 0,
-			allTranslationsHref: null
+			translationsPage: 1,
+			translationsPageSize: PROFILE_TRANSLATIONS_PAGE_SIZE,
+			translationsTotalPages: 1
 		};
 	}
 
@@ -126,21 +69,25 @@ export const load: PageServerLoad = async ({ locals }) => {
 		locals.permissions,
 		'profile.customize'
 	);
-	const [{ translator, links }, translationBundle] = await Promise.all([
+
+	const [{ translator, links }, translationBundle, profileStats] = await Promise.all([
 		loadTranslatorPagesForUser(userId),
-		loadProfileTranslationsForUser(userId)
+		loadProfileTranslationsForUser(userId, { page: parseTranslationsPage(url) }),
+		loadProfileStats(userId)
 	]);
 
 	return {
 		user: row,
-		stats: await loadSubmissionStats(userId),
+		profileStats,
 		canCustomizeProfile,
 		customProfile: row ? buildCustomProfileTheme(row) : null,
 		translatorLinks: links,
 		linkedTranslator: translator ?? translationBundle.linkedTranslator,
 		translations: translationBundle.translations,
 		translationsTotal: translationBundle.totalCount,
-		allTranslationsHref: '/dashboard/my-translations'
+		translationsPage: translationBundle.page,
+		translationsPageSize: translationBundle.pageSize,
+		translationsTotalPages: translationBundle.totalPages
 	};
 };
 

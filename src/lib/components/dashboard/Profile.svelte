@@ -1,45 +1,52 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import ProfileStatsPanel from '$lib/components/dashboard/ProfileStats.svelte';
 	import ProfileTranslations from '$lib/components/dashboard/ProfileTranslations.svelte';
-	import YoutubeAudioPlayer from '$lib/components/dashboard/YoutubeAudioPlayer.svelte';
 	import type { CustomProfileTheme, TranslatorPageLink } from '$lib/profile/custom-profile';
 	import { PROFILE_BIO_MAX_LENGTH, PROFILE_CURSOR_DISPLAY_PX } from '$lib/profile/custom-profile';
 	import { extractYoutubeVideoId } from '$lib/profile/youtube-music';
-	import type { User as UserType } from '$lib/server/db/schema';
+	import type { ProfileStats } from '$lib/server/profile-stats';
 	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
-	import type { PublicUser } from '$lib/types';
-	import { CirclePlus, SquarePen } from '@lucide/svelte';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import User from '@lucide/svelte/icons/user';
+	import YoutubeAudioPlayer from './YoutubeAudioPlayer.svelte';
+
+	type ProfileUser = {
+		id: string;
+		username: string;
+		avatar: string;
+		role: string;
+		createdAt: Date;
+		discordId?: string | null;
+	};
 
 	interface Props {
-		user: PublicUser | UserType | null;
-		email?: UserType['email'] | null;
-		stats?: {
-			gameAdd: number;
-			gameEdit: number;
-			submissionAdd: number;
-			submissionEdit: number;
-		} | null;
+		user: ProfileUser | null;
+		email?: string | null;
+		profileStats?: ProfileStats | null;
 		customProfile?: CustomProfileTheme | null;
 		translatorLinks?: TranslatorPageLink[];
 		linkedTranslator?: { id: string; name: string } | null;
 		translations?: ProfileTranslationItem[];
 		translationsTotal?: number;
-		allTranslationsHref?: string | null;
+		translationsPage?: number;
+		translationsTotalPages?: number;
+		translationsHrefForPage?: (page: number) => string;
 		canCustomizeProfile?: boolean;
 	}
 
 	let {
 		user,
 		email,
-		stats,
+		profileStats = null,
 		customProfile = null,
 		translatorLinks = [],
 		linkedTranslator = null,
 		translations = [],
 		translationsTotal = 0,
-		allTranslationsHref = null,
+		translationsPage = 1,
+		translationsTotalPages = 1,
+		translationsHrefForPage = () => '',
 		canCustomizeProfile = false
 	}: Props = $props();
 
@@ -78,7 +85,7 @@
 		}
 	});
 
-	const roles: Record<PublicUser['role'], string> = {
+	const roles: Record<string, string> = {
 		user: 'Utilisateur',
 		admin: 'Administrateur',
 		translator: 'Traducteur',
@@ -100,7 +107,7 @@
 <div
 	role="region"
 	aria-label={user ? `Profil de ${user.username}` : 'Profil utilisateur'}
-	class="profile-theme-root relative overflow-hidden rounded-2xl border border-base-300"
+	class="profile-theme-root relative overflow-hidden rounded-2xl border border-base-300 min-h-full bg-cover bg-center"
 	class:profile-theme-root--bg={!!customProfile?.backgroundUrl}
 	class:profile-theme-root--custom-cursor={hasCustomCursor}
 	onmousemove={hasCustomCursor ? trackCustomCursor : undefined}
@@ -111,7 +118,7 @@
 		<img
 			src={customProfile.backgroundUrl}
 			alt=""
-			class="profile-theme-bg-image pointer-events-none absolute inset-0 h-full w-full object-cover"
+			class="profile-theme-bg-image min-h-full pointer-events-none absolute inset-0 h-full w-full object-cover"
 			referrerpolicy="no-referrer"
 			aria-hidden="true"
 		/>
@@ -121,7 +128,7 @@
 		></div>
 	{/if}
 
-	<div class="relative z-1 flex flex-col gap-8 p-4 md:flex-row md:p-6">
+	<div class="relative z-1 flex flex-col gap-8 h-full p-4 md:flex-row md:p-6">
 		{#if user}
 			<div class="flex flex-col gap-2 md:min-w-48">
 				<div
@@ -144,24 +151,18 @@
 				{#if email}
 					<p>{email}</p>
 				{/if}
-				<span class="badge text-nowrap">{roles[user.role as keyof typeof roles]}</span>
+				<span class="badge text-nowrap">{roles[user.role] ?? user.role}</span>
 				<p class="text-sm text-base-content/60">
 					Membre depuis: {user?.createdAt
 						? new Date(user.createdAt).toLocaleDateString('fr-FR')
 						: '—'}
 				</p>
+				{#if musicVideoId && customProfile?.musicUrl}
+					<YoutubeAudioPlayer videoId={musicVideoId} />
+				{/if}
 			</div>
 
-			<div class="mb-8 flex w-full min-w-0 flex-col gap-4">
-				{#if musicVideoId && customProfile?.musicUrl}
-					<div class="card border border-base-300 bg-base-100/95 shadow-sm">
-						<div class="card-body gap-3">
-							<h4 class="card-title text-base">Musique</h4>
-							<YoutubeAudioPlayer videoId={musicVideoId} />
-						</div>
-					</div>
-				{/if}
-
+			<div class="mb-8 flex w-full h-full min-w-0 flex-col gap-4">
 				{#if customProfile?.bio}
 					<div class="card border border-base-300 bg-base-100/95 shadow-sm">
 						<div class="card-body gap-2">
@@ -176,7 +177,7 @@
 						<div class="card-body gap-2">
 							<h4 class="card-title text-base">Pages traducteur</h4>
 							<ul class="flex flex-col gap-2">
-								{#each translatorLinks as link (link.url)}
+								{#each translatorLinks as link, i (`${i}-${link.url}`)}
 									<li>
 										<a
 											href={link.url}
@@ -206,15 +207,6 @@
 							associé à une fiche traducteur.</span
 						>
 					</div>
-				{/if}
-
-				{#if linkedTranslator || translations.length > 0 || translationsTotal > 0}
-					<ProfileTranslations
-						{translations}
-						totalCount={translationsTotal}
-						translatorName={linkedTranslator?.name}
-						{allTranslationsHref}
-					/>
 				{/if}
 
 				{#if canCustomizeProfile}
@@ -323,43 +315,20 @@
 					</div>
 				{/if}
 
-				{#if stats}
-					<div class="card stats w-full border border-base-300 bg-base-100/95 shadow-xl">
-						<div class="stat sm:px-8">
-							<div class="stat-figure text-primary">
-								<CirclePlus />
-							</div>
-							<div class="stat-title text-wrap">Jeu ajoutés (administrateur)</div>
-							<div class="stat-value text-primary">{stats.gameAdd}</div>
-						</div>
-
-						<div class="stat">
-							<div class="stat-figure text-secondary">
-								<SquarePen />
-							</div>
-							<div class="stat-title text-wrap">Jeu modifiés (administrateur)</div>
-							<div class="stat-value text-secondary">{stats.gameEdit}</div>
-						</div>
-					</div>
+				{#if profileStats && (profileStats.direct.gamesAdded > 0 || profileStats.direct.gamesEdited > 0 || profileStats.submissions.total > 0)}
+					<ProfileStatsPanel stats={profileStats} />
 				{/if}
-				{#if stats}
-					<div class="card stats w-full border border-base-300 bg-base-100/95 shadow-xl">
-						<div class="stat sm:px-8">
-							<div class="stat-figure text-primary">
-								<CirclePlus />
-							</div>
-							<div class="stat-title text-wrap">Jeux/traductions ajoutés (soumissions)</div>
-							<div class="stat-value text-primary">{stats.submissionAdd}</div>
-						</div>
 
-						<div class="stat">
-							<div class="stat-figure text-secondary">
-								<SquarePen />
-							</div>
-							<div class="stat-title text-wrap">Jeux/traductions modifiés (soumissions)</div>
-							<div class="stat-value text-secondary">{stats.submissionEdit}</div>
-						</div>
-					</div>
+				{#if linkedTranslator || translations.length > 0 || translationsTotal > 0 || profileStats?.translations}
+					<ProfileTranslations
+						{translations}
+						totalCount={translationsTotal}
+						page={translationsPage}
+						totalPages={translationsTotalPages}
+						hrefForPage={translationsHrefForPage}
+						translationStats={profileStats?.translations ?? null}
+						translatorName={linkedTranslator?.name}
+					/>
 				{/if}
 			</div>
 		{:else}

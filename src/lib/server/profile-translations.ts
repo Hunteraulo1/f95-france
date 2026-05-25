@@ -6,7 +6,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { count, desc, eq, or } from 'drizzle-orm';
 
-export const PROFILE_TRANSLATIONS_PREVIEW_LIMIT = 25;
+export const PROFILE_TRANSLATIONS_PAGE_SIZE = 20;
 
 export type ProfileTranslationItem = {
 	id: string;
@@ -30,12 +30,18 @@ export type ProfileTranslationItem = {
 
 export async function loadProfileTranslationsForUser(
 	userId: string,
-	limit = PROFILE_TRANSLATIONS_PREVIEW_LIMIT
+	options?: { page?: number; pageSize?: number }
 ): Promise<{
 	linkedTranslator: { id: string; name: string } | null;
 	translations: ProfileTranslationItem[];
 	totalCount: number;
+	page: number;
+	pageSize: number;
+	totalPages: number;
 }> {
+	const pageSize = options?.pageSize ?? PROFILE_TRANSLATIONS_PAGE_SIZE;
+	const requestedPage =
+		typeof options?.page === 'number' && options.page > 0 ? Math.floor(options.page) : 1;
 	const [linkedTranslator] = await db
 		.select({ id: table.translator.id, name: table.translator.name })
 		.from(table.translator)
@@ -43,7 +49,14 @@ export async function loadProfileTranslationsForUser(
 		.limit(1);
 
 	if (!linkedTranslator) {
-		return { linkedTranslator: null, translations: [], totalCount: 0 };
+		return {
+			linkedTranslator: null,
+			translations: [],
+			totalCount: 0,
+			page: 1,
+			pageSize,
+			totalPages: 1
+		};
 	}
 
 	const roleFilter = or(
@@ -55,6 +68,10 @@ export async function loadProfileTranslationsForUser(
 		.select({ count: count() })
 		.from(table.gameTranslation)
 		.where(roleFilter);
+
+	const totalCount = Number(countRow?.count ?? 0);
+	const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+	const page = Math.min(requestedPage, totalPages);
 
 	const rows = await db
 		.select({
@@ -80,7 +97,8 @@ export async function loadProfileTranslationsForUser(
 		.innerJoin(table.game, eq(table.game.id, table.gameTranslation.gameId))
 		.where(roleFilter)
 		.orderBy(desc(table.gameTranslation.updatedAt))
-		.limit(limit);
+		.offset((page - 1) * pageSize)
+		.limit(pageSize);
 
 	const translations: ProfileTranslationItem[] = rows.map((t) => ({
 		id: t.id,
@@ -104,6 +122,9 @@ export async function loadProfileTranslationsForUser(
 	return {
 		linkedTranslator: { id: linkedTranslator.id, name: linkedTranslator.name },
 		translations,
-		totalCount: Number(countRow?.count ?? 0)
+		totalCount,
+		page,
+		pageSize,
+		totalPages
 	};
 }
