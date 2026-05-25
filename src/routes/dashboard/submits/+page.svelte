@@ -57,7 +57,8 @@
 						? {
 								id: currentUser.id,
 								username: currentUser.username,
-								avatar: currentUser.avatar
+								avatar: currentUser.avatar,
+								role: currentUser.role
 							}
 						: submission.openedByUser
 				};

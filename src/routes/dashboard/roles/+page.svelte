@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { superadminBadgeClass } from '$lib/utils/username-display';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -88,7 +89,7 @@
 								class="justify-between"
 							>
 								<span class="flex min-w-0 flex-col">
-									<span>{role.label}</span>
+									<span class={superadminBadgeClass(role.slug)}>{role.label}</span>
 									<span class="text-xs opacity-60"
 										>{role.permissionCount} droit{role.permissionCount > 1 ? 's' : ''}</span
 									>
@@ -119,7 +120,9 @@
 					<div class="card-body gap-4">
 						<div class="flex flex-wrap items-start justify-between gap-2">
 							<div>
-								<h3 class="card-title text-base">{selectedRole.label}</h3>
+								<h3 class="card-title text-base {superadminBadgeClass(selectedRole.slug)}">
+									{selectedRole.label}
+								</h3>
 								<p class="font-mono text-sm opacity-70">{selectedRole.slug}</p>
 								{#if selectedRole.isSystem}
 									<span class="mt-1 badge badge-sm badge-info">Rôle système</span>

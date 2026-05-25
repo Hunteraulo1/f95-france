@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { superadminBadgeClass, superadminUsernameClass } from '$lib/utils/username-display';
 	import User from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 
@@ -79,7 +80,9 @@
 									</div>
 									<a
 										href={resolve(`/dashboard/profile/${user.username}`)}
-										class="link font-bold text-nowrap link-hover"
+										class="link font-bold text-nowrap link-hover {superadminUsernameClass(
+											user.role
+										)}"
 									>
 										{user.username}
 									</a>
@@ -87,7 +90,7 @@
 							</td>
 							<td>{user.email}</td>
 							<td>
-								<div class="badge badge-outline text-nowrap">
+								<div class="badge badge-outline text-nowrap {superadminBadgeClass(user.role)}">
 									{roles.find((r) => r.value === user.role)?.label || user.role}
 								</div>
 							</td>

@@ -4,6 +4,7 @@
 	import { newToast, user } from '$lib/stores';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
+	import { superadminUsernameClass } from '$lib/utils/username-display';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
 
@@ -40,11 +41,13 @@
 			id: string;
 			username: string;
 			avatar: string | null;
+			role: string;
 		} | null;
 		openedByUser?: {
 			id: string;
 			username: string;
 			avatar: string | null;
+			role: string;
 		} | null;
 	}
 
@@ -79,7 +82,9 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {superadminUsernameClass(
+									submission.user.role
+								)}"
 								onclick={() => {
 									if (submission.user?.username) {
 										goto(resolve(`/dashboard/profile/${submission.user.username}`));
@@ -108,7 +113,9 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {superadminUsernameClass(
+									submission.openedByUser.role
+								)}"
 								onclick={() => {
 									goto(resolve(`/dashboard/profile/${submission.openedByUser!.username}`));
 								}}

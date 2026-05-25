@@ -70,7 +70,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					createdAt: apiLog.createdAt,
 					user: {
 						id: user.id,
-						username: user.username
+						username: user.username,
+						role: user.role
 					}
 				})
 				.from(apiLog)
@@ -87,7 +88,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					createdAt: apiLog.createdAt,
 					user: {
 						id: user.id,
-						username: user.username
+						username: user.username,
+						role: user.role
 					}
 				})
 				.from(apiLog)

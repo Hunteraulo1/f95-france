@@ -8,6 +8,38 @@
 
 @theme {
 	--breakpoint-xs: 30rem;
+	--animate-text: text 5s ease infinite;
+
+	@keyframes text {
+		0%,
+		100% {
+			background-size: 200% 200%;
+			background-position: left center;
+		}
+		50% {
+			background-size: 200% 200%;
+			background-position: right center;
+		}
+	}
+}
+
+.username-superadmin {
+	background-image: linear-gradient(
+		90deg,
+		var(--color-primary),
+		var(--color-secondary),
+		var(--color-accent),
+		var(--color-primary)
+	);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.badge.username-superadmin {
+	border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-base-100) 88%, transparent);
 }
 
 /*

@@ -21,6 +21,7 @@
 		getTypeLabel,
 		validateStatusChange
 	} from '$lib/utils/submissions';
+	import { superadminUsernameClass } from '$lib/utils/username-display';
 
 	type SubmissionPrimitive = string | number | boolean | null | undefined;
 
@@ -76,10 +77,12 @@
 		user?: {
 			id: string;
 			username: string;
+			role?: string;
 		} | null;
 		openedByUser?: {
 			id: string;
 			username: string;
+			role?: string;
 		} | null;
 	}
 
@@ -531,7 +534,7 @@
 						<div class="mt-1 text-sm text-base-content/70">
 							Soumission créée par :
 							<a
-								class="link link-hover"
+								class="link link-hover {superadminUsernameClass(submission.user.role)}"
 								href={resolve(`/dashboard/profile/${submission.user.username}`)}
 								onclick={async (event) => {
 									event.preventDefault();
@@ -546,7 +549,7 @@
 						<div class="mt-1 text-sm text-base-content/70">
 							Ouverte par :
 							<a
-								class="link link-hover"
+								class="link link-hover {superadminUsernameClass(submission.openedByUser.role)}"
 								href={resolve(`/dashboard/profile/${submission.openedByUser.username}`)}
 								onclick={async (event) => {
 									event.preventDefault();
