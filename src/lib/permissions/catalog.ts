@@ -2,7 +2,10 @@
 export const PERMISSION_KEYS = [
 	'dashboard.view',
 	'profile.view',
-	'profile.customize',
+	'profile.customize.bio',
+	'profile.customize.background',
+	'profile.customize.music',
+	'profile.customize.cursor',
 	'settings.view',
 	'api_keys.own',
 	'games.manage',
@@ -54,10 +57,28 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Général'
 	},
 	{
-		key: 'profile.customize',
-		label: 'Profil personnalisé',
-		description: 'Personnaliser son profil (bio, fond, YouTube Music, curseur)',
-		group: 'Général'
+		key: 'profile.customize.bio',
+		label: 'Bio',
+		description: 'Modifier la bio affichée sur le profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.background',
+		label: 'Image de fond',
+		description: 'Modifier l’image de fond du profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.music',
+		label: 'Musique',
+		description: 'Ajouter une musique YouTube / YouTube Music sur le profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.cursor',
+		label: 'Curseur',
+		description: 'Personnaliser le curseur affiché sur le profil public',
+		group: 'Profil personnalisé'
 	},
 	{
 		key: 'settings.view',

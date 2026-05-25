@@ -58,11 +58,15 @@ export function isYoutubeEmbedPostMessageOrigin(origin: string): boolean {
 	return YOUTUBE_EMBED_ORIGINS.has(origin);
 }
 
+/** ID widget postMessage (doit correspondre au paramètre `widgetid` de l’iframe). */
+export const YOUTUBE_EMBED_WIDGET_ID = 1;
+
 /** Lecteur audio masqué : iframe + postMessage (pas d’API IFrame chargée sur la page → compatible CSP). */
 export function buildYoutubeAudioEmbedUrl(videoId: string, pageOrigin: string): string {
 	const params = new URLSearchParams({
 		autoplay: '1',
 		enablejsapi: '1',
+		widgetid: String(YOUTUBE_EMBED_WIDGET_ID),
 		controls: '0',
 		disablekb: '1',
 		fs: '0',

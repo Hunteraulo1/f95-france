@@ -1,93 +1,57 @@
-import { hasEffectivePermission } from '$lib/permissions/effective';
+import { resolveProfileCustomizeFlags } from '$lib/permissions/profile-customize';
 import {
 	buildCustomProfileTheme,
 	normalizeProfileBio,
 	validateOptionalHttpUrl
 } from '$lib/profile/custom-profile';
-import { loadProfileStats } from '$lib/server/profile-stats';
 import { validateOptionalYoutubeMusicUrl } from '$lib/profile/youtube-music';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions-guard';
-import {
-	loadProfileTranslationsForUser,
-	PROFILE_TRANSLATIONS_PAGE_SIZE
-} from '$lib/server/profile-translations';
 import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const userProfileSelect = {
 	id: table.user.id,
 	username: table.user.username,
-	discordId: table.user.discordId,
-	email: table.user.email,
-	avatar: table.user.avatar,
-	role: table.user.role,
-	directMode: table.user.directMode,
 	profileBio: table.user.profileBio,
 	profileBackgroundUrl: table.user.profileBackgroundUrl,
 	profileMusicUrl: table.user.profileMusicUrl,
-	profileCursorUrl: table.user.profileCursorUrl,
-	createdAt: table.user.createdAt,
-	updatedAt: table.user.updatedAt
+	profileCursorUrl: table.user.profileCursorUrl
 } as const;
 
-function parseTranslationsPage(url: URL): number {
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-}
-
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
-		return {
-			user: null,
-			profileStats: null,
-			canCustomizeProfile: false,
-			customProfile: null,
-			translatorLinks: [],
-			linkedTranslator: null,
-			translations: [],
-			translationsTotal: 0,
-			translationsPage: 1,
-			translationsPageSize: PROFILE_TRANSLATIONS_PAGE_SIZE,
-			translationsTotalPages: 1
-		};
+		throw redirect(303, '/dashboard/login');
 	}
 
 	const userId = locals.user.id;
-	const user = await db
+	const [row] = await db
 		.select(userProfileSelect)
 		.from(table.user)
 		.where(eq(table.user.id, userId))
 		.limit(1);
 
-	const row = user[0] ?? null;
-	const canCustomizeProfile = hasEffectivePermission(
-		locals.user.role,
-		locals.permissions,
-		'profile.customize'
-	);
+	if (!row) {
+		throw redirect(303, '/dashboard/login');
+	}
 
-	const [{ translator, links }, translationBundle, profileStats] = await Promise.all([
-		loadTranslatorPagesForUser(userId),
-		loadProfileTranslationsForUser(userId, { page: parseTranslationsPage(url) }),
-		loadProfileStats(userId)
-	]);
+	const profileCustomize = resolveProfileCustomizeFlags(locals.user.role, locals.permissions);
+
+	const { translator, links } = await loadTranslatorPagesForUser(userId);
 
 	return {
 		user: row,
-		profileStats,
-		canCustomizeProfile,
-		customProfile: row ? buildCustomProfileTheme(row) : null,
-		translatorLinks: links,
-		linkedTranslator: translator ?? translationBundle.linkedTranslator,
-		translations: translationBundle.translations,
-		translationsTotal: translationBundle.totalCount,
-		translationsPage: translationBundle.page,
-		translationsPageSize: translationBundle.pageSize,
-		translationsTotalPages: translationBundle.totalPages
+		profileCustomize,
+		customProfile: buildCustomProfileTheme(row),
+		linkedTranslator: translator
+			? {
+					id: translator.id,
+					name: translator.name,
+					pages: links.map((p) => ({ name: p.label, link: p.url }))
+				}
+			: null
 	};
 };
 
@@ -96,40 +60,85 @@ export const actions: Actions = {
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });
 		}
-		await assertPermission(locals, 'profile.customize');
+
+		const flags = resolveProfileCustomizeFlags(locals.user.role, locals.permissions);
+		if (!flags.any) {
+			return fail(403, { message: 'Aucune permission de personnalisation du profil.' });
+		}
+
+		const [current] = await db
+			.select(userProfileSelect)
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
+
+		if (!current) {
+			return fail(404, { message: 'Utilisateur introuvable' });
+		}
 
 		const formData = await request.formData();
-		const bio = normalizeProfileBio(String(formData.get('profileBio') ?? ''));
+		const formBio = normalizeProfileBio(String(formData.get('profileBio') ?? ''));
+		const formBackgroundRaw = String(formData.get('profileBackgroundUrl') ?? '');
+		const formMusicRaw = String(formData.get('profileMusicUrl') ?? '');
+		const formCursorRaw = String(formData.get('profileCursorUrl') ?? '');
 
-		const background = validateOptionalHttpUrl(
-			String(formData.get('profileBackgroundUrl') ?? ''),
-			'Image de fond'
-		);
-		if (typeof background === 'object' && background && 'error' in background) {
-			return fail(400, { message: background.error });
+		const norm = (v: string | null | undefined) => (v ?? '').trim();
+
+		if (!flags.bio && norm(formBio) !== norm(current.profileBio)) {
+			return fail(403, { message: 'Permission « Profil — bio » requise.' });
 		}
 
-		const music = validateOptionalYoutubeMusicUrl(String(formData.get('profileMusicUrl') ?? ''));
-		if (typeof music === 'object' && music && 'error' in music) {
-			return fail(400, { message: music.error });
+		if (!flags.background && norm(formBackgroundRaw) !== norm(current.profileBackgroundUrl)) {
+			return fail(403, { message: 'Permission « Profil — image de fond » requise.' });
+		}
+		if (!flags.music && norm(formMusicRaw) !== norm(current.profileMusicUrl)) {
+			return fail(403, { message: 'Permission « Profil — musique » requise.' });
+		}
+		if (!flags.cursor && norm(formCursorRaw) !== norm(current.profileCursorUrl)) {
+			return fail(403, { message: 'Permission « Profil — curseur » requise.' });
 		}
 
-		const cursor = validateOptionalHttpUrl(
-			String(formData.get('profileCursorUrl') ?? ''),
-			'Curseur'
-		);
-		if (typeof cursor === 'object' && cursor && 'error' in cursor) {
-			return fail(400, { message: cursor.error });
+		let profileBio = current.profileBio;
+		let profileBackgroundUrl = current.profileBackgroundUrl;
+		let profileMusicUrl = current.profileMusicUrl;
+		let profileCursorUrl = current.profileCursorUrl;
+
+		if (flags.bio) {
+			profileBio = formBio || null;
+		}
+
+		if (flags.background) {
+			const background = validateOptionalHttpUrl(formBackgroundRaw, 'Image de fond');
+			if (typeof background === 'object' && background && 'error' in background) {
+				return fail(400, { message: background.error });
+			}
+			profileBackgroundUrl = background;
+		}
+
+		if (flags.music) {
+			const music = validateOptionalYoutubeMusicUrl(formMusicRaw);
+			if (typeof music === 'object' && music && 'error' in music) {
+				return fail(400, { message: music.error });
+			}
+			profileMusicUrl = music;
+		}
+
+		if (flags.cursor) {
+			const cursor = validateOptionalHttpUrl(formCursorRaw, 'Curseur');
+			if (typeof cursor === 'object' && cursor && 'error' in cursor) {
+				return fail(400, { message: cursor.error });
+			}
+			profileCursorUrl = cursor;
 		}
 
 		try {
 			await db
 				.update(table.user)
 				.set({
-					profileBio: bio || null,
-					profileBackgroundUrl: background,
-					profileMusicUrl: music,
-					profileCursorUrl: cursor,
+					profileBio,
+					profileBackgroundUrl,
+					profileMusicUrl,
+					profileCursorUrl,
 					updatedAt: new Date()
 				})
 				.where(eq(table.user.id, locals.user.id));
@@ -139,5 +148,59 @@ export const actions: Actions = {
 			console.error('Erreur mise à jour profil personnalisé:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du profil.' });
 		}
+	},
+
+	requestTranslatorPagesUpdate: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const translatorId = String(formData.get('translatorId') ?? '').trim();
+		const pagesRaw = String(formData.get('pages') ?? '');
+		if (!translatorId) {
+			return fail(400, { message: 'Traducteur introuvable' });
+		}
+
+		let pagesParsed: Array<{ name: string; link: string }> = [];
+		try {
+			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
+			if (Array.isArray(raw)) {
+				pagesParsed = raw.map((p) => ({
+					name: String(p.name ?? '').trim(),
+					link: String(p.link ?? '').trim()
+				}));
+			}
+		} catch {
+			return fail(400, { message: 'Format des pages invalide' });
+		}
+		if (pagesParsed.some((p) => !p.name || !p.link)) {
+			return fail(400, { message: 'Chaque page doit avoir un nom et un lien.' });
+		}
+
+		const [translatorRow] = await db
+			.select({
+				id: table.translator.id,
+				userId: table.translator.userId
+			})
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+
+		if (!translatorRow || translatorRow.userId !== locals.user.id) {
+			return fail(403, { message: 'Vous pouvez modifier uniquement votre profil traducteur lié.' });
+		}
+
+		await db.insert(table.submission).values({
+			userId: locals.user.id,
+			type: 'translator_pages',
+			status: 'pending',
+			data: JSON.stringify({
+				translatorId,
+				pages: pagesParsed
+			})
+		});
+
+		return { success: true, message: 'Demande envoyée. Un admin doit la valider.' };
 	}
 };

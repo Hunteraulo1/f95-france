@@ -1,0 +1,332 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
+	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
+	import {
+		PROFILE_BACKGROUND_SIZE_LABEL,
+		PROFILE_BIO_MAX_LENGTH,
+		PROFILE_CURSOR_DISPLAY_PX
+	} from '$lib/profile/custom-profile';
+
+	type LinkedTranslator = {
+		id: string;
+		name: string;
+		pages: Array<{ name: string; link: string }>;
+	};
+
+	interface Props {
+		username: string;
+		publicProfileHref: string;
+		profileCustomize: ProfileCustomizeFlags;
+		customProfile?: CustomProfileTheme | null;
+		linkedTranslator?: LinkedTranslator | null;
+	}
+
+	let {
+		username,
+		publicProfileHref,
+		profileCustomize,
+		customProfile = null,
+		linkedTranslator = null
+	}: Props = $props();
+
+	let profileBio = $state('');
+	let profileBackgroundUrl = $state('');
+	let profileMusicUrl = $state('');
+	let profileCursorUrl = $state('');
+	let customProfileError = $state<string | null>(null);
+	let customProfileInfo = $state<string | null>(null);
+
+	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
+	let translatorPagesError = $state<string | null>(null);
+	let translatorPagesInfo = $state<string | null>(null);
+
+	$effect(() => {
+		if (profileCustomize.any && customProfile) {
+			profileBio = customProfile.bio;
+			profileBackgroundUrl = customProfile.backgroundUrl ?? '';
+			profileMusicUrl = customProfile.musicUrl ?? '';
+			profileCursorUrl = customProfile.cursorUrl ?? '';
+		}
+	});
+
+	$effect(() => {
+		if (linkedTranslator?.pages?.length) {
+			translatorPages = linkedTranslator.pages.map((p) => ({ ...p }));
+		} else if (linkedTranslator) {
+			translatorPages = [{ name: '', link: '' }];
+		}
+	});
+
+	const addTranslatorPage = () => {
+		translatorPages = [...translatorPages, { name: '', link: '' }];
+	};
+
+	const removeTranslatorPage = (index: number) => {
+		translatorPages = translatorPages.filter((_, i) => i !== index);
+	};
+</script>
+
+<section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<div>
+			<h1 class="text-2xl font-bold tracking-tight">Modifier mon profil</h1>
+			<p class="mt-1 text-sm text-base-content/70">
+				Personnalisation pour <span class="font-medium">{username}</span>
+			</p>
+		</div>
+		<a href={publicProfileHref} class="btn btn-outline btn-sm">Voir mon profil</a>
+	</div>
+
+	{#if linkedTranslator}
+		<div class="card border border-base-300 bg-base-100 shadow-sm">
+			<div class="card-body gap-4">
+				<h2 class="text-lg font-semibold text-base-content">Pages traducteur</h2>
+				<p class="text-sm text-base-content/70">
+					Liens affichés sur votre
+					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
+					<span class="font-medium">{linkedTranslator.name}</span>. Les modifications sont soumises
+					à validation admin.
+				</p>
+
+				{#if translatorPagesError}
+					<div class="alert alert-error">
+						<span>{translatorPagesError}</span>
+					</div>
+				{/if}
+				{#if translatorPagesInfo}
+					<div class="alert alert-success">
+						<span>{translatorPagesInfo}</span>
+					</div>
+				{/if}
+
+				<form
+					method="POST"
+					action="?/requestTranslatorPagesUpdate"
+					use:enhance={() => {
+						translatorPagesError = null;
+						translatorPagesInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								translatorPagesInfo =
+									typeof result.data === 'object' && result.data && 'message' in result.data
+										? String(result.data.message)
+										: 'Demande envoyée. En attente de validation admin.';
+							} else if (result.type === 'failure' && result.data) {
+								translatorPagesError =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: "Erreur lors de l'envoi de la demande";
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
+					<div class="space-y-2">
+						{#each translatorPages as pageEntry, index (index)}
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+								<input
+									type="text"
+									placeholder="Nom de la page"
+									class="input-bordered input flex-1"
+									bind:value={pageEntry.name}
+								/>
+								<input
+									type="url"
+									placeholder="https://…"
+									class="input-bordered input flex-1"
+									bind:value={pageEntry.link}
+								/>
+								<button
+									type="button"
+									class="btn btn-sm btn-error shrink-0"
+									onclick={() => removeTranslatorPage(index)}
+									aria-label="Supprimer cette page"
+								>
+									✕
+								</button>
+							</div>
+						{/each}
+						{#if translatorPages.length === 0}
+							<p class="text-sm text-base-content/70">
+								Aucune page (la liste sera vide après validation).
+							</p>
+						{/if}
+						<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPage}>
+							+ Ajouter une page
+						</button>
+					</div>
+					<input
+						type="hidden"
+						name="pages"
+						value={JSON.stringify(
+							translatorPages.filter((p) => p.name.trim() !== '' || p.link.trim() !== '')
+						)}
+					/>
+					<div class="mt-4 flex justify-end">
+						<button type="submit" class="btn btn-primary">Soumettre pour validation</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{:else}
+		<div role="alert" class="alert alert-info">
+			<span>
+				Aucune fiche traducteur n’est liée à ce compte : les pages externes apparaîtront une fois
+				l’association faite par un administrateur.
+			</span>
+		</div>
+	{/if}
+
+	{#if profileCustomize.any}
+		<div class="card border border-base-300 bg-base-100 shadow-sm">
+			<div class="card-body gap-4">
+				<h2 class="text-lg font-semibold text-base-content">Personnalisation</h2>
+				<p class="text-sm text-base-content/70">
+					Éléments modifiables sur votre
+					<a href={publicProfileHref} class="link link-hover">profil public</a>
+					(selon vos permissions).
+				</p>
+
+				{#if customProfileError}
+					<div class="alert alert-error">
+						<span>{customProfileError}</span>
+					</div>
+				{/if}
+				{#if customProfileInfo}
+					<div class="alert alert-success">
+						<span>{customProfileInfo}</span>
+					</div>
+				{/if}
+
+				<form
+					method="POST"
+					action="?/updateCustomProfile"
+					use:enhance={() => {
+						customProfileError = null;
+						customProfileInfo = null;
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update();
+								customProfileInfo =
+									typeof result.data === 'object' && result.data && 'message' in result.data
+										? String(result.data.message)
+										: 'Profil personnalisé mis à jour.';
+							} else if (result.type === 'failure' && result.data) {
+								customProfileError =
+									typeof result.data === 'object' && 'message' in result.data
+										? String(result.data.message)
+										: 'Erreur lors de la mise à jour.';
+							}
+						};
+					}}
+				>
+					{#if profileCustomize.bio}
+						<fieldset class="fieldset gap-2">
+							<legend class="fieldset-legend">Bio</legend>
+							<textarea
+								name="profileBio"
+								class="textarea textarea-bordered w-full"
+								rows="5"
+								maxlength={PROFILE_BIO_MAX_LENGTH}
+								placeholder="Présentez-vous, vos spécialités, vos projets…"
+								bind:value={profileBio}
+							></textarea>
+							<p class="label text-base-content/60">
+								{profileBio.length}/{PROFILE_BIO_MAX_LENGTH} caractères
+							</p>
+						</fieldset>
+					{:else}
+						<input type="hidden" name="profileBio" value={profileBio} />
+					{/if}
+
+					{#if profileCustomize.background || profileCustomize.music || profileCustomize.cursor}
+						<fieldset class="fieldset gap-3 {profileCustomize.bio ? 'mt-4' : ''}">
+							<legend class="fieldset-legend">Apparence</legend>
+							{#if profileCustomize.background}
+								<label class="input flex w-full items-start">
+									<span class="label h-full"
+										>URL de l'image de fond ({PROFILE_BACKGROUND_SIZE_LABEL})</span
+									>
+									<input
+										type="url"
+										name="profileBackgroundUrl"
+										class="grow w-full"
+										placeholder="https://exemple.com/fond.jpg"
+										bind:value={profileBackgroundUrl}
+									/>
+								</label>
+							{:else}
+								<input type="hidden" name="profileBackgroundUrl" value={profileBackgroundUrl} />
+							{/if}
+							{#if profileCustomize.music}
+								<label class="input flex w-full items-start">
+									<span class="label h-full">Musique (YouTube / YouTube Music)</span>
+									<input
+										type="url"
+										name="profileMusicUrl"
+										class="grow w-full"
+										placeholder="https://music.youtube.com/watch?v=…"
+										bind:value={profileMusicUrl}
+									/>
+								</label>
+							{:else}
+								<input type="hidden" name="profileMusicUrl" value={profileMusicUrl} />
+							{/if}
+							{#if profileCustomize.cursor}
+								<label class="input flex w-full items-start">
+									<span class="label h-full"
+										>Curseur (URL image, affiché en {PROFILE_CURSOR_DISPLAY_PX}×{PROFILE_CURSOR_DISPLAY_PX}
+										px)</span
+									>
+									<input
+										type="url"
+										name="profileCursorUrl"
+										class="grow w-full"
+										placeholder="https://exemple.com/curseur.png"
+										bind:value={profileCursorUrl}
+									/>
+								</label>
+							{:else}
+								<input type="hidden" name="profileCursorUrl" value={profileCursorUrl} />
+							{/if}
+							{#if profileCustomize.background}
+								<p class="text-xs text-base-content/60">
+									Fond : JPG/PNG/WebP, ratio {PROFILE_BACKGROUND_SIZE_LABEL}. Un fondu vers le fond
+									de la page est appliqué en bas de l’image sur le profil public.
+								</p>
+							{/if}
+							{#if profileCustomize.music}
+								<p class="text-xs text-base-content/60">
+									Musique : lien morceau YouTube / YouTube Music.
+								</p>
+							{/if}
+							{#if profileCustomize.cursor}
+								<p class="text-xs text-base-content/60">
+									Curseur : PNG transparent ; affichage {PROFILE_CURSOR_DISPLAY_PX} px.
+								</p>
+							{/if}
+						</fieldset>
+					{:else}
+						<input type="hidden" name="profileBackgroundUrl" value={profileBackgroundUrl} />
+						<input type="hidden" name="profileMusicUrl" value={profileMusicUrl} />
+						<input type="hidden" name="profileCursorUrl" value={profileCursorUrl} />
+					{/if}
+
+					<div class="mt-4 flex justify-end">
+						<button type="submit" class="btn btn-primary">Enregistrer</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{:else if !linkedTranslator}
+		<div role="alert" class="alert alert-info">
+			<span>
+				Aucune permission de personnalisation (bio, fond, musique, curseur). Demandez les droits
+				appropriés à un administrateur dans
+				<a href="/dashboard/roles" class="link link-hover">Rôles et permissions</a>.
+			</span>
+		</div>
+	{/if}
+</section>

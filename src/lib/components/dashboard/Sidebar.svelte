@@ -184,7 +184,7 @@
 			access: 'all'
 		},
 		{
-			label: 'Profil',
+			label: 'Personnaliser le profil',
 			href: '/dashboard/profile',
 			icon: UserPen,
 			access: 'all'

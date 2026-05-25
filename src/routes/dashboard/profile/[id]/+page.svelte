@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import Profile from '$lib/components/dashboard/Profile.svelte';
+	import ProfileView from '$lib/components/dashboard/ProfileView.svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -13,9 +13,15 @@
 		const base = resolve(`/dashboard/profile/${data.profileSlug}`);
 		return page > 1 ? `${base}?page=${page}` : base;
 	};
+
+	const editProfileHref = $derived(
+		data.isOwnProfile && data.editProfileHref
+			? resolve(data.editProfileHref as '/dashboard/profile')
+			: null
+	);
 </script>
 
-<Profile
+<ProfileView
 	user={data.user}
 	profileStats={data.profileStats}
 	customProfile={data.customProfile}
@@ -26,4 +32,5 @@
 	translationsPage={data.translationsPage}
 	translationsTotalPages={data.translationsTotalPages}
 	{translationsHrefForPage}
+	{editProfileHref}
 />
