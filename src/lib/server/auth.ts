@@ -185,6 +185,10 @@ export async function createUser(username: string, email: string, password: stri
 		devUserId: null,
 		gameAdd: 0,
 		gameEdit: 0,
+		profileBio: null,
+		profileBackgroundUrl: null,
+		profileMusicUrl: null,
+		profileCursorUrl: null,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};

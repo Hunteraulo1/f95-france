@@ -9,4 +9,15 @@
 	let { data }: Props = $props();
 </script>
 
-<Profile user={data.user} email={data.user?.email} stats={data.stats} />
+<Profile
+	user={data.user}
+	email={data.user?.email}
+	stats={data.stats}
+	customProfile={data.customProfile}
+	translatorLinks={data.translatorLinks}
+	linkedTranslator={data.linkedTranslator}
+	translations={data.translations}
+	translationsTotal={data.translationsTotal}
+	allTranslationsHref={data.allTranslationsHref}
+	canCustomizeProfile={data.canCustomizeProfile}
+/>

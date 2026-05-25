@@ -1,26 +1,35 @@
+import { buildCustomProfileTheme, hasCustomProfilePresentation } from '$lib/profile/custom-profile';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
+import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
 import { error } from '@sveltejs/kit';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
+
+const userProfileSelect = {
+	id: table.user.id,
+	username: table.user.username,
+	discordId: table.user.discordId,
+	avatar: table.user.avatar,
+	role: table.user.role,
+	directMode: table.user.directMode,
+	gameAdd: table.user.gameAdd,
+	gameEdit: table.user.gameEdit,
+	profileBio: table.user.profileBio,
+	profileBackgroundUrl: table.user.profileBackgroundUrl,
+	profileMusicUrl: table.user.profileMusicUrl,
+	profileCursorUrl: table.user.profileCursorUrl,
+	createdAt: table.user.createdAt,
+	updatedAt: table.user.updatedAt
+} as const;
 
 export const load: PageServerLoad = async ({ params }) => {
 	const { id } = params;
 	const profileRef = String(id ?? '').trim();
 
 	const userByUsername = await db
-		.select({
-			id: table.user.id,
-			username: table.user.username,
-			discordId: table.user.discordId,
-			avatar: table.user.avatar,
-			role: table.user.role,
-			directMode: table.user.directMode,
-			gameAdd: table.user.gameAdd,
-			gameEdit: table.user.gameEdit,
-			createdAt: table.user.createdAt,
-			updatedAt: table.user.updatedAt
-		})
+		.select(userProfileSelect)
 		.from(table.user)
 		.where(eq(table.user.username, profileRef))
 		.limit(1);
@@ -29,18 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		userByUsername.length > 0
 			? userByUsername
 			: await db
-					.select({
-						id: table.user.id,
-						username: table.user.username,
-						discordId: table.user.discordId,
-						avatar: table.user.avatar,
-						role: table.user.role,
-						directMode: table.user.directMode,
-						gameAdd: table.user.gameAdd,
-						gameEdit: table.user.gameEdit,
-						createdAt: table.user.createdAt,
-						updatedAt: table.user.updatedAt
-					})
+					.select(userProfileSelect)
 					.from(table.user)
 					.where(eq(table.user.id, profileRef))
 					.limit(1);
@@ -49,15 +47,14 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Utilisateur non trouvé');
 	}
 	const userId = user[0].id;
+	const row = user[0];
 
-	// Compter les soumissions acceptées par type
 	let gameAddSubmissions = 0;
 	let gameEditSubmissions = 0;
 	let submissionAdd = 0;
 	let submissionEdit = 0;
 
 	try {
-		// Jeux ajoutés via soumissions acceptées
 		const gameAddResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
@@ -70,7 +67,6 @@ export const load: PageServerLoad = async ({ params }) => {
 			);
 		gameAddSubmissions = gameAddResult[0]?.count || 0;
 
-		// Jeux modifiés via soumissions acceptées
 		const gameEditResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
@@ -83,7 +79,6 @@ export const load: PageServerLoad = async ({ params }) => {
 			);
 		gameEditSubmissions = gameEditResult[0]?.count || 0;
 
-		// Soumissions ajoutées (nouvelles traductions ou nouveaux jeux)
 		const submissionAddResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
@@ -96,7 +91,6 @@ export const load: PageServerLoad = async ({ params }) => {
 			);
 		submissionAdd = submissionAddResult[0]?.count || 0;
 
-		// Soumissions modifiées (mises à jour ou suppressions)
 		const submissionEditResult = await db
 			.select({ count: sql<number>`count(*)`.as('count') })
 			.from(table.submission)
@@ -108,17 +102,29 @@ export const load: PageServerLoad = async ({ params }) => {
 				)
 			);
 		submissionEdit = submissionEditResult[0]?.count || 0;
-	} catch (error: unknown) {
-		console.warn('Erreur lors du chargement des statistiques de soumissions:', error);
+	} catch (err: unknown) {
+		console.warn('Erreur lors du chargement des statistiques de soumissions:', err);
 	}
 
+	const theme = buildCustomProfileTheme(row);
+	const [{ translator, links }, translationBundle] = await Promise.all([
+		loadTranslatorPagesForUser(userId),
+		loadProfileTranslationsForUser(userId)
+	]);
+
 	return {
-		user: user[0] || null,
+		user: row,
 		stats: {
 			gameAdd: gameAddSubmissions,
 			gameEdit: gameEditSubmissions,
 			submissionAdd,
 			submissionEdit
-		}
+		},
+		customProfile: hasCustomProfilePresentation(theme, links) ? theme : null,
+		translatorLinks: links,
+		linkedTranslator: translator ?? translationBundle.linkedTranslator,
+		translations: translationBundle.translations,
+		translationsTotal: translationBundle.totalCount,
+		allTranslationsHref: null
 	};
 };

@@ -155,6 +155,20 @@
       "when": 1779532322829,
       "tag": "0021_api_log_route_text",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0023_profile_customize",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779603600000,
+      "tag": "0024_profile_theme",
+      "breakpoints": true
     }
   ]
 }

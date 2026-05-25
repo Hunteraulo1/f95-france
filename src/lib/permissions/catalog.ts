@@ -2,6 +2,7 @@
 export const PERMISSION_KEYS = [
 	'dashboard.view',
 	'profile.view',
+	'profile.customize',
 	'settings.view',
 	'api_keys.own',
 	'games.manage',
@@ -48,7 +49,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 	{
 		key: 'profile.view',
 		label: 'Profil',
-		description: 'Voir et éditer son profil',
+		description: 'Voir son profil et ceux des autres membres',
+		group: 'Général'
+	},
+	{
+		key: 'profile.customize',
+		label: 'Profil personnalisé',
+		description: 'Personnaliser son profil (bio, fond, YouTube Music, curseur)',
 		group: 'Général'
 	},
 	{
