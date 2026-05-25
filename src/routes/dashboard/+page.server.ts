@@ -1,7 +1,7 @@
+import { isTranslationOutdated } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { userHasPermission } from '$lib/server/permissions';
-import { shouldNotifyTranslatorOnAutoCheckVersionBump } from '$lib/server/translation-notify-rules';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -81,18 +81,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 			let outdated = 0;
 			for (const tr of myTranslations) {
-				const checkerVersion = (tr.gameVersion ?? '').trim();
-				const isOutdated =
-					checkerVersion.length > 0 &&
-					shouldNotifyTranslatorOnAutoCheckVersionBump(
+				if (
+					isTranslationOutdated(
 						{
 							version: tr.version,
 							tversion: tr.tversion,
 							tname: tr.tname
 						},
-						checkerVersion
-					);
-				if (isOutdated) outdated += 1;
+						tr.gameVersion
+					)
+				) {
+					outdated += 1;
+				}
 			}
 
 			translationStats = {

@@ -1,7 +1,9 @@
-import { effectiveTranslationVersion } from '$lib/server/api/translation-public';
+import {
+	effectiveTranslationVersion,
+	isTranslationOutdated
+} from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { redirect } from '@sveltejs/kit';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -115,9 +117,14 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 	const translationsWithFlags = translations
 		.map((t) => {
 			const referenceVersion = effectiveTranslationVersion(t.version, t.game.gameVersion) ?? '';
-			const isIntegrated = tradVerIndicatesIntegrated(t.tversion, t.tname);
-			const versionsMatch = referenceVersion === strTrim(t.tversion);
-			const isOutdated = !isIntegrated && !versionsMatch;
+			const isOutdated = isTranslationOutdated(
+				{
+					version: t.version,
+					tversion: t.tversion,
+					tname: t.tname
+				},
+				t.game.gameVersion
+			);
 			return {
 				...t,
 				referenceVersion,
