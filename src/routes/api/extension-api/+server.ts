@@ -271,7 +271,7 @@ export const GET: RequestHandler = async ({ url, request, locals, cookies }) => 
 				domain: mapDomain(row.game.website),
 				hostname: mapHostname(row.game.website),
 				name: row.game.name,
-				version: row.game.gameVersion ?? '',
+				version: row.translation.version ?? row.game.gameVersion ?? null,
 				tversion: row.translation.tversion,
 				tname: mapTName(row.translation.tname),
 				description: row.game.description ?? null,
