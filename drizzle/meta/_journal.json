@@ -169,6 +169,13 @@
       "when": 1779603600000,
       "tag": "0024_profile_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779607200000,
+      "tag": "0025_games_silent_mode",
+      "breakpoints": true
     }
   ]
 }
