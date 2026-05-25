@@ -33,6 +33,8 @@
 		translationsTotalPages?: number;
 		translationsHrefForPage?: (page: number) => string;
 		canCustomizeProfile?: boolean;
+		/** Lien vers la page profil publique (ex. /dashboard/profile/{id}). */
+		publicProfileHref?: string | null;
 	}
 
 	let {
@@ -47,7 +49,8 @@
 		translationsPage = 1,
 		translationsTotalPages = 1,
 		translationsHrefForPage = () => '',
-		canCustomizeProfile = false
+		canCustomizeProfile = false,
+		publicProfileHref = null
 	}: Props = $props();
 
 	let profileBio = $state('');
@@ -157,6 +160,9 @@
 						? new Date(user.createdAt).toLocaleDateString('fr-FR')
 						: '—'}
 				</p>
+				{#if publicProfileHref}
+					<a href={publicProfileHref} class="btn btn-outline btn-sm w-fit"> Voir mon profil </a>
+				{/if}
 				{#if musicVideoId && customProfile?.musicUrl}
 					<YoutubeAudioPlayer videoId={musicVideoId} />
 				{/if}

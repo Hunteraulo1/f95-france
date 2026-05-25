@@ -32,7 +32,7 @@ const config = {
       directives: {
         'default-src': ['self'],
         'base-uri': ['self'],
-        'script-src': ['self', 'https://www.youtube.com'],
+        'script-src': ['self'],
         'style-src': ['self', 'unsafe-inline'],
         'img-src': [
           'self',
@@ -57,7 +57,12 @@ const config = {
           'https://cdn.discordapp.com'
         ],
         'font-src': ['self'],
-        'connect-src': ['self', 'https://www.youtube.com', 'https://www.google.com'],
+        'connect-src': [
+          'self',
+          'https://www.youtube.com',
+          'https://www.youtube-nocookie.com',
+          'https://www.google.com'
+        ],
         'form-action': ['self'],
         'frame-src': [
           'self',

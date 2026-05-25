@@ -49,6 +49,32 @@ export function youtubeMusicEmbedUrl(videoId: string): string {
 	return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
 }
 
+const YOUTUBE_EMBED_ORIGINS = new Set([
+	'https://www.youtube.com',
+	'https://www.youtube-nocookie.com'
+]);
+
+export function isYoutubeEmbedPostMessageOrigin(origin: string): boolean {
+	return YOUTUBE_EMBED_ORIGINS.has(origin);
+}
+
+/** Lecteur audio masqué : iframe + postMessage (pas d’API IFrame chargée sur la page → compatible CSP). */
+export function buildYoutubeAudioEmbedUrl(videoId: string, pageOrigin: string): string {
+	const params = new URLSearchParams({
+		autoplay: '1',
+		enablejsapi: '1',
+		controls: '0',
+		disablekb: '1',
+		fs: '0',
+		iv_load_policy: '3',
+		modestbranding: '1',
+		rel: '0',
+		playsinline: '1'
+	});
+	if (pageOrigin) params.set('origin', pageOrigin);
+	return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
 export function youtubeMusicEmbedFromUrl(storedUrl: string | null | undefined): string | null {
 	const id = extractYoutubeVideoId(storedUrl);
 	return id ? youtubeMusicEmbedUrl(id) : null;

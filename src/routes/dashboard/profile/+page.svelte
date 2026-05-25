@@ -9,8 +9,12 @@
 
 	let { data }: Props = $props();
 
+	const publicProfileHref = $derived(
+		data.user ? resolve(`/dashboard/profile/${data.user.id}`) : null
+	);
+
 	const translationsHrefForPage = (page: number) => {
-		const base = resolve('/dashboard/profile');
+		const base = publicProfileHref ?? resolve('/dashboard/profile');
 		return page > 1 ? `${base}?page=${page}` : base;
 	};
 </script>
@@ -18,6 +22,7 @@
 <Profile
 	user={data.user}
 	email={data.user?.email}
+	{publicProfileHref}
 	profileStats={data.profileStats}
 	customProfile={data.customProfile}
 	translatorLinks={data.translatorLinks}
