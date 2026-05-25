@@ -136,7 +136,6 @@
 			passkeyBusy = false;
 		}
 	};
-
 </script>
 
 <section class="flex flex-col gap-8">
