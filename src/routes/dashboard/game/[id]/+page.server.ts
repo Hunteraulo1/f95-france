@@ -131,7 +131,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			translators,
 			pendingSubmissions,
 			user: locals.user,
-			canManageGameAutoCheck: hasPermission(locals.permissions, 'games.auto_check')
+			canManageGameAutoCheck: hasPermission(locals.permissions, 'games.auto_check'),
+			canUseSilentMode: hasPermission(locals.permissions, 'games.silent_mode')
 		};
 	} catch (err) {
 		if (isHttpError(err)) {

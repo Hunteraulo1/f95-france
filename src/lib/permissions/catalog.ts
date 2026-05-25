@@ -2,10 +2,12 @@
 export const PERMISSION_KEYS = [
 	'dashboard.view',
 	'profile.view',
+	'profile.customize',
 	'settings.view',
 	'api_keys.own',
 	'games.manage',
 	'games.auto_check',
+	'games.silent_mode',
 	'translations.own',
 	'submissions.own',
 	'submissions.review',
@@ -48,7 +50,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 	{
 		key: 'profile.view',
 		label: 'Profil',
-		description: 'Voir et éditer son profil',
+		description: 'Voir son profil et ceux des autres membres',
+		group: 'Général'
+	},
+	{
+		key: 'profile.customize',
+		label: 'Profil personnalisé',
+		description: 'Personnaliser son profil (bio, fond, YouTube Music, curseur)',
 		group: 'Général'
 	},
 	{
@@ -74,6 +82,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		label: 'Auto-check (jeu et traductions)',
 		description:
 			'Activer ou désactiver l’auto-check sur les fiches F95, modifier l’auto-check des traductions et actualiser les versions via le checker',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.silent_mode',
+		label: 'Mode silencieux',
+		description:
+			'Ajouter ou modifier des traductions sans envoyer de notification Discord (mode silencieux)',
 		group: 'Contenu'
 	},
 	{
@@ -187,6 +202,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'api_keys.own',
 		'games.manage',
 		'games.auto_check',
+		'games.silent_mode',
 		'translations.own',
 		'submissions.own',
 		'submissions.review',

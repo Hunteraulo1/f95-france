@@ -6,15 +6,11 @@ const STATIC_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 	'X-Frame-Options': 'DENY',
 	'Referrer-Policy': 'strict-origin-when-cross-origin',
 	'Permissions-Policy':
-		'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
+		'accelerometer=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), autoplay=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), camera=(), geolocation=(), gyroscope=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), encrypted-media=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), picture-in-picture=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
 	'Cross-Origin-Opener-Policy': 'same-origin',
 	/** Protège les réponses de ce site ; n’empêche pas le chargement d’images tierces (F95, etc.). */
-	'Cross-Origin-Resource-Policy': 'same-site',
-	/**
-	 * `credentialless` : isolation partielle sans exiger CORP sur les hôtes tiers
-	 * (contrairement à `require-corp`, qui casserait les vignettes F95 / LC).
-	 */
-	'Cross-Origin-Embedder-Policy': 'credentialless'
+	'Cross-Origin-Resource-Policy': 'same-site'
+	// Pas de COEP : credentialless / require-corp bloquent les iframes YouTube (Firefox, Zen).
 };
 
 function shouldSendHsts(): boolean {

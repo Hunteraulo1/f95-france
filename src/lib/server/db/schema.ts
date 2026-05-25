@@ -27,6 +27,10 @@ export const user = pgTable('user', {
 	devUserId: varchar('dev_user_id', { length: 255 }),
 	gameAdd: integer('game_add').notNull().default(0),
 	gameEdit: integer('game_edit').notNull().default(0),
+	profileBio: text('profile_bio'),
+	profileBackgroundUrl: varchar('profile_background_url', { length: 2048 }),
+	profileMusicUrl: varchar('profile_music_url', { length: 2048 }),
+	profileCursorUrl: varchar('profile_cursor_url', { length: 2048 }),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });

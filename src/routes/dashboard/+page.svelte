@@ -171,7 +171,7 @@
 
 				<!-- Total utilisateurs -->
 				<a
-					href="/dashboard/manager"
+					href="/dashboard/users"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
 					<div class="card-body rounded-lg border border-base-300 bg-base-100">
@@ -187,7 +187,7 @@
 
 				<!-- Total traducteurs -->
 				<a
-					href="/dashboard/submits?status=pending"
+					href="/dashboard/translators"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
 					<div class="card-body rounded-lg border border-base-300 bg-base-100">
@@ -205,7 +205,7 @@
 			<!-- Détails des traductions -->
 			<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
 				<a
-					href="/dashboard/submits?status=accepted"
+					href="/dashboard/manager"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
 					<div class="card-body rounded-lg border border-base-300 bg-base-100">
@@ -220,13 +220,13 @@
 				</a>
 
 				<a
-					href="/dashboard/submits?status=rejected"
+					href="/dashboard/manager"
 					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				>
 					<div class="card-body rounded-lg border border-base-300 bg-base-100">
 						<div class="flex items-center justify-between">
 							<div>
-								<h3 class="card-title text-sm text-base-content">Traductions complétées</h3>
+								<h3 class="card-title text-sm text-base-content">Traductions terminées</h3>
 								<p class="text-2xl font-bold text-success">{data.stats.translations.completed}</p>
 							</div>
 							<CircleCheck class="h-8 w-8 text-success" />
@@ -234,53 +234,66 @@
 					</div>
 				</a>
 
-				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg border border-base-300 bg-base-100">
-						<div class="flex items-center justify-between">
-							<div>
-								<h3 class="card-title text-sm text-base-content">Traductions abandonnées</h3>
-								<p class="text-2xl font-bold text-error">{data.stats.translations.abandoned}</p>
+				<a
+					href="/dashboard/manager"
+					class="card bg-base-200 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				>
+					<div class="card bg-base-200 shadow-xl">
+						<div class="card-body rounded-lg border border-base-300 bg-base-100">
+							<div class="flex items-center justify-between">
+								<div>
+									<h3 class="card-title text-sm text-base-content">Traductions abandonnées</h3>
+									<p class="text-2xl font-bold text-error">{data.stats.translations.abandoned}</p>
+								</div>
+								<CircleX class="h-8 w-8 text-error" />
 							</div>
-							<CircleX class="h-8 w-8 text-error" />
 						</div>
 					</div>
-				</div>
+				</a>
 
-				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg border border-base-300 bg-base-100">
-						<div class="flex items-center justify-between">
-							<div>
-								<h3 class="card-title text-sm text-base-content">Soumissions en attente</h3>
-								<p class="text-2xl font-bold text-warning">{data.stats.submissions.pending}</p>
+				<a href="/dashboard/submits?status=pending">
+					<div class="card bg-base-200 shadow-xl">
+						<div class="card-body rounded-lg border border-base-300 bg-base-100">
+							<div class="flex items-center justify-between">
+								<div>
+									<h3 class="card-title text-sm text-base-content">Soumissions en attente</h3>
+									<p class="text-2xl font-bold text-warning">
+										{data.stats.submissions.pending +
+											data.stats.submissions.opened +
+											data.stats.submissions.toFix}
+									</p>
+								</div>
+								<Clock class="h-8 w-8 text-warning" />
 							</div>
-							<Clock class="h-8 w-8 text-warning" />
 						</div>
 					</div>
-				</div>
-
-				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg border border-base-300 bg-base-100">
-						<div class="flex items-center justify-between">
-							<div>
-								<h3 class="card-title text-sm text-base-content">Soumissions acceptées</h3>
-								<p class="text-2xl font-bold text-success">{data.stats.submissions.accepted}</p>
+				</a>
+				<a href="/dashboard/submits?status=accepted">
+					<div class="card bg-base-200 shadow-xl">
+						<div class="card-body rounded-lg border border-base-300 bg-base-100">
+							<div class="flex items-center justify-between">
+								<div>
+									<h3 class="card-title text-sm text-base-content">Soumissions acceptées</h3>
+									<p class="text-2xl font-bold text-success">{data.stats.submissions.accepted}</p>
+								</div>
+								<CircleCheck class="h-8 w-8 text-success" />
 							</div>
-							<CircleCheck class="h-8 w-8 text-success" />
 						</div>
 					</div>
-				</div>
-
-				<div class="card bg-base-200 shadow-xl">
-					<div class="card-body rounded-lg border border-base-300 bg-base-100">
-						<div class="flex items-center justify-between">
-							<div>
-								<h3 class="card-title text-sm text-base-content">Soumissions rejetées</h3>
-								<p class="text-2xl font-bold text-error">{data.stats.submissions.rejected}</p>
+				</a>
+				<a href="/dashboard/submits?status=rejected">
+					<div class="card bg-base-200 shadow-xl">
+						<div class="card-body rounded-lg border border-base-300 bg-base-100">
+							<div class="flex items-center justify-between">
+								<div>
+									<h3 class="card-title text-sm text-base-content">Soumissions rejetées</h3>
+									<p class="text-2xl font-bold text-error">{data.stats.submissions.rejected}</p>
+								</div>
+								<CircleX class="h-8 w-8 text-error" />
 							</div>
-							<CircleX class="h-8 w-8 text-error" />
 						</div>
 					</div>
-				</div>
+				</a>
 			</div>
 
 			<!-- Activité récente (7 derniers jours) -->

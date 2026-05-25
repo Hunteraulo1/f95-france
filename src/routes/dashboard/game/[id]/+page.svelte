@@ -42,6 +42,9 @@
 	const canManageGameAutoCheck = $derived(
 		data.canManageGameAutoCheck === true || $effectivePermissions.includes('games.auto_check')
 	);
+	const canUseSilentMode = $derived(
+		data.canUseSilentMode === true || $effectivePermissions.includes('games.silent_mode')
+	);
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 
 	const submissionTypeLabel = (type: string, translationId: string | null): string => {
@@ -558,7 +561,7 @@
 				tname: newTranslation.tname,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
-				silentMode: isAdmin ? addTranslationSilentMode : false
+				silentMode: canUseSilentMode ? addTranslationSilentMode : false
 			};
 
 			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
@@ -709,7 +712,7 @@
 				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
-				silentMode: isAdmin ? editTranslationSilentMode : false
+				silentMode: canUseSilentMode ? editTranslationSilentMode : false
 			};
 
 			const response = await fetch(
@@ -1655,7 +1658,7 @@
 				</div>
 			</div>
 
-			{#if isAdmin}
+			{#if canUseSilentMode}
 				<div
 					class="mt-5 flex w-full flex-wrap items-center justify-between gap-3 rounded-box bg-base-200/60 px-4 py-3"
 				>
@@ -2016,7 +2019,7 @@
 					</div>
 				</div>
 
-				{#if isAdmin}
+				{#if canUseSilentMode}
 					<div class="rounded-box border border-base-300 bg-base-200/30 p-4 md:p-5">
 						<p class="text-sm text-base-content/80">
 							Désactive l'envoi d'une notification sur Discord.

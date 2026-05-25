@@ -11,6 +11,7 @@ import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
@@ -111,7 +112,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
+		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
 		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({

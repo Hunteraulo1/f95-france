@@ -38,6 +38,7 @@ const config = {
 					'self',
 					'data:',
 					'blob:',
+					'https:',
 					'https://f95zone.to',
 					'https://*.f95zone.to',
 					'https://lewdcorner.com',
@@ -56,8 +57,19 @@ const config = {
 					'https://cdn.discordapp.com'
 				],
 				'font-src': ['self'],
-				'connect-src': ['self'],
+				'connect-src': [
+					'self',
+					'https://www.youtube.com',
+					'https://www.youtube-nocookie.com',
+					'https://www.google.com'
+				],
 				'form-action': ['self'],
+				'frame-src': [
+					'self',
+					'https://www.youtube.com',
+					'https://www.youtube-nocookie.com',
+					'https://music.youtube.com'
+				],
 				'frame-ancestors': ['none'],
 				'object-src': ['none'],
 				'upgrade-insecure-requests': true
