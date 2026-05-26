@@ -307,16 +307,14 @@
 	scrollBody={true}
 	onClose={closePayloadModal}
 >
-	{#snippet children()}
-		{#if formattedPayload}
-			<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
-				{payloadFormat === 'json' ? 'JSON' : 'Texte'}
-			</span>
-			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
+	{#if formattedPayload}
+		<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
+			{payloadFormat === 'json' ? 'JSON' : 'Texte'}
+		</span>
+		<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
 {formattedPayload}
 </pre>
-		{/if}
-	{/snippet}
+	{/if}
 	{#snippet footer()}
 		<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
 	{/snippet}
@@ -330,16 +328,13 @@
 	scrollBody={true}
 	onClose={closeErrorModal}
 >
-	{#snippet children()}
-		{#if errorMessage}
-			<span class="badge badge-error">Erreur</span>
-			<pre
-				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap"
-			>
+	{#if errorMessage}
+		<span class="badge badge-error">Erreur</span>
+		<pre
+			class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
 {errorMessage}
 </pre>
-		{/if}
-	{/snippet}
+	{/if}
 	{#snippet footer()}
 		<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
 	{/snippet}

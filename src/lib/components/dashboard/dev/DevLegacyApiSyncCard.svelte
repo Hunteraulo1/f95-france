@@ -49,8 +49,8 @@
 						<h3 class="font-bold">{dbSheetSyncResult.message}</h3>
 						{#if dbSheetSyncResult.details && typeof dbSheetSyncResult.details === 'object'}
 							<p class="mt-1 text-sm">
-								Traductions : {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult.details
-									.totalTranslations}
+								Traductions : {dbSheetSyncResult.details.syncedTranslations}/{dbSheetSyncResult
+									.details.totalTranslations}
 								| Traducteurs : {dbSheetSyncResult.details.syncedTranslators}/{dbSheetSyncResult
 									.details.totalTranslators}
 								| Lignes Jeux supprimées (absentes de la DB) : {dbSheetSyncResult.details

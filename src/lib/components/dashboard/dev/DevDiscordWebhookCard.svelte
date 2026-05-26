@@ -37,8 +37,8 @@
 		<h2 class="mb-4 card-title text-2xl">Test des webhooks Discord</h2>
 		<p class="mb-4 text-base-content/70">
 			Envoie un embed de test sur l’URL enregistrée dans
-			<a href="/dashboard/config" class="link link-primary">les paramètres</a> pour vérifier que le
-			salon reçoit bien les messages.
+			<a href="/dashboard/config" class="link link-primary">les paramètres</a> pour vérifier que le salon
+			reçoit bien les messages.
 		</p>
 
 		<div class="mb-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -106,11 +106,7 @@
 						{#if webhookStatus.admin}<option value="admin">Admin</option>{/if}
 					</select>
 				</div>
-				<button
-					type="submit"
-					class="btn btn-primary"
-					disabled={isLoading || noWebhookConfigured}
-				>
+				<button type="submit" class="btn btn-primary" disabled={isLoading || noWebhookConfigured}>
 					{#if isLoading}
 						<Loader class="h-5 w-5 animate-spin" />
 						<span>Envoi…</span>

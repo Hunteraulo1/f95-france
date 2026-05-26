@@ -97,26 +97,24 @@
 		showModal = false;
 	}}
 >
-	{#snippet children()}
-		<div class="form-control">
-			<label class="label" for="newTranslatorName">
-				<span class="label-text">Nom du traducteur</span>
+	<div class="form-control">
+		<label class="label" for="newTranslatorName">
+			<span class="label-text">Nom du traducteur</span>
+		</label>
+		<input
+			id="newTranslatorName"
+			type="text"
+			placeholder="Nom du traducteur"
+			class="input-bordered input w-full"
+			class:input-error={errorMessage}
+			bind:value={newTranslatorName}
+		/>
+		{#if errorMessage}
+			<label class="label mt-2" for="newTranslatorName">
+				<span class="label-text-alt text-error">{errorMessage}</span>
 			</label>
-			<input
-				id="newTranslatorName"
-				type="text"
-				placeholder="Nom du traducteur"
-				class="input-bordered input w-full"
-				class:input-error={errorMessage}
-				bind:value={newTranslatorName}
-			/>
-			{#if errorMessage}
-				<label class="label mt-2" for="newTranslatorName">
-					<span class="label-text-alt text-error">{errorMessage}</span>
-				</label>
-			{/if}
-		</div>
-	{/snippet}
+		{/if}
+	</div>
 	{#snippet footer()}
 		<button type="button" class="btn" onclick={() => (showModal = false)}>Annuler</button>
 		<button type="button" class="btn btn-primary" onclick={addTraductor}>Ajouter</button>

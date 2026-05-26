@@ -22,7 +22,7 @@
 		theme?: 'light' | 'dark' | 'auto';
 	}
 
-	let { siteKey, token = $bindable(''), theme = 'auto' }: Props = $props();
+	let { siteKey, token = $bindable(), theme = 'auto' }: Props = $props();
 
 	let container = $state<HTMLDivElement | null>(null);
 	let widgetId = $state<string | undefined>();
@@ -114,7 +114,11 @@
 </script>
 
 <div class="flex w-full flex-col items-center gap-2">
-	<div bind:this={container} class="min-h-[65px] w-full"></div>
+	<div
+		bind:this={container}
+		class="min-h-[65px] w-full"
+		data-turnstile-filled={token ? 'true' : 'false'}
+	></div>
 	{#if loadError}
 		<p class="text-center text-sm text-error">{loadError}</p>
 	{/if}

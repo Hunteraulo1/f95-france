@@ -15,7 +15,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 const rolePermissionsCache = new Map<string, { permissions: string[]; expiresAt: number }>();
 const CACHE_TTL_MS = 30_000;

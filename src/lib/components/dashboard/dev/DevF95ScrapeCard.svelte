@@ -21,8 +21,8 @@
 		<h2 class="mb-4 card-title text-2xl">Test de récupération F95</h2>
 
 		<p class="mb-4 text-base-content/70">
-			Scrape un thread F95 pour vérifier les données récupérées automatiquement (nom, version,
-			tags, image, etc.). Seuls les threads F95 sont supportés pour le moment.
+			Scrape un thread F95 pour vérifier les données récupérées automatiquement (nom, version, tags,
+			image, etc.). Seuls les threads F95 sont supportés pour le moment.
 		</p>
 
 		<form

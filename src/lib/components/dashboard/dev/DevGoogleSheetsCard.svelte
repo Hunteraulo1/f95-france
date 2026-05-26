@@ -23,8 +23,8 @@
 		<h2 class="mb-4 card-title text-2xl">Test de connexion Google Sheets</h2>
 
 		<p class="mb-4 text-base-content/70">
-			Testez la connexion à votre Google Spreadsheet en utilisant son ID. L'ID se trouve dans
-			l'URL du spreadsheet :
+			Testez la connexion à votre Google Spreadsheet en utilisant son ID. L'ID se trouve dans l'URL
+			du spreadsheet :
 			<code class="rounded bg-base-200 px-2 py-1"
 				>https://docs.google.com/spreadsheets/d/<span class="text-primary">SPREADSHEET_ID</span
 				>/edit</code
@@ -167,8 +167,8 @@
 					Configurez Client ID et Client Secret, puis autorisez l'accès.
 				</li>
 				<li>
-					<strong>Clé API</strong> : Alternative simple, mais limitée aux spreadsheets publics. Une
-					clé API est requise même pour les spreadsheets publics.
+					<strong>Clé API</strong> : Alternative simple, mais limitée aux spreadsheets publics. Une clé
+					API est requise même pour les spreadsheets publics.
 				</li>
 				<li>
 					Pour créer les credentials :

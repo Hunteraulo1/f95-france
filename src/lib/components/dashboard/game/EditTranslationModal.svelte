@@ -21,7 +21,6 @@
 	};
 
 	type GameContext = {
-		gameVersion?: string | null;
 		website: string;
 		gameAutoCheck?: boolean | null;
 	};

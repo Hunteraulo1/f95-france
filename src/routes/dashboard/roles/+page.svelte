@@ -358,56 +358,54 @@
 		title="Créer un rôle"
 		onClose={() => (showCreateModal = false)}
 	>
-		{#snippet children()}
-			<form
-				id="create-role-form"
-				method="POST"
-				action="?/createRole"
-				class="flex flex-col gap-3"
-				use:enhance={formEnhance({
-					onRedirect: () => {
-						showCreateModal = false;
-					}
-				})}
-			>
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend">Libellé</legend>
-					<input type="text" name="label" class="input w-full" required placeholder="Modérateur" />
-				</fieldset>
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend">Identifiant (slug)</legend>
-					<input
-						type="text"
-						name="slug"
-						class="input w-full font-mono"
-						placeholder="moderateur (optionnel, généré depuis le libellé)"
-					/>
-					<p class="label text-xs">Lettres minuscules, chiffres et tirets uniquement</p>
-				</fieldset>
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend">Description</legend>
-					<textarea name="description" class="textarea w-full" rows="2"></textarea>
-				</fieldset>
-				<RoleOptionRadios
-					legend="Couleur du rôle"
-					name="badgeStyle"
-					options={data.badgeStyleOptions}
-					checkedValue="default"
-					compact
-				>
-					{#snippet label(option)}
-						<span class="text-sm {roleBadgeClass('preview', option.value)}">{option.label}</span>
-					{/snippet}
-				</RoleOptionRadios>
-				<RoleOptionRadios
-					legend="Mode d'enregistrement"
-					name="editMode"
-					options={data.editModeOptions}
-					checkedValue="direct"
-					vertical
+		<form
+			id="create-role-form"
+			method="POST"
+			action="?/createRole"
+			class="flex flex-col gap-3"
+			use:enhance={formEnhance({
+				onRedirect: () => {
+					showCreateModal = false;
+				}
+			})}
+		>
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend">Libellé</legend>
+				<input type="text" name="label" class="input w-full" required placeholder="Modérateur" />
+			</fieldset>
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend">Identifiant (slug)</legend>
+				<input
+					type="text"
+					name="slug"
+					class="input w-full font-mono"
+					placeholder="moderateur (optionnel, généré depuis le libellé)"
 				/>
-			</form>
-		{/snippet}
+				<p class="label text-xs">Lettres minuscules, chiffres et tirets uniquement</p>
+			</fieldset>
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend">Description</legend>
+				<textarea name="description" class="textarea w-full" rows="2"></textarea>
+			</fieldset>
+			<RoleOptionRadios
+				legend="Couleur du rôle"
+				name="badgeStyle"
+				options={data.badgeStyleOptions}
+				checkedValue="default"
+				compact
+			>
+				{#snippet label(option)}
+					<span class="text-sm {roleBadgeClass('preview', option.value)}">{option.label}</span>
+				{/snippet}
+			</RoleOptionRadios>
+			<RoleOptionRadios
+				legend="Mode d'enregistrement"
+				name="editMode"
+				options={data.editModeOptions}
+				checkedValue="direct"
+				vertical
+			/>
+		</form>
 		{#snippet footer()}
 			<button type="button" class="btn" onclick={() => (showCreateModal = false)}>Annuler</button>
 			<button type="submit" form="create-role-form" class="btn btn-primary">Créer</button>

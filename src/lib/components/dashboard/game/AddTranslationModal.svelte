@@ -17,7 +17,6 @@
 		gameType: string;
 		tlink: string;
 		tname: string;
-		ac: boolean;
 		translatorId: string;
 		proofreaderId: string;
 	};

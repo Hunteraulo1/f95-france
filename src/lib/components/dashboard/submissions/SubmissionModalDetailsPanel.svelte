@@ -26,11 +26,8 @@
 		return translators.find((t) => t.id === translatorId) || null;
 	};
 
-	const formatValue = (
-		value: SubmissionPrimitive,
-		showIfEmpty: boolean,
-		key?: string
-	): string => formatFieldValue(value, showIfEmpty, key, translators);
+	const formatValue = (value: SubmissionPrimitive, showIfEmpty: boolean, key?: string): string =>
+		formatFieldValue(value, showIfEmpty, key, translators);
 </script>
 
 <div class="md flex-1 overflow-y-auto pr-2 md:border-r md:border-base-300 md:pr-0">
@@ -387,8 +384,7 @@
 				{:else}
 					<div class="alert alert-info">
 						<span
-							>Aucun changement détecté entre la traduction actuelle et les modifications
-							proposées.</span
+							>Aucun changement détecté entre la traduction actuelle et les modifications proposées.</span
 						>
 					</div>
 				{/if}
