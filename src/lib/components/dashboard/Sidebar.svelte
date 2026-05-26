@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PermissionKey } from '$lib/permissions/catalog';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import { user } from '$lib/stores';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
@@ -91,7 +91,7 @@
 
 	const canAccessNav = (access: NavAccess) => {
 		if (access === 'all') return true;
-		return $effectivePermissions.includes(access);
+		return $hasPermission(access);
 	};
 
 	const nav: (NavItem | NavItemSplit)[] = [

@@ -13,7 +13,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
-import { attachPermissionsToLocals } from '$lib/server/permissions';
+import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -85,7 +85,22 @@ function getRequestLoggingDecision(
 	return { shouldLog, shouldCaptureBody };
 }
 
+let permissionsCatalogSeedPromise: Promise<void> | null = null;
+
+function ensurePermissionsCatalogSeededOnce(): Promise<void> {
+	if (building) return Promise.resolve();
+	if (!permissionsCatalogSeedPromise) {
+		permissionsCatalogSeedPromise = ensurePermissionsCatalogSeeded().catch((err) => {
+			permissionsCatalogSeedPromise = null;
+			console.warn('ensurePermissionsCatalogSeeded:', err);
+		});
+	}
+	return permissionsCatalogSeedPromise;
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
+	await ensurePermissionsCatalogSeededOnce();
+
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
 
 	if (!sessionToken) {

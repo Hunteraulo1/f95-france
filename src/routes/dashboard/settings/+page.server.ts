@@ -1,4 +1,3 @@
-import { hasEffectivePermission } from '$lib/permissions/effective';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -8,7 +7,7 @@ import {
 	isDevImpersonationTargetAllowed,
 	returnToOwnAccount as returnToOwnAccountAction
 } from '$lib/server/dev-impersonation';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne, notInArray } from 'drizzle-orm';
@@ -22,11 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const canImpersonateUsers = hasEffectivePermission(
-		locals.user.role,
-		locals.permissions,
-		'dev.impersonate'
-	);
+	const canImpersonateUsers = hasPermission(locals, 'dev.impersonate');
 
 	const devUsers = canImpersonateUsers
 		? await db

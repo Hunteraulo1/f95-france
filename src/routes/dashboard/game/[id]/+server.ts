@@ -163,9 +163,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Déterminer le mode d'action selon le rôle de l'utilisateur
 		const userRole = currentUser.role;
-		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
+		const canUseSilentMode = hasPermission(locals, 'games.silent_mode');
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		const canManuallyToggleGameAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
+		const canManuallyToggleGameAutoCheck = hasPermission(locals, 'games.auto_check');
 		const parsedThreadId =
 			threadId !== null && threadId !== undefined && threadId !== ''
 				? parseInt(String(threadId), 10)

@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
-import { getPermissionsForRole, hasPermission, userHasPermission } from '$lib/server/permissions';
+import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
 import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
@@ -14,10 +14,10 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	if (locals.user) {
 		permissions = await getPermissionsForRole(locals.user.role);
 		locals.permissions = permissions;
-		canManageConfig = hasPermission(permissions, 'config.view');
+		canManageConfig = hasPermission(locals, 'config.view');
 
 		try {
-			if (hasPermission(permissions, 'submissions.review')) {
+			if (hasPermission(locals, 'submissions.review')) {
 				// Pour les admins, compter toutes les soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -25,7 +25,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 					.where(eq(table.submission.status, 'pending'));
 
 				pendingSubmissionsCount = result[0]?.count || 0;
-			} else if (hasPermission(permissions, 'submissions.own')) {
+			} else if (hasPermission(locals, 'submissions.own')) {
 				// Pour les traducteurs, compter leurs propres soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -67,7 +67,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 
 			hasLinkedTranslator = Boolean(linkedTranslator);
 
-			if (await userHasPermission(locals.user, 'roles.manage')) {
+			if (hasPermission(locals, 'roles.manage')) {
 				hasLinkedTranslator = true;
 			}
 		} catch (error) {

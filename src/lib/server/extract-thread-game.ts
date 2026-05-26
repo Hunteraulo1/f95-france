@@ -8,7 +8,7 @@ import { normalizeCheckerVersion } from '$lib/server/f95-checker-alignment';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
-import { hasPermission, userHasPermission } from '$lib/server/permissions';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { scrapeThread, type ScrapedThreadGame } from '$lib/server/scrape';
 import type { GameEngineType } from '$lib/types';
@@ -97,14 +97,8 @@ function clampStr(s: string, max: number): string {
 	return s.slice(0, max);
 }
 
-export async function canUseExtract(locals: App.Locals): Promise<boolean> {
-	if (locals.permissions && hasPermission(locals.permissions, EXTRACT_PERMISSION)) {
-		return true;
-	}
-	if (locals.user) {
-		return userHasPermission(locals.user, EXTRACT_PERMISSION);
-	}
-	return false;
+export function canUseExtract(locals: App.Locals): boolean {
+	return hasPermission(locals, EXTRACT_PERMISSION);
 }
 
 /** Version forum utilisable pour faire confiance au scrape (exclut `Unknown` et vide). */
@@ -373,7 +367,7 @@ export async function runExtractThreadGame(input: {
 			}
 		};
 	}
-	if (!(await canUseExtract(locals))) {
+	if (!canUseExtract(locals)) {
 		return {
 			ok: false,
 			status: 403,

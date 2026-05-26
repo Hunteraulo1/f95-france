@@ -1,13 +1,13 @@
 import {
 	isSuperadminRole,
 	PERMISSION_CATALOG,
+	PERMISSION_KEYS,
+	SYSTEM_ROLE_EDIT_MODES,
 	SYSTEM_ROLE_PERMISSIONS,
 	type PermissionKey
 } from '$lib/permissions/catalog';
-import { legacyEditModeForRoleSlug } from '$lib/permissions/edit-mode';
-import { resolveEffectivePermissions } from '$lib/permissions/effective';
-import { legacyPermissionsForRole } from '$lib/permissions/legacy';
-import { legacyPermissionCounts, sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { permissionGranted } from '$lib/permissions/check';
+import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
@@ -45,70 +45,55 @@ export function invalidateRolePermissionsCache(roleSlug?: string) {
 }
 
 export async function getPermissionsForRole(roleSlug: string): Promise<string[]> {
+	if (isSuperadminRole(roleSlug)) {
+		return [...PERMISSION_KEYS];
+	}
+
 	const cached = cacheGet(roleSlug);
 	if (cached) return cached;
 
-	try {
-		const rows = await db
-			.select({ permissionKey: table.appRolePermission.permissionKey })
-			.from(table.appRolePermission)
-			.where(eq(table.appRolePermission.roleSlug, roleSlug));
+	const rows = await db
+		.select({ permissionKey: table.appRolePermission.permissionKey })
+		.from(table.appRolePermission)
+		.where(eq(table.appRolePermission.roleSlug, roleSlug));
 
-		if (rows.length > 0) {
-			const permissions = resolveEffectivePermissions(
-				roleSlug,
-				rows.map((r) => r.permissionKey)
-			);
-			cacheSet(roleSlug, permissions);
-			return permissions;
-		}
-	} catch (err) {
-		console.warn('Permissions DB indisponible, repli legacy:', err);
-	}
-
-	const legacy = legacyPermissionsForRole(roleSlug);
-	cacheSet(roleSlug, legacy);
-	return legacy;
+	const permissions = rows.map((r) => r.permissionKey);
+	cacheSet(roleSlug, permissions);
+	return permissions;
 }
 
-export function hasPermission(
-	permissions: string[] | undefined,
-	key: PermissionKey | string,
-	roleSlug?: string | null
-): boolean {
-	if (isSuperadminRole(roleSlug)) return true;
-	if (!permissions?.length) return false;
-	return permissions.includes(key);
+/** Vérifie une permission pour la requête courante (bypass superadmin). */
+export function hasPermission(locals: App.Locals, key: PermissionKey | string): boolean {
+	return permissionGranted(locals.user?.role, locals.permissions, key);
 }
 
-/** Vérifie une permission à partir des `locals` (bypass superadmin). */
-export function hasPermissionForLocals(locals: App.Locals, key: PermissionKey | string): boolean {
-	return hasPermission(locals.permissions, key, locals.user?.role);
-}
-
-export async function userHasPermission(
+/** Vérifie une permission pour un autre utilisateur (hors `locals`). */
+export async function hasPermissionForUser(
 	user: { role: string } | null | undefined,
 	key: PermissionKey | string
 ): Promise<boolean> {
 	if (!user?.role) return false;
-	if (isSuperadminRole(user.role)) return true;
 	const permissions = await getPermissionsForRole(user.role);
-	return hasPermission(permissions, key, user.role);
+	return permissionGranted(user.role, permissions, key);
 }
 
-export function requireUserPermission(
+/** Refuse la requête si la permission est absente (403). */
+export function assertPermission(
 	locals: App.Locals,
 	key: PermissionKey | string,
 	message = 'Accès non autorisé'
 ): void {
-	if (!locals.user) {
-		error(401, message);
+	if (!hasPermission(locals, key)) {
+		error(403, message);
 	}
-	if (isSuperadminRole(locals.user.role)) return;
-	// permissions chargées de façon synchrone via locals.permissions quand disponible
-	if (locals.permissions && hasPermission(locals.permissions, key, locals.user.role)) {
-		return;
-	}
+}
+
+export function assertAnyPermission(
+	locals: App.Locals,
+	keys: PermissionKey[],
+	message = 'Accès non autorisé'
+): void {
+	if (keys.some((key) => hasPermission(locals, key))) return;
 	error(403, message);
 }
 
@@ -128,111 +113,75 @@ export async function countPermissionsByRoles(
 
 	if (roleSlugs.length === 0) return counts;
 
-	try {
-		const rows = await db
-			.select({
-				roleSlug: table.appRolePermission.roleSlug,
-				count: sql<number>`count(*)::int`.as('count')
-			})
-			.from(table.appRolePermission)
-			.where(inArray(table.appRolePermission.roleSlug, roleSlugs))
-			.groupBy(table.appRolePermission.roleSlug);
+	const rows = await db
+		.select({
+			roleSlug: table.appRolePermission.roleSlug,
+			count: sql<number>`count(*)::int`.as('count')
+		})
+		.from(table.appRolePermission)
+		.where(inArray(table.appRolePermission.roleSlug, roleSlugs))
+		.groupBy(table.appRolePermission.roleSlug);
 
-		for (const row of rows) {
-			counts[row.roleSlug] = Number(row.count) || 0;
-		}
-	} catch {
-		const legacy = legacyPermissionCounts();
-		for (const slug of roleSlugs) {
-			counts[slug] = legacy[slug] ?? legacy.user;
-		}
+	for (const row of rows) {
+		counts[row.roleSlug] = Number(row.count) || 0;
 	}
 
 	return counts;
 }
 
 export async function listAppRoles() {
-	try {
-		const roles = await db.select().from(table.appRole);
-		const slugs = roles.map((r) => r.slug);
-		const permissionCounts = await countPermissionsByRoles(slugs);
-		return sortRolesByPrivileges(roles, permissionCounts);
-	} catch {
-		const roles = Object.entries(SYSTEM_ROLE_PERMISSIONS).map(([slug]) => ({
-			slug,
-			label: slug,
-			description: null,
-			editMode: legacyEditModeForRoleSlug(slug),
-			isSystem: true,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		}));
-		return sortRolesByPrivileges(roles, legacyPermissionCounts());
-	}
+	const roles = await db.select().from(table.appRole);
+	const slugs = roles.map((r) => r.slug);
+	const permissionCounts = await countPermissionsByRoles(slugs);
+	return sortRolesByPrivileges(roles, permissionCounts);
 }
 
 export async function listRolePermissions(roleSlug: string): Promise<string[]> {
 	return getPermissionsForRole(roleSlug);
 }
 
-/** Permissions réellement enregistrées en base pour un rôle (sans repli legacy). */
+/** Permissions enregistrées en base pour un rôle (sans expansion superadmin). */
 export async function listRolePermissionsStored(roleSlug: string): Promise<string[]> {
-	try {
-		const rows = await db
-			.select({ permissionKey: table.appRolePermission.permissionKey })
-			.from(table.appRolePermission)
-			.where(eq(table.appRolePermission.roleSlug, roleSlug));
-		return rows.map((row) => row.permissionKey);
-	} catch {
-		return [];
-	}
+	const rows = await db
+		.select({ permissionKey: table.appRolePermission.permissionKey })
+		.from(table.appRolePermission)
+		.where(eq(table.appRolePermission.roleSlug, roleSlug));
+	return rows.map((row) => row.permissionKey);
 }
 
 export async function roleExists(slug: string): Promise<boolean> {
-	try {
-		const [row] = await db
-			.select({ slug: table.appRole.slug })
-			.from(table.appRole)
-			.where(eq(table.appRole.slug, slug))
-			.limit(1);
-		return Boolean(row);
-	} catch {
-		return slug in SYSTEM_ROLE_PERMISSIONS;
-	}
+	const [row] = await db
+		.select({ slug: table.appRole.slug })
+		.from(table.appRole)
+		.where(eq(table.appRole.slug, slug))
+		.limit(1);
+	return Boolean(row);
 }
 
 /** Insère les permissions du catalogue absentes en base (ex. après ajout d’une nouvelle clé). */
 export async function syncPermissionsCatalog(): Promise<void> {
-	try {
-		const existing = await db.select({ key: table.appPermission.key }).from(table.appPermission);
-		const existingKeys = new Set(existing.map((row) => row.key));
-		const missing = PERMISSION_CATALOG.filter((p) => !existingKeys.has(p.key));
-		if (missing.length === 0) return;
+	const existing = await db.select({ key: table.appPermission.key }).from(table.appPermission);
+	const existingKeys = new Set(existing.map((row) => row.key));
+	const missing = PERMISSION_CATALOG.filter((p) => !existingKeys.has(p.key));
+	if (missing.length === 0) return;
 
-		await db.insert(table.appPermission).values(
-			missing.map((p) => ({
-				key: p.key,
-				label: p.label,
-				description: p.description,
-				group: p.group
-			}))
-		);
-	} catch (err) {
-		console.warn('syncPermissionsCatalog:', err);
-	}
+	await db.insert(table.appPermission).values(
+		missing.map((p) => ({
+			key: p.key,
+			label: p.label,
+			description: p.description,
+			group: p.group
+		}))
+	);
 }
 
 export async function ensurePermissionsCatalogSeeded(): Promise<void> {
-	try {
-		const existing = await db
-			.select({ key: table.appPermission.key })
-			.from(table.appPermission)
-			.limit(1);
-		if (existing.length > 0) {
-			await syncPermissionsCatalog();
-			return;
-		}
-	} catch {
+	const existing = await db
+		.select({ key: table.appPermission.key })
+		.from(table.appPermission)
+		.limit(1);
+	if (existing.length > 0) {
+		await syncPermissionsCatalog();
 		return;
 	}
 
@@ -250,7 +199,7 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 		systemRoles.map((slug) => ({
 			slug,
 			label: slug,
-			editMode: legacyEditModeForRoleSlug(slug),
+			editMode: SYSTEM_ROLE_EDIT_MODES[slug as keyof typeof SYSTEM_ROLE_EDIT_MODES],
 			isSystem: true
 		}))
 	);

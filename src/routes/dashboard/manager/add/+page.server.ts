@@ -3,7 +3,10 @@ import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
 import { EXTRACT_DRAFT_COOKIE, parseExtractDraftCookie } from '$lib/server/extract-draft';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
+import {
+	assertRoleEditMode,
+	resolveShouldCreateSubmissionForUser
+} from '$lib/server/role-edit-mode';
 import type { PageServerLoad } from './$types';
 
 function resolveAddTranslatorMode(params: {
@@ -22,6 +25,9 @@ function resolveAddTranslatorMode(params: {
 
 export const load: PageServerLoad = async ({ locals, cookies }) => {
 	await assertGameManageAccess(locals);
+	if (locals.user?.role) {
+		await assertRoleEditMode(locals.user.role);
+	}
 
 	try {
 		const translators = await db.select().from(translator);

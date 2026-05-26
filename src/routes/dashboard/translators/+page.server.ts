@@ -1,7 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { userHasPermission } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
@@ -44,7 +43,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw new Error('Non authentifié');
 	}
 
-	const isAdmin = await userHasPermission(locals.user, 'translators.manage');
+	const isAdmin = hasPermission(locals, 'translators.manage');
 
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);

@@ -1,16 +1,17 @@
 import { get } from 'svelte/store';
 import type { PermissionKey } from './permissions/catalog';
-import { checkPermission } from './permissions/client';
+import { getHasPermission } from './permissions/client';
 import type { User } from './server/db/schema';
 import { user } from './stores';
 
 export type checkRoleType = User['role'] | 'all';
 
-/** Mapping historique rôle → permission pour la navigation. */
-const NAV_ROLE_PERMISSION: Partial<Record<Exclude<checkRoleType, 'all'>, PermissionKey>> = {
+/** Alias historiques de rôles → permission requise (plus de contrôle par slug de rôle). */
+const ROLE_ACCESS_PERMISSION: Partial<Record<Exclude<checkRoleType, 'all'>, PermissionKey>> = {
 	translator: 'games.manage',
 	admin: 'users.manage',
-	superadmin: 'roles.manage'
+	superadmin: 'roles.manage',
+	user: 'dashboard.view'
 };
 
 const checkRole = (roles: checkRoleType[]) => {
@@ -23,9 +24,8 @@ const checkRole = (roles: checkRoleType[]) => {
 
 	for (const role of roles) {
 		if (role === 'all') continue;
-		if (loggedUser.role === role) return true;
-		const permission = NAV_ROLE_PERMISSION[role];
-		if (permission && checkPermission(permission)) return true;
+		const permission = ROLE_ACCESS_PERMISSION[role];
+		if (permission && getHasPermission()(permission)) return true;
 	}
 
 	return false;

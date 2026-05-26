@@ -11,10 +11,9 @@
 	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import { newToast, user } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
-	import { checkRole } from '$lib/utils';
 	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import {
 		computeGameFormFieldState,
@@ -118,20 +117,13 @@
 	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
-	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
-		try {
-			return checkRole(roles);
-		} catch {
-			return false;
-		}
-	};
-
-	const isAdmin = $derived(safeCheckRole(['admin', 'superadmin']));
+	const isAdmin = $derived($hasPermission('users.manage'));
+	const canUseDevTools = $derived($hasPermission('dev.panel'));
 
 	let pendingNewTranslators = $state<string[]>([]);
 
 	const addTranslatorMode = $derived(data.addTranslatorMode);
-	const canManageGameAutoCheck = $derived($effectivePermissions.includes('games.auto_check'));
+	const canManageGameAutoCheck = $derived($hasPermission('games.auto_check'));
 	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
 		canManageGameAutoCheck
@@ -1099,7 +1091,7 @@
 						Précédent
 					</button>
 				{/if}
-				{#if safeCheckRole(['superadmin']) && supportsThreadScrape && step >= 2}
+				{#if canUseDevTools && supportsThreadScrape && step >= 2}
 					<button
 						type="button"
 						class="btn w-full btn-outline btn-secondary md:w-38"
@@ -1130,7 +1122,7 @@
 						}}
 					/>
 				{/if}
-				{#if safeCheckRole(['superadmin'])}
+				{#if canUseDevTools}
 					<Dev
 						bind:game
 						onDevDataApplied={() => {

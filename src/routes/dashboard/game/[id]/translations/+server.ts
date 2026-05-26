@@ -109,7 +109,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
+		const canUseSilentMode = hasPermission(locals, 'games.silent_mode');
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
 		const writeModeParams = {
 			roleSlug: userRole,

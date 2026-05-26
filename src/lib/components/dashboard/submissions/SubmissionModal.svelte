@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import type { GameTranslation } from '$lib/server/db/schema';
 	import { newToast, user } from '$lib/stores';
 	import {
@@ -277,7 +277,7 @@
 		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
 	);
 	/** Modérateurs (ex. superadmin) : statut + pas de verrou « listeur en cours » sur Mes soumissions. */
-	const canReviewSubmissions = $derived($effectivePermissions.includes('submissions.review'));
+	const canReviewSubmissions = $derived($hasPermission('submissions.review'));
 	const canModerateSubmission = $derived(canEditStatus || canReviewSubmissions);
 	const statusFormAction = $derived(
 		canEditStatus ? '?/updateStatus' : `${resolve('/dashboard/submits')}?/updateStatus`

@@ -147,8 +147,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
-		const canManuallyEditTranslationAc = hasPermission(locals.permissions, 'games.auto_check');
+		const canUseSilentMode = hasPermission(locals, 'games.silent_mode');
+		const canManuallyEditTranslationAc = hasPermission(locals, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.

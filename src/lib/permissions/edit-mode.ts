@@ -30,14 +30,6 @@ export function isRoleEditMode(value: string): value is RoleEditMode {
 	return VALID.has(value);
 }
 
-/** Valeurs par défaut des rôles système (repli si colonne absente ou rôle inconnu). */
-export function legacyEditModeForRoleSlug(slug: string): RoleEditMode {
-	if (slug === 'translator') return 'submission';
-	if (slug === 'superadmin') return 'user_direct_mode';
-	if (slug === 'admin') return 'direct';
-	return 'direct';
-}
-
 export function resolveShouldCreateSubmission(params: {
 	roleEditMode: RoleEditMode;
 	useDirectMode: boolean;

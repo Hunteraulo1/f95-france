@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { userHasPermission } from '$lib/server/permissions';
+import { hasPermissionForUser } from '$lib/server/permissions';
 import type { Cookies } from '@sveltejs/kit';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -27,7 +27,7 @@ export async function getDevImpersonationOriginUser(cookies: Cookies) {
 		.where(eq(table.user.id, devOriginUserId))
 		.limit(1);
 
-	if (!devOriginUser || !(await userHasPermission(devOriginUser, 'dev.impersonate'))) {
+	if (!devOriginUser || !(await hasPermissionForUser(devOriginUser, 'dev.impersonate'))) {
 		return null;
 	}
 

@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { fetchSubmissionListRows } from '$lib/server/submission-list-query';
 import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {

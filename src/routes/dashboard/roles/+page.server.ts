@@ -1,18 +1,15 @@
 import {
 	isSuperadminRole,
 	PERMISSION_CATALOG,
+	permissionCatalogGrouped,
 	SYSTEM_ROLE_LABELS,
 	type PermissionKey
 } from '$lib/permissions/catalog';
-import {
-	isRoleEditMode,
-	legacyEditModeForRoleSlug,
-	ROLE_EDIT_MODE_OPTIONS
-} from '$lib/permissions/edit-mode';
-import { permissionCatalogGrouped } from '$lib/permissions/legacy';
+import { isRoleEditMode, ROLE_EDIT_MODE_OPTIONS } from '$lib/permissions/edit-mode';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
+	assertPermission,
 	countPermissionsByRoles,
 	countUsersWithRoles,
 	invalidateRolePermissionsCache,
@@ -22,7 +19,6 @@ import {
 	roleExists,
 	setRolePermissions
 } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
 import {
 	assertCanManageRole,
 	filterPermissionsAssignableByActor,
@@ -101,8 +97,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			return {
 				...r,
 				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-				editMode:
-					r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
+				editMode: r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null,
 				userCount: userCounts[r.slug] ?? 0,
 				permissionCount: isSuperadminRole(r.slug)
 					? PERMISSION_CATALOG.length
@@ -167,8 +162,11 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
-		const editModeRaw = String(formData.get('editMode') ?? 'direct').trim();
-		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : 'direct';
+		const editModeRaw = String(formData.get('editMode') ?? '').trim();
+		if (!isRoleEditMode(editModeRaw)) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
+		}
+		const editMode = editModeRaw;
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 

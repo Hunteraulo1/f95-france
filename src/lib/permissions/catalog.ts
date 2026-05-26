@@ -1,3 +1,5 @@
+import type { RoleEditMode } from './edit-mode';
+
 /** Clés de permission stables (utilisées en base et dans le code). */
 export const PERMISSION_KEYS = [
 	'dashboard.view',
@@ -234,9 +236,27 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 	superadmin: PERMISSION_KEYS
 };
 
+/** `edit_mode` initial des rôles système (seed / migration `0018_role_edit_mode`). */
+export const SYSTEM_ROLE_EDIT_MODES: Record<keyof typeof SYSTEM_ROLE_PERMISSIONS, RoleEditMode> = {
+	user: 'direct',
+	translator: 'submission',
+	admin: 'direct',
+	superadmin: 'user_direct_mode'
+};
+
 export const SYSTEM_ROLE_LABELS: Record<string, string> = {
 	user: 'Utilisateur',
 	translator: 'Traducteur',
 	admin: 'Administrateur',
 	superadmin: 'Super administrateur'
 };
+
+export function permissionCatalogGrouped(): Map<string, typeof PERMISSION_CATALOG> {
+	const groups = new Map<string, typeof PERMISSION_CATALOG>();
+	for (const def of PERMISSION_CATALOG) {
+		const list = groups.get(def.group) ?? [];
+		list.push(def);
+		groups.set(def.group, list);
+	}
+	return groups;
+}

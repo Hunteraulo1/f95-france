@@ -1,5 +1,5 @@
 import type { PermissionKey } from '$lib/permissions/catalog';
-import { hasEffectivePermission } from '$lib/permissions/effective';
+import { permissionGranted } from '$lib/permissions/check';
 
 export const PROFILE_CUSTOMIZE_PERMISSIONS = {
 	bio: 'profile.customize.bio',
@@ -20,18 +20,14 @@ export function resolveProfileCustomizeFlags(
 	roleSlug: string,
 	permissions: readonly string[] | undefined
 ): ProfileCustomizeFlags {
-	const bio = hasEffectivePermission(roleSlug, permissions, PROFILE_CUSTOMIZE_PERMISSIONS.bio);
-	const background = hasEffectivePermission(
+	const bio = permissionGranted(roleSlug, permissions, PROFILE_CUSTOMIZE_PERMISSIONS.bio);
+	const background = permissionGranted(
 		roleSlug,
 		permissions,
 		PROFILE_CUSTOMIZE_PERMISSIONS.background
 	);
-	const music = hasEffectivePermission(roleSlug, permissions, PROFILE_CUSTOMIZE_PERMISSIONS.music);
-	const cursor = hasEffectivePermission(
-		roleSlug,
-		permissions,
-		PROFILE_CUSTOMIZE_PERMISSIONS.cursor
-	);
+	const music = permissionGranted(roleSlug, permissions, PROFILE_CUSTOMIZE_PERMISSIONS.music);
+	const cursor = permissionGranted(roleSlug, permissions, PROFILE_CUSTOMIZE_PERMISSIONS.cursor);
 	return {
 		bio,
 		background,

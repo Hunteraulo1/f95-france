@@ -144,7 +144,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Extraire les données du jeu
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
-		const canSetAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
+		const canSetAutoCheck = hasPermission(locals, 'games.auto_check');
 		const scrapeDefaultAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
 		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 			website,

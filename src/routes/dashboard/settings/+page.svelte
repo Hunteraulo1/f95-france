@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import type { User } from '$lib/server/db/schema';
 	import { loadUserData, updateUserData, user } from '$lib/stores';
 	import { startRegistration } from '@simplewebauthn/browser';
@@ -33,7 +33,7 @@
 	let targetUserId = $state('');
 	let oauthDiscordFeedbackApplied = $state(false);
 	$effect(() => {
-		if ($user && $effectivePermissions.includes('dev.impersonate')) {
+		if ($user && $hasPermission('dev.impersonate')) {
 			const nextUsers = (data.devUsers ?? []) as DevUserLite[];
 			users = nextUsers;
 			targetUserId = nextUsers.some((u) => u.id === $user?.id)
@@ -647,7 +647,7 @@
 		</div>
 	{/if}
 
-	{#if $user && $effectivePermissions.includes('dev.impersonate')}
+	{#if $user && $hasPermission('dev.impersonate')}
 		<div class="flex flex-col gap-4">
 			<h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
 

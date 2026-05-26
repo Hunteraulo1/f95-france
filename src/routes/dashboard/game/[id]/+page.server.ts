@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { hasPermission } from '$lib/server/permissions';
+import { assertRoleEditMode } from '$lib/server/role-edit-mode';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { error, isHttpError } from '@sveltejs/kit';
@@ -10,6 +11,9 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	await assertGameManageAccess(locals);
+	if (locals.user?.role) {
+		await assertRoleEditMode(locals.user.role);
+	}
 
 	const gameId = params.id;
 
@@ -129,8 +133,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			translators,
 			pendingSubmissions,
 			user: locals.user,
-			canManageGameAutoCheck: hasPermission(locals.permissions, 'games.auto_check'),
-			canUseSilentMode: hasPermission(locals.permissions, 'games.silent_mode')
+			canManageGameAutoCheck: hasPermission(locals, 'games.auto_check'),
+			canUseSilentMode: hasPermission(locals, 'games.silent_mode')
 		};
 	} catch (err) {
 		if (isHttpError(err)) {

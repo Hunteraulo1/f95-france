@@ -1,7 +1,10 @@
 import { getUserById } from '$lib/server/auth';
 import type { User } from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions-guard';
-import { getRoleEditMode, resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
+import { assertPermission } from '$lib/server/permissions';
+import {
+	assertRoleEditMode,
+	resolveShouldCreateSubmissionForUser
+} from '$lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
 
 const GAME_MANAGE_MESSAGE = 'Accès réservé — permission « Gestion des jeux » requise';
@@ -29,7 +32,7 @@ export async function resolveGameWriteMode(
 
 /** Interdit l’écriture directe si le rôle impose les soumissions (ex. traducteur). */
 export async function assertDirectGameWriteAllowed(params: GameWriteModeParams): Promise<void> {
-	const roleEditMode = await getRoleEditMode(params.roleSlug);
+	const roleEditMode = await assertRoleEditMode(params.roleSlug);
 	if (roleEditMode === 'submission') {
 		error(403, DIRECT_WRITE_FORBIDDEN_MESSAGE);
 	}

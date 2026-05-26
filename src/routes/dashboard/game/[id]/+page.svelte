@@ -2,7 +2,7 @@
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import TranslatorContributorInput from '$lib/components/dashboard/TranslatorContributorInput.svelte';
 	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
 	import {
@@ -56,10 +56,10 @@
 		return false;
 	});
 	const canManageGameAutoCheck = $derived(
-		data.canManageGameAutoCheck === true || $effectivePermissions.includes('games.auto_check')
+		data.canManageGameAutoCheck === true || $hasPermission('games.auto_check')
 	);
 	const canUseSilentMode = $derived(
-		data.canUseSilentMode === true || $effectivePermissions.includes('games.silent_mode')
+		data.canUseSilentMode === true || $hasPermission('games.silent_mode')
 	);
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 

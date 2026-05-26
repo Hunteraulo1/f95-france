@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, like, lt, notLike, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';

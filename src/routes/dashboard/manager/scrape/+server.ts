@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ error: 'Non authentifié' }, { status: 401 });
 	}
 
-	if (!(await canUseExtract(locals))) {
+	if (!canUseExtract(locals)) {
 		return json(
 			{ error: 'Accès réservé aux comptes avec la permission « Gestion des jeux »' },
 			{ status: 403 }

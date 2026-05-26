@@ -1,8 +1,7 @@
 import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { listAppRoles, roleExists, userHasPermission } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne, sql } from 'drizzle-orm';
@@ -56,7 +55,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
 			isSystem: r.isSystem
 		})),
-		canAssignAdmin: await userHasPermission(locals.user, 'users.assign_admin'),
+		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
@@ -112,7 +111,7 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 
-			const canAssignAdmin = await userHasPermission(locals.user, 'users.assign_admin');
+			const canAssignAdmin = hasPermission(locals, 'users.assign_admin');
 
 			if ((role === 'admin' || role === 'superadmin') && !canAssignAdmin) {
 				return fail(403, {

@@ -1,7 +1,7 @@
 import { isTranslationOutdated } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { userHasPermission } from '$lib/server/permissions';
+import { hasPermission } from '$lib/server/permissions';
 import { and, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	}
 
-	const isAdmin = await userHasPermission(locals.user, 'submissions.review');
+	const isAdmin = hasPermission(locals, 'submissions.review');
 
 	// Statistiques générales (pour tous les utilisateurs)
 	let userStats;

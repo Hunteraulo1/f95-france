@@ -1,5 +1,3 @@
-import { SYSTEM_ROLE_PERMISSIONS } from './catalog';
-
 const SYSTEM_ROLE_ORDER = ['user', 'translator', 'admin', 'superadmin'] as const;
 
 /** Du moins au plus de droits (utilisateur → superadmin, rôles custom intercalés). */
@@ -21,10 +19,4 @@ export function sortRolesByPrivileges<T extends { slug: string; label?: string }
 
 		return (a.label ?? a.slug).localeCompare(b.label ?? b.slug, 'fr');
 	});
-}
-
-export function legacyPermissionCounts(): Record<string, number> {
-	return Object.fromEntries(
-		Object.entries(SYSTEM_ROLE_PERMISSIONS).map(([slug, keys]) => [slug, keys.length])
-	);
 }
