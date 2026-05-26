@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import type { PermissionKey } from '$lib/permissions/catalog';
+	import {
+		applyPermissionDependenciesToChecks,
+		getDependentPermissions,
+		getPermissionParent,
+		permissionRequirementLabel
+	} from '$lib/permissions/dependencies';
 	import { superadminBadgeClass } from '$lib/utils/username-display';
 	import type { PageData } from './$types';
 
@@ -21,6 +28,15 @@
 	const canManageSelected = $derived(data.selectedCanManage);
 	const isSelectedSuperadmin = $derived(data.isSelectedRoleSuperadmin);
 	const roleFieldsLocked = $derived(!canManageSelected || isSelectedSuperadmin);
+	const selectedHasGamesManage = $derived(
+		isSelectedSuperadmin || (permissionChecks['games.manage'] ?? false)
+	);
+	const selectedEditModeMissing = $derived(
+		selectedHasGamesManage && selectedRole != null && selectedRole.editMode == null
+	);
+	const rolesMissingEditModeCount = $derived(
+		data.roles.filter((r) => r.hasGamesManage && r.editMode == null).length
+	);
 
 	$effect(() => {
 		const slug = data.selectedSlug;
@@ -39,11 +55,24 @@
 			}
 		}
 		void slug;
-		permissionChecks = next;
+		permissionChecks = applyPermissionDependenciesToChecks(next);
 	});
 
+	function isPermissionChoiceDisabled(key: string): boolean {
+		if (roleFieldsLocked) return true;
+		const parent = getPermissionParent(key as PermissionKey);
+		if (!parent) return false;
+		return !(permissionChecks[parent] ?? false);
+	}
+
 	function setPermissionChecked(key: string, checked: boolean) {
-		permissionChecks = { ...permissionChecks, [key]: checked };
+		const next: Record<string, boolean> = { ...permissionChecks, [key]: checked };
+		if (!checked) {
+			for (const dependent of getDependentPermissions(key as PermissionKey)) {
+				next[dependent] = false;
+			}
+		}
+		permissionChecks = applyPermissionDependenciesToChecks(next);
 	}
 
 	const roleHref = (slug: string) =>
@@ -75,6 +104,16 @@
 			<span>{errorMessage}</span>
 		</div>
 	{/if}
+	{#if rolesMissingEditModeCount > 0}
+		<div role="alert" class="alert alert-warning">
+			<span>
+				{rolesMissingEditModeCount === 1
+					? 'Un rôle avec « Gestion des jeux » n’a pas de mode d’enregistrement valide'
+					: `${rolesMissingEditModeCount} rôles avec « Gestion des jeux » n’ont pas de mode d’enregistrement valide`}
+				— les utilisateurs concernés ne pourront pas enregistrer de jeux tant qu’un mode n’est pas configuré.
+			</span>
+		</div>
+	{/if}
 
 	<div class="grid gap-6 lg:grid-cols-[minmax(220px,280px)_1fr]">
 		<div class="card border border-base-300 bg-base-100 shadow">
@@ -89,7 +128,12 @@
 								class="justify-between"
 							>
 								<span class="flex min-w-0 flex-col">
-									<span class={superadminBadgeClass(role.slug)}>{role.label}</span>
+									<span class="flex flex-wrap items-center gap-1">
+										<span class={superadminBadgeClass(role.slug)}>{role.label}</span>
+										{#if role.hasGamesManage && role.editMode == null}
+											<span class="badge badge-warning badge-xs">Mode manquant</span>
+										{/if}
+									</span>
 									<span class="text-xs opacity-60"
 										>{role.permissionCount} droit{role.permissionCount > 1 ? 's' : ''}</span
 									>
@@ -114,6 +158,15 @@
 				{:else if !canManageSelected && data.selectedManageBlockedReason}
 					<div role="alert" class="alert alert-warning">
 						<span>{data.selectedManageBlockedReason}</span>
+					</div>
+				{/if}
+				{#if selectedEditModeMissing}
+					<div role="alert" class="alert alert-warning">
+						<span>
+							Mode d’enregistrement absent ou invalide en base pour ce rôle. Choisissez un mode
+							ci-dessous et enregistrez — sans cela, les utilisateurs de ce rôle ne pourront pas
+							ajouter ni modifier de jeux.
+						</span>
 					</div>
 				{/if}
 				<div class="card border border-base-300 bg-base-100 shadow">
@@ -196,38 +249,47 @@
 									disabled={isSelectedSuperadmin}>{selectedRole.description ?? ''}</textarea
 								>
 							</fieldset>
-							<fieldset class="fieldset">
-								<legend class="fieldset-legend">Mode d'enregistrement</legend>
-								<p class="mb-2 text-xs text-base-content/70">
-									Contrôle si les ajouts/modifications de jeux passent par une soumission ou sont
-									appliqués directement en base.
+							{#if selectedHasGamesManage}
+								<fieldset class="fieldset">
+									<legend class="fieldset-legend">Mode d'enregistrement</legend>
+									<p class="mb-2 text-xs text-base-content/70">
+										Contrôle si les ajouts/modifications de jeux passent par une soumission ou sont
+										appliqués directement en base.
+									</p>
+									<div class="flex flex-col gap-2">
+										{#each data.editModeOptions as option (option.value)}
+											<label
+												class="flex items-start gap-3 rounded-lg border border-base-300 p-3 {isSelectedSuperadmin
+													? 'opacity-60'
+													: 'cursor-pointer hover:bg-base-200'}"
+											>
+												<input
+													type="radio"
+													name="editMode"
+													value={option.value}
+													class="radio mt-0.5 radio-sm"
+													checked={selectedRole.storedEditMode === option.value}
+													disabled={isSelectedSuperadmin}
+												/>
+												<span class="flex flex-col gap-0.5">
+													<span class="text-sm font-medium">{option.label}</span>
+													<span class="text-xs opacity-70">{option.description}</span>
+												</span>
+											</label>
+										{/each}
+									</div>
+								</fieldset>
+							{:else}
+								<p class="text-sm text-base-content/70">
+									Le mode d’enregistrement ne s’applique qu’aux rôles disposant de la permission «
+									Gestion des jeux ».
 								</p>
-								<div class="flex flex-col gap-2">
-									{#each data.editModeOptions as option (option.value)}
-										<label
-											class="flex items-start gap-3 rounded-lg border border-base-300 p-3 {isSelectedSuperadmin
-												? 'opacity-60'
-												: 'cursor-pointer hover:bg-base-200'}"
-										>
-											<input
-												type="radio"
-												name="editMode"
-												value={option.value}
-												class="radio mt-0.5 radio-sm"
-												checked={selectedRole.editMode === option.value}
-												disabled={isSelectedSuperadmin}
-											/>
-											<span class="flex flex-col gap-0.5">
-												<span class="text-sm font-medium">{option.label}</span>
-												<span class="text-xs opacity-70">{option.description}</span>
-											</span>
-										</label>
-									{/each}
-								</div>
-							</fieldset>
+							{/if}
 							{#if canManageSelected && !isSelectedSuperadmin}
 								<button type="submit" class="btn w-fit btn-sm btn-primary">
-									{selectedRole.isSystem ? 'Enregistrer le mode' : 'Enregistrer'}
+									{selectedRole.isSystem && selectedHasGamesManage
+										? 'Enregistrer le mode'
+										: 'Enregistrer'}
 								</button>
 							{/if}
 						</form>
@@ -264,11 +326,21 @@
 									<p class="text-sm font-semibold text-base-content/80">{group.group}</p>
 									<div class="grid gap-2 sm:grid-cols-2">
 										{#each group.items as perm (perm.key)}
+											{@const permissionParent = getPermissionParent(perm.key)}
+											{@const blockedByParent =
+												!isSelectedSuperadmin &&
+												permissionParent != null &&
+												!(permissionChecks[permissionParent] ?? false)}
+											{@const permissionChoiceDisabled =
+												isSelectedSuperadmin || isPermissionChoiceDisabled(perm.key)}
 											<label
 												class="flex items-start gap-2 rounded-lg border border-base-300 p-3 {canManageSelected &&
-												!isSelectedSuperadmin
+												!isSelectedSuperadmin &&
+												!permissionChoiceDisabled
 													? 'cursor-pointer hover:bg-base-200'
-													: 'opacity-80'}"
+													: 'opacity-80'} {permissionChoiceDisabled && !isSelectedSuperadmin
+													? 'cursor-not-allowed'
+													: ''}"
 											>
 												<input
 													type="checkbox"
@@ -278,11 +350,16 @@
 													checked={isSelectedSuperadmin || (permissionChecks[perm.key] ?? false)}
 													onchange={(event) =>
 														setPermissionChecked(perm.key, event.currentTarget.checked)}
-													disabled={roleFieldsLocked}
+													disabled={permissionChoiceDisabled}
 												/>
 												<span class="flex flex-col gap-0.5">
 													<span class="text-sm font-medium">{perm.label}</span>
 													<span class="text-xs opacity-70">{perm.description}</span>
+													{#if blockedByParent && permissionParent}
+														<span class="text-xs text-warning">
+															Nécessite « {permissionRequirementLabel(permissionParent)} »
+														</span>
+													{/if}
 												</span>
 											</label>
 										{/each}

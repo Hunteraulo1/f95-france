@@ -5,7 +5,13 @@ import {
 	SYSTEM_ROLE_LABELS,
 	type PermissionKey
 } from '$lib/permissions/catalog';
-import { isRoleEditMode, ROLE_EDIT_MODE_OPTIONS } from '$lib/permissions/edit-mode';
+import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
+import {
+	GAMES_MANAGE_PERMISSION,
+	isRoleEditMode,
+	resolveEffectiveRoleEditMode,
+	ROLE_EDIT_MODE_OPTIONS
+} from '$lib/permissions/edit-mode';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -94,10 +100,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			const access = isSuperadmin
 				? ({ allowed: true } as const)
 				: await assertCanManageRole(locals, r.slug, targetPerms);
+			const hasGamesManage = targetPerms.includes(GAMES_MANAGE_PERMISSION);
+			const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
 			return {
 				...r,
 				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-				editMode: r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null,
+				hasGamesManage,
+				storedEditMode,
+				editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
 				userCount: userCounts[r.slug] ?? 0,
 				permissionCount: isSuperadminRole(r.slug)
 					? PERMISSION_CATALOG.length
@@ -231,9 +241,6 @@ export const actions: Actions = {
 		if (!slug || !label) {
 			return fail(400, { message: 'Champs requis manquants' });
 		}
-		if (!editMode) {
-			return fail(400, { message: 'Mode d’enregistrement invalide' });
-		}
 
 		const [role] = await db
 			.select()
@@ -247,13 +254,19 @@ export const actions: Actions = {
 		const guard = await rejectUnlessCanManageRole(locals, slug);
 		if (!guard.ok) return fail(403, { message: guard.message });
 
+		const rolePermissions = await listRolePermissions(slug);
+		const hasGamesManage = rolePermissions.includes(GAMES_MANAGE_PERMISSION);
+		if (hasGamesManage && !editMode) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
+		}
+
 		try {
 			await db
 				.update(table.appRole)
 				.set({
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
 					description: role.isSystem ? role.description : description,
-					editMode,
+					...(hasGamesManage && editMode ? { editMode } : {}),
 					updatedAt: new Date()
 				})
 				.where(eq(table.appRole.slug, slug));
@@ -306,7 +319,7 @@ export const actions: Actions = {
 		const preservedKeys = isSuperadmin
 			? []
 			: storedKeys.filter((key) => !actorPermissions.has(key));
-		const keysToSave = [...new Set([...preservedKeys, ...keys])];
+		const keysToSave = enforcePermissionDependencies([...new Set([...preservedKeys, ...keys])]);
 
 		const afterCheck = await assertCanManageRole(locals, slug, keysToSave);
 		if (!afterCheck.allowed) {

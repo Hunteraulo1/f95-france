@@ -1,12 +1,14 @@
+import { isSuperadminRole } from '$lib/permissions/catalog';
 import {
-	isRoleEditMode,
+	GAMES_MANAGE_PERMISSION,
+	resolveEffectiveRoleEditMode,
 	resolveShouldCreateSubmission,
 	type RoleEditMode
 } from '$lib/permissions/edit-mode';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { error } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 const roleEditModeCache = new Map<string, { mode: RoleEditMode; expiresAt: number }>();
 const CACHE_TTL_MS = 30_000;
@@ -22,8 +24,32 @@ export function invalidateRoleEditModeCache(roleSlug?: string) {
 	roleEditModeCache.clear();
 }
 
-/** Lit `edit_mode` en base ; `null` si absent, invalide ou erreur (aucun repli applicatif). */
+async function roleHasGamesManage(roleSlug: string): Promise<boolean> {
+	if (isSuperadminRole(roleSlug)) return true;
+
+	try {
+		const [row] = await db
+			.select({ permissionKey: table.appRolePermission.permissionKey })
+			.from(table.appRolePermission)
+			.where(
+				and(
+					eq(table.appRolePermission.roleSlug, roleSlug),
+					eq(table.appRolePermission.permissionKey, GAMES_MANAGE_PERMISSION)
+				)
+			)
+			.limit(1);
+		return Boolean(row);
+	} catch {
+		return false;
+	}
+}
+
+/** Lit `edit_mode` effectif ; `null` sans `games.manage`, si absent, invalide ou erreur. */
 export async function getRoleEditMode(roleSlug: string): Promise<RoleEditMode | null> {
+	if (!(await roleHasGamesManage(roleSlug))) {
+		return null;
+	}
+
 	const cached = roleEditModeCache.get(roleSlug);
 	if (cached && Date.now() <= cached.expiresAt) {
 		return cached.mode;
@@ -36,12 +62,13 @@ export async function getRoleEditMode(roleSlug: string): Promise<RoleEditMode | 
 			.where(eq(table.appRole.slug, roleSlug))
 			.limit(1);
 
-		if (!row?.editMode || !isRoleEditMode(row.editMode)) {
+		const mode = resolveEffectiveRoleEditMode(row?.editMode, true);
+		if (!mode) {
 			return null;
 		}
 
-		roleEditModeCache.set(roleSlug, { mode: row.editMode, expiresAt: Date.now() + CACHE_TTL_MS });
-		return row.editMode;
+		roleEditModeCache.set(roleSlug, { mode, expiresAt: Date.now() + CACHE_TTL_MS });
+		return mode;
 	} catch {
 		return null;
 	}

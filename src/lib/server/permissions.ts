@@ -7,6 +7,7 @@ import {
 	type PermissionKey
 } from '$lib/permissions/catalog';
 import { permissionGranted } from '$lib/permissions/check';
+import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -222,7 +223,9 @@ export async function setRolePermissions(
 	await syncPermissionsCatalog();
 
 	const validKeys = new Set(PERMISSION_CATALOG.map((p) => p.key));
-	const filtered = [...new Set(permissionKeys.filter((k) => validKeys.has(k as PermissionKey)))];
+	const filtered = enforcePermissionDependencies(
+		permissionKeys.filter((k) => validKeys.has(k as PermissionKey))
+	);
 
 	await db.delete(table.appRolePermission).where(eq(table.appRolePermission.roleSlug, roleSlug));
 
