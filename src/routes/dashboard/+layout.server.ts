@@ -3,9 +3,10 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
 import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
+import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
-import { and, eq, sql } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
+import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
@@ -97,6 +98,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 		maintenanceMode,
 		canManageConfig,
 		canReturnToOwnAccount: Boolean(devOriginUser),
-		devOriginUsername: devOriginUser?.username ?? null
+		devOriginUsername: devOriginUser?.username ?? null,
+		registrationEnabled: isRegistrationEnabled()
 	};
 };

@@ -1,3 +1,4 @@
+import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
@@ -89,10 +90,7 @@ const formDataToSubmissionPayload = (
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		throw new Error('Non authentifié');
-	}
+	assertDashboardAuthenticated(locals);
 
 	const statusFilterRaw = url.searchParams.get('status') || 'pending';
 	const statusFilter =

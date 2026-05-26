@@ -24,7 +24,17 @@ export function getDiscordOAuthConfig() {
 	const clientSecret = env.DISCORD_OAUTH_CLIENT_SECRET?.trim() ?? '';
 	const guildId = env.DISCORD_OAUTH_GUILD_ID?.trim() ?? '';
 	const translatorRoleId = env.DISCORD_OAUTH_TRANSLATOR_ROLE_ID?.trim() ?? '';
-	return { clientId, clientSecret, guildId, translatorRoleId };
+	const autoRoleSync = isDiscordOAuthAutoRoleSyncEnabled();
+	return { clientId, clientSecret, guildId, translatorRoleId, autoRoleSync };
+}
+
+/**
+ * Promotion / rétrogradation automatique user ↔ translator selon le rôle Discord du serveur.
+ * Activé par défaut (`DISCORD_OAUTH_AUTO_ROLE_SYNC` absent ou `true`).
+ */
+export function isDiscordOAuthAutoRoleSyncEnabled(): boolean {
+	const raw = env.DISCORD_OAUTH_AUTO_ROLE_SYNC?.trim().toLowerCase();
+	return raw !== 'false' && raw !== '0';
 }
 
 export function getDiscordAuthorizeUrl(params: {

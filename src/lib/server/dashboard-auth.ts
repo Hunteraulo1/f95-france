@@ -1,3 +1,5 @@
+import { redirect } from '@sveltejs/kit';
+
 const DASHBOARD_PUBLIC_EXACT = new Set([
 	'/dashboard/login',
 	'/dashboard/register',
@@ -13,6 +15,15 @@ export function isPublicDashboardPath(pathname: string): boolean {
 		return true;
 	}
 	return false;
+}
+
+/** Redirige vers la page de connexion si la session est absente (pages dashboard protégées). */
+export function assertDashboardAuthenticated(
+	locals: App.Locals
+): asserts locals is App.Locals & { user: NonNullable<App.Locals['user']> } {
+	if (!locals.user) {
+		redirect(303, '/dashboard/login');
+	}
 }
 
 /** Redirection interne sûre après connexion (évite les open redirects). */

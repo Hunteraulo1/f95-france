@@ -31,7 +31,8 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 		throw redirect(302, '/dashboard/settings?discord_error=invalid_state');
 	}
 
-	const { clientId, clientSecret, guildId, translatorRoleId } = getDiscordOAuthConfig();
+	const { clientId, clientSecret, guildId, translatorRoleId, autoRoleSync } =
+		getDiscordOAuthConfig();
 	if (!clientId || !clientSecret) {
 		throw redirect(302, '/dashboard/settings?discord_error=oauth_not_configured');
 	}
@@ -79,7 +80,7 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 			}
 		}
 
-		if (guildId && translatorRoleId) {
+		if (autoRoleSync && guildId && translatorRoleId) {
 			const roleIds = await getDiscordGuildMemberRoles({
 				accessToken: token.access_token,
 				guildId

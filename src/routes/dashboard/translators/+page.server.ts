@@ -1,3 +1,4 @@
+import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
@@ -44,9 +45,7 @@ async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: st
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user) {
-		throw new Error('Non authentifié');
-	}
+	assertDashboardAuthenticated(locals);
 
 	const isAdmin = hasPermission(locals, 'translators.manage');
 	const hasGamesManage = hasPermission(locals, 'games.manage');

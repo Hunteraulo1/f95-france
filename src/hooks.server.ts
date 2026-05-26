@@ -73,6 +73,14 @@ function getRequestLoggingDecision(
 		pathname.startsWith('/api/google-oauth/') ||
 		pathname.startsWith('/api/discord-oauth/') ||
 		pathname.startsWith('/api/passkeys/');
+	const isSensitiveQueryRoute =
+		isSensitiveOAuthOrPasskeyRoute ||
+		pathname === '/dashboard/login' ||
+		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/settings' ||
+		pathname.startsWith('/dashboard/api-keys') ||
+		pathname === '/dashboard/users' ||
+		pathname.startsWith('/dashboard/logs');
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
@@ -86,7 +94,7 @@ function getRequestLoggingDecision(
 		(isApiRequest || isDashboardRoute || isMaintenanceRoute);
 	const shouldCaptureBody =
 		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
-	const shouldCaptureQuery = shouldLog && method === 'GET' && !isSensitiveOAuthOrPasskeyRoute;
+	const shouldCaptureQuery = shouldLog && method === 'GET' && !isSensitiveQueryRoute;
 
 	return { shouldLog, shouldCaptureBody, shouldCaptureQuery };
 }

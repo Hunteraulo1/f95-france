@@ -80,12 +80,15 @@ export async function hasPermissionForUser(
 	return permissionGranted(user.role, permissions, key);
 }
 
-/** Refuse la requête si la permission est absente (403). */
+/** Refuse la requête si la permission est absente (403). Redirige si non connecté. */
 export function assertPermission(
 	locals: App.Locals,
 	key: PermissionKey | string,
 	message = 'Accès non autorisé'
 ): void {
+	if (!locals.user) {
+		error(401, 'Authentification requise');
+	}
 	if (!hasPermission(locals, key)) {
 		error(403, message);
 	}

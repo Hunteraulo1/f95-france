@@ -1,5 +1,6 @@
 import * as auth from '$lib/server/auth';
 import { secureSessionCookieOptions } from '$lib/server/cookie-options';
+import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -18,10 +19,7 @@ import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		throw new Error('Non authentifié');
-	}
+	assertDashboardAuthenticated(locals);
 
 	const canImpersonateUsers = hasPermission(locals, 'dev.impersonate');
 
