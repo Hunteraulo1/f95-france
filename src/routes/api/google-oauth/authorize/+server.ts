@@ -1,10 +1,11 @@
 import { getEffectiveConfig } from '$lib/server/app-config';
+import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { getGoogleAuthUrl } from '$lib/server/google-oauth';
 import { GOOGLE_OAUTH_STATE_COOKIE } from '$lib/server/google-oauth-state';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, locals, cookies }) => {
+export const GET: RequestHandler = async ({ url, locals, cookies, request }) => {
 	if (!locals.user) {
 		throw redirect(302, '/dashboard/login');
 	}
@@ -20,13 +21,11 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
 	const redirectUri = `${url.origin}/api/google-oauth/callback`;
 	const state = crypto.randomUUID();
 
-	cookies.set(GOOGLE_OAUTH_STATE_COOKIE, state, {
-		path: '/',
-		httpOnly: true,
-		secure: url.protocol === 'https:',
-		sameSite: 'lax',
-		maxAge: 600
-	});
+	cookies.set(
+		GOOGLE_OAUTH_STATE_COOKIE,
+		state,
+		secureSessionCookieOptions({ url, request }, { maxAge: 600 })
+	);
 
 	const authUrl = getGoogleAuthUrl(config.googleOAuthClientId, redirectUri, state);
 

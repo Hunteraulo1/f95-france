@@ -4,7 +4,7 @@
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import { startAuthentication } from '@simplewebauthn/browser';
 
-	let { form } = $props();
+	let { form, data } = $props();
 	let username = $state('');
 	let passkeyError = $state('');
 	let passkeyLoading = $state(false);
@@ -45,7 +45,7 @@
 				throw new Error(verifyJson.error || "Échec de la connexion par clé d'accès.");
 			}
 
-			window.location.href = '/dashboard';
+			window.location.href = data?.redirectTo ?? '/dashboard';
 		} catch (error: unknown) {
 			passkeyError = error instanceof Error ? error.message : 'Erreur inconnue.';
 		} finally {
@@ -71,7 +71,14 @@
 				<p class="mt-2 text-sm text-base-content/70">Accédez au tableau de bord F95 France</p>
 			</div>
 
+			{#if data?.registrationNotice}
+				<div role="alert" class="alert alert-soft text-sm alert-warning">
+					<span>{data.registrationNotice}</span>
+				</div>
+			{/if}
+
 			<form method="post" action="?/login" use:enhance class="flex flex-col gap-4">
+				<input type="hidden" name="redirectTo" value={data?.redirectTo ?? '/dashboard'} />
 				<div class="form-control w-full">
 					<label class="label pt-0" for="login-username">
 						<span class="label-text font-medium">Nom d'utilisateur</span>
@@ -150,10 +157,12 @@
 				{/if}
 			</div>
 
-			<p class="text-center text-sm text-base-content/70">
-				Pas encore de compte ?
-				<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
-			</p>
+			{#if data?.registrationEnabled}
+				<p class="text-center text-sm text-base-content/70">
+					Pas encore de compte ?
+					<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
+				</p>
+			{/if}
 		</div>
 	</div>
 </div>

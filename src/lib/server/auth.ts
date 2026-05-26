@@ -1,4 +1,5 @@
 import { ensureSessionApiKey } from '$lib/server/api-keys';
+import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -138,21 +139,13 @@ export async function invalidateSession(sessionId: string) {
 
 export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date) {
 	event.cookies.set(sessionCookieName, token, {
-		expires: expiresAt,
-		path: '/',
-		httpOnly: true,
-		secure: event.url.protocol === 'https:',
-		sameSite: 'lax'
+		...secureSessionCookieOptions(event),
+		expires: expiresAt
 	});
 }
 
 export function deleteSessionTokenCookie(event: RequestEvent) {
-	event.cookies.delete(sessionCookieName, {
-		path: '/',
-		httpOnly: true,
-		secure: event.url.protocol === 'https:',
-		sameSite: 'lax'
-	});
+	event.cookies.delete(sessionCookieName, secureSessionCookieOptions(event));
 }
 
 export async function createUser(username: string, email: string, password: string) {

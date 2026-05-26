@@ -1,20 +1,32 @@
 import * as auth from '$lib/server/auth';
+import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
+import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) {
-		throw redirect(302, '/dashboard');
+		throw redirect(302, safeDashboardRedirectPath(url.searchParams.get('redirectTo')));
 	}
 
-	return {};
+	const registrationParam = url.searchParams.get('registration');
+	let registrationNotice: string | null = null;
+	if (registrationParam === 'disabled') {
+		registrationNotice = 'Les inscriptions sont actuellement fermées.';
+	}
+
+	return {
+		redirectTo: safeDashboardRedirectPath(url.searchParams.get('redirectTo')),
+		registrationEnabled: isRegistrationEnabled(),
+		registrationNotice
+	};
 };
 
 export const actions: Actions = {
@@ -83,7 +95,12 @@ export const actions: Actions = {
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 			await clearLoginThrottle(event);
 
-			throw redirect(302, '/dashboard');
+			const formRedirect = formData.get('redirectTo');
+			const destination = safeDashboardRedirectPath(
+				typeof formRedirect === 'string' ? formRedirect : null
+			);
+
+			throw redirect(302, destination);
 		} catch (error) {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;

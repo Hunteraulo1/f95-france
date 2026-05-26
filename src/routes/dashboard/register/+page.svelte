@@ -5,9 +5,10 @@
 
 	interface Props {
 		form: ActionData & { errors?: Record<string, string> };
+		data: { requiresInviteCode: boolean };
 	}
 
-	let { form }: Props = $props();
+	let { form, data }: Props = $props();
 </script>
 
 <svelte:head>
@@ -67,6 +68,23 @@
 						</label>
 					{/if}
 				</div>
+
+				{#if data?.requiresInviteCode}
+					<div class="form-control w-full">
+						<label class="label pt-0" for="register-invite">
+							<span class="label-text font-medium">Code d’invitation</span>
+						</label>
+						<input
+							id="register-invite"
+							name="inviteCode"
+							type="text"
+							required
+							autocomplete="off"
+							class="input-bordered input w-full"
+							placeholder="Code fourni par l’équipe"
+						/>
+					</div>
+				{/if}
 
 				<div class="form-control w-full">
 					<label class="label pt-0" for="register-password">

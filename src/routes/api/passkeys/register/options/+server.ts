@@ -1,5 +1,9 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import {
+	checkPasskeyRegisterThrottle,
+	recordPasskeyRegisterAttempt
+} from '$lib/server/login-throttle';
 import { getRpID, getRpName, savePasskeyChallenge } from '$lib/server/passkeys';
 import {
 	generateRegistrationOptions,
@@ -18,10 +22,19 @@ const serviceUnavailable = () =>
 		{ status: 503 }
 	);
 
-export const POST: RequestHandler = async ({ locals, request }) => {
+export const POST: RequestHandler = async (event) => {
+	const { locals, request } = event;
+
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
 	}
+
+	const throttle = await checkPasskeyRegisterThrottle(event);
+	if (!throttle.ok) {
+		return json({ error: throttle.message }, { status: 429 });
+	}
+
+	await recordPasskeyRegisterAttempt(event);
 
 	try {
 		const passkeys = await db

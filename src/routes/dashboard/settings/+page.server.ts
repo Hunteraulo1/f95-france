@@ -1,4 +1,5 @@
 import * as auth from '$lib/server/auth';
+import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -413,13 +414,11 @@ export const actions: Actions = {
 		try {
 			const existingOrigin = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
 			if (!existingOrigin) {
-				cookies.set(DEV_IMPERSONATION_ORIGIN_COOKIE, locals.user.id, {
-					path: '/',
-					httpOnly: true,
-					sameSite: 'lax',
-					secure: url.protocol === 'https:',
-					maxAge: 60 * 60 * 24 * 30
-				});
+				cookies.set(
+					DEV_IMPERSONATION_ORIGIN_COOKIE,
+					locals.user.id,
+					secureSessionCookieOptions({ url, request }, { maxAge: 60 * 60 * 24 * 30 })
+				);
 			}
 
 			await db

@@ -4,6 +4,13 @@ import {
 	clearLoginThrottle,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
+import {
+	isRegistrationEnabled,
+	isRegistrationInviteRequired,
+	REGISTRATION_ACCOUNT_EXISTS_MESSAGE,
+	REGISTRATION_INVITE_INVALID_MESSAGE,
+	verifyRegistrationInvite
+} from '$lib/server/registration-policy';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -22,16 +29,27 @@ function isDbTimeoutError(error: unknown): boolean {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-	// Si l'utilisateur est déjà connecté, rediriger vers le dashboard
 	if (locals.user) {
 		throw redirect(302, '/dashboard');
 	}
 
-	return {};
+	if (!isRegistrationEnabled()) {
+		throw redirect(303, '/dashboard/login?registration=disabled');
+	}
+
+	return {
+		requiresInviteCode: isRegistrationInviteRequired()
+	};
 };
 
 export const actions: Actions = {
 	register: async (event: RequestEvent) => {
+		if (!isRegistrationEnabled()) {
+			return fail(403, {
+				message: 'Les inscriptions sont actuellement fermées.'
+			});
+		}
+
 		const throttle = await checkLoginThrottle(event);
 		if (!throttle.ok) {
 			return fail(429, { message: throttle.message });
@@ -43,8 +61,13 @@ export const actions: Actions = {
 			const email = formData.get('email') as string;
 			const password = formData.get('password') as string;
 			const confirmPassword = formData.get('confirmPassword') as string;
+			const inviteCode = formData.get('inviteCode');
 
-			// Validation des données
+			if (!verifyRegistrationInvite(typeof inviteCode === 'string' ? inviteCode : null)) {
+				await recordLoginFailure(event);
+				return fail(400, { message: REGISTRATION_INVITE_INVALID_MESSAGE });
+			}
+
 			const errors: Record<string, string> = {};
 
 			if (!username || username.length < 3) {
@@ -63,19 +86,26 @@ export const actions: Actions = {
 				errors.confirmPassword = 'Les mots de passe ne correspondent pas';
 			}
 
-			// Vérifier si l'utilisateur existe déjà
+			let accountExists = false;
 			if (username) {
 				const existingUserByUsername = await auth.getUserByUsername(username);
 				if (existingUserByUsername) {
-					errors.username = "Ce nom d'utilisateur est déjà utilisé";
+					accountExists = true;
 				}
 			}
 
 			if (email) {
 				const existingUserByEmail = await auth.getUserByEmail(email);
 				if (existingUserByEmail) {
-					errors.email = 'Cette adresse email est déjà utilisée';
+					accountExists = true;
 				}
+			}
+
+			if (accountExists) {
+				await recordLoginFailure(event);
+				return fail(400, {
+					message: REGISTRATION_ACCOUNT_EXISTS_MESSAGE
+				});
 			}
 
 			if (Object.keys(errors).length > 0) {
@@ -86,29 +116,23 @@ export const actions: Actions = {
 				});
 			}
 
-			// Créer l'utilisateur
 			const user = await auth.createUser(username, email, password);
 
-			// Notifier les superadmins de la nouvelle inscription
 			try {
 				const { notifyNewUserRegistration } = await import('$lib/server/notifications');
 				await notifyNewUserRegistration(user.id, username);
 			} catch (notificationError) {
-				// Ne pas bloquer l'inscription si la notification échoue
 				console.error('Erreur lors de la création de la notification:', notificationError);
 			}
 
-			// Créer une session
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, user.id);
 
-			// Définir le cookie de session
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 			await clearLoginThrottle(event);
 
 			throw redirect(302, '/dashboard');
 		} catch (error) {
-			// Si c'est une redirection, la laisser passer
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;
 			}
