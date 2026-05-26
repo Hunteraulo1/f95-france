@@ -4,7 +4,7 @@ import * as table from '$lib/server/db/schema';
 import { loadProfileStats } from '$lib/server/profile-stats';
 import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
 import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -38,14 +38,15 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		.where(eq(table.user.username, profileRef))
 		.limit(1);
 
-	const user =
-		userByUsername.length > 0
-			? userByUsername
-			: await db
-					.select(userProfileSelect)
-					.from(table.user)
-					.where(eq(table.user.id, profileRef))
-					.limit(1);
+	const lookedUpByUserId = userByUsername.length === 0;
+
+	const user = lookedUpByUserId
+		? await db
+				.select(userProfileSelect)
+				.from(table.user)
+				.where(eq(table.user.id, profileRef))
+				.limit(1)
+		: userByUsername;
 
 	if (user.length === 0) {
 		throw error(404, 'Utilisateur non trouvé');
@@ -53,6 +54,11 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 
 	const userId = user[0].id;
 	const row = user[0];
+
+	if (lookedUpByUserId && profileRef !== row.username) {
+		const canonical = `/dashboard/profile/${encodeURIComponent(row.username)}`;
+		throw redirect(301, url.search ? `${canonical}${url.search}` : canonical);
+	}
 
 	const theme = buildCustomProfileTheme(row);
 	const [{ translator, links }, translationBundle, profileStats] = await Promise.all([

@@ -2,11 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { normalizeTranslatorPages } from '$lib/components/dashboard/submissions/submission-modal-field-utils';
 	import type {
 		SubmissionModalItem,
 		SubmissionModalTranslator
 	} from '$lib/components/dashboard/submissions/submission-modal-types';
-	import { normalizeTranslatorPages } from '$lib/components/dashboard/submissions/submission-modal-field-utils';
 	import SubmissionModalDetailsPanel from '$lib/components/dashboard/submissions/SubmissionModalDetailsPanel.svelte';
 	import SubmissionModalGameEditFields from '$lib/components/dashboard/submissions/SubmissionModalGameEditFields.svelte';
 	import SubmissionModalHeader from '$lib/components/dashboard/submissions/SubmissionModalHeader.svelte';
@@ -78,7 +78,7 @@
 
 	const handleTranslatorClick = async (translatorId: unknown) => {
 		const translator = getTranslator(translatorId);
-		const profileRef = translator?.username ?? translator?.userId ?? null;
+		const profileRef = translator?.username ?? null;
 		if (profileRef) {
 			await goto(resolve(`/dashboard/profile/${profileRef}`));
 		}
@@ -244,19 +244,19 @@
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
-				submission?.type !== 'translator_pages' &&
-				submission?.type !== 'delete' &&
-				(submission?.status === 'pending' ||
-					submission?.status === 'opened' ||
-					submission?.status === 'to_fix' ||
-					submission?.status === 'rejected')
+			submission?.type !== 'translator_pages' &&
+			submission?.type !== 'delete' &&
+			(submission?.status === 'pending' ||
+				submission?.status === 'opened' ||
+				submission?.status === 'to_fix' ||
+				submission?.status === 'rejected')
 		)
 	);
 	const canEditSubmissionDataAsAdmin = $derived(
 		Boolean(
 			canModerateSubmission &&
-				!isDeleteSubmission &&
-				(submission?.status === 'pending' || submission?.status === 'opened')
+			!isDeleteSubmission &&
+			(submission?.status === 'pending' || submission?.status === 'opened')
 		)
 	);
 	const canEditSubmissionDataAllowed = $derived(

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ProfileView from '$lib/components/dashboard/ProfileView.svelte';
+	import { profileDashboardHref } from '$lib/utils/profile-url';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -10,7 +11,7 @@
 	let { data }: Props = $props();
 
 	const translationsHrefForPage = (page: number) => {
-		const base = resolve(`/dashboard/profile/${data.profileSlug}`);
+		const base = resolve(profileDashboardHref(data.profileSlug));
 		return page > 1 ? `${base}?page=${page}` : base;
 	};
 
