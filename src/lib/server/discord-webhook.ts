@@ -305,7 +305,7 @@ export async function executeDiscordWebhook(
 
 /**
  * Soumission acceptée et appliquée (canal « updates ») : embed selon le type d’opération.
- * Les modifications de jeu (`submissionType === 'update'`) ne sont pas envoyées sur ce webhook.
+ * Exclus : modifications de jeu (`update`) et pages traducteur (`translator_pages`).
  */
 export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 	submissionId: string;
@@ -319,7 +319,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 }): Promise<void> {
 	const { updates } = await getWebhookUrls();
 	if (!updates) return;
-	if (args.submissionType === 'update') return;
+	if (args.submissionType === 'update' || args.submissionType === 'translator_pages') return;
 
 	let data: Record<string, unknown>;
 	try {
