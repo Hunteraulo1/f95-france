@@ -261,6 +261,8 @@ export const appRole = pgTable('app_role', {
 	description: text('description'),
 	/** direct | submission | user_direct_mode — voir `$lib/permissions/edit-mode`. */
 	editMode: varchar('edit_mode', { length: 32 }).notNull().default('direct'),
+	/** Style badge / pseudo — voir `$lib/permissions/role-badge-style`. */
+	badgeStyle: varchar('badge_style', { length: 32 }).notNull().default('default'),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

@@ -8,7 +8,9 @@ import {
 } from '$lib/permissions/catalog';
 import { permissionGranted } from '$lib/permissions/check';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
+import { SYSTEM_ROLE_BADGE_STYLES } from '$lib/permissions/role-badge-style';
 import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
@@ -131,9 +133,14 @@ export async function countPermissionsByRoles(
 }
 
 export async function listAppRoles() {
-	const roles = await db.select().from(table.appRole);
+	const roles = await selectAllAppRoles();
 	const slugs = roles.map((r) => r.slug);
 	const permissionCounts = await countPermissionsByRoles(slugs);
+	for (const slug of slugs) {
+		if (isSuperadminRole(slug)) {
+			permissionCounts[slug] = PERMISSION_CATALOG.length;
+		}
+	}
 	return sortRolesByPrivileges(roles, permissionCounts);
 }
 
@@ -201,6 +208,7 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 			slug,
 			label: slug,
 			editMode: SYSTEM_ROLE_EDIT_MODES[slug as keyof typeof SYSTEM_ROLE_EDIT_MODES],
+			badgeStyle: SYSTEM_ROLE_BADGE_STYLES[slug] ?? 'default',
 			isSystem: true
 		}))
 	);

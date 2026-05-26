@@ -8,7 +8,7 @@
 		getPermissionParent,
 		permissionRequirementLabel
 	} from '$lib/permissions/dependencies';
-	import { superadminBadgeClass } from '$lib/utils/username-display';
+	import { roleBadgeClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -129,7 +129,7 @@
 							>
 								<span class="flex min-w-0 flex-col">
 									<span class="flex flex-wrap items-center gap-1">
-										<span class={superadminBadgeClass(role.slug)}>{role.label}</span>
+										<span class={roleBadgeClass(role.slug, role.badgeStyle)}>{role.label}</span>
 										{#if role.hasGamesManage && role.editMode == null}
 											<span class="badge badge-warning badge-xs">Mode manquant</span>
 										{/if}
@@ -173,7 +173,12 @@
 					<div class="card-body gap-4">
 						<div class="flex flex-wrap items-start justify-between gap-2">
 							<div>
-								<h3 class="card-title text-base {superadminBadgeClass(selectedRole.slug)}">
+								<h3
+									class="card-title text-base {roleBadgeClass(
+										selectedRole.slug,
+										selectedRole.badgeStyle
+									)}"
+								>
 									{selectedRole.label}
 								</h3>
 								<p class="font-mono text-sm opacity-70">{selectedRole.slug}</p>
@@ -248,6 +253,39 @@
 									readonly={selectedRole.isSystem || isSelectedSuperadmin}
 									disabled={isSelectedSuperadmin}>{selectedRole.description ?? ''}</textarea
 								>
+							</fieldset>
+							<fieldset class="fieldset">
+								<legend class="fieldset-legend">Couleur du rôle</legend>
+								<p class="mb-2 text-xs text-base-content/70">
+									Style du libellé et des badges (profils, liste utilisateurs, etc.).
+								</p>
+								<div class="grid gap-2 sm:grid-cols-2">
+									{#each data.badgeStyleOptions as option (option.value)}
+										<label
+											class="flex items-start gap-3 rounded-lg border border-base-300 p-3 {isSelectedSuperadmin
+												? 'opacity-60'
+												: 'cursor-pointer hover:bg-base-200'}"
+										>
+											<input
+												type="radio"
+												name="badgeStyle"
+												value={option.value}
+												class="radio mt-0.5 radio-sm"
+												checked={selectedRole.badgeStyle === option.value}
+												disabled={isSelectedSuperadmin}
+											/>
+											<span class="flex min-w-0 flex-col gap-1">
+												<span
+													class="text-sm font-medium {roleBadgeClass(
+														selectedRole.slug,
+														option.value
+													)}">{option.label}</span
+												>
+												<span class="text-xs opacity-70">{option.description}</span>
+											</span>
+										</label>
+									{/each}
+								</div>
 							</fieldset>
 							{#if selectedHasGamesManage}
 								<fieldset class="fieldset">
@@ -416,6 +454,26 @@
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Description</legend>
 					<textarea name="description" class="textarea w-full" rows="2"></textarea>
+				</fieldset>
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">Couleur du rôle</legend>
+					<div class="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
+						{#each data.badgeStyleOptions as option (option.value)}
+							<label
+								class="flex cursor-pointer items-start gap-2 rounded-lg border border-base-300 p-2"
+							>
+								<input
+									type="radio"
+									name="badgeStyle"
+									value={option.value}
+									class="radio mt-0.5 radio-sm"
+									checked={option.value === 'default'}
+								/>
+								<span class="text-sm {roleBadgeClass('preview', option.value)}">{option.label}</span
+								>
+							</label>
+						{/each}
+					</div>
 				</fieldset>
 				<fieldset class="fieldset">
 					<legend class="fieldset-legend">Mode d'enregistrement</legend>

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { superadminUsernameClass } from '$lib/utils/username-display';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { roleUsernameClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -248,8 +249,11 @@
 									</td>
 									<td>
 										{#if log.user?.username}
-											<span class="font-semibold {superadminUsernameClass(log.user.role)}"
-												>{log.user.username}</span
+											<span
+												class="font-semibold {roleUsernameClass(
+													log.user.role,
+													$roleBadgeStyles[log.user.role]
+												)}">{log.user.username}</span
 											>
 										{:else}
 											<span class="text-base-content/60">Anonyme</span>

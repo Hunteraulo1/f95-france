@@ -11,7 +11,8 @@
 	import { extractYoutubeVideoId } from '$lib/profile/youtube-music';
 	import type { ProfileStats } from '$lib/server/profile-stats';
 	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
-	import { superadminBadgeClass, superadminUsernameClass } from '$lib/utils/username-display';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import User from '@lucide/svelte/icons/user';
 	import UserPen from '@lucide/svelte/icons/user-pen';
@@ -133,11 +134,13 @@
 					<User size={64} />
 				{/if}
 			</div>
-			<h3 class="text-lg font-semibold {superadminUsernameClass(user.role)}">{user.username}</h3>
+			<h3 class="text-lg font-semibold {roleUsernameClass(user.role, $roleBadgeStyles[user.role])}">
+				{user.username}
+			</h3>
 			{#if linkedTranslator}
 				<p class="text-sm text-base-content/70">Traducteur : {linkedTranslator.name}</p>
 			{/if}
-			<span class="badge text-nowrap {superadminBadgeClass(user.role)}"
+			<span class="badge text-nowrap {roleBadgeClass(user.role, $roleBadgeStyles[user.role])}"
 				>{roles[user.role] ?? user.role}</span
 			>
 			<p class="text-sm text-base-content/60">

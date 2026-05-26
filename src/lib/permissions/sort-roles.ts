@@ -1,6 +1,6 @@
 const SYSTEM_ROLE_ORDER = ['user', 'translator', 'admin', 'superadmin'] as const;
 
-/** Du moins au plus de droits (utilisateur → superadmin, rôles custom intercalés). */
+/** Du plus au moins de droits (superadmin → utilisateur, rôles custom intercalés). */
 export function sortRolesByPrivileges<T extends { slug: string; label?: string }>(
 	roles: T[],
 	permissionCountBySlug: Record<string, number>
@@ -11,10 +11,10 @@ export function sortRolesByPrivileges<T extends { slug: string; label?: string }
 	};
 
 	return [...roles].sort((a, b) => {
-		const countDiff = (permissionCountBySlug[a.slug] ?? 0) - (permissionCountBySlug[b.slug] ?? 0);
+		const countDiff = (permissionCountBySlug[b.slug] ?? 0) - (permissionCountBySlug[a.slug] ?? 0);
 		if (countDiff !== 0) return countDiff;
 
-		const rankDiff = systemRank(a.slug) - systemRank(b.slug);
+		const rankDiff = systemRank(b.slug) - systemRank(a.slug);
 		if (rankDiff !== 0) return rankDiff;
 
 		return (a.label ?? a.slug).localeCompare(b.label ?? b.slug, 'fr');

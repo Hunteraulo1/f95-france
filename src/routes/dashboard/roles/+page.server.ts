@@ -12,6 +12,7 @@ import {
 	resolveEffectiveRoleEditMode,
 	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
+import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -25,6 +26,10 @@ import {
 	roleExists,
 	setRolePermissions
 } from '$lib/server/permissions';
+import {
+	invalidateRoleBadgeStylesCache,
+	parseRoleBadgeStyleInput
+} from '$lib/server/role-badge-styles';
 import {
 	assertCanManageRole,
 	filterPermissionsAssignableByActor,
@@ -102,11 +107,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				: await assertCanManageRole(locals, r.slug, targetPerms);
 			const hasGamesManage = targetPerms.includes(GAMES_MANAGE_PERMISSION);
 			const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
+			const badgeStyle = resolveRoleBadgeStyle(r.slug, r.badgeStyle);
 			return {
 				...r,
 				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
 				hasGamesManage,
 				storedEditMode,
+				badgeStyle,
 				editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
 				userCount: userCounts[r.slug] ?? 0,
 				permissionCount: isSuperadminRole(r.slug)
@@ -152,7 +159,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selectedManageBlockedReason: selectedRoleMeta?.manageBlockedReason ?? null,
 		permissionGroups,
 		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key),
-		editModeOptions: ROLE_EDIT_MODE_OPTIONS
+		editModeOptions: ROLE_EDIT_MODE_OPTIONS,
+		badgeStyleOptions: ROLE_BADGE_STYLE_OPTIONS
 	};
 };
 
@@ -177,6 +185,10 @@ export const actions: Actions = {
 			return fail(400, { message: 'Mode d’enregistrement invalide' });
 		}
 		const editMode = editModeRaw;
+		const badgeStyle = parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? ''));
+		if (!badgeStyle) {
+			return fail(400, { message: 'Couleur de rôle invalide' });
+		}
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 
@@ -217,9 +229,11 @@ export const actions: Actions = {
 				label,
 				description,
 				editMode,
+				badgeStyle,
 				isSystem: false
 			});
 			await setRolePermissions(slug, assignableInitial);
+			invalidateRoleBadgeStylesCache();
 			redirect(303, rolePageUrl(slug, 'created'));
 		} catch (error) {
 			if (isRedirect(error)) throw error;
@@ -237,7 +251,6 @@ export const actions: Actions = {
 		const description = (formData.get('description') as string)?.trim() || null;
 		const editModeRaw = String(formData.get('editMode') ?? '').trim();
 		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : null;
-
 		if (!slug || !label) {
 			return fail(400, { message: 'Champs requis manquants' });
 		}
@@ -250,6 +263,10 @@ export const actions: Actions = {
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
+
+		const badgeStyle =
+			parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? '')) ??
+			resolveRoleBadgeStyle(slug, role.badgeStyle);
 
 		const guard = await rejectUnlessCanManageRole(locals, slug);
 		if (!guard.ok) return fail(403, { message: guard.message });
@@ -266,11 +283,13 @@ export const actions: Actions = {
 				.set({
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
 					description: role.isSystem ? role.description : description,
+					badgeStyle,
 					...(hasGamesManage && editMode ? { editMode } : {}),
 					updatedAt: new Date()
 				})
 				.where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
+			invalidateRoleBadgeStylesCache();
 
 			redirect(303, rolePageUrl(slug, 'updated'));
 		} catch (error) {
@@ -370,6 +389,7 @@ export const actions: Actions = {
 		try {
 			await db.delete(table.appRole).where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
+			invalidateRoleBadgeStylesCache();
 			const roles = await listAppRoles();
 			const nextSlug = roles[0]?.slug ?? 'user';
 			redirect(303, rolePageUrl(nextSlug, 'deleted'));

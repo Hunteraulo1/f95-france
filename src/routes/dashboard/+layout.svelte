@@ -2,13 +2,14 @@
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
-	import { initializeUserFromLocals, setUserPermissions } from '$lib/stores';
+	import { initializeUserFromLocals, setRoleBadgeStyles, setUserPermissions } from '$lib/stores';
 
 	let { children, data } = $props();
 
 	$effect(() => {
 		initializeUserFromLocals(data?.user);
 		setUserPermissions(data?.permissions ?? []);
+		setRoleBadgeStyles(data?.roleBadgeStyles ?? {});
 	});
 </script>
 

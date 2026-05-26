@@ -41,7 +41,7 @@ export function isPermissionRequirementMet(
 	const parent = PERMISSION_REQUIRES[key];
 	if (!parent) return true;
 	if (granted instanceof Set) return granted.has(parent);
-	return Boolean(granted[parent]);
+	return Boolean((granted as Record<string, boolean>)[parent]);
 }
 
 /** Retire les droits dont le parent n’est pas accordé. */

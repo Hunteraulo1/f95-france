@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
 import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
+import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
 import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
@@ -76,10 +77,12 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	}
 
 	const devOriginUser = locals.user ? await getDevImpersonationOriginUser(cookies) : null;
+	const roleBadgeStyles = await listRoleBadgeStylesMap();
 
 	return {
 		user: locals.user,
 		permissions,
+		roleBadgeStyles,
 		pendingSubmissionsCount,
 		hasLinkedTranslator,
 		maintenanceMode,

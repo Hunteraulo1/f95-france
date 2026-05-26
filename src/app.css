@@ -42,6 +42,78 @@
 	background-color: color-mix(in oklch, var(--color-base-100) 88%, transparent);
 }
 
+.username-role-primary {
+	color: var(--color-primary);
+}
+.badge.username-role-primary {
+	border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
+	color: var(--color-primary);
+}
+
+.username-role-secondary {
+	color: var(--color-secondary);
+}
+.badge.username-role-secondary {
+	border-color: color-mix(in oklch, var(--color-secondary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-secondary) 12%, var(--color-base-100));
+	color: var(--color-secondary);
+}
+
+.username-role-accent {
+	color: var(--color-accent);
+}
+.badge.username-role-accent {
+	border-color: color-mix(in oklch, var(--color-accent) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-accent) 12%, var(--color-base-100));
+	color: var(--color-accent);
+}
+
+.username-role-info {
+	color: var(--color-info);
+}
+.badge.username-role-info {
+	border-color: color-mix(in oklch, var(--color-info) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-info) 12%, var(--color-base-100));
+	color: var(--color-info);
+}
+
+.username-role-success {
+	color: var(--color-success);
+}
+.badge.username-role-success {
+	border-color: color-mix(in oklch, var(--color-success) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-success) 12%, var(--color-base-100));
+	color: var(--color-success);
+}
+
+.username-role-warning {
+	color: var(--color-warning);
+}
+.badge.username-role-warning {
+	border-color: color-mix(in oklch, var(--color-warning) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-warning) 12%, var(--color-base-100));
+	color: var(--color-warning);
+}
+
+.username-role-error {
+	color: var(--color-error);
+}
+.badge.username-role-error {
+	border-color: color-mix(in oklch, var(--color-error) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-error) 12%, var(--color-base-100));
+	color: var(--color-error);
+}
+
+.username-role-neutral {
+	color: var(--color-neutral);
+}
+.badge.username-role-neutral {
+	border-color: color-mix(in oklch, var(--color-neutral) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-neutral) 12%, var(--color-base-100));
+	color: var(--color-neutral);
+}
+
 /*
  * Firefox (visibilité des polices / RFP) : une pile monospace système peut tenter
  * « Liberation Mono » et être bloquée (niveau 2). On garde l’apparence kbd sans police mono dédiée.
