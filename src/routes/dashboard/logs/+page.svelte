@@ -121,7 +121,9 @@
 					</select>
 				</label>
 				<label class="form-control flex flex-col">
-					<span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
+					<span class="label-text"
+						>Recherche <span class="text-sm">(route, IP ou payload)</span></span
+					>
 					<input
 						type="text"
 						name="q"
@@ -226,6 +228,7 @@
 							<th>Route</th>
 							<th>Statut</th>
 							<th>Utilisateur</th>
+							<th>IP</th>
 							<th>Payload</th>
 							<th>Erreur</th>
 						</tr>
@@ -258,6 +261,13 @@
 											>
 										{:else}
 											<span class="text-base-content/60">Anonyme</span>
+										{/if}
+									</td>
+									<td class="font-mono text-xs whitespace-nowrap">
+										{#if log.ipAddress}
+											{log.ipAddress}
+										{:else}
+											<span class="text-base-content/60">—</span>
 										{/if}
 									</td>
 									<td class="max-w-xs">

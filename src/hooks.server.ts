@@ -318,6 +318,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			route,
 			status: response.status,
 			userId: event.locals.user?.id ?? null,
+			ipAddress: event.getClientAddress(),
 			payload: capturedBody,
 			errorMessage: null // Sera rempli par handleError pour les erreurs 500
 		}).catch((error) => {
@@ -375,6 +376,7 @@ export const handleError = async ({
 			route,
 			status,
 			userId: event.locals.user?.id ?? null,
+			ipAddress: event.getClientAddress(),
 			payload: null,
 			errorMessage
 		});

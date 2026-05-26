@@ -27,7 +27,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 		if (search) {
 			const pattern = `%${search}%`;
-			conditions.push(or(like(apiLog.route, pattern), like(apiLog.payload, pattern)));
+			conditions.push(
+				or(
+					like(apiLog.route, pattern),
+					like(apiLog.payload, pattern),
+					like(apiLog.ipAddress, pattern)
+				)
+			);
 		}
 		if (userSearch) {
 			const userPattern = `%${userSearch}%`;
@@ -65,6 +71,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					method: apiLog.method,
 					route: apiLog.route,
 					status: apiLog.status,
+					ipAddress: apiLog.ipAddress,
 					payload: apiLog.payload,
 					errorMessage: apiLog.errorMessage,
 					createdAt: apiLog.createdAt,
@@ -84,6 +91,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					method: apiLog.method,
 					route: apiLog.route,
 					status: apiLog.status,
+					ipAddress: apiLog.ipAddress,
 					payload: apiLog.payload,
 					createdAt: apiLog.createdAt,
 					user: {
