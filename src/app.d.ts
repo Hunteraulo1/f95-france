@@ -9,6 +9,8 @@ declare global {
 			permissions?: string[];
 			/** Présent si `user` provient d’une clé API (pas de cookie de session). */
 			authenticatedViaApiKey?: boolean;
+			/** Portée de la clé API (`/api/extension-api` si extension-only). */
+			apiKeyRouteScope?: string | null;
 		}
 	} // interface Error {}
 	// interface Locals {}

@@ -10,6 +10,7 @@ import {
 	disableGameAndTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
@@ -30,10 +31,11 @@ import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		return json({ error: 'Non authentifié' }, { status: 401 });
 	}
+
+	await assertGameManageAccess(locals);
 
 	const gameId = params.id;
 

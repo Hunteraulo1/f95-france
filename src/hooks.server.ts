@@ -61,7 +61,7 @@ function getRequestLoggingDecision(
 	pathname: string,
 	method: string,
 	url: URL
-): { shouldLog: boolean; shouldCaptureBody: boolean } {
+): { shouldLog: boolean; shouldCaptureBody: boolean; shouldCaptureQuery: boolean } {
 	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
 	const isHighFrequencyPollRoute = pathname.startsWith('/api/notifications');
 	const isDashboardRoute = pathname.startsWith('/dashboard');
@@ -69,11 +69,16 @@ function getRequestLoggingDecision(
 	const isSensitiveSettingsAction =
 		pathname === '/dashboard/settings' &&
 		(urlSearchIncludes(url, '/changePassword') || urlSearchIncludes(url, '/disable2FA'));
+	const isSensitiveOAuthOrPasskeyRoute =
+		pathname.startsWith('/api/google-oauth/') ||
+		pathname.startsWith('/api/discord-oauth/') ||
+		pathname.startsWith('/api/passkeys/');
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
 		pathname === '/dashboard/logout' ||
-		isSensitiveSettingsAction;
+		isSensitiveSettingsAction ||
+		isSensitiveOAuthOrPasskeyRoute;
 
 	const shouldLog =
 		!isStaticAssetPath(pathname) &&
@@ -81,8 +86,9 @@ function getRequestLoggingDecision(
 		(isApiRequest || isDashboardRoute || isMaintenanceRoute);
 	const shouldCaptureBody =
 		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
+	const shouldCaptureQuery = shouldLog && method === 'GET' && !isSensitiveOAuthOrPasskeyRoute;
 
-	return { shouldLog, shouldCaptureBody };
+	return { shouldLog, shouldCaptureBody, shouldCaptureQuery };
 }
 
 let permissionsCatalogSeedPromise: Promise<void> | null = null;
@@ -120,9 +126,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 				event.locals.session = null;
 			}
 		} catch (error) {
-			// Erreur inattendue après réessais : ne pas supprimer le cookie (souvent infra / DB).
-			// Évite les « déconnexions » intempestives ; la requête courante reste anonyme.
 			console.error('Erreur lors de la validation de session:', error);
+			auth.deleteSessionTokenCookie(event);
 			event.locals.user = null;
 			event.locals.session = null;
 		}
@@ -257,6 +262,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
+			event.locals.apiKeyRouteScope = keyResult.routeScope;
 		} else if (event.locals.user) {
 			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
 			if (!sessionRate.ok) {
@@ -271,7 +277,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	let capturedBody: string | null = null;
 
-	const { shouldLog, shouldCaptureBody } = getRequestLoggingDecision(pathname, method, event.url);
+	const { shouldLog, shouldCaptureBody, shouldCaptureQuery } = getRequestLoggingDecision(
+		pathname,
+		method,
+		event.url
+	);
 
 	if (shouldCaptureBody) {
 		try {
@@ -284,7 +294,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} catch (error) {
 			console.error('Impossible de lire le corps de la requête pour les logs:', error);
 		}
-	} else if (shouldLog && method === 'GET') {
+	} else if (shouldCaptureQuery) {
 		capturedBody = requestQueryForLog(event.url);
 	}
 

@@ -133,17 +133,17 @@ export const actions: Actions = {
 			return fail(404, { message: 'Utilisateur introuvable.' });
 		}
 
-		const validCurrentPassword = auth.verifyPassword(currentPassword, dbUser.passwordHash);
-		if (!validCurrentPassword) {
+		const currentCheck = await auth.verifyPassword(currentPassword, dbUser.passwordHash);
+		if (!currentCheck.valid) {
 			return fail(400, { message: 'Le mot de passe actuel est incorrect.' });
 		}
 
-		const reusingSamePassword = auth.verifyPassword(newPassword, dbUser.passwordHash);
-		if (reusingSamePassword) {
+		const reuseCheck = await auth.verifyPassword(newPassword, dbUser.passwordHash);
+		if (reuseCheck.valid) {
 			return fail(400, { message: 'Le nouveau mot de passe doit être différent de l’actuel.' });
 		}
 
-		const nextHash = auth.hashPassword(newPassword);
+		const nextHash = await auth.hashPassword(newPassword);
 		await db
 			.update(table.user)
 			.set({
@@ -321,9 +321,9 @@ export const actions: Actions = {
 			return fail(400, { message: "La 2FA n'est pas active." });
 		}
 
-		const validPassword = auth.verifyPassword(password, user.passwordHash);
-		if (!validPassword) {
-			return fail(400, { message: 'Mot de passe incorrect.' });
+		const passwordCheck = await auth.verifyPassword(password, user.passwordHash);
+		if (!passwordCheck.valid) {
+			return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
 		}
 
 		const totp = new OTPAuth.TOTP({
@@ -426,6 +426,10 @@ export const actions: Actions = {
 				.update(table.session)
 				.set({ userId: targetUser.id })
 				.where(eq(table.session.id, locals.session.id));
+
+			console.warn(
+				`[dev.impersonate] ${actor.username} (${actor.id}) → ${targetUser.username} (${targetUser.id})`
+			);
 
 			return {
 				success: true,

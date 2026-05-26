@@ -43,13 +43,13 @@ export const actions: Actions = {
 			const user = await auth.getUserByUsername(username);
 			if (!user) {
 				await recordLoginFailure(event);
-				return fail(400, { message: "Aucun compte trouvé pour ce nom d'utilisateur." });
+				return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
 			}
 
-			const validPassword = auth.verifyPassword(password, user.passwordHash);
-			if (!validPassword) {
+			const passwordCheck = await auth.verifyPassword(password, user.passwordHash);
+			if (!passwordCheck.valid) {
 				await recordLoginFailure(event);
-				return fail(400, { message: 'Mot de passe incorrect.' });
+				return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
 			}
 
 			if (user.twoFactorEnabled && user.twoFactorSecret) {
@@ -74,7 +74,10 @@ export const actions: Actions = {
 				}
 			}
 
-			// Créer une session
+			if (passwordCheck.needsRehash) {
+				await auth.rehashPasswordIfNeeded(user.id, password);
+			}
+
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, user.id);
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);

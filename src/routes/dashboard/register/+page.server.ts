@@ -1,4 +1,9 @@
 import * as auth from '$lib/server/auth';
+import {
+	checkLoginThrottle,
+	clearLoginThrottle,
+	recordLoginFailure
+} from '$lib/server/login-throttle';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -27,6 +32,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	register: async (event: RequestEvent) => {
+		const throttle = await checkLoginThrottle(event);
+		if (!throttle.ok) {
+			return fail(429, { message: throttle.message });
+		}
+
 		try {
 			const formData = await event.request.formData();
 			const username = formData.get('username') as string;
@@ -68,8 +78,8 @@ export const actions: Actions = {
 				}
 			}
 
-			// S'il y a des erreurs, les retourner
 			if (Object.keys(errors).length > 0) {
+				await recordLoginFailure(event);
 				return fail(400, {
 					errors,
 					message: 'Veuillez corriger les erreurs ci-dessous'
@@ -94,8 +104,8 @@ export const actions: Actions = {
 
 			// Définir le cookie de session
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+			await clearLoginThrottle(event);
 
-			// Rediriger vers le dashboard
 			throw redirect(302, '/dashboard');
 		} catch (error) {
 			// Si c'est une redirection, la laisser passer

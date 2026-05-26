@@ -181,7 +181,12 @@ const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À 
 
 export const GET: RequestHandler = async ({ url, request, locals, cookies }) => {
 	const gateUser = await resolveUserForExtensionApiOriginGate(locals, cookies);
-	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+	if (
+		!isExtensionApiCallerAllowed(request, gateUser, {
+			authenticatedViaApiKey: locals.authenticatedViaApiKey,
+			apiKeyRouteScope: locals.apiKeyRouteScope ?? null
+		})
+	) {
 		return json(
 			{ error: "Accès interdit à l'API extension." },
 			{ status: 403, headers: corsHeaders }

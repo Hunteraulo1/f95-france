@@ -1,8 +1,12 @@
 import { ensureSessionApiKey } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { sha256 } from '@oslojs/crypto/sha2';
-import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
+import {
+	hashPassword,
+	hashSessionSecret,
+	verifySessionSecret,
+	type PasswordVerifyResult
+} from '$lib/server/password-hash';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 
@@ -10,7 +14,13 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 export const sessionCookieName = 'auth-session';
 
-// Generate secure random string with 120 bits of entropy
+export {
+	hashPassword,
+	INVALID_CREDENTIALS_MESSAGE,
+	verifyPassword
+} from '$lib/server/password-hash';
+export type { PasswordVerifyResult };
+
 function generateSecureRandomString(): string {
 	const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
 	const bytes = new Uint8Array(24);
@@ -37,6 +47,7 @@ export async function createSession(token: string, userId: string) {
 
 	const session: table.Session = {
 		id: sessionId,
+		secretHash: hashSessionSecret(secret),
 		userId,
 		expiresAt: new Date(Date.now() + DAY_IN_MS * 30)
 	};
@@ -50,7 +61,10 @@ export async function validateSessionToken(token: string) {
 		return { session: null, user: null };
 	}
 
-	const [sessionId] = tokenParts;
+	const [sessionId, secret] = tokenParts;
+	if (!sessionId || !secret) {
+		return { session: null, user: null };
+	}
 
 	const [result] = await db
 		.select({
@@ -66,20 +80,16 @@ export async function validateSessionToken(token: string) {
 	}
 	const { session, user } = result;
 
-	// Check expiration
 	const sessionExpired = Date.now() >= session.expiresAt.getTime();
 	if (sessionExpired) {
 		await db.delete(table.session).where(eq(table.session.id, session.id));
 		return { session: null, user: null };
 	}
 
-	// Verify secret (we need to add secretHash to our schema)
-	// For now, we'll skip secret verification until we update the schema
-	// const secretHash = sha256(new TextEncoder().encode(secret));
-	// const validSecret = constantTimeEqual(secretHash, session.secretHash);
-	// if (!validSecret) {
-	// 	return { session: null, user: null };
-	// }
+	if (!verifySessionSecret(secret, session.secretHash)) {
+		await db.delete(table.session).where(eq(table.session.id, session.id));
+		return { session: null, user: null };
+	}
 
 	const renewSession = Date.now() >= session.expiresAt.getTime() - DAY_IN_MS * 15;
 	if (renewSession) {
@@ -93,7 +103,6 @@ export async function validateSessionToken(token: string) {
 	return { session, user };
 }
 
-/** Réessaie la validation en cas d'erreur DB transitoire (sans supprimer le cookie). */
 export async function validateSessionTokenWithRetry(
 	token: string,
 	options?: { retries?: number; delayMs?: number }
@@ -146,27 +155,8 @@ export function deleteSessionTokenCookie(event: RequestEvent) {
 	});
 }
 
-// Password hashing functions using Oslo crypto
-export function hashPassword(password: string): string {
-	const salt = crypto.getRandomValues(new Uint8Array(16));
-	const saltString = encodeBase64url(salt);
-	const hash = sha256(new TextEncoder().encode(password + saltString));
-	return `${saltString}:${encodeHexLowerCase(hash)}`;
-}
-
-export function verifyPassword(password: string, hashedPassword: string): boolean {
-	const [saltString, hashString] = hashedPassword.split(':');
-	if (!saltString || !hashString) return false;
-
-	const hash = sha256(new TextEncoder().encode(password + saltString));
-	const hashStringFromPassword = encodeHexLowerCase(hash);
-
-	return hashStringFromPassword === hashString;
-}
-
-// User creation function
 export async function createUser(username: string, email: string, password: string) {
-	const hashedPassword = hashPassword(password);
+	const hashedPassword = await hashPassword(password);
 
 	const userId = crypto.randomUUID();
 
@@ -175,7 +165,7 @@ export async function createUser(username: string, email: string, password: stri
 		email,
 		username,
 		discordId: null,
-		avatar: '', // Default avatar
+		avatar: '',
 		passwordHash: hashedPassword,
 		twoFactorEnabled: false,
 		twoFactorSecret: null,
@@ -198,7 +188,6 @@ export async function createUser(username: string, email: string, password: stri
 	return user;
 }
 
-// Check if user exists
 export async function getUserByEmail(email: string) {
 	const [user] = await db.select().from(table.user).where(eq(table.user.email, email));
 
@@ -209,4 +198,13 @@ export async function getUserByUsername(username: string) {
 	const [user] = await db.select().from(table.user).where(eq(table.user.username, username));
 
 	return user || null;
+}
+
+/** Met à jour le hash si l’ancien format (SHA-256) a été utilisé à la connexion. */
+export async function rehashPasswordIfNeeded(userId: string, password: string): Promise<void> {
+	const nextHash = await hashPassword(password);
+	await db
+		.update(table.user)
+		.set({ passwordHash: nextHash, updatedAt: new Date() })
+		.where(eq(table.user.id, userId));
 }

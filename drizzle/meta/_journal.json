@@ -197,6 +197,13 @@
       "when": 1779618000000,
       "tag": "0028_role_badge_style",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779621600000,
+      "tag": "0029_session_secret_hash",
+      "breakpoints": true
     }
   ]
 }

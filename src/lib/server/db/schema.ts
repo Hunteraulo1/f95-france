@@ -37,6 +37,7 @@ export const user = pgTable('user', {
 
 export const session = pgTable('session', {
 	id: varchar('id', { length: 255 }).primaryKey(),
+	secretHash: varchar('secret_hash', { length: 64 }).notNull(),
 	userId: varchar('user_id', { length: 255 })
 		.notNull()
 		.references(() => user.id),
