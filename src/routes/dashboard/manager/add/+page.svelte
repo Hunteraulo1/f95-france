@@ -40,6 +40,7 @@
 
 	let { data }: Props = $props();
 	let step = $state(0);
+	let translatorsList = $state([...data.translators]);
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({
@@ -125,7 +126,11 @@
 		}
 	};
 
-	const isAdmin = safeCheckRole(['admin', 'superadmin']);
+	const isAdmin = $derived(safeCheckRole(['admin', 'superadmin']));
+
+	let pendingNewTranslators = $state<string[]>([]);
+
+	const addTranslatorMode = $derived(data.addTranslatorMode);
 	const canManageGameAutoCheck = $derived($effectivePermissions.includes('games.auto_check'));
 	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
@@ -703,7 +708,10 @@
 			const currentUser = get(user);
 			const requestBody = {
 				...payload,
-				directMode: currentUser?.directMode ?? true
+				directMode:
+					data.addTranslatorMode === 'submission' ? false : (currentUser?.directMode ?? true),
+				pendingNewTranslators:
+					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined
 			};
 
 			const response = await fetch('/dashboard/manager', {
@@ -1051,7 +1059,9 @@
 								{active}
 								{className}
 								bind:game
-								translators={data.translators}
+								bind:translators={translatorsList}
+								{addTranslatorMode}
+								bind:pendingNewTranslators
 								invalid={name === 'translatorId'
 									? translatorFieldErrors.translatorId
 									: translatorFieldErrors.proofreaderId}

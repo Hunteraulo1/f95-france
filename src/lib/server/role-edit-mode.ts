@@ -50,6 +50,11 @@ export async function resolveShouldCreateSubmissionForUser(params: {
 	requestDirectMode?: boolean;
 }): Promise<boolean> {
 	const roleEditMode = await getRoleEditMode(params.roleSlug);
+
+	// Rôles « soumission » ou « direct » : le client ne peut pas outrepasser la politique du rôle.
+	if (roleEditMode === 'submission') return true;
+	if (roleEditMode === 'direct') return false;
+
 	const useDirectMode =
 		params.requestDirectMode !== undefined ? params.requestDirectMode : params.userDirectMode;
 	return resolveShouldCreateSubmission({ roleEditMode, useDirectMode });

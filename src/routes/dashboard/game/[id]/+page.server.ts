@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { hasPermission } from '$lib/server/permissions';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
@@ -8,10 +9,7 @@ import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		throw error(401, 'Non authentifié');
-	}
+	await assertGameManageAccess(locals);
 
 	const gameId = params.id;
 

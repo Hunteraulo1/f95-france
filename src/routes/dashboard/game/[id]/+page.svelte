@@ -1,5 +1,7 @@
 <script lang="ts">
 	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import TranslatorContributorInput from '$lib/components/dashboard/TranslatorContributorInput.svelte';
+	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 	import { effectivePermissions } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
@@ -39,6 +41,20 @@
 	const currentUser = $derived(data.user);
 	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
 	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
+
+	type FormTranslator = (typeof data.translators)[number];
+	let extraTranslators = $state<FormTranslator[]>([]);
+	let pendingNewTranslators = $state<string[]>([]);
+
+	const usesContributorSubmission = $derived(
+		currentUser?.role === 'translator' || (isAdmin && currentUser?.directMode === false)
+	);
+
+	const addContributorMode = $derived.by((): AddTranslatorMode | false => {
+		if (usesContributorSubmission) return 'submission';
+		if (isAdmin) return 'direct';
+		return false;
+	});
 	const canManageGameAutoCheck = $derived(
 		data.canManageGameAutoCheck === true || $effectivePermissions.includes('games.auto_check')
 	);
@@ -521,33 +537,36 @@
 		}
 
 		try {
-			// Convertir les noms de traducteurs/relecteurs en IDs
 			let translatorIdValue: string | null = null;
 			let proofreaderIdValue: string | null = null;
 
-			if (newTranslation.translatorId) {
-				translatorIdValue = resolveTranslatorFormInputToId(newTranslation.translatorId);
-				if (!translatorIdValue) {
-					newToast({
-						alertType: 'error',
-						message: `Traducteur "${newTranslation.translatorId}" non trouvé`
-					});
-					return;
+			if (usesContributorSubmission) {
+				translatorIdValue = newTranslation.translatorId?.trim() || null;
+				proofreaderIdValue = newTranslation.proofreaderId?.trim() || null;
+			} else {
+				if (newTranslation.translatorId) {
+					translatorIdValue = resolveTranslatorFormInputToId(newTranslation.translatorId);
+					if (!translatorIdValue) {
+						newToast({
+							alertType: 'error',
+							message: `Traducteur "${newTranslation.translatorId}" non trouvé`
+						});
+						return;
+					}
+				}
+
+				if (newTranslation.proofreaderId) {
+					proofreaderIdValue = resolveTranslatorFormInputToId(newTranslation.proofreaderId);
+					if (!proofreaderIdValue) {
+						newToast({
+							alertType: 'error',
+							message: `Relecteur "${newTranslation.proofreaderId}" non trouvé`
+						});
+						return;
+					}
 				}
 			}
 
-			if (newTranslation.proofreaderId) {
-				proofreaderIdValue = resolveTranslatorFormInputToId(newTranslation.proofreaderId);
-				if (!proofreaderIdValue) {
-					newToast({
-						alertType: 'error',
-						message: `Relecteur "${newTranslation.proofreaderId}" non trouvé`
-					});
-					return;
-				}
-			}
-
-			// Pour les traductions intégrées ou "pas de traduction", le lien doit être null
 			const tlinkValue = linkNotRequired ? null : newTranslation.tlink;
 
 			const payload = {
@@ -561,7 +580,10 @@
 				tname: newTranslation.tname,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
-				silentMode: canUseSilentMode ? addTranslationSilentMode : false
+				silentMode: canUseSilentMode ? addTranslationSilentMode : false,
+				...(usesContributorSubmission && pendingNewTranslators.length > 0
+					? { pendingNewTranslators }
+					: {})
 			};
 
 			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
@@ -586,8 +608,8 @@
 						message: 'Traduction ajoutée avec succès'
 					});
 				}
+				pendingNewTranslators = [];
 				closeAddTranslationModal();
-				// Recharger la page pour voir la nouvelle traduction
 				window.location.reload();
 			} else {
 				const errorMessage = data.error || "Erreur lors de l'ajout de la traduction";
@@ -676,25 +698,30 @@
 			let translatorIdValue: string | null = null;
 			let proofreaderIdValue: string | null = null;
 
-			if (editingTranslation.translatorId) {
-				translatorIdValue = resolveTranslatorFormInputToId(editingTranslation.translatorId);
-				if (!translatorIdValue) {
-					newToast({
-						alertType: 'error',
-						message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
-					});
-					return;
+			if (usesContributorSubmission) {
+				translatorIdValue = editingTranslation.translatorId?.trim() || null;
+				proofreaderIdValue = editingTranslation.proofreaderId?.trim() || null;
+			} else {
+				if (editingTranslation.translatorId) {
+					translatorIdValue = resolveTranslatorFormInputToId(editingTranslation.translatorId);
+					if (!translatorIdValue) {
+						newToast({
+							alertType: 'error',
+							message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
+						});
+						return;
+					}
 				}
-			}
 
-			if (editingTranslation.proofreaderId) {
-				proofreaderIdValue = resolveTranslatorFormInputToId(editingTranslation.proofreaderId);
-				if (!proofreaderIdValue) {
-					newToast({
-						alertType: 'error',
-						message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
-					});
-					return;
+				if (editingTranslation.proofreaderId) {
+					proofreaderIdValue = resolveTranslatorFormInputToId(editingTranslation.proofreaderId);
+					if (!proofreaderIdValue) {
+						newToast({
+							alertType: 'error',
+							message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
+						});
+						return;
+					}
 				}
 			}
 
@@ -712,7 +739,10 @@
 				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
 				translatorId: translatorIdValue,
 				proofreaderId: proofreaderIdValue,
-				silentMode: canUseSilentMode ? editTranslationSilentMode : false
+				silentMode: canUseSilentMode ? editTranslationSilentMode : false,
+				...(usesContributorSubmission && pendingNewTranslators.length > 0
+					? { pendingNewTranslators }
+					: {})
 			};
 
 			const response = await fetch(
@@ -1619,42 +1649,30 @@
 			<div class="divider my-5">Contributeurs</div>
 			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
 				<div class="grid gap-4 md:grid-cols-2">
-					<div class="form-control w-full">
-						<label class="label" for="add-tr-translator">
-							<span class="label-text">Traducteur</span>
-						</label>
-						<input
-							id="add-tr-translator"
-							class="input-bordered input w-full"
-							type="text"
-							list="add-tr-translators-list"
-							bind:value={newTranslation.translatorId}
-							placeholder="Nom du traducteur"
-						/>
-						<datalist id="add-tr-translators-list">
-							{#each translators as translator (translator.id)}
-								<option value={translator.name}>{translator.name}</option>
-							{/each}
-						</datalist>
-					</div>
-					<div class="form-control w-full">
-						<label class="label" for="add-tr-proofreader">
-							<span class="label-text">Relecteur</span>
-						</label>
-						<input
-							id="add-tr-proofreader"
-							class="input-bordered input w-full"
-							type="text"
-							list="add-tr-proofreaders-list"
-							bind:value={newTranslation.proofreaderId}
-							placeholder="Nom du relecteur"
-						/>
-						<datalist id="add-tr-proofreaders-list">
-							{#each translators as translator (translator.id)}
-								<option value={translator.name}>{translator.name}</option>
-							{/each}
-						</datalist>
-					</div>
+					<TranslatorContributorInput
+						id="add-tr-translator"
+						listId="add-tr-translators-list"
+						label="Traducteur"
+						placeholder="Nom du traducteur"
+						bind:value={newTranslation.translatorId}
+						baseTranslators={data.translators}
+						bind:extraTranslators
+						addTranslatorMode={addContributorMode}
+						bind:pendingNewTranslators
+						onDirectTranslatorCreated={() => window.location.reload()}
+					/>
+					<TranslatorContributorInput
+						id="add-tr-proofreader"
+						listId="add-tr-proofreaders-list"
+						label="Relecteur"
+						placeholder="Nom du relecteur"
+						bind:value={newTranslation.proofreaderId}
+						baseTranslators={data.translators}
+						bind:extraTranslators
+						addTranslatorMode={addContributorMode}
+						bind:pendingNewTranslators
+						onDirectTranslatorCreated={() => window.location.reload()}
+					/>
 				</div>
 			</div>
 
@@ -1980,42 +1998,31 @@
 						<h4 class="text-sm font-semibold text-base-content/80">Contributeurs</h4>
 					</div>
 					<div class="grid gap-4 md:grid-cols-2">
-						<div class="form-control">
-							<label class="label" for="edit-translator">
-								<span class="label-text">Traducteur</span>
-							</label>
-							<input
-								id="edit-translator"
-								class="input-bordered input"
-								type="text"
-								list="edit-translator-list"
-								bind:value={editingTranslation.translatorId}
-								placeholder="Nom du traducteur"
-							/>
-							<datalist id="edit-translator-list">
-								{#each translators as translator (translator.id)}
-									<option value={translator.name}>{translator.name}</option>
-								{/each}
-							</datalist>
-						</div>
-						<div class="form-control">
-							<label class="label" for="edit-proofreader">
-								<span class="label-text">Relecteur</span>
-							</label>
-							<input
-								id="edit-proofreader"
-								class="input-bordered input w-full"
-								type="text"
-								list="edit-proofreader-list"
-								bind:value={editingTranslation.proofreaderId}
-								placeholder="Nom du relecteur"
-							/>
-							<datalist id="edit-proofreader-list">
-								{#each translators as translator (translator.id)}
-									<option value={translator.name}>{translator.name}</option>
-								{/each}
-							</datalist>
-						</div>
+						<TranslatorContributorInput
+							id="edit-translator"
+							listId="edit-translator-list"
+							label="Traducteur"
+							placeholder="Nom du traducteur"
+							bind:value={editingTranslation.translatorId}
+							baseTranslators={data.translators}
+							bind:extraTranslators
+							addTranslatorMode={addContributorMode}
+							bind:pendingNewTranslators
+							inputClass="input-bordered input"
+							onDirectTranslatorCreated={() => window.location.reload()}
+						/>
+						<TranslatorContributorInput
+							id="edit-proofreader"
+							listId="edit-proofreader-list"
+							label="Relecteur"
+							placeholder="Nom du relecteur"
+							bind:value={editingTranslation.proofreaderId}
+							baseTranslators={data.translators}
+							bind:extraTranslators
+							addTranslatorMode={addContributorMode}
+							bind:pendingNewTranslators
+							onDirectTranslatorCreated={() => window.location.reload()}
+						/>
 					</div>
 				</div>
 

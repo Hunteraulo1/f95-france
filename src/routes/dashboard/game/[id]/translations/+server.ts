@@ -1,4 +1,3 @@
-import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -6,13 +5,19 @@ import {
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import {
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
+} from '$lib/server/game-manage-guard';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
@@ -24,10 +29,7 @@ const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : 
 
 // POST - Créer une nouvelle traduction
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const gameId = params.id;
 
@@ -49,7 +51,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			directMode,
 			silentMode,
 			translatorId,
-			proofreaderId
+			proofreaderId,
+			pendingNewTranslators
 		} = body;
 
 		// Validation des données requises
@@ -104,38 +107,44 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				tnameNorm === 'no_translation' ||
 				(gv.length > 0 && vv === gv));
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
-		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
 		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+		const writeModeParams = {
 			roleSlug: userRole,
 			userDirectMode: currentUser.directMode ?? true,
-			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
-		});
+			requestDirectMode: parseRequestDirectMode(directMode)
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
-			await createTranslationSubmission(currentUser.id, gameId, {
-				translationName: translationName || null,
-				version: typeof version === 'string' ? version.trim() || null : null,
-				tversion,
-				status,
-				ttype,
-				tlink,
-				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
-					? { gameType: gameTypeBody.trim() }
-					: {}),
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
-				ac: acValue
-			});
+		if (writeMode === 'submission') {
+			const pendingNames = Array.isArray(pendingNewTranslators)
+				? pendingNewTranslators
+						.filter((n): n is string => typeof n === 'string')
+						.map((n) => n.trim())
+						.filter((n) => n.length > 0)
+				: [];
+
+			await createTranslationSubmission(
+				currentUser.id,
+				gameId,
+				{
+					translationName: translationName || null,
+					version: typeof version === 'string' ? version.trim() || null : null,
+					tversion,
+					status,
+					ttype,
+					tlink,
+					...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
+						? { gameType: gameTypeBody.trim() }
+						: {}),
+					translatorId: translatorId || null,
+					proofreaderId: proofreaderId || null,
+					ac: acValue
+				},
+				pendingNames.length > 0 ? pendingNames : undefined
+			);
 			// La table update/MAJ doit refléter l'action dès l'ajout.
 			await createGameUpdateRow(gameId, 'adding');
 			if (!isSilentMode) {
@@ -154,8 +163,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
-		// Créer la nouvelle traduction
+		await assertDirectGameWriteAllowed(writeModeParams);
+
+		// Mode direct (rôle vérifié côté serveur)
 		// Pour les traductions intégrées ou "pas de traduction", le lien doit être une chaîne vide
 		// (le champ est NOT NULL dans le schéma, donc on utilise '' au lieu de null)
 		const tlinkStored = linkNotRequired || tlink === null ? '' : tlink || '';
