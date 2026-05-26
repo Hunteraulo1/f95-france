@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 
 	type TranslatorListEntry = { id: string; name: string };
 
@@ -86,42 +87,38 @@
 	};
 </script>
 
-{#if showModal}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Ajouter un traducteur</h3>
-			{#if mode === 'submission'}
-				<p class="mt-1 text-sm text-base-content/70">
-					Le traducteur sera créé lors de la validation de votre soumission par un administrateur.
-				</p>
-			{/if}
-			<div class="form-control">
-				<label class="label" for="newTranslatorName">
-					<span class="label-text">Nom du traducteur</span>
+<DaisyDashboardModal
+	open={showModal}
+	title="Ajouter un traducteur"
+	description={mode === 'submission'
+		? 'Le traducteur sera créé lors de la validation de votre soumission par un administrateur.'
+		: undefined}
+	onClose={() => {
+		showModal = false;
+	}}
+>
+	{#snippet children()}
+		<div class="form-control">
+			<label class="label" for="newTranslatorName">
+				<span class="label-text">Nom du traducteur</span>
+			</label>
+			<input
+				id="newTranslatorName"
+				type="text"
+				placeholder="Nom du traducteur"
+				class="input-bordered input w-full"
+				class:input-error={errorMessage}
+				bind:value={newTranslatorName}
+			/>
+			{#if errorMessage}
+				<label class="label mt-2" for="newTranslatorName">
+					<span class="label-text-alt text-error">{errorMessage}</span>
 				</label>
-				<input
-					type="text"
-					placeholder="Nom du traducteur"
-					class="input-bordered input w-full"
-					class:input-error={errorMessage}
-					bind:value={newTranslatorName}
-				/>
-				{#if errorMessage}
-					<label class="label mt-2" for="newTranslatorName">
-						<span class="label-text-alt text-error">{errorMessage}</span>
-					</label>
-				{/if}
-			</div>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={addTraductor}>Ajouter</button>
-				<button
-					type="button"
-					class="btn"
-					onclick={() => {
-						showModal = false;
-					}}>Annuler</button
-				>
-			</div>
+			{/if}
 		</div>
-	</div>
-{/if}
+	{/snippet}
+	{#snippet footer()}
+		<button type="button" class="btn" onclick={() => (showModal = false)}>Annuler</button>
+		<button type="button" class="btn btn-primary" onclick={addTraductor}>Ajouter</button>
+	{/snippet}
+</DaisyDashboardModal>

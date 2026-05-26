@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogIn from '@lucide/svelte/icons/log-in';
@@ -113,14 +114,11 @@
 			<form
 				method="post"
 				action="?/login"
-				use:enhance={() => {
-					return async ({ result, update }) => {
-						await update();
-						if (result.type === 'failure') {
-							turnstileWidget?.resetWidget();
-						}
-					};
-				}}
+				use:enhance={createFormEnhance({
+					onFailure: () => {
+						turnstileWidget?.resetWidget();
+					}
+				})}
 				class="flex flex-col gap-4"
 			>
 				<input type="hidden" name="redirectTo" value={data?.redirectTo ?? '/dashboard'} />

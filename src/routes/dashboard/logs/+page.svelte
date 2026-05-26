@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleUsernameClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
@@ -298,47 +299,48 @@
 	</div>
 </div>
 
-{#if showPayloadModal && formattedPayload}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold">Payload de la requête</h3>
-					<p class="text-sm text-base-content/60">Aperçu brut limité à 4000 caractères.</p>
-				</div>
-				<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
-					{payloadFormat === 'json' ? 'JSON' : 'Texte'}
-				</span>
-			</div>
+<DaisyDashboardModal
+	open={showPayloadModal && formattedPayload !== null}
+	title="Payload de la requête"
+	description="Aperçu brut limité à 4000 caractères."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closePayloadModal}
+>
+	{#snippet children()}
+		{#if formattedPayload}
+			<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
+				{payloadFormat === 'json' ? 'JSON' : 'Texte'}
+			</span>
 			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
 {formattedPayload}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closePayloadModal}> Fermer </button>
-	</div>
-{/if}
+		{/if}
+	{/snippet}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>
 
-{#if showErrorModal && errorMessage}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold text-error">Détails de l'erreur</h3>
-					<p class="text-sm text-base-content/60">Message d'erreur et stack trace.</p>
-				</div>
-				<span class="badge badge-error">Erreur</span>
-			</div>
+<DaisyDashboardModal
+	open={showErrorModal && errorMessage !== null}
+	title="Détails de l'erreur"
+	description="Message d'erreur et stack trace."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closeErrorModal}
+>
+	{#snippet children()}
+		{#if errorMessage}
+			<span class="badge badge-error">Erreur</span>
 			<pre
-				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
+				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap"
+			>
 {errorMessage}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closeErrorModal}> Fermer </button>
-	</div>
-{/if}
+		{/if}
+	{/snippet}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>
