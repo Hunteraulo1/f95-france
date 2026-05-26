@@ -1,3 +1,6 @@
+/** Permission requise pour qu’un `edit_mode` soit actif sur un rôle. */
+export const GAMES_MANAGE_PERMISSION = 'games.manage' as const;
+
 /** Comment un rôle enregistre les jeux / traductions (ajout direct vs soumission). */
 export type RoleEditMode = 'direct' | 'submission' | 'user_direct_mode';
 
@@ -30,12 +33,14 @@ export function isRoleEditMode(value: string): value is RoleEditMode {
 	return VALID.has(value);
 }
 
-/** Valeurs par défaut des rôles système (repli si colonne absente ou rôle inconnu). */
-export function legacyEditModeForRoleSlug(slug: string): RoleEditMode {
-	if (slug === 'translator') return 'submission';
-	if (slug === 'superadmin') return 'user_direct_mode';
-	if (slug === 'admin') return 'direct';
-	return 'direct';
+/** `edit_mode` effectif : `null` sans « Gestion des jeux » ou si la valeur en base est invalide. */
+export function resolveEffectiveRoleEditMode(
+	storedEditMode: string | null | undefined,
+	hasGamesManage: boolean
+): RoleEditMode | null {
+	if (!hasGamesManage) return null;
+	if (!storedEditMode || !isRoleEditMode(storedEditMode)) return null;
+	return storedEditMode;
 }
 
 export function resolveShouldCreateSubmission(params: {

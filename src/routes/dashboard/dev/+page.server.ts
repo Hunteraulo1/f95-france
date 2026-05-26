@@ -13,7 +13,7 @@ import {
 	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -217,19 +217,6 @@ const parseLegacyBoolean = (value: unknown): boolean => {
 		return n === 'true' || n === '1' || n === 'oui' || n === 'yes' || n === 'y';
 	}
 	return false;
-};
-
-const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
-	if (Array.isArray(input)) return input as LegacyGame[];
-	if (
-		typeof input === 'object' &&
-		input !== null &&
-		'games' in input &&
-		Array.isArray((input as { games?: unknown }).games)
-	) {
-		return (input as { games: LegacyGame[] }).games;
-	}
-	return null;
 };
 
 const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
@@ -1245,44 +1232,6 @@ export const actions: Actions = {
 				success: false,
 				message: 'Erreur lors du scraping',
 				details: errorMessage
-			};
-		}
-	},
-	importLegacyGamesJson: async ({ request, locals }) => {
-		await assertPermission(locals, 'dev.panel');
-		const formData = await request.formData();
-		const payload = String(formData.get('legacyJson') ?? '').trim();
-
-		if (!payload) {
-			return {
-				success: false,
-				message: 'JSON requis',
-				details: 'Collez un JSON contenant un tableau "games".'
-			};
-		}
-
-		try {
-			const parsed = JSON.parse(payload) as unknown;
-			const games = parseLegacyGames(parsed);
-
-			if (!games || games.length === 0) {
-				return {
-					success: false,
-					message: 'Aucun jeu trouvé',
-					details: 'Le JSON doit être un tableau ou contenir { "games": [...] }.'
-				};
-			}
-
-			return {
-				success: true,
-				message: 'Import terminé',
-				details: await upsertLegacyGames(games)
-			};
-		} catch (error: unknown) {
-			return {
-				success: false,
-				message: "Erreur lors de l'import",
-				details: error instanceof Error ? error.message : 'Erreur inconnue'
 			};
 		}
 	},

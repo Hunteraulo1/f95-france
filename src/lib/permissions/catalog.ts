@@ -1,11 +1,18 @@
+import type { RoleEditMode } from './edit-mode';
+
 /** Clés de permission stables (utilisées en base et dans le code). */
 export const PERMISSION_KEYS = [
 	'dashboard.view',
 	'profile.view',
+	'profile.customize.bio',
+	'profile.customize.background',
+	'profile.customize.music',
+	'profile.customize.cursor',
 	'settings.view',
 	'api_keys.own',
 	'games.manage',
 	'games.auto_check',
+	'games.silent_mode',
 	'translations.own',
 	'submissions.own',
 	'submissions.review',
@@ -18,6 +25,7 @@ export const PERMISSION_KEYS = [
 	'config.edit',
 	'maintenance.manage',
 	'logs.view',
+	'content.view_ids',
 	'dev.panel',
 	'dev.impersonate',
 	'maintenance.bypass'
@@ -48,8 +56,32 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 	{
 		key: 'profile.view',
 		label: 'Profil',
-		description: 'Voir et éditer son profil',
+		description: 'Voir son profil et ceux des autres membres',
 		group: 'Général'
+	},
+	{
+		key: 'profile.customize.bio',
+		label: 'Bio',
+		description: 'Modifier la bio affichée sur le profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.background',
+		label: 'Image de fond',
+		description: 'Modifier l’image de fond du profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.music',
+		label: 'Musique',
+		description: 'Ajouter une musique YouTube / YouTube Music sur le profil public',
+		group: 'Profil personnalisé'
+	},
+	{
+		key: 'profile.customize.cursor',
+		label: 'Curseur',
+		description: 'Personnaliser le curseur affiché sur le profil public',
+		group: 'Profil personnalisé'
 	},
 	{
 		key: 'settings.view',
@@ -74,6 +106,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		label: 'Auto-check (jeu et traductions)',
 		description:
 			'Activer ou désactiver l’auto-check sur les fiches F95, modifier l’auto-check des traductions et actualiser les versions via le checker',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.silent_mode',
+		label: 'Mode silencieux',
+		description:
+			'Ajouter ou modifier des traductions sans envoyer de notification Discord (mode silencieux)',
 		group: 'Contenu'
 	},
 	{
@@ -149,6 +188,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Système'
 	},
 	{
+		key: 'content.view_ids',
+		label: 'Identifiants internes',
+		description: 'Afficher et copier les UUID (jeux, traductions, soumissions)',
+		group: 'Modération'
+	},
+	{
 		key: 'dev.panel',
 		label: 'Panel développeur',
 		description: 'Outils de développement internes',
@@ -187,14 +232,24 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'api_keys.own',
 		'games.manage',
 		'games.auto_check',
+		'games.silent_mode',
 		'translations.own',
 		'submissions.own',
 		'submissions.review',
 		'translators.manage',
 		'users.manage',
-		'config.edit'
+		'config.edit',
+		'content.view_ids'
 	],
 	superadmin: PERMISSION_KEYS
+};
+
+/** `edit_mode` initial des rôles système (seed / migration `0018_role_edit_mode`). */
+export const SYSTEM_ROLE_EDIT_MODES: Record<keyof typeof SYSTEM_ROLE_PERMISSIONS, RoleEditMode> = {
+	user: 'direct',
+	translator: 'submission',
+	admin: 'direct',
+	superadmin: 'user_direct_mode'
 };
 
 export const SYSTEM_ROLE_LABELS: Record<string, string> = {
@@ -203,3 +258,13 @@ export const SYSTEM_ROLE_LABELS: Record<string, string> = {
 	admin: 'Administrateur',
 	superadmin: 'Super administrateur'
 };
+
+export function permissionCatalogGrouped(): Map<string, typeof PERMISSION_CATALOG> {
+	const groups = new Map<string, typeof PERMISSION_CATALOG>();
+	for (const def of PERMISSION_CATALOG) {
+		const list = groups.get(def.group) ?? [];
+		list.push(def);
+		groups.set(def.group, list);
+	}
+	return groups;
+}

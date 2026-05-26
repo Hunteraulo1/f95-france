@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { getUserIdsWithPermission } from '$lib/server/permissions';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 export type NotificationType =
@@ -122,19 +123,14 @@ export async function notifySubmissionStatusChange(
 }
 
 /**
- * Crée une notification pour un nouvel utilisateur inscrit (pour les superadmins)
+ * Crée une notification pour un nouvel utilisateur inscrit (gestionnaires de comptes).
  */
 export async function notifyNewUserRegistration(userId: string, username: string) {
-	// Récupérer tous les superadmins
-	const superadmins = await db
-		.select({ id: table.user.id })
-		.from(table.user)
-		.where(eq(table.user.role, 'superadmin'));
+	const recipientIds = await getUserIdsWithPermission('users.manage');
 
-	// Créer une notification pour chaque superadmin
-	for (const admin of superadmins) {
+	for (const recipientId of recipientIds) {
 		await createNotification({
-			userId: admin.id,
+			userId: recipientId,
 			type: 'new_user_registered',
 			title: 'Nouvel utilisateur inscrit',
 			message: `L'utilisateur "${username}" vient de s'inscrire.`,
@@ -148,7 +144,7 @@ export async function notifyNewUserRegistration(userId: string, username: string
 }
 
 /**
- * Crée une notification pour une erreur API (pour les superadmins)
+ * Crée une notification pour une erreur API (gestionnaires de comptes + logs).
  */
 export async function notifyApiError(
 	method: string,
@@ -177,17 +173,14 @@ export async function notifyApiError(
 	}
 
 	try {
-		const superadmins = await db
-			.select({ id: table.user.id })
-			.from(table.user)
-			.where(eq(table.user.role, 'superadmin'));
+		const recipientIds = await getUserIdsWithPermission('logs.view');
 
 		const statusLabel =
 			status >= 500 ? 'Erreur serveur' : status >= 400 ? 'Erreur client' : 'Erreur';
 
-		for (const admin of superadmins) {
+		for (const recipientId of recipientIds) {
 			await createNotification({
-				userId: admin.id,
+				userId: recipientId,
 				type: 'api_error',
 				title: `${statusLabel} ${status}`,
 				message: `${method} ${route} - Utilisateur: ${finalUsername}`,

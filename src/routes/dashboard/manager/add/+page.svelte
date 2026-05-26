@@ -11,10 +11,9 @@
 	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import { newToast, user } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
-	import { checkRole } from '$lib/utils';
 	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import {
 		computeGameFormFieldState,
@@ -28,7 +27,7 @@
 		getTranslatorFieldErrors
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { get, writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -40,6 +39,7 @@
 
 	let { data }: Props = $props();
 	let step = $state(0);
+	let translatorsList = $state(untrack(() => [...data.translators]));
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({
@@ -117,16 +117,13 @@
 	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
-	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
-		try {
-			return checkRole(roles);
-		} catch {
-			return false;
-		}
-	};
+	const canManageUsers = $derived($hasPermission('users.manage'));
+	const canUseDevTools = $derived($hasPermission('dev.panel'));
 
-	const isAdmin = safeCheckRole(['admin', 'superadmin']);
-	const canManageGameAutoCheck = $derived($effectivePermissions.includes('games.auto_check'));
+	let pendingNewTranslators = $state<string[]>([]);
+
+	const addTranslatorMode = $derived(data.addTranslatorMode);
+	const canManageGameAutoCheck = $derived($hasPermission('games.auto_check'));
 	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
 		canManageGameAutoCheck
@@ -230,7 +227,7 @@
 		if (prefilledTranslatorApplied) return;
 		const prefilled = data.prefilledTranslatorName;
 		if (
-			!isAdmin &&
+			!canManageUsers &&
 			typeof prefilled === 'string' &&
 			prefilled.trim().length > 0 &&
 			!game.translatorId
@@ -703,7 +700,10 @@
 			const currentUser = get(user);
 			const requestBody = {
 				...payload,
-				directMode: currentUser?.directMode ?? true
+				directMode:
+					data.addTranslatorMode === 'submission' ? false : (currentUser?.directMode ?? true),
+				pendingNewTranslators:
+					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined
 			};
 
 			const response = await fetch('/dashboard/manager', {
@@ -1051,7 +1051,9 @@
 								{active}
 								{className}
 								bind:game
-								translators={data.translators}
+								bind:translators={translatorsList}
+								{addTranslatorMode}
+								bind:pendingNewTranslators
 								invalid={name === 'translatorId'
 									? translatorFieldErrors.translatorId
 									: translatorFieldErrors.proofreaderId}
@@ -1089,7 +1091,7 @@
 						Précédent
 					</button>
 				{/if}
-				{#if safeCheckRole(['superadmin']) && supportsThreadScrape && step >= 2}
+				{#if canUseDevTools && supportsThreadScrape && step >= 2}
 					<button
 						type="button"
 						class="btn w-full btn-outline btn-secondary md:w-38"
@@ -1120,7 +1122,7 @@
 						}}
 					/>
 				{/if}
-				{#if safeCheckRole(['superadmin'])}
+				{#if canUseDevTools}
 					<Dev
 						bind:game
 						onDevDataApplied={() => {

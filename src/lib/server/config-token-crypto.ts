@@ -16,11 +16,18 @@ function getKey(): Buffer | null {
 	return buf;
 }
 
-/** Chiffre un jeton OAuth avant stockage en base (AES-256-GCM). Sans clé : renvoie la valeur en clair. */
+/** Chiffre un jeton OAuth avant stockage en base (AES-256-GCM). Sans clé : refus en production. */
 export function sealOAuthToken(plain: string | null | undefined): string | null {
 	if (plain == null || plain === '') return null;
 	const key = getKey();
-	if (!key) return plain;
+	if (!key) {
+		if (process.env.NODE_ENV === 'production') {
+			throw new Error(
+				'CONFIG_TOKEN_ENCRYPTION_KEY est obligatoire en production pour stocker les jetons OAuth.'
+			);
+		}
+		return plain;
+	}
 
 	const iv = randomBytes(12);
 	const cipher = createCipheriv('aes-256-gcm', key, iv);

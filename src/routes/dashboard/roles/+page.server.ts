@@ -1,33 +1,41 @@
 import {
 	isSuperadminRole,
 	PERMISSION_CATALOG,
+	permissionCatalogGrouped,
 	SYSTEM_ROLE_LABELS,
 	type PermissionKey
 } from '$lib/permissions/catalog';
+import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import {
+	GAMES_MANAGE_PERMISSION,
 	isRoleEditMode,
-	legacyEditModeForRoleSlug,
+	resolveEffectiveRoleEditMode,
 	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
-import { permissionCatalogGrouped } from '$lib/permissions/legacy';
+import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
+import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	countPermissionsByRoles,
+	assertPermission,
 	countUsersWithRoles,
+	getEffectivePermissionsByRoles,
 	invalidateRolePermissionsCache,
-	listAppRoles,
 	listRolePermissions,
 	listRolePermissionsStored,
 	roleExists,
 	setRolePermissions
 } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
+import {
+	invalidateRoleBadgeStylesCache,
+	parseRoleBadgeStyleInput
+} from '$lib/server/role-badge-styles';
 import {
 	assertCanManageRole,
 	filterPermissionsAssignableByActor,
 	getActorPermissionSet,
-	isRolesManagementSuperadmin
+	canAssignAllRolePermissions
 } from '$lib/server/role-management-guard';
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -56,17 +64,43 @@ function rolePageUrl(slug: string, notice?: keyof typeof ROLE_NOTICE_MESSAGES): 
 	return `/dashboard/roles?${params}`;
 }
 
+function enrichRoleRow(
+	r: Awaited<ReturnType<typeof selectAllAppRoles>>[number],
+	effectivePerms: string[],
+	userCounts: Record<string, number>,
+	access: Awaited<ReturnType<typeof assertCanManageRole>>
+) {
+	const hasGamesManage = effectivePerms.includes(GAMES_MANAGE_PERMISSION);
+	const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
+	const badgeStyle = resolveRoleBadgeStyle(r.slug, r.badgeStyle);
+	return {
+		...r,
+		label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+		hasGamesManage,
+		storedEditMode,
+		badgeStyle,
+		editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
+		userCount: userCounts[r.slug] ?? 0,
+		permissionCount: effectivePerms.length,
+		canManage: access.allowed,
+		manageBlockedReason: access.allowed ? null : access.message
+	};
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'roles.manage');
 
-	const roles = await listAppRoles();
-	const roleSlugs = roles.map((r) => r.slug);
-	const [userCounts, permissionCounts] = await Promise.all([
+	const rolesRaw = await selectAllAppRoles();
+	const roleSlugs = rolesRaw.map((r) => r.slug);
+	const [userCounts, effectivePermsBySlug] = await Promise.all([
 		countUsersWithRoles(roleSlugs),
-		countPermissionsByRoles(roleSlugs)
+		getEffectivePermissionsByRoles(roleSlugs)
 	]);
-	const orderedSlugs = roleSlugs;
-	const defaultSlug = orderedSlugs[0] ?? 'user';
+	const permissionCounts = Object.fromEntries(
+		roleSlugs.map((slug) => [slug, effectivePermsBySlug[slug]?.length ?? 0])
+	);
+	const roles = sortRolesByPrivileges(rolesRaw, permissionCounts);
+	const defaultSlug = roles[0]?.slug ?? 'user';
 	const roleParam = url.searchParams.get('role');
 
 	if (!roleParam) {
@@ -78,38 +112,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		redirect(303, rolePageUrl(selectedSlug));
 	}
 	const isSelectedRoleSuperadmin = isSuperadminRole(selectedSlug);
-	const selectedPermissionsEffective = isSelectedRoleSuperadmin
-		? PERMISSION_CATALOG.map((p) => p.key)
-		: selectedSlug
-			? await listRolePermissions(selectedSlug)
-			: [];
+	const selectedPermissionsEffective = effectivePermsBySlug[selectedSlug] ?? [];
 	const selectedPermissions = isSelectedRoleSuperadmin
 		? [...selectedPermissionsEffective]
-		: selectedSlug
-			? await listRolePermissionsStored(selectedSlug)
-			: [];
+		: await listRolePermissionsStored(selectedSlug);
 
-	const isSuperadmin = isRolesManagementSuperadmin(locals);
+	const canAssignAll = canAssignAllRolePermissions(locals);
 	const actorPermissions = await getActorPermissionSet(locals);
 
 	const rolesWithAccess = await Promise.all(
 		roles.map(async (r) => {
-			const targetPerms = await listRolePermissions(r.slug);
-			const access = isSuperadmin
+			const effectivePerms = effectivePermsBySlug[r.slug] ?? [];
+			const access = canAssignAll
 				? ({ allowed: true } as const)
-				: await assertCanManageRole(locals, r.slug, targetPerms);
-			return {
-				...r,
-				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-				editMode:
-					r.editMode && isRoleEditMode(r.editMode) ? r.editMode : legacyEditModeForRoleSlug(r.slug),
-				userCount: userCounts[r.slug] ?? 0,
-				permissionCount: isSuperadminRole(r.slug)
-					? PERMISSION_CATALOG.length
-					: (permissionCounts[r.slug] ?? 0),
-				canManage: access.allowed,
-				manageBlockedReason: access.allowed ? null : access.message
-			};
+				: await assertCanManageRole(locals, r.slug, effectivePerms);
+			return enrichRoleRow(r, effectivePerms, userCounts, access);
 		})
 	);
 
@@ -117,7 +134,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.map(([group, items]) => ({
 			group,
 			items:
-				isSelectedRoleSuperadmin || isSuperadmin
+				isSelectedRoleSuperadmin || canAssignAll
 					? items
 					: items.filter((p) => actorPermissions.has(p.key))
 		}))
@@ -136,7 +153,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			: null;
 
 	return {
-		isSuperadmin,
+		canAssignAllPermissions: canAssignAll,
 		isSelectedRoleSuperadmin,
 		roles: rolesWithAccess,
 		noticeMessage,
@@ -147,7 +164,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		selectedManageBlockedReason: selectedRoleMeta?.manageBlockedReason ?? null,
 		permissionGroups,
 		allPermissionKeys: PERMISSION_CATALOG.map((p) => p.key),
-		editModeOptions: ROLE_EDIT_MODE_OPTIONS
+		editModeOptions: ROLE_EDIT_MODE_OPTIONS,
+		badgeStyleOptions: ROLE_BADGE_STYLE_OPTIONS
 	};
 };
 
@@ -167,8 +185,15 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const label = (formData.get('label') as string)?.trim();
 		const description = (formData.get('description') as string)?.trim() || null;
-		const editModeRaw = String(formData.get('editMode') ?? 'direct').trim();
-		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : 'direct';
+		const editModeRaw = String(formData.get('editMode') ?? '').trim();
+		if (!isRoleEditMode(editModeRaw)) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
+		}
+		const editMode = editModeRaw;
+		const badgeStyle = parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? ''));
+		if (!badgeStyle) {
+			return fail(400, { message: 'Couleur de rôle invalide' });
+		}
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 
@@ -184,7 +209,7 @@ export const actions: Actions = {
 			return fail(409, { message: 'Un rôle avec cet identifiant existe déjà' });
 		}
 
-		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const canAssignAll = canAssignAllRolePermissions(locals);
 		const actorPermissions = await getActorPermissionSet(locals);
 		const initialKeys = [
 			'dashboard.view',
@@ -195,9 +220,9 @@ export const actions: Actions = {
 		const { keys: assignableInitial, rejected } = filterPermissionsAssignableByActor(
 			actorPermissions,
 			initialKeys,
-			isSuperadmin
+			canAssignAll
 		);
-		if (!isSuperadmin && rejected.length > 0) {
+		if (!canAssignAll && rejected.length > 0) {
 			return fail(403, {
 				message: 'Impossible de créer un rôle : permissions de base indisponibles pour votre compte'
 			});
@@ -209,9 +234,11 @@ export const actions: Actions = {
 				label,
 				description,
 				editMode,
+				badgeStyle,
 				isSystem: false
 			});
 			await setRolePermissions(slug, assignableInitial);
+			invalidateRoleBadgeStylesCache();
 			redirect(303, rolePageUrl(slug, 'created'));
 		} catch (error) {
 			if (isRedirect(error)) throw error;
@@ -229,12 +256,8 @@ export const actions: Actions = {
 		const description = (formData.get('description') as string)?.trim() || null;
 		const editModeRaw = String(formData.get('editMode') ?? '').trim();
 		const editMode = isRoleEditMode(editModeRaw) ? editModeRaw : null;
-
 		if (!slug || !label) {
 			return fail(400, { message: 'Champs requis manquants' });
-		}
-		if (!editMode) {
-			return fail(400, { message: 'Mode d’enregistrement invalide' });
 		}
 
 		const [role] = await db
@@ -246,8 +269,18 @@ export const actions: Actions = {
 			return fail(404, { message: 'Rôle introuvable' });
 		}
 
+		const badgeStyle =
+			parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? '')) ??
+			resolveRoleBadgeStyle(slug, role.badgeStyle);
+
 		const guard = await rejectUnlessCanManageRole(locals, slug);
 		if (!guard.ok) return fail(403, { message: guard.message });
+
+		const rolePermissions = await listRolePermissions(slug);
+		const hasGamesManage = rolePermissions.includes(GAMES_MANAGE_PERMISSION);
+		if (hasGamesManage && !editMode) {
+			return fail(400, { message: 'Mode d’enregistrement invalide' });
+		}
 
 		try {
 			await db
@@ -255,11 +288,13 @@ export const actions: Actions = {
 				.set({
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
 					description: role.isSystem ? role.description : description,
-					editMode,
+					badgeStyle,
+					...(hasGamesManage && editMode ? { editMode } : {}),
 					updatedAt: new Date()
 				})
 				.where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
+			invalidateRoleBadgeStylesCache();
 
 			redirect(303, rolePageUrl(slug, 'updated'));
 		} catch (error) {
@@ -290,25 +325,25 @@ export const actions: Actions = {
 			.map((v) => String(v))
 			.filter((k): k is PermissionKey => PERMISSION_CATALOG.some((p) => p.key === k));
 
-		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const canAssignAll = canAssignAllRolePermissions(locals);
 		const actorPermissions = await getActorPermissionSet(locals);
 		const { keys, rejected } = filterPermissionsAssignableByActor(
 			actorPermissions,
 			requested,
-			isSuperadmin
+			canAssignAll
 		);
 
-		if (!isSuperadmin && rejected.length > 0) {
+		if (!canAssignAll && rejected.length > 0) {
 			return fail(403, {
 				message: 'Vous ne pouvez pas attribuer des droits que vous ne possédez pas'
 			});
 		}
 
 		const storedKeys = await listRolePermissionsStored(slug);
-		const preservedKeys = isSuperadmin
+		const preservedKeys = canAssignAll
 			? []
 			: storedKeys.filter((key) => !actorPermissions.has(key));
-		const keysToSave = [...new Set([...preservedKeys, ...keys])];
+		const keysToSave = enforcePermissionDependencies([...new Set([...preservedKeys, ...keys])]);
 
 		const afterCheck = await assertCanManageRole(locals, slug, keysToSave);
 		if (!afterCheck.allowed) {
@@ -359,8 +394,14 @@ export const actions: Actions = {
 		try {
 			await db.delete(table.appRole).where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
-			const roles = await listAppRoles();
-			const nextSlug = roles[0]?.slug ?? 'user';
+			invalidateRoleBadgeStylesCache();
+			const remaining = await selectAllAppRoles();
+			const remainingSlugs = remaining.map((r) => r.slug);
+			const effectiveBySlug = await getEffectivePermissionsByRoles(remainingSlugs);
+			const nextCounts = Object.fromEntries(
+				remainingSlugs.map((slug) => [slug, effectiveBySlug[slug]?.length ?? 0])
+			);
+			const nextSlug = sortRolesByPrivileges(remaining, nextCounts)[0]?.slug ?? 'user';
 			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
 			if (isRedirect(error)) throw error;

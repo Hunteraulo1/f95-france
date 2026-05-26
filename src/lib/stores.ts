@@ -7,6 +7,9 @@ export const user = writable<User | null>(null);
 /** Droits effectifs du rôle courant (rempli par le layout dashboard). */
 export const userPermissions = writable<string[]>([]);
 
+/** Styles badge / pseudo par slug de rôle (rempli par le layout dashboard). */
+export const roleBadgeStyles = writable<Record<string, string>>({});
+
 // Store pour les toasts
 export const toasts = writable<
 	Array<{ id: string; alertType: 'info' | 'warning' | 'success' | 'error'; message: string }>
@@ -66,8 +69,13 @@ export const initializeUserFromLocals = (userData: User | null) => {
 export const clearUserData = () => {
 	user.set(null);
 	userPermissions.set([]);
+	roleBadgeStyles.set({});
 };
 
 export const setUserPermissions = (permissions: string[]) => {
 	userPermissions.set(permissions);
+};
+
+export const setRoleBadgeStyles = (styles: Record<string, string>) => {
+	roleBadgeStyles.set(styles);
 };

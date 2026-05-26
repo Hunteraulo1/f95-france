@@ -32,12 +32,13 @@ const config = {
 			directives: {
 				'default-src': ['self'],
 				'base-uri': ['self'],
-				'script-src': ['self'],
+				'script-src': ['self', 'https://challenges.cloudflare.com'],
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': [
 					'self',
 					'data:',
 					'blob:',
+					'https:',
 					'https://f95zone.to',
 					'https://*.f95zone.to',
 					'https://lewdcorner.com',
@@ -56,8 +57,21 @@ const config = {
 					'https://cdn.discordapp.com'
 				],
 				'font-src': ['self'],
-				'connect-src': ['self'],
+				'connect-src': [
+					'self',
+					'https://www.youtube.com',
+					'https://www.youtube-nocookie.com',
+					'https://www.google.com',
+					'https://challenges.cloudflare.com'
+				],
 				'form-action': ['self'],
+				'frame-src': [
+					'self',
+					'https://www.youtube.com',
+					'https://www.youtube-nocookie.com',
+					'https://music.youtube.com',
+					'https://challenges.cloudflare.com'
+				],
 				'frame-ancestors': ['none'],
 				'object-src': ['none'],
 				'upgrade-insecure-requests': true

@@ -13,7 +13,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
-import { attachPermissionsToLocals } from '$lib/server/permissions';
+import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -61,7 +61,7 @@ function getRequestLoggingDecision(
 	pathname: string,
 	method: string,
 	url: URL
-): { shouldLog: boolean; shouldCaptureBody: boolean } {
+): { shouldLog: boolean; shouldCaptureBody: boolean; shouldCaptureQuery: boolean } {
 	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
 	const isHighFrequencyPollRoute = pathname.startsWith('/api/notifications');
 	const isDashboardRoute = pathname.startsWith('/dashboard');
@@ -69,11 +69,24 @@ function getRequestLoggingDecision(
 	const isSensitiveSettingsAction =
 		pathname === '/dashboard/settings' &&
 		(urlSearchIncludes(url, '/changePassword') || urlSearchIncludes(url, '/disable2FA'));
+	const isSensitiveOAuthOrPasskeyRoute =
+		pathname.startsWith('/api/google-oauth/') ||
+		pathname.startsWith('/api/discord-oauth/') ||
+		pathname.startsWith('/api/passkeys/');
+	const isSensitiveQueryRoute =
+		isSensitiveOAuthOrPasskeyRoute ||
+		pathname === '/dashboard/login' ||
+		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/settings' ||
+		pathname.startsWith('/dashboard/api-keys') ||
+		pathname === '/dashboard/users' ||
+		pathname.startsWith('/dashboard/logs');
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
 		pathname === '/dashboard/logout' ||
-		isSensitiveSettingsAction;
+		isSensitiveSettingsAction ||
+		isSensitiveOAuthOrPasskeyRoute;
 
 	const shouldLog =
 		!isStaticAssetPath(pathname) &&
@@ -81,11 +94,27 @@ function getRequestLoggingDecision(
 		(isApiRequest || isDashboardRoute || isMaintenanceRoute);
 	const shouldCaptureBody =
 		shouldLog && !['GET', 'HEAD', 'OPTIONS'].includes(method) && !isSensitiveBodyRoute;
+	const shouldCaptureQuery = shouldLog && method === 'GET' && !isSensitiveQueryRoute;
 
-	return { shouldLog, shouldCaptureBody };
+	return { shouldLog, shouldCaptureBody, shouldCaptureQuery };
+}
+
+let permissionsCatalogSeedPromise: Promise<void> | null = null;
+
+function ensurePermissionsCatalogSeededOnce(): Promise<void> {
+	if (building) return Promise.resolve();
+	if (!permissionsCatalogSeedPromise) {
+		permissionsCatalogSeedPromise = ensurePermissionsCatalogSeeded().catch((err) => {
+			permissionsCatalogSeedPromise = null;
+			console.warn('ensurePermissionsCatalogSeeded:', err);
+		});
+	}
+	return permissionsCatalogSeedPromise;
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
+	await ensurePermissionsCatalogSeededOnce();
+
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
 
 	if (!sessionToken) {
@@ -105,9 +134,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 				event.locals.session = null;
 			}
 		} catch (error) {
-			// Erreur inattendue après réessais : ne pas supprimer le cookie (souvent infra / DB).
-			// Évite les « déconnexions » intempestives ; la requête courante reste anonyme.
 			console.error('Erreur lors de la validation de session:', error);
+			auth.deleteSessionTokenCookie(event);
 			event.locals.user = null;
 			event.locals.session = null;
 		}
@@ -145,9 +173,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 					path.endsWith('.css') ||
 					path.endsWith('.js') ||
 					path.endsWith('.woff2');
-				const isSuperAdmin = event.locals.permissions?.includes('maintenance.bypass') ?? false;
+				const canBypassMaintenance =
+					event.locals.permissions?.includes('maintenance.bypass') ?? false;
 
-				if (isMaintenancePage && !isSuperAdmin) {
+				if (isMaintenancePage && !canBypassMaintenance) {
 					const response = await resolve(event);
 					const headers = new Headers(response.headers);
 					headers.set('retry-after', '600');
@@ -161,7 +190,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					);
 				}
 
-				if (!isSuperAdmin && !isAuthException && !isMaintenancePage && !isStaticAsset) {
+				if (!canBypassMaintenance && !isAuthException && !isMaintenancePage && !isStaticAsset) {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
 						const maintenanceUrl = new URL('/maintenance', event.url.origin);
@@ -242,6 +271,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			}
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
+			event.locals.apiKeyRouteScope = keyResult.routeScope;
 		} else if (event.locals.user) {
 			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
 			if (!sessionRate.ok) {
@@ -256,7 +286,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	let capturedBody: string | null = null;
 
-	const { shouldLog, shouldCaptureBody } = getRequestLoggingDecision(pathname, method, event.url);
+	const { shouldLog, shouldCaptureBody, shouldCaptureQuery } = getRequestLoggingDecision(
+		pathname,
+		method,
+		event.url
+	);
 
 	if (shouldCaptureBody) {
 		try {
@@ -269,7 +303,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} catch (error) {
 			console.error('Impossible de lire le corps de la requête pour les logs:', error);
 		}
-	} else if (shouldLog && method === 'GET') {
+	} else if (shouldCaptureQuery) {
 		capturedBody = requestQueryForLog(event.url);
 	}
 
@@ -284,6 +318,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			route,
 			status: response.status,
 			userId: event.locals.user?.id ?? null,
+			ipAddress: event.getClientAddress(),
 			payload: capturedBody,
 			errorMessage: null // Sera rempli par handleError pour les erreurs 500
 		}).catch((error) => {
@@ -341,6 +376,7 @@ export const handleError = async ({
 			route,
 			status,
 			userId: event.locals.user?.id ?? null,
+			ipAddress: event.getClientAddress(),
 			payload: null,
 			errorMessage
 		});

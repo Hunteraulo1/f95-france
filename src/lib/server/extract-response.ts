@@ -16,6 +16,7 @@ export function respondExtractThreadGame(
 			path: '/',
 			maxAge: 600,
 			httpOnly: true,
+			secure: new URL(event.request.url).protocol === 'https:',
 			sameSite: 'lax'
 		});
 	}

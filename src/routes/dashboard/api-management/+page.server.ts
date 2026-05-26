@@ -7,7 +7,7 @@ import {
 } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -102,7 +102,8 @@ export const actions: Actions = {
 
 		const ok = await revokeApiKeyForActor(id, {
 			userId: locals.user!.id,
-			role: locals.user!.role
+			role: locals.user!.role,
+			permissions: locals.permissions
 		});
 		if (!ok) {
 			return fail(400, {

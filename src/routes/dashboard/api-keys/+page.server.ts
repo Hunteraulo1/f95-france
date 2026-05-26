@@ -115,7 +115,8 @@ export const actions: Actions = {
 
 		const ok = await revokeApiKeyForActor(id, {
 			userId: locals.user.id,
-			role: locals.user.role
+			role: locals.user.role,
+			permissions: locals.permissions
 		});
 		if (!ok) {
 			return fail(400, { message: 'Clé introuvable, déjà révoquée ou non autorisée.' });
@@ -143,7 +144,8 @@ export const actions: Actions = {
 
 		const revoked = await revokeApiKeyForActor(id, {
 			userId: locals.user.id,
-			role: locals.user.role
+			role: locals.user.role,
+			permissions: locals.permissions
 		});
 		if (!revoked) {
 			return fail(400, { message: 'Impossible de régénérer cette clé.' });

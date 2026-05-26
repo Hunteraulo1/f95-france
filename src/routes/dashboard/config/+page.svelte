@@ -3,6 +3,7 @@
 	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
@@ -72,22 +73,16 @@
 				<form
 					method="POST"
 					action="?/updateConfig"
-					use:enhance={() => {
-						if (!canSave) return () => {};
-						configError = null;
-						return async function ({ result, update }) {
-							if (result.type === 'success') {
-								await update({ invalidateAll: true });
-								configError = null;
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour';
-								configError = message;
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						locked: !canSave,
+						invalidateAll: true,
+						onStart: () => {
+							configError = null;
+						},
+						onFailure: (message) => {
+							configError = message;
+						}
+					})}
 				>
 					<div class="flex flex-col gap-4">
 						<div class="form-control w-full">

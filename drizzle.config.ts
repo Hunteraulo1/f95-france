@@ -3,9 +3,11 @@ import { defineConfig } from 'drizzle-kit';
 import { getDatabaseUrl } from './src/lib/server/db/connection';
 
 /**
- * drizzle-kit push/pull/introspect : préférer une connexion **directe** Postgres (port 5432),
- * pas le pooler PgBouncer (ex. Supabase :6543). Sinon l’étape « Pulling schema » peut rester
- * bloquée très longtemps ou sembler infinie.
+ * Migrations : modifier uniquement `src/lib/server/db/schema.ts`, puis `db:generate` + `db:migrate`.
+ * Ne pas créer de SQL à la main dans `drizzle/`. Voir `.cursor/rules/drizzle-migrations.mdc`.
+ *
+ * drizzle-kit push/pull/introspect : connexion **directe** Postgres (port 5432), pas le pooler
+ * PgBouncer (ex. Supabase :6543).
  */
 
 function withConnectTimeout(url: string, seconds: number): string {

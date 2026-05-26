@@ -1,10 +1,10 @@
 import { isSuperadminRole, type PermissionKey } from '$lib/permissions/catalog';
-import { getPermissionsForRole } from '$lib/server/permissions';
+import { systemRoleRank } from '$lib/permissions/sort-roles';
+import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
 
-const SYSTEM_ROLE_ORDER = ['user', 'translator', 'admin', 'superadmin'] as const;
-
-export function isRolesManagementSuperadmin(locals: App.Locals): boolean {
-	return locals.user?.role === 'superadmin';
+/** Peut attribuer toutes les permissions à un rôle (dont droits admin). */
+export function canAssignAllRolePermissions(locals: App.Locals): boolean {
+	return hasPermission(locals, 'users.assign_admin');
 }
 
 export async function getActorPermissionSet(locals: App.Locals): Promise<Set<string>> {
@@ -14,11 +14,6 @@ export async function getActorPermissionSet(locals: App.Locals): Promise<Set<str
 			? locals.permissions
 			: await getPermissionsForRole(locals.user.role);
 	return new Set(perms);
-}
-
-function systemRoleRank(slug: string): number {
-	const idx = SYSTEM_ROLE_ORDER.indexOf(slug as (typeof SYSTEM_ROLE_ORDER)[number]);
-	return idx === -1 ? -1 : idx;
 }
 
 export type RoleManageCheckResult = { allowed: true } | { allowed: false; message: string };
@@ -39,7 +34,7 @@ export async function assertCanManageRole(
 				'Le rôle Super administrateur possède tous les droits et ne peut pas être modifié depuis cette page'
 		};
 	}
-	if (isRolesManagementSuperadmin(locals)) return { allowed: true };
+	if (canAssignAllRolePermissions(locals)) return { allowed: true };
 	if (!locals.user) return { allowed: false, message: 'Non connecté' };
 
 	if (locals.user.role === targetSlug) {
@@ -48,8 +43,11 @@ export async function assertCanManageRole(
 
 	const actorRank = systemRoleRank(locals.user.role);
 	const targetRank = systemRoleRank(targetSlug);
-	if (actorRank !== -1 && targetRank !== -1 && targetRank > actorRank) {
-		return { allowed: false, message: 'Ce rôle système a un niveau supérieur au vôtre' };
+	if (actorRank !== -1 && targetRank !== -1 && targetRank >= actorRank) {
+		return {
+			allowed: false,
+			message: 'Ce rôle système a un niveau supérieur ou égal au vôtre'
+		};
 	}
 
 	const targetPerms = targetPermissionKeys ?? (await getPermissionsForRole(targetSlug));
@@ -70,9 +68,9 @@ export async function assertCanManageRole(
 export function filterPermissionsAssignableByActor(
 	actorPermissions: Set<string>,
 	requested: string[],
-	isSuperadmin: boolean
+	canAssignAll: boolean
 ): { keys: PermissionKey[]; rejected: string[] } {
-	if (isSuperadmin) {
+	if (canAssignAll) {
 		return { keys: requested as PermissionKey[], rejected: [] };
 	}
 	const keys = requested.filter((k) => actorPermissions.has(k)) as PermissionKey[];

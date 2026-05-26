@@ -1,17 +1,35 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import { startAuthentication } from '@simplewebauthn/browser';
 
-	let { form } = $props();
+	let { form, data } = $props();
 	let username = $state('');
 	let passkeyError = $state('');
 	let passkeyLoading = $state(false);
+	let captchaToken = $state('');
+	let turnstileWidget = $state<TurnstileWidget | undefined>();
+
+	const showCaptcha = $derived(
+		Boolean(
+			data?.turnstileEnabled &&
+			data?.turnstileSiteKey &&
+			(data?.requiresCaptcha || form?.requiresCaptcha)
+		)
+	);
 
 	const loginWithPasskey = async () => {
 		passkeyError = '';
 		const normalizedUsername = username.trim();
+
+		if (showCaptcha && !captchaToken.trim()) {
+			passkeyError = 'Veuillez valider le captcha avant de continuer.';
+			return;
+		}
 
 		passkeyLoading = true;
 		try {
@@ -19,11 +37,20 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					username: normalizedUsername.length > 0 ? normalizedUsername : undefined
+					username: normalizedUsername.length > 0 ? normalizedUsername : undefined,
+					...(showCaptcha ? { [TURNSTILE_FORM_FIELD]: captchaToken } : {})
 				})
 			});
-			const optionsJson = (await optionsRes.json()) as { options?: unknown; error?: string };
+			const optionsJson = (await optionsRes.json()) as {
+				options?: unknown;
+				error?: string;
+				requiresCaptcha?: boolean;
+			};
 			if (!optionsRes.ok || !optionsJson.options) {
+				if (optionsJson.requiresCaptcha) {
+					window.location.reload();
+					return;
+				}
 				throw new Error(
 					optionsJson.error || "Impossible de démarrer la connexion par clé d'accès."
 				);
@@ -37,17 +64,24 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					username: normalizedUsername.length > 0 ? normalizedUsername : undefined,
-					response
+					response,
+					...(showCaptcha ? { [TURNSTILE_FORM_FIELD]: captchaToken } : {})
 				})
 			});
 			const verifyJson = (await verifyRes.json()) as { success?: boolean; error?: string };
 			if (!verifyRes.ok || !verifyJson.success) {
+				const verifyPayload = verifyJson as { requiresCaptcha?: boolean };
+				if (verifyPayload.requiresCaptcha) {
+					window.location.reload();
+					return;
+				}
 				throw new Error(verifyJson.error || "Échec de la connexion par clé d'accès.");
 			}
 
-			window.location.href = '/dashboard';
+			window.location.href = data?.redirectTo ?? '/dashboard';
 		} catch (error: unknown) {
 			passkeyError = error instanceof Error ? error.message : 'Erreur inconnue.';
+			turnstileWidget?.resetWidget();
 		} finally {
 			passkeyLoading = false;
 		}
@@ -71,7 +105,23 @@
 				<p class="mt-2 text-sm text-base-content/70">Accédez au tableau de bord F95 France</p>
 			</div>
 
-			<form method="post" action="?/login" use:enhance class="flex flex-col gap-4">
+			{#if data?.registrationNotice}
+				<div role="alert" class="alert alert-soft text-sm alert-warning">
+					<span>{data.registrationNotice}</span>
+				</div>
+			{/if}
+
+			<form
+				method="post"
+				action="?/login"
+				use:enhance={createFormEnhance({
+					onFailure: () => {
+						turnstileWidget?.resetWidget();
+					}
+				})}
+				class="flex flex-col gap-4"
+			>
+				<input type="hidden" name="redirectTo" value={data?.redirectTo ?? '/dashboard'} />
 				<div class="form-control w-full">
 					<label class="label pt-0" for="login-username">
 						<span class="label-text font-medium">Nom d'utilisateur</span>
@@ -117,6 +167,15 @@
 					/>
 				</div>
 
+				{#if showCaptcha}
+					<TurnstileWidget
+						bind:this={turnstileWidget}
+						siteKey={data.turnstileSiteKey}
+						bind:token={captchaToken}
+					/>
+					<input type="hidden" name={TURNSTILE_FORM_FIELD} value={captchaToken} />
+				{/if}
+
 				{#if form?.message}
 					<div role="alert" class="alert alert-soft text-sm alert-error">
 						<span>{form.message}</span>
@@ -134,6 +193,11 @@
 			<div class="divider text-xs text-base-content/50">ou</div>
 
 			<div class="flex flex-col gap-3">
+				{#if showCaptcha}
+					<p class="text-center text-xs text-base-content/60">
+						Un captcha est requis après une tentative échouée (mot de passe ou passkey).
+					</p>
+				{/if}
 				<button
 					type="button"
 					class="btn btn-block gap-2 btn-outline btn-secondary"
@@ -150,10 +214,12 @@
 				{/if}
 			</div>
 
-			<p class="text-center text-sm text-base-content/70">
-				Pas encore de compte ?
-				<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
-			</p>
+			{#if data?.registrationEnabled}
+				<p class="text-center text-sm text-base-content/70">
+					Pas encore de compte ?
+					<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
+				</p>
+			{/if}
 		</div>
 	</div>
 </div>

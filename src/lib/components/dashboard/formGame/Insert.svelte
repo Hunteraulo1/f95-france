@@ -11,7 +11,7 @@
 		safeParse as vSafeParse,
 		string as vString
 	} from 'valibot';
-	import Modal from '../Modal.svelte';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 
 	/** JSON collé depuis f95list-extractor / LC Extractor (pas un enregistrement formulaire). */
 	const ExtractorPayload = vObject({
@@ -142,33 +142,36 @@
 	Insert Data
 </button>
 
-<Modal bind:showModal={insertModal} title="Insérer les données du jeu">
-	{#snippet modalContent()}
-		<p>
-			Le script fonctionne avec <a class="btn-link" href="https://www.tampermonkey.net"
-				>Tampermonkey</a
-			>
-		</p>
-		<a
-			class="btn-link"
-			target="_blank"
-			href="https://github.com/Hunteraulo1/f95list-extractor/raw/refs/heads/main/dist/toolExtractor.user.js"
-			>Installer le script</a
+<DaisyDashboardModal
+	open={insertModal}
+	title="Insérer les données du jeu"
+	onClose={() => {
+		insertModal = false;
+	}}
+>
+	<p>
+		Le script fonctionne avec <a class="btn-link" href="https://www.tampermonkey.net"
+			>Tampermonkey</a
 		>
+	</p>
+	<a
+		class="btn-link"
+		target="_blank"
+		href="https://github.com/Hunteraulo1/f95list-extractor/raw/refs/heads/main/dist/toolExtractor.user.js"
+		>Installer le script</a
+	>
 
-		<p class="py-4">
-			Collez les données JSON de l’extractor (remplit uniquement les champs du jeu).
-		</p>
-		<textarea
-			placeholder="Données de l'Extractor"
-			class="textarea-bordered textarea max-h-32 w-full"
-			oninput={handleInput}
-			bind:value={insertObject}
-		></textarea>
-	{/snippet}
-	{#snippet modalAction()}
+	<p class="py-4">Collez les données JSON de l’extractor (remplit uniquement les champs du jeu).</p>
+	<textarea
+		placeholder="Données de l'Extractor"
+		class="textarea-bordered textarea max-h-32 w-full"
+		oninput={handleInput}
+		bind:value={insertObject}
+	></textarea>
+	{#snippet footer()}
+		<button type="button" class="btn" onclick={() => (insertModal = false)}>Fermer</button>
 		<button type="button" onclick={handleClickInsert} disabled={!isValid} class="btn btn-info">
 			Remplir les champs
 		</button>
 	{/snippet}
-</Modal>
+</DaisyDashboardModal>

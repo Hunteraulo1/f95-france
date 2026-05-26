@@ -2,10 +2,20 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { normalizeTranslatorPages } from '$lib/components/dashboard/submissions/submission-modal-field-utils';
+	import type {
+		SubmissionModalItem,
+		SubmissionModalTranslator
+	} from '$lib/components/dashboard/submissions/submission-modal-types';
+	import SubmissionModalDetailsPanel from '$lib/components/dashboard/submissions/SubmissionModalDetailsPanel.svelte';
+	import SubmissionModalGameEditFields from '$lib/components/dashboard/submissions/SubmissionModalGameEditFields.svelte';
+	import SubmissionModalHeader from '$lib/components/dashboard/submissions/SubmissionModalHeader.svelte';
+	import SubmissionModalStatusPanel from '$lib/components/dashboard/submissions/SubmissionModalStatusPanel.svelte';
+	import SubmissionModalTranslationEditFields from '$lib/components/dashboard/submissions/SubmissionModalTranslationEditFields.svelte';
+	import SubmissionModalTranslatorPagesEdit from '$lib/components/dashboard/submissions/SubmissionModalTranslatorPagesEdit.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { hasPermission } from '$lib/permissions/client';
 	import type { GameTranslation } from '$lib/server/db/schema';
-	import { newToast, user } from '$lib/stores';
 	import {
 		gameImageRequiredForWebsite,
 		isIntegrated,
@@ -15,84 +25,11 @@
 		requiresTranslationVersion
 	} from '$lib/utils/game-form-validation';
 	import { validateSubmissionEditLinks } from '$lib/utils/link-validation';
-	import {
-		getStatusBadge,
-		getTypeBadge,
-		getTypeLabel,
-		validateStatusChange
-	} from '$lib/utils/submissions';
-
-	type SubmissionPrimitive = string | number | boolean | null | undefined;
-
-	interface GameSubmissionJson {
-		name?: string | null;
-		description?: string | null;
-		type?: string | null;
-		website?: string | null;
-		threadId?: string | number | null;
-		tags?: string | null;
-		link?: string | null;
-		image?: string | null;
-		gameVersion?: string | null;
-		gameAutoCheck?: boolean | null;
-	}
-
-	interface FieldConfig<
-		T extends GameTranslation | GameSubmissionJson = GameTranslation | GameSubmissionJson
-	> {
-		key: Extract<keyof T, string>;
-		label: string;
-		options?: {
-			isMultiline?: boolean;
-			isUrl?: boolean;
-			showIfEmpty?: boolean;
-		};
-	}
-
-	interface Submission {
-		id: string;
-		status: string;
-		type: string;
-		gameId?: string | null;
-		translationId?: string | null;
-		adminNotes?: string | null;
-		parsedData?: {
-			game?: GameSubmissionJson;
-			translation?: GameTranslation;
-			translatorId?: string;
-			pages?: Array<{ name?: string; link?: string }>;
-			originalPages?: Array<{ name?: string; link?: string }>;
-			reason?: string;
-			gameId?: string;
-			translationId?: string;
-		} | null;
-		currentGame?: GameSubmissionJson | null;
-		currentTranslation?: GameTranslation | null;
-		currentTranslator?: {
-			id: string;
-			name: string;
-			pages: Array<{ name: string; link: string }>;
-		} | null;
-		user?: {
-			id: string;
-			username: string;
-		} | null;
-		openedByUser?: {
-			id: string;
-			username: string;
-		} | null;
-	}
-
-	interface Translator {
-		id: string;
-		name: string;
-		userId?: string | null;
-		username?: string | null;
-	}
+	import { validateStatusChange } from '$lib/utils/submissions';
 
 	interface Props {
-		submission: Submission | null;
-		translators: Translator[];
+		submission: SubmissionModalItem | null;
+		translators: SubmissionModalTranslator[];
 		canEditStatus?: boolean;
 		onClose: () => void;
 	}
@@ -103,7 +40,6 @@
 	let selectedStatus = $state<string>('pending');
 	let adminNotesText = $state<string>('');
 	let submissionEditError = $state<string | null>(null);
-	// Champs "réels" pour modifier la soumission (au lieu d'un JSON visible)
 	let editGameName = $state<string>('');
 	let editGameDescription = $state<string>('');
 	let editGameWebsite = $state<string>('f95z');
@@ -127,6 +63,27 @@
 	let editTranslationProofreaderId = $state<string>('');
 	let editTranslatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 
+	const resolveTranslatorSelectValue = (value: unknown): string => {
+		if (typeof value !== 'string' || !value) return '';
+		const byId = translators.find((t) => t.id === value);
+		if (byId) return byId.id;
+		const byName = translators.find((t) => t.name === value);
+		return byName?.id ?? '';
+	};
+
+	const getTranslator = (translatorId: unknown): SubmissionModalTranslator | null => {
+		if (typeof translatorId !== 'string' || !translatorId) return null;
+		return translators.find((t) => t.id === translatorId) || null;
+	};
+
+	const handleTranslatorClick = async (translatorId: unknown) => {
+		const translator = getTranslator(translatorId);
+		const profileRef = translator?.username ?? null;
+		if (profileRef) {
+			await goto(resolve(`/dashboard/profile/${profileRef}`));
+		}
+	};
+
 	$effect(() => {
 		if (submission) {
 			selectedStatus = submission.status;
@@ -134,7 +91,6 @@
 			statusError = null;
 			submissionEditError = null;
 
-			// Pré-remplir les champs éditables depuis parsedData (soumissions "pending").
 			const game = submission.parsedData?.game;
 			const tr = submission.parsedData?.translation as GameTranslation | undefined;
 
@@ -239,7 +195,6 @@
 			});
 		}
 
-		// game | update
 		const gameObj: Record<string, unknown> = {
 			name: editGameName,
 			description: editGameDescription.trim() || null,
@@ -273,8 +228,7 @@
 	const hasNotesError = $derived(
 		isStatusRequiringAdminNote && (!adminNotesText || adminNotesText.trim() === '')
 	);
-	/** Modérateurs (ex. superadmin) : statut + pas de verrou « listeur en cours » sur Mes soumissions. */
-	const canReviewSubmissions = $derived($effectivePermissions.includes('submissions.review'));
+	const canReviewSubmissions = $derived($hasPermission('submissions.review'));
 	const canModerateSubmission = $derived(canEditStatus || canReviewSubmissions);
 	const statusFormAction = $derived(
 		canEditStatus ? '?/updateStatus' : `${resolve('/dashboard/submits')}?/updateStatus`
@@ -287,7 +241,6 @@
 	const canCancelSubmission = $derived(
 		Boolean(!canModerateSubmission && submission?.status === 'pending')
 	);
-	/** Utilisateur : en attente ou refusée, sauf soumission de suppression. */
 	const canEditSubmissionDataAsUser = $derived(
 		Boolean(
 			!canEditStatus &&
@@ -299,7 +252,6 @@
 				submission?.status === 'rejected')
 		)
 	);
-	/** Admin : en attente ou ouverte, sauf soumissions de suppression. */
 	const canEditSubmissionDataAsAdmin = $derived(
 		Boolean(
 			canModerateSubmission &&
@@ -310,7 +262,6 @@
 	const canEditSubmissionDataAllowed = $derived(
 		canEditSubmissionDataAsUser || canEditSubmissionDataAsAdmin
 	);
-	/** Formulaire admin (statut) sans champs de données éditables (ex. suppression). */
 	const canAdminManageStatusOnly = $derived(Boolean(canModerateSubmission && isDeleteSubmission));
 	const showAdminSubmissionForm = $derived(
 		canEditSubmissionDataAllowed || canAdminManageStatusOnly
@@ -319,177 +270,6 @@
 		Boolean(!canModerateSubmission && submission?.status === 'opened')
 	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
-
-	const gameFields: FieldConfig<GameSubmissionJson>[] = [
-		{ key: 'name', label: 'Nom' },
-		{ key: 'description', label: 'Description', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'website', label: 'Site web' },
-		{ key: 'threadId', label: 'Thread ID', options: { showIfEmpty: true } },
-		{ key: 'tags', label: 'Tags', options: { isMultiline: true, showIfEmpty: true } },
-		{ key: 'link', label: 'Lien', options: { isUrl: true, showIfEmpty: true } },
-		{ key: 'image', label: 'Image', options: { isUrl: true } },
-		{ key: 'gameVersion', label: 'Version jeu', options: { showIfEmpty: true } }
-	];
-
-	const translationFields: FieldConfig<GameTranslation>[] = [
-		{ key: 'translationName', label: 'Nom de traduction' },
-		{ key: 'tname', label: 'Status de la traduction', options: { showIfEmpty: true } },
-		{ key: 'tversion', label: 'Version traduction' },
-		{ key: 'version', label: 'Version de référence', options: { showIfEmpty: true } },
-		{ key: 'status', label: 'Statut' },
-		{ key: 'gameType', label: 'Moteur (ligne)' },
-		{ key: 'ttype', label: 'Type de traduction' },
-		{ key: 'tlink', label: 'Lien', options: { isUrl: true } },
-		{ key: 'ac', label: 'Auto-Check' },
-		{ key: 'translatorId', label: 'Traducteur', options: { showIfEmpty: true } },
-		{ key: 'proofreaderId', label: 'Relecteur', options: { showIfEmpty: true } }
-	];
-
-	const getFieldValue = <T extends object>(
-		obj: T,
-		key: Extract<keyof T, string>
-	): SubmissionPrimitive => {
-		const value: unknown = obj[key];
-		return typeof value === 'string' ||
-			typeof value === 'number' ||
-			typeof value === 'boolean' ||
-			value === null ||
-			value === undefined
-			? value
-			: undefined;
-	};
-
-	const normalizeValueForComparison = (
-		value: SubmissionPrimitive,
-		fieldKey?: string
-	): string | number | boolean | null => {
-		if (value === null || value === undefined) {
-			return null;
-		}
-
-		// Normalisation ciblée du threadId pour éviter les faux positifs "123" vs 123.
-		if (fieldKey === 'threadId') {
-			if (typeof value === 'string') {
-				const trimmed = value.trim();
-				if (trimmed === '') return null;
-				const numericThreadId = Number(trimmed);
-				return Number.isNaN(numericThreadId) ? trimmed : numericThreadId;
-			}
-			if (typeof value === 'number' && !Number.isNaN(value)) {
-				return value;
-			}
-		}
-
-		return value;
-	};
-
-	const valuesAreEqual = (
-		oldValue: SubmissionPrimitive,
-		newValue: SubmissionPrimitive,
-		fieldKey?: string
-	): boolean => {
-		const normalizedOld = normalizeValueForComparison(oldValue, fieldKey);
-		const normalizedNew = normalizeValueForComparison(newValue, fieldKey);
-
-		if (normalizedOld === null && normalizedNew === null) {
-			return true;
-		}
-
-		if (normalizedOld === null || normalizedNew === null) {
-			return false;
-		}
-
-		// Comparaison stricte par défaut (comportement historique),
-		// avec normalisation spéciale uniquement pour threadId.
-		return String(normalizedOld) === String(normalizedNew);
-	};
-
-	const getTranslatorName = (translatorId: unknown): string | null => {
-		if (typeof translatorId !== 'string' || !translatorId) return null;
-		const translator = translators.find((t) => t.id === translatorId);
-		return translator?.name || null;
-	};
-
-	const getTranslator = (translatorId: unknown): Translator | null => {
-		if (typeof translatorId !== 'string' || !translatorId) return null;
-		return translators.find((t) => t.id === translatorId) || null;
-	};
-
-	const resolveTranslatorSelectValue = (value: unknown): string => {
-		if (typeof value !== 'string' || !value) return '';
-		const byId = translators.find((t) => t.id === value);
-		if (byId) return byId.id;
-		const byName = translators.find((t) => t.name === value);
-		return byName?.id ?? '';
-	};
-
-	const handleTranslatorClick = async (translatorId: unknown) => {
-		const translator = getTranslator(translatorId);
-		const profileRef = translator?.username ?? translator?.userId ?? null;
-		if (profileRef) {
-			await goto(resolve(`/dashboard/profile/${profileRef}`));
-		}
-	};
-
-	const formatFieldValue = (
-		value: SubmissionPrimitive,
-		showIfEmpty: boolean,
-		key?: string
-	): string => {
-		const isEmpty = value === null || value === undefined || value === '';
-		if (isEmpty) {
-			return showIfEmpty ? '(aucun)' : '';
-		}
-
-		if (key === 'translatorId' || key === 'proofreaderId') {
-			const translatorName = getTranslatorName(value);
-			return translatorName || String(value);
-		}
-
-		if (key === 'gameType' && typeof value === 'string') {
-			const labels: Record<string, string> = {
-				renpy: "Ren'Py",
-				rpgm: 'RPGM',
-				unity: 'Unity',
-				unreal: 'Unreal',
-				flash: 'Flash',
-				html: 'HTML',
-				qsp: 'QSP',
-				other: 'Autre'
-			};
-			return labels[value] ?? value;
-		}
-
-		if (typeof value === 'boolean') {
-			return value ? 'Oui' : 'Non';
-		}
-
-		return String(value);
-	};
-
-	const normalizeTranslatorPages = (
-		pages: Array<{ name?: string; link?: string }> | string | null | undefined
-	): Array<{ name: string; link: string }> => {
-		let source: Array<{ name?: string; link?: string }> = [];
-
-		if (Array.isArray(pages)) {
-			source = pages;
-		} else if (typeof pages === 'string' && pages.trim() !== '') {
-			try {
-				const parsed = JSON.parse(pages) as unknown;
-				if (Array.isArray(parsed)) {
-					source = parsed as Array<{ name?: string; link?: string }>;
-				}
-			} catch {
-				source = [];
-			}
-		}
-
-		return source.map((p) => ({
-			name: String(p.name ?? '').trim(),
-			link: String(p.link ?? '').trim()
-		}));
-	};
 
 	const addTranslatorPageRow = () => {
 		editTranslatorPages = [...editTranslatorPages, { name: '', link: '' }];
@@ -503,120 +283,7 @@
 {#if submission}
 	<div class="modal-open modal">
 		<div class="modal-box flex max-h-[90vh] max-w-7xl flex-col">
-			<!-- En-tête avec informations de la soumission -->
-			<div class="mb-4 flex items-center justify-between border-b border-base-300 pb-4">
-				<div class="flex-1">
-					<h3 class="text-lg font-bold">
-						{#if submission.type === 'update'}
-							Changements proposés (jeu)
-						{:else if submission.type === 'translator_pages'}
-							Changements proposés (pages traducteur)
-						{:else if submission.type === 'translation'}
-							{#if submission.currentTranslation}
-								Changements proposés (traduction)
-							{:else}
-								Détails de la nouvelle traduction
-							{/if}
-						{:else if submission.type === 'delete'}
-							{#if submission.translationId}
-								Demande de suppression (traduction)
-							{:else}
-								Demande de suppression (jeu)
-							{/if}
-						{:else}
-							Détails du nouveau jeu
-						{/if}
-					</h3>
-					{#if submission.user?.username}
-						<div class="mt-1 text-sm text-base-content/70">
-							Soumission créée par :
-							<a
-								class="link link-hover"
-								href={resolve(`/dashboard/profile/${submission.user.username}`)}
-								onclick={async (event) => {
-									event.preventDefault();
-									await goto(resolve(`/dashboard/profile/${submission.user?.username}`));
-								}}
-							>
-								{submission.user.username}
-							</a>
-						</div>
-					{/if}
-					{#if submission.openedByUser?.username}
-						<div class="mt-1 text-sm text-base-content/70">
-							Ouverte par :
-							<a
-								class="link link-hover"
-								href={resolve(`/dashboard/profile/${submission.openedByUser.username}`)}
-								onclick={async (event) => {
-									event.preventDefault();
-									await goto(resolve(`/dashboard/profile/${submission.openedByUser?.username}`));
-								}}
-							>
-								{submission.openedByUser.username}
-							</a>
-						</div>
-					{/if}
-					<div class="mt-2 flex flex-wrap items-center gap-2">
-						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
-							{getTypeLabel(submission.type)}
-						</div>
-						{#if submission.status}
-							{@const statusBadge = getStatusBadge(submission.status)}
-							{@const StatusIcon = statusBadge.icon}
-							<div class="badge {statusBadge.class} gap-1">
-								<StatusIcon size={14} />
-								{statusBadge.label}
-							</div>
-						{/if}
-						{#if $user?.role === 'superadmin'}
-							<button
-								type="button"
-								class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200 sm:max-w-none"
-								onclick={() => {
-									navigator.clipboard.writeText(submission.id);
-									newToast({
-										alertType: 'success',
-										message: 'ID de la soumission copié dans le presse-papiers'
-									});
-								}}
-							>
-								ID SOUMISSION: {submission.id}
-							</button>
-							{#if submission.gameId}
-								<button
-									type="button"
-									class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200 sm:max-w-none"
-									onclick={() => {
-										navigator.clipboard.writeText(submission.gameId!);
-										newToast({
-											alertType: 'success',
-											message: 'ID du jeu copié dans le presse-papiers'
-										});
-									}}
-								>
-									ID JEU: {submission.gameId}
-								</button>
-							{/if}
-							{#if submission.translationId}
-								<button
-									type="button"
-									class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
-									onclick={() => {
-										navigator.clipboard.writeText(submission.translationId!);
-										newToast({
-											alertType: 'success',
-											message: 'ID de la traduction copié dans le presse-papiers'
-										});
-									}}
-								>
-									ID TRADUCTION: {submission.translationId}
-								</button>
-							{/if}
-						{/if}
-					</div>
-				</div>
-			</div>
+			<SubmissionModalHeader {submission} />
 
 			{#if adminNoteDisplay}
 				<div role="status" class="mb-4 alert items-start alert-info">
@@ -628,400 +295,11 @@
 			{/if}
 
 			<div class="md flex flex-col gap-2 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-				<!-- Section des détails (scrollable) -->
-				<div class="md flex-1 overflow-y-auto pr-2 md:border-r md:border-base-300 md:pr-0">
-					{#if submission.type === 'delete'}
-						<div class="space-y-4">
-							<div role="alert" class="alert alert-error">
-								<span>Cette soumission demande une suppression définitive après acceptation.</span>
-							</div>
-							{#if submission.translationId && (submission.currentTranslation || submission.parsedData?.translation)}
-								<div class="rounded-box border border-base-300 p-4">
-									<h4 class="text-md mb-2 font-semibold">Traduction concernée</h4>
-									<p class="text-sm">
-										{submission.currentTranslation?.translationName ??
-											submission.parsedData?.translation?.translationName ??
-											'—'}
-										{#if submission.currentTranslation?.tversion ?? submission.parsedData?.translation?.tversion}
-											<span class="opacity-70">
-												(v{submission.currentTranslation?.tversion ??
-													submission.parsedData?.translation?.tversion})
-											</span>
-										{/if}
-									</p>
-								</div>
-							{:else if submission.currentGame || submission.parsedData?.game}
-								<div class="rounded-box border border-base-300 p-4">
-									<h4 class="text-md mb-2 font-semibold">Jeu concerné</h4>
-									<p class="text-sm font-medium">
-										{submission.currentGame?.name ?? submission.parsedData?.game?.name ?? '—'}
-									</p>
-								</div>
-							{/if}
-							{#if submission.parsedData?.reason}
-								<div class="rounded-box border border-base-300 p-4">
-									<h4 class="text-md mb-2 font-semibold">Raison de la suppression</h4>
-									<p class="text-sm whitespace-pre-wrap">{submission.parsedData.reason}</p>
-								</div>
-							{/if}
-						</div>
-					{:else if submission.type === 'translator_pages'}
-						{@const proposedPages = normalizeTranslatorPages(submission.parsedData?.pages)}
-						{@const currentPages = submission.currentTranslator?.pages ?? []}
-						{@const fallbackOldPages = normalizeTranslatorPages(
-							submission.parsedData?.originalPages
-						)}
-						{@const oldPages =
-							currentPages.length > 0
-								? currentPages
-								: submission.status === 'accepted'
-									? fallbackOldPages
-									: []}
-						{@const maxRows = Math.max(oldPages.length, proposedPages.length, 1)}
-						<div class="space-y-4">
-							<div class="alert alert-info">
-								<div class="space-y-1">
-									<div class="font-semibold">Validation des pages traducteur</div>
-									<div class="text-sm opacity-80">
-										Traducteur: <strong>{submission.currentTranslator?.name ?? 'Inconnu'}</strong>
-									</div>
-								</div>
-							</div>
-							<div class="overflow-x-auto rounded-box border border-base-300">
-								<table class="table table-zebra">
-									<thead>
-										<tr>
-											<th>#</th>
-											<th class="w-[45%]">Pages actuelles</th>
-											<th class="w-[45%]">Pages proposées</th>
-										</tr>
-									</thead>
-									<tbody>
-										{#each Array.from({ length: maxRows }, (_unused, i) => i) as index (index)}
-											{@const oldEntry = oldPages[index] ?? { name: '', link: '' }}
-											{@const newEntry = proposedPages[index] ?? { name: '', link: '' }}
-											{@const isChanged =
-												oldEntry.name !== newEntry.name || oldEntry.link !== newEntry.link}
-											<tr class={isChanged ? 'bg-warning/10' : ''}>
-												<td class="font-mono text-xs opacity-70">{index + 1}</td>
-												<td>
-													<div class="space-y-1">
-														<div class="font-medium">{oldEntry.name || '(vide)'}</div>
-														<div class="text-xs break-all opacity-70">
-															{oldEntry.link || '(vide)'}
-														</div>
-													</div>
-												</td>
-												<td>
-													<div class="space-y-1">
-														<div class="font-medium text-success">{newEntry.name || '(vide)'}</div>
-														<div class="text-xs break-all text-success/80">
-															{newEntry.link || '(vide)'}
-														</div>
-													</div>
-												</td>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						</div>
-					{:else if submission.type === 'update' && submission.parsedData?.game && submission.currentGame}
-						{@const hasAnyChanges = gameFields.some((field) => {
-							if (!submission?.currentGame || !submission?.parsedData?.game) {
-								return false;
-							}
-							const oldValue = getFieldValue(submission.currentGame, field.key);
-							const newValue = getFieldValue(submission.parsedData.game, field.key);
-							return !valuesAreEqual(oldValue, newValue, String(field.key));
-						})}
-						{#if hasAnyChanges}
-							<div class="space-y-4">
-								{#each gameFields as field (field.key)}
-									{@const oldValue = getFieldValue(submission.currentGame, field.key)}
-									{@const newValue = getFieldValue(submission.parsedData.game, field.key)}
-									{@const fieldKey = String(field.key)}
-									{#if !valuesAreEqual(oldValue, newValue, String(field.key))}
-										{@const formattedOld = formatFieldValue(
-											oldValue,
-											field.options?.showIfEmpty ?? false,
-											String(field.key)
-										)}
-										{@const formattedNew = formatFieldValue(
-											newValue,
-											field.options?.showIfEmpty ?? false,
-											String(field.key)
-										)}
-										{@const classes = `${
-											field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-										} ${field.options?.isUrl ? 'break-all' : ''} ${
-											field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-										}`.trim()}
-										<div class="border-b border-base-300 pb-3">
-											<div class="mb-2 font-semibold">{field.label}:</div>
-											<div class="space-y-1">
-												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
-													{@const oldTranslator = getTranslator(oldValue)}
-													{#if oldTranslator?.userId}
-														<button
-															type="button"
-															class="link link-error {classes} line-through"
-															onclick={() => handleTranslatorClick(oldValue)}
-														>
-															{formattedOld}
-														</button>
-													{:else}
-														<div class="{classes} text-error line-through">{formattedOld}</div>
-													{/if}
-												{:else}
-													<div class="{classes} text-error line-through">{formattedOld}</div>
-												{/if}
-												{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
-													{@const newTranslator = getTranslator(newValue)}
-													{#if newTranslator?.userId}
-														<button
-															type="button"
-															class="link link-success {classes} {field.options?.isMultiline ||
-															field.options?.isUrl
-																? ''
-																: 'font-medium'}"
-															onclick={() => handleTranslatorClick(newValue)}
-														>
-															{formattedNew}
-														</button>
-													{:else}
-														<div
-															class="{classes} {field.options?.isMultiline || field.options?.isUrl
-																? ''
-																: 'font-medium'} text-success"
-														>
-															{formattedNew}
-														</div>
-													{/if}
-												{:else}
-													<div
-														class="{classes} {field.options?.isMultiline || field.options?.isUrl
-															? ''
-															: 'font-medium'} text-success"
-													>
-														{formattedNew}
-													</div>
-												{/if}
-											</div>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						{:else}
-							<div class="alert alert-info">
-								<span
-									>Aucun changement détecté entre le jeu actuel et les modifications proposées.</span
-								>
-							</div>
-						{/if}
-					{:else if submission.type === 'game' && (submission.currentGame || submission.parsedData?.game)}
-						{#if submission.currentGame || submission.parsedData?.game}
-							{@const gameData =
-								submission.status === 'accepted'
-									? submission.parsedData?.game
-									: submission.currentGame || submission.parsedData?.game}
-							<div class="space-y-4">
-								<h4 class="text-md mb-2 font-semibold">Détails du jeu</h4>
-								{#each gameFields as field (field.key)}
-									{@const value = getFieldValue(gameData!, field.key)}
-									{@const formattedValue = formatFieldValue(
-										value,
-										field.options?.showIfEmpty ?? false,
-										String(field.key)
-									)}
-									{@const fieldKey = String(field.key)}
-									{#if formattedValue !== '' || field.options?.showIfEmpty}
-										{@const classes = `${
-											field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-										} ${field.options?.isUrl ? 'break-all' : ''} ${
-											field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-										}`.trim()}
-										<div class="border-b border-base-300 pb-3">
-											<div class="mb-2 font-semibold">{field.label}:</div>
-											{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && value}
-												{@const translator = getTranslator(value)}
-												{#if translator?.userId}
-													<button
-														type="button"
-														class="link link-primary {classes}"
-														onclick={() => handleTranslatorClick(value)}
-													>
-														{formattedValue}
-													</button>
-												{:else}
-													<div class={classes}>{formattedValue}</div>
-												{/if}
-											{:else}
-												<div class={classes}>{formattedValue}</div>
-											{/if}
-										</div>
-									{/if}
-								{/each}
-								{#if submission.currentTranslation || submission.parsedData?.translation}
-									{@const translationData =
-										submission.status === 'accepted'
-											? submission.parsedData?.translation
-											: submission.currentTranslation || submission.parsedData?.translation}
-									<div class="mt-6">
-										<h4 class="text-md mb-2 font-semibold">Détails de la traduction</h4>
-										{#each translationFields as field (field.key)}
-											{@const value = getFieldValue(translationData!, field.key)}
-											{@const formattedValue = formatFieldValue(
-												value,
-												field.options?.showIfEmpty ?? false,
-												String(field.key)
-											)}
-											{#if formattedValue !== '' || field.options?.showIfEmpty}
-												{@const classes = `${
-													field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-												} ${field.options?.isUrl ? 'break-all' : ''} ${
-													field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-												}`.trim()}
-												<div class="border-b border-base-300 pb-3">
-													<div class="mb-2 font-semibold">{field.label}:</div>
-													<div class={classes}>{formattedValue}</div>
-												</div>
-											{/if}
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{/if}
-					{:else if submission.type === 'translation' && (submission.currentTranslation || submission.parsedData?.translation)}
-						{#if submission.currentTranslation || submission.parsedData?.translation}
-							{@const translationData =
-								submission.status === 'accepted'
-									? submission.parsedData?.translation
-									: submission.currentTranslation || submission.parsedData?.translation}
-							{#if submission.currentTranslation && submission.parsedData?.translation && submission.status !== 'accepted'}
-								{@const hasAnyChanges = translationFields.some((field) => {
-									if (!submission?.currentTranslation || !submission?.parsedData?.translation) {
-										return false;
-									}
-									const oldValue = getFieldValue(submission.currentTranslation, field.key);
-									const newValue = getFieldValue(submission.parsedData.translation, field.key);
-									return !valuesAreEqual(oldValue, newValue, String(field.key));
-								})}
-								{#if hasAnyChanges}
-									<div class="space-y-4">
-										{#each translationFields as field (field.key)}
-											{@const oldValue = getFieldValue(submission.currentTranslation, field.key)}
-											{@const newValue = getFieldValue(
-												submission.parsedData.translation,
-												field.key
-											)}
-											{@const fieldKey = String(field.key)}
-											{#if !valuesAreEqual(oldValue, newValue, String(field.key))}
-												{@const formattedOld = formatFieldValue(
-													oldValue,
-													field.options?.showIfEmpty ?? false,
-													String(field.key)
-												)}
-												{@const formattedNew = formatFieldValue(
-													newValue,
-													field.options?.showIfEmpty ?? false,
-													String(field.key)
-												)}
-												{@const classes = `${
-													field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-												} ${field.options?.isUrl ? 'break-all' : ''} ${
-													field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-												}`.trim()}
-												<div class="border-b border-base-300 pb-3">
-													<div class="mb-2 font-semibold">{field.label}:</div>
-													<div class="space-y-1">
-														{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && oldValue}
-															{@const oldTranslator = getTranslator(oldValue)}
-															{#if oldTranslator?.userId}
-																<button
-																	type="button"
-																	class="link link-error {classes} line-through"
-																	onclick={() => handleTranslatorClick(oldValue)}
-																>
-																	{formattedOld}
-																</button>
-															{:else}
-																<div class="{classes} text-error line-through">{formattedOld}</div>
-															{/if}
-														{:else}
-															<div class="{classes} text-error line-through">{formattedOld}</div>
-														{/if}
-														{#if (fieldKey === 'translatorId' || fieldKey === 'proofreaderId') && newValue}
-															{@const newTranslator = getTranslator(newValue)}
-															{#if newTranslator?.userId}
-																<button
-																	type="button"
-																	class="link link-success {classes} {field.options?.isMultiline ||
-																	field.options?.isUrl
-																		? ''
-																		: 'font-medium'}"
-																	onclick={() => handleTranslatorClick(newValue)}
-																>
-																	{formattedNew}
-																</button>
-															{:else}
-																<div
-																	class="{classes} {field.options?.isMultiline ||
-																	field.options?.isUrl
-																		? ''
-																		: 'font-medium'} text-success"
-																>
-																	{formattedNew}
-																</div>
-															{/if}
-														{:else}
-															<div
-																class="{classes} {field.options?.isMultiline || field.options?.isUrl
-																	? ''
-																	: 'font-medium'} text-success"
-															>
-																{formattedNew}
-															</div>
-														{/if}
-													</div>
-												</div>
-											{/if}
-										{/each}
-									</div>
-								{:else}
-									<div class="alert alert-info">
-										<span
-											>Aucun changement détecté entre la traduction actuelle et les modifications
-											proposées.</span
-										>
-									</div>
-								{/if}
-							{:else}
-								<div class="space-y-4">
-									{#each translationFields as field (field.key)}
-										{@const value = getFieldValue(translationData!, field.key)}
-										{@const formattedValue = formatFieldValue(
-											value,
-											field.options?.showIfEmpty ?? false,
-											String(field.key)
-										)}
-										{#if formattedValue !== '' || field.options?.showIfEmpty}
-											{@const classes = `${
-												field.options?.isMultiline || field.options?.isUrl ? 'text-sm' : ''
-											} ${field.options?.isUrl ? 'break-all' : ''} ${
-												field.options?.isMultiline ? 'whitespace-pre-wrap' : ''
-											}`.trim()}
-											<div class="border-b border-base-300 pr-1 pb-3 last:border-b-0 last:pb-0">
-												<div class="mb-2 font-semibold">{field.label}:</div>
-												<div class={classes}>{formattedValue}</div>
-											</div>
-										{/if}
-									{/each}
-								</div>
-							{/if}
-						{/if}
-					{/if}
-				</div>
+				<SubmissionModalDetailsPanel
+					{submission}
+					{translators}
+					onTranslatorClick={handleTranslatorClick}
+				/>
 				<div class="h-full md:pl-2">
 					{#if showAdminSubmissionForm}
 						<div>
@@ -1050,56 +328,54 @@
 								id="submission-save-form"
 								method="POST"
 								action={canModerateSubmission ? statusFormAction : submissionDataFormAction}
-								use:enhance={(e) => {
-									submissionEditError = null;
-									statusError = null;
-									if (canModerateSubmission) {
-										const validationError = validateStatusChange(selectedStatus, adminNotesText);
-										if (validationError) {
-											statusError = validationError;
-											e.cancel();
-											return;
-										}
-									}
-									if (canEditSubmissionDataAllowed && submission) {
-										const linkError = validateSubmissionEditLinks({
-											submissionType: submission.type,
-											gameLink: editGameLink,
-											gameImage: editGameImage,
-											gameWebsite: editGameWebsite,
-											translationTlink: editTranslationTlink,
-											translationTname: editTranslationTname,
-											includeTranslation: Boolean(submission.parsedData?.translation),
-											translatorPages: editTranslatorPages,
-											requireGameImage: requireGameImage
-										});
-										if (linkError) {
-											submissionEditError = linkError;
-											e.cancel();
-											return;
-										}
-									}
-									return async function ({ result, update }) {
-										if (result.type === 'success') {
-											await update({ invalidateAll: true });
-											onClose();
-										} else if (result.type === 'failure' && result.data) {
-											const message =
-												typeof result.data === 'object' && 'message' in result.data
-													? String(result.data.message)
-													: 'Erreur lors de la mise à jour';
-											if (canModerateSubmission) {
-												statusError = message;
-											} else {
-												submissionEditError = message;
+								use:enhance={createFormEnhance({
+									updateOnlyOnSuccess: true,
+									invalidateAll: true,
+									onStart: () => {
+										submissionEditError = null;
+										statusError = null;
+									},
+									validate: ({ cancel }) => {
+										if (canModerateSubmission) {
+											const validationError = validateStatusChange(selectedStatus, adminNotesText);
+											if (validationError) {
+												statusError = validationError;
+												cancel();
+												return;
 											}
 										}
-									};
-								}}
+										if (canEditSubmissionDataAllowed && submission) {
+											const linkError = validateSubmissionEditLinks({
+												submissionType: submission.type,
+												gameLink: editGameLink,
+												gameImage: editGameImage,
+												gameWebsite: editGameWebsite,
+												translationTlink: editTranslationTlink,
+												translationTname: editTranslationTname,
+												includeTranslation: Boolean(submission.parsedData?.translation),
+												translatorPages: editTranslatorPages,
+												requireGameImage: requireGameImage
+											});
+											if (linkError) {
+												submissionEditError = linkError;
+												cancel();
+											}
+										}
+									},
+									onSuccess: () => {
+										onClose();
+									},
+									onFailure: (message) => {
+										if (canModerateSubmission) {
+											statusError = message;
+										} else {
+											submissionEditError = message;
+										}
+									}
+								})}
 							>
 								<input type="hidden" name="submissionId" value={submission.id} />
 								{#if canEditSubmissionDataAllowed}
-									<!-- Envoyer le JSON au serveur sans l'exposer à l'utilisateur -->
 									<input type="hidden" name="submissionDataJson" value={submissionDataJsonHidden} />
 								{/if}
 								{#if canModerateSubmission}
@@ -1117,368 +393,42 @@
 								{/if}
 								<fieldset disabled={isOpenedReadOnlyForUser}>
 									{#if submission.type === 'translator_pages'}
-										<div class="mt-2 space-y-4">
-											<h5 class="text-md font-semibold">Pages traducteur</h5>
-											<div class="space-y-2">
-												{#each editTranslatorPages as page, index (index)}
-													<div class="flex items-center gap-2">
-														<input
-															type="text"
-															class="input-bordered input flex-1"
-															placeholder="Nom de la page"
-															name="editTranslatorPageName"
-															bind:value={page.name}
-														/>
-														<input
-															type="url"
-															class="input-bordered input flex-1"
-															placeholder="Lien"
-															name="editTranslatorPageLink"
-															bind:value={page.link}
-														/>
-														<button
-															type="button"
-															class="btn btn-sm btn-error"
-															onclick={() => removeTranslatorPageRow(index)}
-														>
-															✕
-														</button>
-													</div>
-												{/each}
-												{#if editTranslatorPages.length === 0}
-													<div class="text-sm opacity-70">
-														Aucune page (la liste sera vide après enregistrement).
-													</div>
-												{/if}
-											</div>
-											<button
-												type="button"
-												class="btn btn-outline btn-sm"
-												onclick={addTranslatorPageRow}
-											>
-												+ Ajouter une ligne
-											</button>
-										</div>
+										<SubmissionModalTranslatorPagesEdit
+											bind:pages={editTranslatorPages}
+											onAdd={addTranslatorPageRow}
+											onRemove={removeTranslatorPageRow}
+										/>
 									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages' && submission.type !== 'delete'}
-										<div class="mt-2 space-y-4">
-											<h5 class="text-md font-semibold">Détails du jeu</h5>
-											<OtherSiteImageWarning website={editGameWebsite} />
-											<div class="grid gap-4 md:grid-cols-2">
-												<div class="form-control">
-													<label class="label" for="editGameName">
-														<span class="label-text">Nom</span>
-													</label>
-													<input
-														id="editGameName"
-														name="editGameName"
-														class="input-bordered input w-full"
-														type="text"
-														bind:value={editGameName}
-														required
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editGameWebsite">
-														<span class="label-text">Site web</span>
-													</label>
-													<select
-														id="editGameWebsite"
-														name="editGameWebsite"
-														class="select-bordered select w-full"
-														bind:value={editGameWebsite}
-														required
-													>
-														<option value="f95z">F95Zone</option>
-														<option value="lc">LewdCorner</option>
-														<option value="other">Autre</option>
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editGameThreadId">
-														<span class="label-text">Thread ID</span>
-													</label>
-													<input
-														id="editGameThreadId"
-														name="editGameThreadId"
-														class="input-bordered input w-full"
-														type="text"
-														placeholder="100"
-														bind:value={editGameThreadId}
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editGameGameVersion">
-														<span class="label-text">Version jeu</span>
-													</label>
-													<input
-														id="editGameGameVersion"
-														name="editGameGameVersion"
-														class="input-bordered input w-full"
-														type="text"
-														bind:value={editGameGameVersion}
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editGameLink">
-														<span class="label-text">Lien</span>
-													</label>
-													<div class="join join-horizontal w-full">
-														<input
-															id="editGameLink"
-															name="editGameLink"
-															class="input-bordered input join-item min-w-0 flex-1"
-															type="url"
-															placeholder="https://..."
-															bind:value={editGameLink}
-														/>
-														<button
-															type="button"
-															class="btn join-item shrink-0 btn-outline"
-															disabled={!editGameLink?.trim()}
-															aria-label="Ouvrir le lien dans un nouvel onglet"
-															onclick={() => {
-																const u = editGameLink?.trim();
-																if (u) window.open(u, '_blank', 'noopener,noreferrer');
-															}}
-														>
-															Ouvrir
-														</button>
-													</div>
-												</div>
-												<div class="form-control md:col-span-2">
-													<label class="label" for="editGameImage">
-														<span class="label-text">
-															Image{requireGameImage ? '' : ' (optionnel)'}
-														</span>
-													</label>
-													<input
-														id="editGameImage"
-														name="editGameImage"
-														class="input-bordered input w-full"
-														type="url"
-														placeholder={requireGameImage
-															? 'https://...'
-															: 'Laisser vide si aucune vignette'}
-														bind:value={editGameImage}
-														required={requireGameImage}
-													/>
-												</div>
-												<div class="form-control md:col-span-2">
-													<label class="label" for="editGameTags">
-														<span class="label-text">Tags</span>
-													</label>
-													<textarea
-														id="editGameTags"
-														name="editGameTags"
-														class="textarea-bordered textarea w-full"
-														rows="3"
-														bind:value={editGameTags}
-													></textarea>
-												</div>
-												<div class="form-control md:col-span-2">
-													<label class="label" for="editGameDescription">
-														<span class="label-text">Description</span>
-													</label>
-													<textarea
-														id="editGameDescription"
-														name="editGameDescription"
-														class="textarea-bordered textarea w-full"
-														rows="3"
-														bind:value={editGameDescription}
-													></textarea>
-												</div>
-											</div>
-										</div>
+										<SubmissionModalGameEditFields
+											bind:editGameName
+											bind:editGameDescription
+											bind:editGameWebsite
+											bind:editGameThreadId
+											bind:editGameTags
+											bind:editGameLink
+											bind:editGameImage
+											bind:editGameGameVersion
+											{requireGameImage}
+										/>
 									{/if}
 									{#if submission.type === 'translation' || submission.parsedData?.translation}
-										<div class="space-y-4">
-											<h5 class="text-md font-semibold">Modifier la traduction</h5>
-											<div class="grid gap-4 md:grid-cols-2">
-												<div class="form-control md:col-span-2">
-													<label class="label" for="editTranslationTranslationName">
-														<span class="label-text">Nom de traduction</span>
-													</label>
-													<input
-														id="editTranslationTranslationName"
-														name="editTranslationTranslationName"
-														class="input-bordered input w-full"
-														type="text"
-														placeholder="Nom de la traduction"
-														bind:value={editTranslationTranslationName}
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationVersion">
-														<span class="label-text">Version de référence</span>
-													</label>
-													<input
-														id="editTranslationVersion"
-														name="editTranslationVersion"
-														class="input-bordered input w-full"
-														type="text"
-														bind:value={editTranslationVersion}
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationTversion">
-														<span class="label-text">Version traduction</span>
-													</label>
-													<input
-														id="editTranslationTversion"
-														name="editTranslationTversion"
-														class="input-bordered input w-full"
-														type="text"
-														bind:value={editTranslationTversion}
-														required={translationVersionRequired}
-														disabled={translationVersionLocked}
-													/>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationTname">
-														<span class="label-text">Statut de traduction</span>
-													</label>
-													<select
-														id="editTranslationTname"
-														name="editTranslationTname"
-														class="select-bordered select w-full"
-														bind:value={editTranslationTname}
-														onchange={onEditTranslationTnameChange}
-														required
-													>
-														<option value="no_translation">Pas de traduction</option>
-														<option value="integrated">Intégrée</option>
-														<option value="translation">Traduction</option>
-														<option value="translation_with_mods">Traduction avec mods</option>
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationStatus">
-														<span class="label-text">Statut</span>
-													</label>
-													<select
-														id="editTranslationStatus"
-														name="editTranslationStatus"
-														class="select-bordered select w-full"
-														bind:value={editTranslationStatus}
-														required
-													>
-														<option value="in_progress">En cours</option>
-														<option value="completed">Terminé</option>
-														<option value="abandoned">Abandonné</option>
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationGameType">
-														<span class="label-text">Moteur (cette ligne)</span>
-													</label>
-													<select
-														id="editTranslationGameType"
-														name="editTranslationGameType"
-														class="select-bordered select w-full"
-														bind:value={editTranslationGameType}
-														required
-													>
-														<option value="renpy">Ren'Py</option>
-														<option value="rpgm">RPGM</option>
-														<option value="unity">Unity</option>
-														<option value="unreal">Unreal</option>
-														<option value="flash">Flash</option>
-														<option value="html">HTML</option>
-														<option value="qsp">QSP</option>
-														<option value="other">Autre</option>
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationTtype">
-														<span class="label-text">Type de traduction</span>
-													</label>
-													<select
-														id="editTranslationTtype"
-														name="editTranslationTtype"
-														class="select-bordered select w-full"
-														bind:value={editTranslationTtype}
-														required
-													>
-														<option value="auto">Traduction automatique</option>
-														<option value="vf">Traduction VO française</option>
-														<option value="manual">Traduction humaine</option>
-														<option value="semi-auto">Traduction semi-automatique</option>
-														<option value="to_tested">À tester</option>
-														<option value="hs">Lien trad HS</option>
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationTlink">
-														<span class="label-text">Lien de traduction</span>
-													</label>
-													<div class="join join-horizontal w-full">
-														<input
-															id="editTranslationTlink"
-															name="editTranslationTlink"
-															class="input-bordered input join-item min-w-0 flex-1"
-															type="url"
-															placeholder="https://..."
-															bind:value={editTranslationTlink}
-														/>
-														<button
-															type="button"
-															class="btn join-item shrink-0 btn-outline"
-															disabled={!editTranslationTlink?.trim()}
-															aria-label="Ouvrir le lien de traduction dans un nouvel onglet"
-															onclick={() => {
-																const u = editTranslationTlink?.trim();
-																if (u) window.open(u, '_blank', 'noopener,noreferrer');
-															}}
-														>
-															Ouvrir
-														</button>
-													</div>
-												</div>
-												<div class="form-control">
-													<label class="label mt-6 h-10 cursor-pointer justify-start gap-3">
-														<input
-															type="checkbox"
-															name="editTranslationAc"
-															class="checkbox checkbox-sm"
-															bind:checked={editTranslationAc}
-														/>
-														<span class="label-text">Auto-Check traduction</span>
-													</label>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationTranslatorId">
-														<span class="label-text">Traducteur</span>
-													</label>
-													<select
-														id="editTranslationTranslatorId"
-														name="editTranslationTranslatorId"
-														class="select-bordered select w-full"
-														bind:value={editTranslationTranslatorId}
-													>
-														<option value="">(aucun)</option>
-														{#each translators as translator (translator.id)}
-															<option value={translator.id}>{translator.name}</option>
-														{/each}
-													</select>
-												</div>
-												<div class="form-control">
-													<label class="label" for="editTranslationProofreaderId">
-														<span class="label-text">Relecteur</span>
-													</label>
-													<select
-														id="editTranslationProofreaderId"
-														name="editTranslationProofreaderId"
-														class="select-bordered select w-full"
-														bind:value={editTranslationProofreaderId}
-													>
-														<option value="">(aucun)</option>
-														{#each translators as translator (translator.id)}
-															<option value={translator.id}>{translator.name}</option>
-														{/each}
-													</select>
-												</div>
-											</div>
-										</div>
+										<SubmissionModalTranslationEditFields
+											bind:editTranslationTranslationName
+											bind:editTranslationVersion
+											bind:editTranslationTname
+											bind:editTranslationTversion
+											bind:editTranslationStatus
+											bind:editTranslationTtype
+											bind:editTranslationGameType
+											bind:editTranslationTlink
+											bind:editTranslationAc
+											bind:editTranslationTranslatorId
+											bind:editTranslationProofreaderId
+											{translators}
+											{translationVersionRequired}
+											{translationVersionLocked}
+											{onEditTranslationTnameChange}
+										/>
 									{/if}
 								</fieldset>
 								{#if !canModerateSubmission && submission?.status !== 'opened'}
@@ -1495,21 +445,18 @@
 							<form
 								method="POST"
 								action="?/cancelSubmission"
-								use:enhance={() => {
-									submissionEditError = null;
-									return async function ({ result, update }) {
-										if (result.type === 'success') {
-											await update({ invalidateAll: true });
-											onClose();
-										} else if (result.type === 'failure' && result.data) {
-											const message =
-												typeof result.data === 'object' && 'message' in result.data
-													? String(result.data.message)
-													: "Erreur lors de l'annulation";
-											submissionEditError = message;
-										}
-									};
-								}}
+								use:enhance={createFormEnhance({
+									invalidateAll: true,
+									onStart: () => {
+										submissionEditError = null;
+									},
+									onSuccess: () => {
+										onClose();
+									},
+									onFailure: (message) => {
+										submissionEditError = message;
+									}
+								})}
 							>
 								<input type="hidden" name="submissionId" value={submission.id} />
 								<div class="modal-action mt-0">
@@ -1521,77 +468,15 @@
 						</div>
 					{/if}
 
-					<!-- Section de modification du statut -->
-					{#if canModerateSubmission}
-						<div class="mt-6 border-t border-base-300 pt-4">
-							<h4 class="text-md mb-4 font-semibold">Modifier le statut</h4>
-
-							{#if statusError}
-								<div class="mb-4 alert alert-error">
-									<span>{statusError}</span>
-								</div>
-							{/if}
-
-							<div class="form-control w-full">
-								<label for="status" class="label">
-									<span class="label-text">Statut</span>
-								</label>
-								<select
-									id="status"
-									name="status"
-									class="select-bordered select w-full"
-									class:select-error={statusError}
-									bind:value={selectedStatus}
-									required
-								>
-									<option value="pending">En attente</option>
-									<option value="opened">Ouverte</option>
-									<option value="to_fix">À corriger</option>
-									<option value="accepted">Acceptée</option>
-									<option value="rejected">Refusée</option>
-								</select>
-							</div>
-
-							<div class="form-control mt-4 w-full">
-								<label for="adminNotes" class="label">
-									<span class="label-text">Notes admin</span>
-									{#if isStatusRequiringAdminNote}
-										<span class="label-text-alt text-error">* Obligatoire</span>
-									{:else}
-										<span class="label-text-alt">(optionnel)</span>
-									{/if}
-								</label>
-								<textarea
-									id="adminNotes"
-									name="adminNotes"
-									class="textarea-bordered textarea w-full"
-									class:textarea-error={hasNotesError}
-									placeholder={isStatusRequiringAdminNote
-										? 'Vous devez expliquer pourquoi cette soumission est à corriger ou refusée...'
-										: 'Ajouter des notes pour cette soumission...'}
-									rows="3"
-									required={isStatusRequiringAdminNote}
-									bind:value={adminNotesText}
-								></textarea>
-								{#if isStatusRequiringAdminNote}
-									<div class="label">
-										<span class="label-text-alt text-error">
-											Une note est obligatoire pour "À corriger" ou "Refusée"
-										</span>
-									</div>
-								{/if}
-							</div>
-							<div class="modal-action mt-4">
-								<button type="submit" form="submission-save-form" class="btn btn-primary">
-									Enregistrer
-								</button>
-							</div>
-						</div>
-					{:else}
-						<div class="modal-action mt-4">
-							<button type="button" class="btn" onclick={onClose}> Fermer </button>
-						</div>
-					{/if}
+					<SubmissionModalStatusPanel
+						bind:selectedStatus
+						bind:adminNotesText
+						{statusError}
+						{hasNotesError}
+						{isStatusRequiringAdminNote}
+						{canModerateSubmission}
+						{onClose}
+					/>
 				</div>
 			</div>
 		</div>

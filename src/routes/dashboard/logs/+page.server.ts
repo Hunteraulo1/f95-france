@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { error } from '@sveltejs/kit';
 import { and, desc, eq, gte, like, lt, notLike, or } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -27,7 +27,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 		if (search) {
 			const pattern = `%${search}%`;
-			conditions.push(or(like(apiLog.route, pattern), like(apiLog.payload, pattern)));
+			conditions.push(
+				or(
+					like(apiLog.route, pattern),
+					like(apiLog.payload, pattern),
+					like(apiLog.ipAddress, pattern)
+				)
+			);
 		}
 		if (userSearch) {
 			const userPattern = `%${userSearch}%`;
@@ -65,12 +71,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					method: apiLog.method,
 					route: apiLog.route,
 					status: apiLog.status,
+					ipAddress: apiLog.ipAddress,
 					payload: apiLog.payload,
 					errorMessage: apiLog.errorMessage,
 					createdAt: apiLog.createdAt,
 					user: {
 						id: user.id,
-						username: user.username
+						username: user.username,
+						role: user.role
 					}
 				})
 				.from(apiLog)
@@ -83,11 +91,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					method: apiLog.method,
 					route: apiLog.route,
 					status: apiLog.status,
+					ipAddress: apiLog.ipAddress,
 					payload: apiLog.payload,
 					createdAt: apiLog.createdAt,
 					user: {
 						id: user.id,
-						username: user.username
+						username: user.username,
+						role: user.role
 					}
 				})
 				.from(apiLog)

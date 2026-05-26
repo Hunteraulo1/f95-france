@@ -66,18 +66,21 @@ Arrêter la DB:
 npm run db:dev:down
 ```
 
-Puis pousser le schéma:
+### Évolution du schéma (obligatoire)
 
-```sh
-npm run db:push
-```
+La source de vérité est `src/lib/server/db/schema.ts`. **Ne pas** écrire de fichiers SQL à la main dans `drizzle/` ni utiliser `db:push`.
+
+1. Modifier `src/lib/server/db/schema.ts`
+2. Générer la migration : `bun run db:generate`
+3. Relire le SQL généré dans `drizzle/`
+4. Appliquer : `bun run db:migrate`
+
+Première install sur une base vide : `bun run db:migrate` applique tout le journal.
 
 Après sync prod → dev (`bun run db:sync:prod-to-dev`), les migrations Drizzle sont appliquées automatiquement.
 
-**Production :** après chaque déploiement qui ajoute des colonnes au schéma, exécuter sur la base prod :
+**Production :** après chaque déploiement qui modifie le schéma :
 
 ```sh
 bun run db:migrate
 ```
-
-(Sans la migration `0016`, les pages `submit` / `submits` / `game/[id]` ne chargent pas les soumissions — la sidebar et la recherche continuent de fonctionner.)

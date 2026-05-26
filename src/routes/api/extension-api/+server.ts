@@ -181,7 +181,13 @@ const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À 
 
 export const GET: RequestHandler = async ({ url, request, locals, cookies }) => {
 	const gateUser = await resolveUserForExtensionApiOriginGate(locals, cookies);
-	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+	if (
+		!isExtensionApiCallerAllowed(request, gateUser, {
+			authenticatedViaApiKey: locals.authenticatedViaApiKey,
+			apiKeyRouteScope: locals.apiKeyRouteScope ?? null,
+			permissions: locals.permissions
+		})
+	) {
 		return json(
 			{ error: "Accès interdit à l'API extension." },
 			{ status: 403, headers: corsHeaders }
@@ -271,7 +277,7 @@ export const GET: RequestHandler = async ({ url, request, locals, cookies }) => 
 				domain: mapDomain(row.game.website),
 				hostname: mapHostname(row.game.website),
 				name: row.game.name,
-				version: row.game.gameVersion ?? '',
+				version: row.translation.version ?? row.game.gameVersion ?? null,
 				tversion: row.translation.tversion,
 				tname: mapTName(row.translation.tname),
 				description: row.game.description ?? null,

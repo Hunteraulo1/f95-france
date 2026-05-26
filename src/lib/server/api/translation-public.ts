@@ -1,7 +1,7 @@
 import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
 import { db } from '$lib/server/db';
 import { game, translator } from '$lib/server/db/schema';
-import { strTrim } from '$lib/server/translation-notify-rules';
+import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { inArray } from 'drizzle-orm';
 
 type TranslatorFkRow = { id: string; name: string };
@@ -38,6 +38,20 @@ export function effectiveTranslationVersion(
 	if (ref) return ref;
 	const gv = strTrim(gameVersion);
 	return gv || null;
+}
+
+/** Traduction « pas à jour » : hors intégrée et Trad. Ver. différente de la version de référence. */
+export function isTranslationOutdated(
+	row: {
+		version: string | null;
+		tversion: string;
+		tname: string;
+	},
+	gameVersion: string | null | undefined
+): boolean {
+	if (tradVerIndicatesIntegrated(row.tversion, row.tname)) return false;
+	const referenceVersion = effectiveTranslationVersion(row.version, gameVersion) ?? '';
+	return referenceVersion !== strTrim(row.tversion);
 }
 
 async function loadGameVersionsByGameIds(gameIds: string[]): Promise<Map<string, string | null>> {

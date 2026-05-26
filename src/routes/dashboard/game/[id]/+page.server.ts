@@ -1,6 +1,13 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { assertGameManageAccess } from '$lib/server/game-manage-guard';
+import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 import { hasPermission } from '$lib/server/permissions';
+import {
+	assertRoleEditMode,
+	getRoleEditMode,
+	resolveShouldCreateSubmissionForUser
+} from '$lib/server/role-edit-mode';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { error, isHttpError } from '@sveltejs/kit';
@@ -8,9 +15,9 @@ import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		throw error(401, 'Non authentifié');
+	await assertGameManageAccess(locals);
+	if (locals.user?.role) {
+		await assertRoleEditMode(locals.user.role);
 	}
 
 	const gameId = params.id;
@@ -125,13 +132,37 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 					.where(submissionWhere)
 					.orderBy(desc(table.submission.createdAt));
 
+		const role = locals.user?.role;
+		const directModeActive = locals.user?.directMode ?? true;
+		const hasGamesManage = hasPermission(locals, 'games.manage');
+		const roleEditMode = hasGamesManage && role ? await getRoleEditMode(role) : null;
+		const usesSubmission = locals.user
+			? await resolveShouldCreateSubmissionForUser({
+					roleSlug: role ?? 'user',
+					userDirectMode: directModeActive
+				})
+			: true;
+		const warnUnknownTranslators =
+			hasGamesManage &&
+			(roleEditMode === 'direct' || (roleEditMode === 'user_direct_mode' && directModeActive));
+		let addContributorMode: AddTranslatorMode | false = false;
+		if (role === 'translator' || usesSubmission) {
+			addContributorMode = 'submission';
+		} else if (hasGamesManage) {
+			addContributorMode = warnUnknownTranslators ? 'direct' : 'submission';
+		}
+
 		return {
 			game: game[0],
 			translations,
 			translators,
 			pendingSubmissions,
 			user: locals.user,
-			canManageGameAutoCheck: hasPermission(locals.permissions, 'games.auto_check')
+			canManageGameAutoCheck: hasPermission(locals, 'games.auto_check'),
+			canUseSilentMode: hasPermission(locals, 'games.silent_mode'),
+			canReviewSubmissions: hasPermission(locals, 'submissions.review'),
+			canShowInternalIds: hasPermission(locals, 'content.view_ids'),
+			addContributorMode
 		};
 	} catch (err) {
 		if (isHttpError(err)) {

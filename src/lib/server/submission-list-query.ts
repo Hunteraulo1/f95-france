@@ -15,8 +15,8 @@ export type SubmissionListRow = {
 	translationId: string | null;
 	createdAt: Date;
 	updatedAt: Date;
-	user: { id: string; username: string; avatar: string | null } | null;
-	openedByUser: { id: string; username: string; avatar: string | null } | null;
+	user: { id: string; username: string; avatar: string | null; role: string } | null;
+	openedByUser: { id: string; username: string; avatar: string | null; role: string } | null;
 	game: {
 		id: string;
 		name: string;
@@ -54,12 +54,14 @@ export async function fetchSubmissionListRows(options: {
 				user: {
 					id: table.user.id,
 					username: table.user.username,
-					avatar: table.user.avatar
+					avatar: table.user.avatar,
+					role: table.user.role
 				},
 				openedByUser: {
 					id: submissionOpenedByUser.id,
 					username: submissionOpenedByUser.username,
-					avatar: submissionOpenedByUser.avatar
+					avatar: submissionOpenedByUser.avatar,
+					role: submissionOpenedByUser.role
 				},
 				game: {
 					id: table.game.id,
@@ -106,7 +108,8 @@ export async function fetchSubmissionListRows(options: {
 			user: {
 				id: table.user.id,
 				username: table.user.username,
-				avatar: table.user.avatar
+				avatar: table.user.avatar,
+				role: table.user.role
 			},
 			game: {
 				id: table.game.id,

@@ -1,4 +1,3 @@
-import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
@@ -12,13 +11,19 @@ import {
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import {
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
+} from '$lib/server/game-manage-guard';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
@@ -47,10 +52,7 @@ function parseOptionalBoolean(value: unknown): boolean | undefined {
 }
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const threadIdCheck = url.searchParams.get('threadIdCheck');
 	if (threadIdCheck !== null) {
@@ -133,19 +135,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	try {
 		const body = await request.json();
-		const { game, translation, directMode } = body;
+		const { game, translation, directMode, pendingNewTranslators } = body;
 
 		// Extraire les données du jeu
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
 		const scrapeUnchanged = Boolean(game?.scrapeUnchanged);
-		const canSetAutoCheck = hasPermission(locals.permissions, 'games.auto_check');
+		const canSetAutoCheck = hasPermission(locals, 'games.auto_check');
 		const scrapeDefaultAutoCheck = gameAutoCheckEnabledForWebsite(website) && scrapeUnchanged;
 		const nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 			website,
@@ -254,26 +253,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const explicitDirectMode = parseOptionalBoolean(directMode);
-		let shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+		const explicitDirectMode = parseRequestDirectMode(directMode);
+		const writeModeParams = {
 			roleSlug: userRole,
-			userDirectMode: currentUser.directMode ?? true
-		});
-		// Priorité au choix explicite du client (paramètres utilisateur / formulaire).
-		if (explicitDirectMode === true) {
-			shouldCreateSubmission = false;
-		} else if (explicitDirectMode === false) {
-			shouldCreateSubmission = true;
-		}
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: explicitDirectMode
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
+		const pendingTranslatorNames = Array.isArray(pendingNewTranslators)
+			? pendingNewTranslators
+					.filter((n): n is string => typeof n === 'string')
+					.map((n) => n.trim())
+					.filter((n) => n.length > 0)
+			: [];
+
+		if (writeMode === 'submission') {
 			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
 			await createGameSubmission(
 				currentUser.id,
@@ -308,7 +305,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							proofreaderId: translation.proofreaderId || null,
 							ac: nextTranslationAc
 						}
-					: undefined
+					: undefined,
+				pendingTranslatorNames.length > 0 ? pendingTranslatorNames : undefined
 			);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
@@ -322,7 +320,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
+		if (pendingTranslatorNames.length > 0) {
+			return json(
+				{
+					error:
+						'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
+				},
+				{ status: 400 }
+			);
+		}
+
+		await assertDirectGameWriteAllowed(writeModeParams);
+
+		// Mode direct (rôle + permission vérifiés côté serveur)
 		const shouldCreateTranslation = Boolean(translation) && !translationIsNoTranslation;
 		const normalizedTranslationTversion = shouldCreateTranslation
 			? normalizeTranslationTversion(translationTname, translation?.tversion)
