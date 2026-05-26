@@ -35,7 +35,7 @@ import {
 	assertCanManageRole,
 	filterPermissionsAssignableByActor,
 	getActorPermissionSet,
-	isRolesManagementSuperadmin
+	canAssignAllRolePermissions
 } from '$lib/server/role-management-guard';
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -117,13 +117,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		? [...selectedPermissionsEffective]
 		: await listRolePermissionsStored(selectedSlug);
 
-	const isSuperadmin = isRolesManagementSuperadmin(locals);
+	const canAssignAll = canAssignAllRolePermissions(locals);
 	const actorPermissions = await getActorPermissionSet(locals);
 
 	const rolesWithAccess = await Promise.all(
 		roles.map(async (r) => {
 			const effectivePerms = effectivePermsBySlug[r.slug] ?? [];
-			const access = isSuperadmin
+			const access = canAssignAll
 				? ({ allowed: true } as const)
 				: await assertCanManageRole(locals, r.slug, effectivePerms);
 			return enrichRoleRow(r, effectivePerms, userCounts, access);
@@ -134,7 +134,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.map(([group, items]) => ({
 			group,
 			items:
-				isSelectedRoleSuperadmin || isSuperadmin
+				isSelectedRoleSuperadmin || canAssignAll
 					? items
 					: items.filter((p) => actorPermissions.has(p.key))
 		}))
@@ -153,7 +153,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			: null;
 
 	return {
-		isSuperadmin,
+		canAssignAllPermissions: canAssignAll,
 		isSelectedRoleSuperadmin,
 		roles: rolesWithAccess,
 		noticeMessage,
@@ -209,7 +209,7 @@ export const actions: Actions = {
 			return fail(409, { message: 'Un rôle avec cet identifiant existe déjà' });
 		}
 
-		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const canAssignAll = canAssignAllRolePermissions(locals);
 		const actorPermissions = await getActorPermissionSet(locals);
 		const initialKeys = [
 			'dashboard.view',
@@ -220,9 +220,9 @@ export const actions: Actions = {
 		const { keys: assignableInitial, rejected } = filterPermissionsAssignableByActor(
 			actorPermissions,
 			initialKeys,
-			isSuperadmin
+			canAssignAll
 		);
-		if (!isSuperadmin && rejected.length > 0) {
+		if (!canAssignAll && rejected.length > 0) {
 			return fail(403, {
 				message: 'Impossible de créer un rôle : permissions de base indisponibles pour votre compte'
 			});
@@ -325,22 +325,22 @@ export const actions: Actions = {
 			.map((v) => String(v))
 			.filter((k): k is PermissionKey => PERMISSION_CATALOG.some((p) => p.key === k));
 
-		const isSuperadmin = isRolesManagementSuperadmin(locals);
+		const canAssignAll = canAssignAllRolePermissions(locals);
 		const actorPermissions = await getActorPermissionSet(locals);
 		const { keys, rejected } = filterPermissionsAssignableByActor(
 			actorPermissions,
 			requested,
-			isSuperadmin
+			canAssignAll
 		);
 
-		if (!isSuperadmin && rejected.length > 0) {
+		if (!canAssignAll && rejected.length > 0) {
 			return fail(403, {
 				message: 'Vous ne pouvez pas attribuer des droits que vous ne possédez pas'
 			});
 		}
 
 		const storedKeys = await listRolePermissionsStored(slug);
-		const preservedKeys = isSuperadmin
+		const preservedKeys = canAssignAll
 			? []
 			: storedKeys.filter((key) => !actorPermissions.has(key));
 		const keysToSave = enforcePermissionDependencies([...new Set([...preservedKeys, ...keys])]);

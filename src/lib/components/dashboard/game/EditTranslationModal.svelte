@@ -36,7 +36,7 @@
 		editTranslationSilentMode: boolean;
 		extraTranslators: TranslatorOption[];
 		pendingNewTranslators: string[];
-		isSuperAdmin: boolean;
+		canShowInternalIds: boolean;
 		canManageGameAutoCheck: boolean;
 		canUseSilentMode: boolean;
 		canManuallyEditTranslationAc: boolean;
@@ -57,7 +57,7 @@
 		editTranslationSilentMode = $bindable(false),
 		extraTranslators = $bindable<TranslatorOption[]>([]),
 		pendingNewTranslators = $bindable<string[]>([]),
-		isSuperAdmin,
+		canShowInternalIds,
 		canManageGameAutoCheck,
 		canUseSilentMode,
 		canManuallyEditTranslationAc,
@@ -82,7 +82,7 @@
 			</div>
 
 			<div class="space-y-5 overflow-y-auto px-8">
-				{#if isSuperAdmin}
+				{#if canShowInternalIds}
 					<div class="mb-4">
 						<button
 							type="button"

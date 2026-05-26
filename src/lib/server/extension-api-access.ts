@@ -1,3 +1,4 @@
+import { permissionGranted } from '$lib/permissions/check';
 import { EXTENSION_ONLY_API_ROUTE } from '$lib/server/api-keys';
 import { getUserById } from '$lib/server/auth';
 import type { User } from '$lib/server/db/schema';
@@ -41,6 +42,8 @@ export function isExtensionClientRequest(request: Request): boolean {
 export type ExtensionApiGateContext = {
 	authenticatedViaApiKey?: boolean;
 	apiKeyRouteScope?: string | null;
+	/** Permissions effectives du compte (session) pour le contournement origine. */
+	permissions?: readonly string[];
 };
 
 /**
@@ -71,7 +74,7 @@ export async function resolveUserForExtensionApiOriginGate(
 
 /**
  * Accès à `/api/extension-api` :
- * - superadmin effectif ;
+ * - compte avec `dev.panel` (contournement origine) ;
  * - clé API restreinte à cette route ;
  * - session avec origine extension / forum autorisée.
  */
@@ -80,7 +83,9 @@ export function isExtensionApiCallerAllowed(
 	user: User | null,
 	ctx?: ExtensionApiGateContext
 ): boolean {
-	if (user?.role === 'superadmin') return true;
+	if (user && permissionGranted(user.role, ctx?.permissions, 'dev.panel')) {
+		return true;
+	}
 
 	if (ctx?.authenticatedViaApiKey && ctx.apiKeyRouteScope === EXTENSION_ONLY_API_ROUTE) {
 		return true;

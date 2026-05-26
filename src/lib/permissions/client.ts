@@ -1,7 +1,7 @@
 import { user, userPermissions } from '$lib/stores';
 import { derived } from 'svelte/store';
 import type { PermissionKey } from './catalog';
-import { permissionGranted } from './check';
+import { anyPermissionGranted, permissionGranted } from './check';
 
 type PermissionChecker = (key: PermissionKey | string) => boolean;
 
@@ -11,4 +11,15 @@ export const hasPermission = derived<[typeof user, typeof userPermissions], Perm
 	([u, perms]) =>
 		(key: PermissionKey | string) =>
 			permissionGranted(u?.role, perms, key)
+);
+
+/** Au moins une des permissions (bypass superadmin). */
+export const hasAnyPermission = derived<
+	[typeof user, typeof userPermissions],
+	(keys: readonly (PermissionKey | string)[]) => boolean
+>(
+	[user, userPermissions],
+	([u, perms]) =>
+		(keys: readonly (PermissionKey | string)[]) =>
+			anyPermissionGranted(u?.role, perms, keys)
 );

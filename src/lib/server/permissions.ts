@@ -6,7 +6,7 @@ import {
 	SYSTEM_ROLE_PERMISSIONS,
 	type PermissionKey
 } from '$lib/permissions/catalog';
-import { permissionGranted } from '$lib/permissions/check';
+import { anyPermissionGranted, permissionGranted } from '$lib/permissions/check';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import { SYSTEM_ROLE_BADGE_STYLES } from '$lib/permissions/role-badge-style';
 import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
@@ -68,6 +68,32 @@ export async function getPermissionsForRole(roleSlug: string): Promise<string[]>
 /** Vérifie une permission pour la requête courante (bypass superadmin). */
 export function hasPermission(locals: App.Locals, key: PermissionKey | string): boolean {
 	return permissionGranted(locals.user?.role, locals.permissions, key);
+}
+
+/** Au moins une des permissions (bypass superadmin). */
+export function hasAnyPermission(
+	locals: App.Locals,
+	keys: readonly (PermissionKey | string)[]
+): boolean {
+	return anyPermissionGranted(locals.user?.role, locals.permissions, keys);
+}
+
+/** IDs utilisateurs ayant une permission (rôles DB + superadmin). */
+export async function getUserIdsWithPermission(key: PermissionKey | string): Promise<string[]> {
+	const roleRows = await db
+		.selectDistinct({ roleSlug: table.appRolePermission.roleSlug })
+		.from(table.appRolePermission)
+		.where(eq(table.appRolePermission.permissionKey, key));
+
+	const roleSlugs = new Set(roleRows.map((r) => r.roleSlug));
+	roleSlugs.add('superadmin');
+
+	const users = await db
+		.select({ id: table.user.id })
+		.from(table.user)
+		.where(inArray(table.user.role, [...roleSlugs]));
+
+	return users.map((u) => u.id);
 }
 
 /** Vérifie une permission pour un autre utilisateur (hors `locals`). */

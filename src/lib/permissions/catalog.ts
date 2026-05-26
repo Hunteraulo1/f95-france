@@ -25,6 +25,7 @@ export const PERMISSION_KEYS = [
 	'config.edit',
 	'maintenance.manage',
 	'logs.view',
+	'content.view_ids',
 	'dev.panel',
 	'dev.impersonate',
 	'maintenance.bypass'
@@ -187,6 +188,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Système'
 	},
 	{
+		key: 'content.view_ids',
+		label: 'Identifiants internes',
+		description: 'Afficher et copier les UUID (jeux, traductions, soumissions)',
+		group: 'Modération'
+	},
+	{
 		key: 'dev.panel',
 		label: 'Panel développeur',
 		description: 'Outils de développement internes',
@@ -231,7 +238,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'submissions.review',
 		'translators.manage',
 		'users.manage',
-		'config.edit'
+		'config.edit',
+		'content.view_ids'
 	],
 	superadmin: PERMISSION_KEYS
 };

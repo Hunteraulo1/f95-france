@@ -1,3 +1,4 @@
+import { permissionGranted } from '$lib/permissions/check';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
@@ -430,13 +431,16 @@ export async function createApiKey(input: {
 	return { id, rawKey, keyPrefix };
 }
 
-export function canManageAllApiKeys(role: string | undefined): boolean {
-	return role === 'admin' || role === 'superadmin';
+export function canManageAllApiKeys(actor: {
+	role: string | undefined;
+	permissions?: readonly string[] | undefined;
+}): boolean {
+	return permissionGranted(actor.role, actor.permissions, 'api.management');
 }
 
 export async function revokeApiKeyForActor(
 	keyId: string,
-	actor: { userId: string; role: string | undefined }
+	actor: { userId: string; role: string | undefined; permissions?: readonly string[] }
 ): Promise<boolean> {
 	const [meta] = await db
 		.select({ kind: table.apiKey.kind })
@@ -447,7 +451,7 @@ export async function revokeApiKeyForActor(
 		return false;
 	}
 
-	if (canManageAllApiKeys(actor.role)) {
+	if (canManageAllApiKeys(actor)) {
 		return revokeApiKey(keyId);
 	}
 

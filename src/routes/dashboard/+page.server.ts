@@ -21,11 +21,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return {
 			stats: null,
 			userStats: null,
-			isAdmin: false
+			canReviewSubmissions: false
 		};
 	}
 
-	const isAdmin = hasPermission(locals, 'submissions.review');
+	const canReviewSubmissions = hasPermission(locals, 'submissions.review');
 
 	// Statistiques générales (pour tous les utilisateurs)
 	let userStats;
@@ -116,7 +116,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	// Statistiques administrateur
 	let stats = null;
-	if (isAdmin) {
+	if (canReviewSubmissions) {
 		try {
 			// Nombre total de jeux
 			const totalGamesResult = await db
@@ -186,6 +186,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		stats,
 		userStats,
-		isAdmin
+		canReviewSubmissions
 	};
 };

@@ -2,6 +2,7 @@ import { getEffectiveConfig } from '$lib/server/app-config';
 import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { getGoogleAuthUrl } from '$lib/server/google-oauth';
 import { GOOGLE_OAUTH_STATE_COOKIE } from '$lib/server/google-oauth-state';
+import { assertPermission } from '$lib/server/permissions';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -9,9 +10,7 @@ export const GET: RequestHandler = async ({ url, locals, cookies, request }) => 
 	if (!locals.user) {
 		throw redirect(302, '/dashboard/login');
 	}
-	if (locals.user.role !== 'superadmin') {
-		throw new Error('Accès non autorisé (superadmin requis)');
-	}
+	assertPermission(locals, 'config.edit', 'Accès non autorisé (configuration requise)');
 
 	const config = await getEffectiveConfig();
 	if (!config?.googleOAuthClientId) {

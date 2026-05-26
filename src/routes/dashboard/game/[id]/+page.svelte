@@ -1,11 +1,11 @@
 <script lang="ts">
+	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 	import AddTranslationModal from '$lib/components/dashboard/game/AddTranslationModal.svelte';
 	import DeleteGameModal from '$lib/components/dashboard/game/DeleteGameModal.svelte';
 	import DeleteTranslationModal from '$lib/components/dashboard/game/DeleteTranslationModal.svelte';
 	import EditGameModal from '$lib/components/dashboard/game/EditGameModal.svelte';
 	import EditTranslationModal from '$lib/components/dashboard/game/EditTranslationModal.svelte';
 	import GameImagePreviewModal from '$lib/components/dashboard/game/GameImagePreviewModal.svelte';
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 	import { hasPermission } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
@@ -15,14 +15,14 @@
 	} from '$lib/utils/f95-checker-alignment';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import {
-		getTranslationProgressLabel,
-		getTranslationTypeLabel
-	} from '$lib/utils/game-translation-labels';
-	import {
 		gameImageRequiredForEdit,
 		normalizeGameImageForStorage
 	} from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import {
+		getTranslationProgressLabel,
+		getTranslationTypeLabel
+	} from '$lib/utils/game-translation-labels';
 	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
@@ -47,22 +47,22 @@
 	const uniqueGameEngines = $derived([...new Set(translations.map((t) => t.gameType))]);
 	const translators = $derived(data.translators);
 	const currentUser = $derived(data.user);
-	const isSuperAdmin = $derived(currentUser?.role === 'superadmin');
-	const isAdmin = $derived(currentUser?.role === 'admin' || currentUser?.role === 'superadmin');
+	const canReviewSubmissions = $derived(
+		data.canReviewSubmissions === true || $hasPermission('submissions.review')
+	);
+	const canShowInternalIds = $derived(
+		data.canShowInternalIds === true || $hasPermission('content.view_ids')
+	);
+	const hasGamesManage = $derived($hasPermission('games.manage'));
 
 	type FormTranslator = (typeof data.translators)[number];
 	let extraTranslators = $state<FormTranslator[]>([]);
 	let pendingNewTranslators = $state<string[]>([]);
 
-	const usesContributorSubmission = $derived(
-		currentUser?.role === 'translator' || (isAdmin && currentUser?.directMode === false)
+	const addContributorMode = $derived(
+		(data.addContributorMode ?? false) as AddTranslatorMode | false
 	);
-
-	const addContributorMode = $derived.by((): AddTranslatorMode | false => {
-		if (usesContributorSubmission) return 'submission';
-		if (isAdmin) return 'direct';
-		return false;
-	});
+	const usesContributorSubmission = $derived(addContributorMode === 'submission');
 	const canManageGameAutoCheck = $derived(
 		data.canManageGameAutoCheck === true || $hasPermission('games.auto_check')
 	);
@@ -277,7 +277,7 @@
 	};
 
 	const openAddTranslationModal = () => {
-		const defaultTranslatorInput = isAdmin ? '' : getCurrentUserDefaultTranslatorInput();
+		const defaultTranslatorInput = hasGamesManage ? '' : getCurrentUserDefaultTranslatorInput();
 		addTranslationSilentMode = false;
 		newTranslation = {
 			translationName: '',
@@ -1039,7 +1039,7 @@
 								{/if}
 							</ul>
 						</div>
-						{#if isAdmin}
+						{#if canReviewSubmissions}
 							<a class="btn btn-outline btn-sm" href="/dashboard/submits?status=pending">
 								Voir les soumissions
 							</a>
@@ -1151,7 +1151,7 @@
 									Auto-check jeu : {game.gameAutoCheck !== false ? 'activé' : 'désactivé'}
 								</span>
 							{/if}
-							{#if isSuperAdmin}
+							{#if canShowInternalIds}
 								<button
 									type="button"
 									class="badge max-w-52 overflow-hidden badge-outline badge-lg hover:bg-base-200 sm:max-w-none"
@@ -1374,9 +1374,9 @@
 	{canManageGameAutoCheck}
 	{canUseSilentMode}
 	{translationAcUiAllowed}
-	addContributorMode={addContributorMode}
-	addTranslationAutoCheckPreview={addTranslationAutoCheckPreview}
-	addTranslationTversionLocked={addTranslationTversionLocked}
+	{addContributorMode}
+	{addTranslationAutoCheckPreview}
+	{addTranslationTversionLocked}
 	onClose={closeAddTranslationModal}
 	onSubmit={addTranslation}
 />
@@ -1393,15 +1393,15 @@
 	bind:editTranslationSilentMode
 	bind:extraTranslators
 	bind:pendingNewTranslators
-	{isSuperAdmin}
+	{canShowInternalIds}
 	{canManageGameAutoCheck}
 	{canUseSilentMode}
 	{canManuallyEditTranslationAc}
 	{canShowTranslationAcCheckbox}
-	editTranslationLinkNotRequired={editTranslationLinkNotRequired}
-	editTranslationVersionsLockedByAc={editTranslationVersionsLockedByAc}
-	editTranslationReferenceVersionLockedByAc={editTranslationReferenceVersionLockedByAc}
-	addContributorMode={addContributorMode}
+	{editTranslationLinkNotRequired}
+	{editTranslationVersionsLockedByAc}
+	{editTranslationReferenceVersionLockedByAc}
+	{addContributorMode}
 	onClose={closeEditTranslationModal}
 	onSubmit={editTranslation}
 />
@@ -1412,7 +1412,7 @@
 	bind:editingGame
 	bind:showImagePreview={showEditGameImagePreview}
 	{canManageGameAutoCheck}
-	editGameAutoCheckAllowed={editGameAutoCheckAllowed}
+	{editGameAutoCheckAllowed}
 	requireImage={requireEditGameImage}
 	onClose={closeEditGameModal}
 	onSubmit={editGame}

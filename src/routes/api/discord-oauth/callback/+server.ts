@@ -87,15 +87,16 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 			});
 			const hasTranslatorRole = roleIds.includes(translatorRoleId);
 			const currentRole = currentUser?.role ?? 'user';
-			const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
+			const isStaffAccount =
+				locals.user != null && (locals.permissions?.includes('users.manage') ?? false);
 
-			if (!isAdminLike && hasTranslatorRole && currentRole === 'user') {
+			if (!isStaffAccount && hasTranslatorRole && currentRole === 'user') {
 				await db
 					.update(table.user)
 					.set({ role: 'translator' })
 					.where(eq(table.user.id, locals.user.id));
 			}
-			if (!isAdminLike && !hasTranslatorRole && currentRole === 'translator') {
+			if (!isStaffAccount && !hasTranslatorRole && currentRole === 'translator') {
 				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, locals.user.id));
 			}
 		}

@@ -173,9 +173,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 					path.endsWith('.css') ||
 					path.endsWith('.js') ||
 					path.endsWith('.woff2');
-				const isSuperAdmin = event.locals.permissions?.includes('maintenance.bypass') ?? false;
+				const canBypassMaintenance =
+					event.locals.permissions?.includes('maintenance.bypass') ?? false;
 
-				if (isMaintenancePage && !isSuperAdmin) {
+				if (isMaintenancePage && !canBypassMaintenance) {
 					const response = await resolve(event);
 					const headers = new Headers(response.headers);
 					headers.set('retry-after', '600');
@@ -189,7 +190,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					);
 				}
 
-				if (!isSuperAdmin && !isAuthException && !isMaintenancePage && !isStaticAsset) {
+				if (!canBypassMaintenance && !isAuthException && !isMaintenancePage && !isStaticAsset) {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
 						const maintenanceUrl = new URL('/maintenance', event.url.origin);

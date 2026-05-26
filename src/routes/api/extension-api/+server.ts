@@ -184,7 +184,8 @@ export const GET: RequestHandler = async ({ url, request, locals, cookies }) => 
 	if (
 		!isExtensionApiCallerAllowed(request, gateUser, {
 			authenticatedViaApiKey: locals.authenticatedViaApiKey,
-			apiKeyRouteScope: locals.apiKeyRouteScope ?? null
+			apiKeyRouteScope: locals.apiKeyRouteScope ?? null,
+			permissions: locals.permissions
 		})
 	) {
 		return json(

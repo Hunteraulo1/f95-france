@@ -120,7 +120,7 @@
 			</button>
 		{/if}
 	</label>
-	{#if data.isAdmin}
+	{#if data.canManageTranslators}
 		<button class="btn btn-primary" onclick={() => (showAddModal = true)}>
 			Ajouter un traducteur
 		</button>
@@ -180,7 +180,7 @@
 						{/each}
 					</td>
 					<td>
-						{#if data.isAdmin || translator.userId === data.currentUserId}
+						{#if data.canManageTranslators || translator.userId === data.currentUserId}
 							<button
 								class="btn btn-sm btn-primary"
 								onclick={() => {
@@ -189,7 +189,7 @@
 									showEditModal = true;
 								}}
 							>
-								{data.isAdmin ? 'Modifier' : 'Proposer pages'}
+								{data.canManageTranslators ? 'Modifier' : 'Proposer pages'}
 							</button>
 						{/if}
 					</td>
@@ -209,7 +209,7 @@
 	</div>
 </div>
 
-{#if data.isAdmin && showAddModal}
+{#if data.canManageTranslators && showAddModal}
 	<DaisyDashboardModal
 		open={showAddModal}
 		title="Ajouter un traducteur"
@@ -340,7 +340,7 @@
 				<form
 					id="edit-translator-form"
 					method="POST"
-					action={data.isAdmin ? '?/editTranslator' : '?/requestTranslatorPagesUpdate'}
+					action={data.canManageTranslators ? '?/editTranslator' : '?/requestTranslatorPagesUpdate'}
 					use:enhance={createFormEnhance({
 						onStart: () => {
 							editError = null;
@@ -354,7 +354,7 @@
 					})}
 				>
 					<input type="hidden" name="id" value={selectedTranslator.id} />
-					{#if data.isAdmin}
+					{#if data.canManageTranslators}
 						<div class="form-control w-full">
 							<label for="edit-name" class="label">
 								<span class="label-text">Nom du traducteur</span>
@@ -453,7 +453,7 @@
 		{#snippet footer()}
 			<button type="button" class="btn" onclick={() => (showEditModal = false)}>Annuler</button>
 			<button type="submit" form="edit-translator-form" class="btn btn-primary">
-				{data.isAdmin ? 'Modifier' : 'Soumettre'}
+				{data.canManageTranslators ? 'Modifier' : 'Soumettre'}
 			</button>
 		{/snippet}
 	</DaisyDashboardModal>

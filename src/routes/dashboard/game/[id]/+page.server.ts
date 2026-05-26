@@ -1,8 +1,13 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
+import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 import { hasPermission } from '$lib/server/permissions';
-import { assertRoleEditMode } from '$lib/server/role-edit-mode';
+import {
+	assertRoleEditMode,
+	getRoleEditMode,
+	resolveShouldCreateSubmissionForUser
+} from '$lib/server/role-edit-mode';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
 import { error, isHttpError } from '@sveltejs/kit';
@@ -127,6 +132,26 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 					.where(submissionWhere)
 					.orderBy(desc(table.submission.createdAt));
 
+		const role = locals.user?.role;
+		const directModeActive = locals.user?.directMode ?? true;
+		const hasGamesManage = hasPermission(locals, 'games.manage');
+		const roleEditMode = hasGamesManage && role ? await getRoleEditMode(role) : null;
+		const usesSubmission = locals.user
+			? await resolveShouldCreateSubmissionForUser({
+					roleSlug: role ?? 'user',
+					userDirectMode: directModeActive
+				})
+			: true;
+		const warnUnknownTranslators =
+			hasGamesManage &&
+			(roleEditMode === 'direct' || (roleEditMode === 'user_direct_mode' && directModeActive));
+		let addContributorMode: AddTranslatorMode | false = false;
+		if (role === 'translator' || usesSubmission) {
+			addContributorMode = 'submission';
+		} else if (hasGamesManage) {
+			addContributorMode = warnUnknownTranslators ? 'direct' : 'submission';
+		}
+
 		return {
 			game: game[0],
 			translations,
@@ -134,7 +159,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			pendingSubmissions,
 			user: locals.user,
 			canManageGameAutoCheck: hasPermission(locals, 'games.auto_check'),
-			canUseSilentMode: hasPermission(locals, 'games.silent_mode')
+			canUseSilentMode: hasPermission(locals, 'games.silent_mode'),
+			canReviewSubmissions: hasPermission(locals, 'submissions.review'),
+			canShowInternalIds: hasPermission(locals, 'content.view_ids'),
+			addContributorMode
 		};
 	} catch (err) {
 		if (isHttpError(err)) {

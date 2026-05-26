@@ -102,7 +102,8 @@ export const actions: Actions = {
 
 		const ok = await revokeApiKeyForActor(id, {
 			userId: locals.user!.id,
-			role: locals.user!.role
+			role: locals.user!.role,
+			permissions: locals.permissions
 		});
 		if (!ok) {
 			return fail(400, {

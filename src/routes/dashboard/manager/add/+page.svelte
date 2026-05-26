@@ -117,7 +117,7 @@
 	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
-	const isAdmin = $derived($hasPermission('users.manage'));
+	const canManageUsers = $derived($hasPermission('users.manage'));
 	const canUseDevTools = $derived($hasPermission('dev.panel'));
 
 	let pendingNewTranslators = $state<string[]>([]);
@@ -227,7 +227,7 @@
 		if (prefilledTranslatorApplied) return;
 		const prefilled = data.prefilledTranslatorName;
 		if (
-			!isAdmin &&
+			!canManageUsers &&
 			typeof prefilled === 'string' &&
 			prefilled.trim().length > 0 &&
 			!game.translatorId

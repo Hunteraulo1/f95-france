@@ -2,7 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { SubmissionModalItem } from '$lib/components/dashboard/submissions/submission-modal-types';
-	import { newToast, roleBadgeStyles, user } from '$lib/stores';
+	import { hasPermission } from '$lib/permissions/client';
+	import { newToast, roleBadgeStyles } from '$lib/stores';
 	import { roleUsernameClass } from '$lib/utils/role-display';
 	import { getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 
@@ -82,7 +83,7 @@
 					{statusBadge.label}
 				</div>
 			{/if}
-			{#if $user?.role === 'superadmin'}
+			{#if $hasPermission('content.view_ids')}
 				<button
 					type="button"
 					class="badge max-w-52 overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200 sm:max-w-none"

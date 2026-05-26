@@ -1,9 +1,10 @@
 import { isSuperadminRole, type PermissionKey } from '$lib/permissions/catalog';
 import { systemRoleRank } from '$lib/permissions/sort-roles';
-import { getPermissionsForRole } from '$lib/server/permissions';
+import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
 
-export function isRolesManagementSuperadmin(locals: App.Locals): boolean {
-	return locals.user?.role === 'superadmin';
+/** Peut attribuer toutes les permissions à un rôle (dont droits admin). */
+export function canAssignAllRolePermissions(locals: App.Locals): boolean {
+	return hasPermission(locals, 'users.assign_admin');
 }
 
 export async function getActorPermissionSet(locals: App.Locals): Promise<Set<string>> {
@@ -33,7 +34,7 @@ export async function assertCanManageRole(
 				'Le rôle Super administrateur possède tous les droits et ne peut pas être modifié depuis cette page'
 		};
 	}
-	if (isRolesManagementSuperadmin(locals)) return { allowed: true };
+	if (canAssignAllRolePermissions(locals)) return { allowed: true };
 	if (!locals.user) return { allowed: false, message: 'Non connecté' };
 
 	if (locals.user.role === targetSlug) {
@@ -67,9 +68,9 @@ export async function assertCanManageRole(
 export function filterPermissionsAssignableByActor(
 	actorPermissions: Set<string>,
 	requested: string[],
-	isSuperadmin: boolean
+	canAssignAll: boolean
 ): { keys: PermissionKey[]; rejected: string[] } {
-	if (isSuperadmin) {
+	if (canAssignAll) {
 		return { keys: requested as PermissionKey[], rejected: [] };
 	}
 	const keys = requested.filter((k) => actorPermissions.has(k)) as PermissionKey[];

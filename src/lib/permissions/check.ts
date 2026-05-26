@@ -9,3 +9,14 @@ export function permissionGranted(
 	if (isSuperadminRole(roleSlug)) return true;
 	return permissions?.includes(key) ?? false;
 }
+
+/** Au moins une des permissions listées (bypass superadmin). */
+export function anyPermissionGranted(
+	roleSlug: string | null | undefined,
+	permissions: readonly string[] | undefined,
+	keys: readonly (PermissionKey | string)[]
+): boolean {
+	if (isSuperadminRole(roleSlug)) return true;
+	if (!permissions?.length) return false;
+	return keys.some((key) => permissions.includes(key));
+}

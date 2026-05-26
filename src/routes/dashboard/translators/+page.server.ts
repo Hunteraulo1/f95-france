@@ -47,7 +47,7 @@ async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: st
 export const load: PageServerLoad = async ({ locals, url }) => {
 	assertDashboardAuthenticated(locals);
 
-	const isAdmin = hasPermission(locals, 'translators.manage');
+	const canManageTranslators = hasPermission(locals, 'translators.manage');
 	const hasGamesManage = hasPermission(locals, 'games.manage');
 	const roleEditMode = hasGamesManage ? await getRoleEditMode(locals.user.role) : null;
 
@@ -58,7 +58,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 
 	const conditions = [];
-	if (!isAdmin) {
+	if (!canManageTranslators) {
 		conditions.push(eq(table.translator.userId, locals.user.id));
 	}
 	if (q) {
@@ -93,7 +93,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.limit(PAGE_SIZE)
 		.offset(offset);
 
-	const users = isAdmin
+	const users = canManageTranslators
 		? await db
 				.select({
 					id: table.user.id,
@@ -118,7 +118,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	return {
 		translator: translatorsWithPages,
 		users,
-		isAdmin,
+		canManageTranslators,
 		hasGamesManage,
 		roleEditMode,
 		translatorPagesWriteMode,

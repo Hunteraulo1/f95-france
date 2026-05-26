@@ -3,21 +3,24 @@ import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
 import { EXTRACT_DRAFT_COOKIE, parseExtractDraftCookie } from '$lib/server/extract-draft';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
+import { hasPermission } from '$lib/server/permissions';
 import {
 	assertRoleEditMode,
+	getRoleEditMode,
 	resolveShouldCreateSubmissionForUser
 } from '$lib/server/role-edit-mode';
 import type { PageServerLoad } from './$types';
 
 function resolveAddTranslatorMode(params: {
 	role: string | undefined;
+	hasGamesManage: boolean;
 	warnUnknownTranslators: boolean;
 	usesSubmission: boolean;
 }): AddTranslatorMode | false {
-	const { role, warnUnknownTranslators, usesSubmission } = params;
+	const { role, hasGamesManage, warnUnknownTranslators, usesSubmission } = params;
 	if (!role) return false;
 	if (role === 'translator' || usesSubmission) return 'submission';
-	if (role === 'admin' || role === 'superadmin') {
+	if (hasGamesManage) {
 		return warnUnknownTranslators ? 'direct' : 'submission';
 	}
 	return false;
@@ -37,7 +40,11 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 				: null;
 		const role = locals.user?.role;
 		const directModeActive = locals.user?.directMode ?? true;
-		const warnUnknownTranslators = role === 'admin' || (role === 'superadmin' && directModeActive);
+		const hasGamesManage = hasPermission(locals, 'games.manage');
+		const roleEditMode = hasGamesManage && role ? await getRoleEditMode(role) : null;
+		const warnUnknownTranslators =
+			hasGamesManage &&
+			(roleEditMode === 'direct' || (roleEditMode === 'user_direct_mode' && directModeActive));
 		const usesSubmission = locals.user
 			? await resolveShouldCreateSubmissionForUser({
 					roleSlug: role ?? 'user',
@@ -46,6 +53,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 			: true;
 		const addTranslatorMode = resolveAddTranslatorMode({
 			role,
+			hasGamesManage,
 			warnUnknownTranslators,
 			usesSubmission
 		});
