@@ -11,6 +11,12 @@ import {
 	REGISTRATION_INVITE_INVALID_MESSAGE,
 	verifyRegistrationInvite
 } from '$lib/server/registration-policy';
+import {
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
+} from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -38,7 +44,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		requiresInviteCode: isRegistrationInviteRequired()
+		requiresInviteCode: isRegistrationInviteRequired(),
+		turnstileSiteKey: getTurnstileSiteKey(),
+		turnstileEnabled: isTurnstileConfigured()
 	};
 };
 
@@ -57,6 +65,14 @@ export const actions: Actions = {
 
 		try {
 			const formData = await event.request.formData();
+
+			const captcha = await verifyTurnstileFromForm(
+				event,
+				extractTurnstileTokenFromFormData(formData)
+			);
+			if (!captcha.ok) {
+				return fail(400, { message: captcha.message });
+			}
 			const username = formData.get('username') as string;
 			const email = formData.get('email') as string;
 			const password = formData.get('password') as string;

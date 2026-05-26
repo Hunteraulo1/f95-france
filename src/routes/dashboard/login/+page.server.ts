@@ -3,15 +3,24 @@ import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
+	loginRequiresCaptcha,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
+import {
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
+} from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async (event) => {
+	const { locals, url } = event;
+
 	if (locals.user) {
 		throw redirect(302, safeDashboardRedirectPath(url.searchParams.get('redirectTo')));
 	}
@@ -22,10 +31,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		registrationNotice = 'Les inscriptions sont actuellement fermées.';
 	}
 
+	const requiresCaptcha = await loginRequiresCaptcha(event);
+
 	return {
 		redirectTo: safeDashboardRedirectPath(url.searchParams.get('redirectTo')),
 		registrationEnabled: isRegistrationEnabled(),
-		registrationNotice
+		registrationNotice,
+		turnstileSiteKey: getTurnstileSiteKey(),
+		turnstileEnabled: isTurnstileConfigured(),
+		requiresCaptcha
 	};
 };
 
@@ -36,38 +50,63 @@ export const actions: Actions = {
 		const password = String(formData.get('password') ?? '');
 		const twoFactorCode = String(formData.get('twoFactorCode') ?? '').trim();
 
+		const needsCaptcha = await loginRequiresCaptcha(event);
+
 		if (!username && !password) {
-			return fail(400, { message: "Nom d'utilisateur et mot de passe requis." });
+			return fail(400, {
+				message: "Nom d'utilisateur et mot de passe requis.",
+				requiresCaptcha: needsCaptcha
+			});
 		}
 		if (!username) {
-			return fail(400, { message: "Le nom d'utilisateur est requis." });
+			return fail(400, {
+				message: "Le nom d'utilisateur est requis.",
+				requiresCaptcha: needsCaptcha
+			});
 		}
 		if (!password) {
-			return fail(400, { message: 'Le mot de passe est requis.' });
+			return fail(400, { message: 'Le mot de passe est requis.', requiresCaptcha: needsCaptcha });
 		}
 
 		const throttle = await checkLoginThrottle(event);
 		if (!throttle.ok) {
-			return fail(429, { message: throttle.message });
+			return fail(429, { message: throttle.message, requiresCaptcha: true });
+		}
+
+		if (needsCaptcha) {
+			const captcha = await verifyTurnstileFromForm(
+				event,
+				extractTurnstileTokenFromFormData(formData)
+			);
+			if (!captcha.ok) {
+				return fail(400, { message: captcha.message, requiresCaptcha: true });
+			}
 		}
 
 		try {
 			const user = await auth.getUserByUsername(username);
 			if (!user) {
 				await recordLoginFailure(event);
-				return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
+				return fail(400, {
+					message: auth.INVALID_CREDENTIALS_MESSAGE,
+					requiresCaptcha: true
+				});
 			}
 
 			const passwordCheck = await auth.verifyPassword(password, user.passwordHash);
 			if (!passwordCheck.valid) {
 				await recordLoginFailure(event);
-				return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
+				return fail(400, {
+					message: auth.INVALID_CREDENTIALS_MESSAGE,
+					requiresCaptcha: true
+				});
 			}
 
 			if (user.twoFactorEnabled && user.twoFactorSecret) {
 				if (!/^\d{6}$/.test(twoFactorCode)) {
 					return fail(400, {
-						message: 'La double authentification est active. Saisissez un code 2FA à 6 chiffres.'
+						message: 'La double authentification est active. Saisissez un code 2FA à 6 chiffres.',
+						requiresCaptcha: needsCaptcha
 					});
 				}
 
@@ -82,7 +121,10 @@ export const actions: Actions = {
 				const delta = totp.validate({ token: twoFactorCode, window: 1 });
 				if (delta === null) {
 					await recordLoginFailure(event);
-					return fail(400, { message: 'Code 2FA invalide ou expiré.' });
+					return fail(400, {
+						message: 'Code 2FA invalide ou expiré.',
+						requiresCaptcha: true
+					});
 				}
 			}
 
@@ -107,7 +149,8 @@ export const actions: Actions = {
 			}
 			console.error('[dashboard/login?/login]', error);
 			return fail(500, {
-				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).'
+				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).',
+				requiresCaptcha: needsCaptcha
 			});
 		}
 	}

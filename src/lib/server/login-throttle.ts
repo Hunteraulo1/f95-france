@@ -89,6 +89,18 @@ export async function clearLoginThrottle(event: RequestEvent): Promise<void> {
 	await db.delete(table.loginThrottle).where(eq(table.loginThrottle.clientKey, key));
 }
 
+/** Captcha requis après au moins une tentative de connexion échouée (même IP). */
+export async function loginRequiresCaptcha(event: RequestEvent): Promise<boolean> {
+	const key = clientKey(event);
+	const [row] = await db
+		.select({ failedCount: table.loginThrottle.failedCount })
+		.from(table.loginThrottle)
+		.where(eq(table.loginThrottle.clientKey, key))
+		.limit(1);
+
+	return (row?.failedCount ?? 0) > 0;
+}
+
 export const PASSKEY_REGISTER_THROTTLE_MESSAGE =
 	'Trop de tentatives d’enregistrement de clé d’accès. Réessayez dans quelques minutes.';
 

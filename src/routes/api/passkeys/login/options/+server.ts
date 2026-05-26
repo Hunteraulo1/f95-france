@@ -1,7 +1,12 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { checkLoginThrottle, recordLoginFailure } from '$lib/server/login-throttle';
+import {
+	checkLoginThrottle,
+	loginRequiresCaptcha,
+	recordLoginFailure
+} from '$lib/server/login-throttle';
 import { getRpID, savePasskeyChallenge } from '$lib/server/passkeys';
+import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '$lib/server/turnstile';
 import {
 	generateAuthenticationOptions,
 	type PublicKeyCredentialRequestOptionsJSON
@@ -29,9 +34,16 @@ export const POST: RequestHandler = async (event) => {
 
 	let body: { username?: string };
 	try {
-		body = (await event.request.json()) as { username?: string };
+		body = (await event.request.json()) as { username?: string } & Record<string, unknown>;
 	} catch {
 		return json({ error: 'Requête JSON invalide.' }, { status: 400 });
+	}
+
+	if (await loginRequiresCaptcha(event)) {
+		const captcha = await verifyTurnstileFromForm(event, extractTurnstileTokenFromJson(body));
+		if (!captcha.ok) {
+			return json({ error: captcha.message, requiresCaptcha: true }, { status: 400 });
+		}
 	}
 
 	try {
@@ -45,7 +57,10 @@ export const POST: RequestHandler = async (event) => {
 
 			if (!user) {
 				await recordLoginFailure(event);
-				return json({ error: PASSKEY_LOGIN_FAILURE_MESSAGE }, { status: 400 });
+				return json(
+					{ error: PASSKEY_LOGIN_FAILURE_MESSAGE, requiresCaptcha: true },
+					{ status: 400 }
+				);
 			}
 
 			const passkeys = await db
@@ -57,7 +72,10 @@ export const POST: RequestHandler = async (event) => {
 
 			if (passkeys.length === 0) {
 				await recordLoginFailure(event);
-				return json({ error: PASSKEY_LOGIN_FAILURE_MESSAGE }, { status: 400 });
+				return json(
+					{ error: PASSKEY_LOGIN_FAILURE_MESSAGE, requiresCaptcha: true },
+					{ status: 400 }
+				);
 			}
 
 			const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
