@@ -4,7 +4,7 @@ import type { PermissionKey } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ManagerExtractDraft } from '$lib/server/extract-draft';
-import { normalizeCheckerVersion } from '$lib/server/f95-checker-alignment';
+import { normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';

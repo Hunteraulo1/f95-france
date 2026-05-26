@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { boolFromRecord, createDevActionEnhance, strFromRecord } from '$lib/forms/dev-action';
 	import type { ConfigClientSafe } from '$lib/server/app-config';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
@@ -199,6 +200,106 @@
 		admin: 'Admin'
 	};
 	const webhookChannelLabel = (c: string) => webhookChannelLabels[c] ?? c;
+
+	const mapAutoCheckResult = (data: Record<string, unknown>): AutoCheckManualResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details:
+			typeof data.details === 'string' ||
+			data.details === null ||
+			(typeof data.details === 'object' && data.details !== null)
+				? (data.details as AutoCheckManualResult['details'])
+				: null
+	});
+
+	const mapSheetsTestResult = (data: Record<string, unknown>): TestResult => {
+		const detailsRaw = 'details' in data ? data.details : null;
+		const details =
+			typeof detailsRaw === 'string' || detailsRaw === null || isSheetsDetails(detailsRaw)
+				? (detailsRaw as TestResult['details'])
+				: null;
+		return {
+			success: boolFromRecord(data, 'success'),
+			message: strFromRecord(data, 'message', data.success === false ? 'Erreur inconnue' : ''),
+			details
+		};
+	};
+
+	const mapScrapeResult = (data: Record<string, unknown>): ScrapeResult => {
+		const detailsRaw = 'details' in data ? data.details : null;
+		const details =
+			typeof detailsRaw === 'string' || detailsRaw === null || isScrapeDetailsObject(detailsRaw)
+				? (detailsRaw as ScrapeResult['details'])
+				: null;
+		return {
+			success: boolFromRecord(data, 'success'),
+			message: strFromRecord(data, 'message', 'Erreur inconnue'),
+			details
+		};
+	};
+
+	const mapImportResult = (data: Record<string, unknown>): ImportResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details: isImportDetailsObject(data.details) ? data.details : null
+	});
+
+	const mapWebhookTestResult = (data: Record<string, unknown>): WebhookTestResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message', 'Erreur'),
+		details: typeof data.details === 'string' || data.details === null ? data.details : null,
+		channel: typeof data.channel === 'string' ? data.channel : null,
+		httpStatus:
+			typeof data.httpStatus === 'number' || data.httpStatus === null ? data.httpStatus : null
+	});
+
+	const mapTranslatorsImportResult = (data: Record<string, unknown>): TranslatorsImportResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details: isTranslatorsImportDetailsObject(data.details) ? data.details : null
+	});
+
+	const mapCompareResult = (data: Record<string, unknown>): CompareResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details: isCompareDetailsObject(data.details) ? data.details : null
+	});
+
+	const mapSyncResult = (data: Record<string, unknown>): SyncLegacyApiResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details: isSyncLegacyApiDetailsObject(data.details) ? data.details : null
+	});
+
+	const mapDbSheetSyncResult = (data: Record<string, unknown>): DbSheetSyncResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details:
+			typeof data.details === 'string' ||
+			data.details === null ||
+			(typeof data.details === 'object' && data.details !== null)
+				? (data.details as DbSheetSyncResult['details'])
+				: null
+	});
+
+	const mapCleanupResult = (data: Record<string, unknown>): CleanupResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details: isCleanupDetailsObject(data.details) ? data.details : null
+	});
+
+	const mapClearTranslationNamesResult = (
+		data: Record<string, unknown>
+	): ClearTranslationNamesResult => ({
+		success: boolFromRecord(data, 'success'),
+		message: strFromRecord(data, 'message'),
+		details:
+			typeof data.details === 'string' ||
+			data.details === null ||
+			(typeof data.details === 'object' && data.details !== null)
+				? (data.details as ClearTranslationNamesResult['details'])
+				: null
+	});
 </script>
 
 <div class="container flex flex-col gap-6">
@@ -216,27 +317,15 @@
 			<form
 				method="POST"
 				action="?/triggerAutoCheck"
-				use:enhance={() => {
-					autoCheckManualIsLoading = true;
-					autoCheckManualResult = null;
-					return async function ({ result, update }) {
-						await update();
-						autoCheckManualIsLoading = false;
-						if ((result.type === 'success' || result.type === 'failure') && result.data) {
-							const d = result.data as Record<string, unknown>;
-							autoCheckManualResult = {
-								success: Boolean(d.success),
-								message: typeof d.message === 'string' ? d.message : '',
-								details:
-									typeof d.details === 'string' ||
-									d.details === null ||
-									(typeof d.details === 'object' && d.details !== null)
-										? (d.details as AutoCheckManualResult['details'])
-										: null
-							};
-						}
-					};
-				}}
+				use:enhance={createDevActionEnhance({
+					setLoading: (v) => {
+						autoCheckManualIsLoading = v;
+					},
+					setResult: (v) => {
+						autoCheckManualResult = v;
+					},
+					map: mapAutoCheckResult
+				})}
 			>
 				<button type="submit" class="btn btn-outline" disabled={autoCheckManualIsLoading}>
 					{#if autoCheckManualIsLoading}
@@ -304,77 +393,15 @@
 			<form
 				method="POST"
 				action="?/testGoogleSheets"
-				use:enhance={() => {
-					isLoading = true;
-					testResult = null;
-					return async function ({ result, update }) {
-						await update();
-						isLoading = false;
-
-						// Traiter le résultat de l'action
-						if (result.type === 'success' && result.data) {
-							const successData = result.data;
-							const success =
-								typeof successData === 'object' &&
-								successData &&
-								'success' in successData &&
-								Boolean(successData.success);
-							const message =
-								typeof successData === 'object' &&
-								successData &&
-								'message' in successData &&
-								typeof successData.message === 'string'
-									? successData.message
-									: '';
-							const detailsRaw =
-								typeof successData === 'object' &&
-								successData &&
-								'details' in successData &&
-								(typeof successData.details === 'object' ||
-									typeof successData.details === 'string' ||
-									successData.details === null)
-									? successData.details
-									: null;
-							const details =
-								typeof detailsRaw === 'string' || detailsRaw === null || isSheetsDetails(detailsRaw)
-									? detailsRaw
-									: null;
-							testResult = {
-								success,
-								message,
-								details
-							};
-						} else if (result.type === 'failure' && result.data) {
-							// En cas d'erreur, result.data contient les données d'erreur
-							const errorData = result.data;
-							const message =
-								typeof errorData === 'object' &&
-								errorData &&
-								'message' in errorData &&
-								typeof errorData.message === 'string'
-									? errorData.message
-									: 'Erreur inconnue';
-							const detailsRaw =
-								typeof errorData === 'object' &&
-								errorData &&
-								'details' in errorData &&
-								(typeof errorData.details === 'object' ||
-									typeof errorData.details === 'string' ||
-									errorData.details === null)
-									? errorData.details
-									: null;
-							const details =
-								typeof detailsRaw === 'string' || detailsRaw === null || isSheetsDetails(detailsRaw)
-									? detailsRaw
-									: null;
-							testResult = {
-								success: false,
-								message,
-								details
-							};
-						}
-					};
-				}}
+				use:enhance={createDevActionEnhance({
+					setLoading: (v) => {
+						isLoading = v;
+					},
+					setResult: (v) => {
+						testResult = v;
+					},
+					map: mapSheetsTestResult
+				})}
 			>
 				<div class="form-control mb-4 w-full">
 					<label for="spreadsheetId" class="label">
@@ -573,35 +600,15 @@
 			<form
 				method="POST"
 				action="?/testDiscordWebhook"
-				use:enhance={() => {
-					webhookTestIsLoading = true;
-					webhookTestResult = null;
-					return async function ({ result, update }) {
-						await update();
-						webhookTestIsLoading = false;
-						if (result.type === 'success' && result.data) {
-							const d = result.data as Record<string, unknown>;
-							const success = Boolean(d.success);
-							const message = typeof d.message === 'string' ? d.message : '';
-							const details =
-								typeof d.details === 'string' || d.details === null ? d.details : null;
-							const channel = typeof d.channel === 'string' ? d.channel : null;
-							const httpStatus =
-								typeof d.httpStatus === 'number' || d.httpStatus === null ? d.httpStatus : null;
-							webhookTestResult = { success, message, details, channel, httpStatus };
-						} else if (result.type === 'failure' && result.data) {
-							const d = result.data as Record<string, unknown>;
-							webhookTestResult = {
-								success: false,
-								message: typeof d.message === 'string' ? d.message : 'Erreur',
-								details: typeof d.details === 'string' ? d.details : null,
-								channel: typeof d.channel === 'string' ? d.channel : null,
-								httpStatus:
-									typeof d.httpStatus === 'number' || d.httpStatus === null ? d.httpStatus : null
-							};
-						}
-					};
-				}}
+				use:enhance={createDevActionEnhance({
+					setLoading: (v) => {
+						webhookTestIsLoading = v;
+					},
+					setResult: (v) => {
+						webhookTestResult = v;
+					},
+					map: mapWebhookTestResult
+				})}
 			>
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-end">
 					<div class="form-control flex-1">
@@ -691,79 +698,15 @@
 			<form
 				method="POST"
 				action="?/testScrape"
-				use:enhance={() => {
-					scrapeIsLoading = true;
-					scrapeResult = null;
-					return async function ({ result, update }) {
-						await update();
-						scrapeIsLoading = false;
-
-						if (result.type === 'success' && result.data) {
-							const successData = result.data;
-							const success =
-								typeof successData === 'object' &&
-								successData &&
-								'success' in successData &&
-								Boolean(successData.success);
-							const message =
-								typeof successData === 'object' &&
-								successData &&
-								'message' in successData &&
-								typeof successData.message === 'string'
-									? successData.message
-									: '';
-							const detailsRaw =
-								typeof successData === 'object' &&
-								successData &&
-								'details' in successData &&
-								(typeof successData.details === 'object' ||
-									typeof successData.details === 'string' ||
-									successData.details === null)
-									? successData.details
-									: null;
-							const details =
-								typeof detailsRaw === 'string' ||
-								detailsRaw === null ||
-								isScrapeDetailsObject(detailsRaw)
-									? detailsRaw
-									: null;
-							scrapeResult = {
-								success,
-								message,
-								details
-							};
-						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data;
-							const message =
-								typeof errorData === 'object' &&
-								errorData &&
-								'message' in errorData &&
-								typeof errorData.message === 'string'
-									? errorData.message
-									: 'Erreur inconnue';
-							const detailsRaw =
-								typeof errorData === 'object' &&
-								errorData &&
-								'details' in errorData &&
-								(typeof errorData.details === 'object' ||
-									typeof errorData.details === 'string' ||
-									errorData.details === null)
-									? errorData.details
-									: null;
-							const details =
-								typeof detailsRaw === 'string' ||
-								detailsRaw === null ||
-								isScrapeDetailsObject(detailsRaw)
-									? detailsRaw
-									: null;
-							scrapeResult = {
-								success: false,
-								message,
-								details
-							};
-						}
-					};
-				}}
+				use:enhance={createDevActionEnhance({
+					setLoading: (v) => {
+						scrapeIsLoading = v;
+					},
+					setResult: (v) => {
+						scrapeResult = v;
+					},
+					map: mapScrapeResult
+				})}
 			>
 				<div class="grid gap-4 md:grid-cols-3">
 					<div class="form-control md:col-span-2">
@@ -894,35 +837,15 @@
 			<form
 				method="POST"
 				action="?/importLegacyGamesJson"
-				use:enhance={() => {
-					importIsLoading = true;
-					importResult = null;
-					return async function ({ result, update }) {
-						await update();
-						importIsLoading = false;
-						if ((result.type === 'success' || result.type === 'failure') && result.data) {
-							const data = result.data;
-							importResult = {
-								success:
-									typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-								message:
-									typeof data === 'object' &&
-									data &&
-									'message' in data &&
-									typeof data.message === 'string'
-										? data.message
-										: '',
-								details:
-									typeof data === 'object' &&
-									data &&
-									'details' in data &&
-									isImportDetailsObject(data.details)
-										? data.details
-										: null
-							};
-						}
-					};
-				}}
+				use:enhance={createDevActionEnhance({
+					setLoading: (v) => {
+						importIsLoading = v;
+					},
+					setResult: (v) => {
+						importResult = v;
+					},
+					map: mapImportResult
+				})}
 			>
 				<div class="form-control">
 					<label class="label" for="legacyJson">
@@ -1002,35 +925,15 @@
 				<form
 					method="POST"
 					action="?/syncLegacyApiTranslators"
-					use:enhance={() => {
-						translatorsImportIsLoading = true;
-						translatorsImportResult = null;
-						return async function ({ result, update }) {
-							await update();
-							translatorsImportIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data;
-								translatorsImportResult = {
-									success:
-										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-									message:
-										typeof data === 'object' &&
-										data &&
-										'message' in data &&
-										typeof data.message === 'string'
-											? data.message
-											: '',
-									details:
-										typeof data === 'object' &&
-										data &&
-										'details' in data &&
-										isTranslatorsImportDetailsObject(data.details)
-											? data.details
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							translatorsImportIsLoading = v;
+						},
+						setResult: (v) => {
+							translatorsImportResult = v;
+						},
+						map: mapTranslatorsImportResult
+					})}
 					class="md:order-3"
 				>
 					<div class="form-control h-full">
@@ -1047,35 +950,15 @@
 				<form
 					method="POST"
 					action="?/checkLegacyApiGames"
-					use:enhance={() => {
-						compareIsLoading = true;
-						compareResult = null;
-						return async function ({ result, update }) {
-							await update();
-							compareIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data;
-								compareResult = {
-									success:
-										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-									message:
-										typeof data === 'object' &&
-										data &&
-										'message' in data &&
-										typeof data.message === 'string'
-											? data.message
-											: '',
-									details:
-										typeof data === 'object' &&
-										data &&
-										'details' in data &&
-										isCompareDetailsObject(data.details)
-											? data.details
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							compareIsLoading = v;
+						},
+						setResult: (v) => {
+							compareResult = v;
+						},
+						map: mapCompareResult
+					})}
 					class="md:order-1"
 				>
 					<div class="form-control h-full">
@@ -1091,35 +974,15 @@
 				<form
 					method="POST"
 					action="?/syncLegacyApiGames"
-					use:enhance={() => {
-						syncIsLoading = true;
-						syncResult = null;
-						return async function ({ result, update }) {
-							await update();
-							syncIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data;
-								syncResult = {
-									success:
-										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-									message:
-										typeof data === 'object' &&
-										data &&
-										'message' in data &&
-										typeof data.message === 'string'
-											? data.message
-											: '',
-									details:
-										typeof data === 'object' &&
-										data &&
-										'details' in data &&
-										isSyncLegacyApiDetailsObject(data.details)
-											? data.details
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							syncIsLoading = v;
+						},
+						setResult: (v) => {
+							syncResult = v;
+						},
+						map: mapSyncResult
+					})}
 					class="md:order-2"
 				>
 					<button type="submit" class="btn h-full w-full btn-accent" disabled={syncIsLoading}>
@@ -1134,27 +997,15 @@
 				<form
 					method="POST"
 					action="?/syncDbToSpreadsheet"
-					use:enhance={() => {
-						dbSheetSyncIsLoading = true;
-						dbSheetSyncResult = null;
-						return async function ({ result, update }) {
-							await update();
-							dbSheetSyncIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data as Record<string, unknown>;
-								dbSheetSyncResult = {
-									success: Boolean(data.success),
-									message: typeof data.message === 'string' ? data.message : '',
-									details:
-										typeof data.details === 'string' ||
-										data.details === null ||
-										(typeof data.details === 'object' && data.details !== null)
-											? (data.details as DbSheetSyncResult['details'])
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							dbSheetSyncIsLoading = v;
+						},
+						setResult: (v) => {
+							dbSheetSyncResult = v;
+						},
+						map: mapDbSheetSyncResult
+					})}
 					class="md:order-3"
 				>
 					<button
@@ -1173,35 +1024,15 @@
 				<form
 					method="POST"
 					action="?/cleanupDuplicateTranslations"
-					use:enhance={() => {
-						cleanupIsLoading = true;
-						cleanupResult = null;
-						return async function ({ result, update }) {
-							await update();
-							cleanupIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data;
-								cleanupResult = {
-									success:
-										typeof data === 'object' && data && 'success' in data && Boolean(data.success),
-									message:
-										typeof data === 'object' &&
-										data &&
-										'message' in data &&
-										typeof data.message === 'string'
-											? data.message
-											: '',
-									details:
-										typeof data === 'object' &&
-										data &&
-										'details' in data &&
-										isCleanupDetailsObject(data.details)
-											? data.details
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							cleanupIsLoading = v;
+						},
+						setResult: (v) => {
+							cleanupResult = v;
+						},
+						map: mapCleanupResult
+					})}
 					class="md:order-4"
 				>
 					<button type="submit" class="btn h-full w-full btn-warning" disabled={cleanupIsLoading}>
@@ -1216,27 +1047,15 @@
 				<form
 					method="POST"
 					action="?/clearAllTranslationNames"
-					use:enhance={() => {
-						clearTranslationNamesIsLoading = true;
-						clearTranslationNamesResult = null;
-						return async function ({ result, update }) {
-							await update();
-							clearTranslationNamesIsLoading = false;
-							if ((result.type === 'success' || result.type === 'failure') && result.data) {
-								const data = result.data as Record<string, unknown>;
-								clearTranslationNamesResult = {
-									success: Boolean(data.success),
-									message: typeof data.message === 'string' ? data.message : '',
-									details:
-										typeof data.details === 'string' ||
-										data.details === null ||
-										(typeof data.details === 'object' && data.details !== null)
-											? (data.details as ClearTranslationNamesResult['details'])
-											: null
-								};
-							}
-						};
-					}}
+					use:enhance={createDevActionEnhance({
+						setLoading: (v) => {
+							clearTranslationNamesIsLoading = v;
+						},
+						setResult: (v) => {
+							clearTranslationNamesResult = v;
+						},
+						map: mapClearTranslationNamesResult
+					})}
 					class="md:order-5"
 				>
 					<button

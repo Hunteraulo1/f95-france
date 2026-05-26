@@ -13,15 +13,15 @@ import {
 	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
 import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
+import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
 	assertPermission,
-	countEffectivePermissionsByRoles,
 	countUsersWithRoles,
-	getEffectivePermissionsForRole,
+	getEffectivePermissionsByRoles,
 	invalidateRolePermissionsCache,
-	listAppRoles,
 	listRolePermissions,
 	listRolePermissionsStored,
 	roleExists,
@@ -64,17 +64,43 @@ function rolePageUrl(slug: string, notice?: keyof typeof ROLE_NOTICE_MESSAGES): 
 	return `/dashboard/roles?${params}`;
 }
 
+function enrichRoleRow(
+	r: Awaited<ReturnType<typeof selectAllAppRoles>>[number],
+	effectivePerms: string[],
+	userCounts: Record<string, number>,
+	access: Awaited<ReturnType<typeof assertCanManageRole>>
+) {
+	const hasGamesManage = effectivePerms.includes(GAMES_MANAGE_PERMISSION);
+	const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
+	const badgeStyle = resolveRoleBadgeStyle(r.slug, r.badgeStyle);
+	return {
+		...r,
+		label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+		hasGamesManage,
+		storedEditMode,
+		badgeStyle,
+		editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
+		userCount: userCounts[r.slug] ?? 0,
+		permissionCount: effectivePerms.length,
+		canManage: access.allowed,
+		manageBlockedReason: access.allowed ? null : access.message
+	};
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'roles.manage');
 
-	const roles = await listAppRoles();
-	const roleSlugs = roles.map((r) => r.slug);
-	const [userCounts, permissionCounts] = await Promise.all([
+	const rolesRaw = await selectAllAppRoles();
+	const roleSlugs = rolesRaw.map((r) => r.slug);
+	const [userCounts, effectivePermsBySlug] = await Promise.all([
 		countUsersWithRoles(roleSlugs),
-		countEffectivePermissionsByRoles(roleSlugs)
+		getEffectivePermissionsByRoles(roleSlugs)
 	]);
-	const orderedSlugs = roleSlugs;
-	const defaultSlug = orderedSlugs[0] ?? 'user';
+	const permissionCounts = Object.fromEntries(
+		roleSlugs.map((slug) => [slug, effectivePermsBySlug[slug]?.length ?? 0])
+	);
+	const roles = sortRolesByPrivileges(rolesRaw, permissionCounts);
+	const defaultSlug = roles[0]?.slug ?? 'user';
 	const roleParam = url.searchParams.get('role');
 
 	if (!roleParam) {
@@ -86,39 +112,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		redirect(303, rolePageUrl(selectedSlug));
 	}
 	const isSelectedRoleSuperadmin = isSuperadminRole(selectedSlug);
-	const selectedPermissionsEffective = selectedSlug
-		? await getEffectivePermissionsForRole(selectedSlug)
-		: [];
+	const selectedPermissionsEffective = effectivePermsBySlug[selectedSlug] ?? [];
 	const selectedPermissions = isSelectedRoleSuperadmin
 		? [...selectedPermissionsEffective]
-		: selectedSlug
-			? await listRolePermissionsStored(selectedSlug)
-			: [];
+		: await listRolePermissionsStored(selectedSlug);
 
 	const isSuperadmin = isRolesManagementSuperadmin(locals);
 	const actorPermissions = await getActorPermissionSet(locals);
 
 	const rolesWithAccess = await Promise.all(
 		roles.map(async (r) => {
-			const effectivePerms = await getEffectivePermissionsForRole(r.slug);
+			const effectivePerms = effectivePermsBySlug[r.slug] ?? [];
 			const access = isSuperadmin
 				? ({ allowed: true } as const)
 				: await assertCanManageRole(locals, r.slug, effectivePerms);
-			const hasGamesManage = effectivePerms.includes(GAMES_MANAGE_PERMISSION);
-			const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
-			const badgeStyle = resolveRoleBadgeStyle(r.slug, r.badgeStyle);
-			return {
-				...r,
-				label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-				hasGamesManage,
-				storedEditMode,
-				badgeStyle,
-				editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
-				userCount: userCounts[r.slug] ?? 0,
-				permissionCount: permissionCounts[r.slug] ?? 0,
-				canManage: access.allowed,
-				manageBlockedReason: access.allowed ? null : access.message
-			};
+			return enrichRoleRow(r, effectivePerms, userCounts, access);
 		})
 	);
 
@@ -387,8 +395,13 @@ export const actions: Actions = {
 			await db.delete(table.appRole).where(eq(table.appRole.slug, slug));
 			invalidateRolePermissionsCache(slug);
 			invalidateRoleBadgeStylesCache();
-			const roles = await listAppRoles();
-			const nextSlug = roles[0]?.slug ?? 'user';
+			const remaining = await selectAllAppRoles();
+			const remainingSlugs = remaining.map((r) => r.slug);
+			const effectiveBySlug = await getEffectivePermissionsByRoles(remainingSlugs);
+			const nextCounts = Object.fromEntries(
+				remainingSlugs.map((slug) => [slug, effectiveBySlug[slug]?.length ?? 0])
+			);
+			const nextSlug = sortRolesByPrivileges(remaining, nextCounts)[0]?.slug ?? 'user';
 			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
 			if (isRedirect(error)) throw error;

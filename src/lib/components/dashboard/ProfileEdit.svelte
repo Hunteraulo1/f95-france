@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import type { RoleEditMode } from '$lib/permissions/edit-mode';
 	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
 	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
@@ -120,25 +121,22 @@
 			<form
 				method="POST"
 				action="?/updateProfile"
-				use:enhance={() => {
-					profileInfoError = null;
-					profileInfoSuccess = null;
-					return async ({ result, update }) => {
-						if (result.type === 'success') {
-							await update();
-							await loadUserData();
-							profileInfoSuccess =
-								typeof result.data === 'object' && result.data && 'message' in result.data
-									? String(result.data.message)
-									: 'Profil mis à jour avec succès';
-						} else if (result.type === 'failure' && result.data) {
-							profileInfoError =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
-						}
-					};
-				}}
+				use:enhance={createFormEnhance({
+					onStart: () => {
+						profileInfoError = null;
+						profileInfoSuccess = null;
+					},
+					onFailure: (message) => {
+						profileInfoError = message;
+					},
+					onSuccess: async (result) => {
+						await loadUserData();
+						profileInfoSuccess =
+							typeof result.data === 'object' && result.data && 'message' in result.data
+								? String(result.data.message)
+								: 'Profil mis à jour avec succès';
+					}
+				})}
 			>
 				<div class="flex w-full flex-col gap-4 md:flex-row">
 					<label class="input flex w-full items-start">
@@ -199,26 +197,23 @@
 				<form
 					method="POST"
 					action="?/requestTranslatorPagesUpdate"
-					use:enhance={() => {
-						translatorPagesError = null;
-						translatorPagesInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								translatorPagesInfo =
-									typeof result.data === 'object' && result.data && 'message' in result.data
-										? String(result.data.message)
-										: translatorPagesWriteMode === 'direct'
-											? 'Pages traducteur mises à jour.'
-											: 'Demande envoyée. En attente de validation admin.';
-							} else if (result.type === 'failure' && result.data) {
-								translatorPagesError =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: "Erreur lors de l'envoi de la demande";
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							translatorPagesError = null;
+							translatorPagesInfo = null;
+						},
+						onFailure: (message) => {
+							translatorPagesError = message;
+						},
+						onSuccess: (result) => {
+							translatorPagesInfo =
+								typeof result.data === 'object' && result.data && 'message' in result.data
+									? String(result.data.message)
+									: translatorPagesWriteMode === 'direct'
+										? 'Pages traducteur mises à jour.'
+										: 'Demande envoyée. En attente de validation admin.';
+						}
+					})}
 				>
 					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
 					{#if roleEditMode === 'user_direct_mode'}
@@ -304,24 +299,21 @@
 				<form
 					method="POST"
 					action="?/updateCustomProfile"
-					use:enhance={() => {
-						customProfileError = null;
-						customProfileInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								customProfileInfo =
-									typeof result.data === 'object' && result.data && 'message' in result.data
-										? String(result.data.message)
-										: 'Profil personnalisé mis à jour.';
-							} else if (result.type === 'failure' && result.data) {
-								customProfileError =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour.';
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							customProfileError = null;
+							customProfileInfo = null;
+						},
+						onFailure: (message) => {
+							customProfileError = message;
+						},
+						onSuccess: (result) => {
+							customProfileInfo =
+								typeof result.data === 'object' && result.data && 'message' in result.data
+									? String(result.data.message)
+									: 'Profil personnalisé mis à jour.';
+						}
+					})}
 				>
 					{#if profileCustomize.bio}
 						<fieldset class="fieldset gap-2">

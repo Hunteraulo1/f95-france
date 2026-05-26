@@ -10,16 +10,15 @@ export function sortRolesByPrivileges<T extends { slug: string; label?: string }
 	roles: T[],
 	permissionCountBySlug: Record<string, number>
 ): T[] {
-	const systemRank = (slug: string) => {
-		const index = SYSTEM_ROLE_ORDER.indexOf(slug as (typeof SYSTEM_ROLE_ORDER)[number]);
-		return index === -1 ? SYSTEM_ROLE_ORDER.length : index;
-	};
-
 	return [...roles].sort((a, b) => {
 		const countDiff = (permissionCountBySlug[b.slug] ?? 0) - (permissionCountBySlug[a.slug] ?? 0);
 		if (countDiff !== 0) return countDiff;
 
-		const rankDiff = systemRank(b.slug) - systemRank(a.slug);
+		const rankA = systemRoleRank(a.slug);
+		const rankB = systemRoleRank(b.slug);
+		const orderA = rankA === -1 ? SYSTEM_ROLE_ORDER.length : rankA;
+		const orderB = rankB === -1 ? SYSTEM_ROLE_ORDER.length : rankB;
+		const rankDiff = orderB - orderA;
 		if (rankDiff !== 0) return rankDiff;
 
 		return (a.label ?? a.slug).localeCompare(b.label ?? b.slug, 'fr');

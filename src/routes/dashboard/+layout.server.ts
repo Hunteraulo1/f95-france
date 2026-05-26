@@ -2,7 +2,7 @@ import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
-import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
+import { hasPermission } from '$lib/server/permissions';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
 import { redirect } from '@sveltejs/kit';
@@ -23,8 +23,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 
 	// Charger le nombre de soumissions en attente
 	if (locals.user) {
-		permissions = await getPermissionsForRole(locals.user.role);
-		locals.permissions = permissions;
+		permissions = locals.permissions ?? [];
 		canManageConfig = hasPermission(locals, 'config.view');
 
 		try {

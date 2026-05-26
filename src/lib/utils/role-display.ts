@@ -27,9 +27,4 @@ export function roleUsernameClass(
 }
 
 /** Classes pour un badge de rôle (à combiner avec `badge`, `badge-outline`, etc.). */
-export function roleBadgeClass(
-	roleSlug: string | null | undefined,
-	badgeStyle?: string | null
-): string {
-	return roleUsernameClass(roleSlug, badgeStyle);
-}
+export const roleBadgeClass = roleUsernameClass;

@@ -33,11 +33,6 @@ export async function listRoleBadgeStylesMap(): Promise<Record<string, RoleBadge
 	}
 }
 
-export async function getRoleBadgeStyle(roleSlug: string): Promise<RoleBadgeStyle> {
-	const map = await listRoleBadgeStylesMap();
-	return map[roleSlug] ?? resolveRoleBadgeStyle(roleSlug, null);
-}
-
 export function parseRoleBadgeStyleInput(value: string): RoleBadgeStyle | null {
 	const trimmed = value.trim();
 	return isRoleBadgeStyle(trimmed) ? trimmed : null;

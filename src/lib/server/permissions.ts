@@ -94,45 +94,12 @@ export function assertPermission(
 	}
 }
 
-export function assertAnyPermission(
-	locals: App.Locals,
-	keys: PermissionKey[],
-	message = 'Accès non autorisé'
-): void {
-	if (keys.some((key) => hasPermission(locals, key))) return;
-	error(403, message);
-}
-
 export async function attachPermissionsToLocals(locals: App.Locals): Promise<void> {
 	if (!locals.user) {
 		locals.permissions = [];
 		return;
 	}
 	locals.permissions = await getEffectivePermissionsForRole(locals.user.role);
-}
-
-export async function countPermissionsByRoles(
-	roleSlugs: string[]
-): Promise<Record<string, number>> {
-	const counts: Record<string, number> = {};
-	for (const slug of roleSlugs) counts[slug] = 0;
-
-	if (roleSlugs.length === 0) return counts;
-
-	const rows = await db
-		.select({
-			roleSlug: table.appRolePermission.roleSlug,
-			count: sql<number>`count(*)::int`.as('count')
-		})
-		.from(table.appRolePermission)
-		.where(inArray(table.appRolePermission.roleSlug, roleSlugs))
-		.groupBy(table.appRolePermission.roleSlug);
-
-	for (const row of rows) {
-		counts[row.roleSlug] = Number(row.count) || 0;
-	}
-
-	return counts;
 }
 
 /**
@@ -148,18 +115,25 @@ export async function countEffectivePermissionsForRole(roleSlug: string): Promis
 	return (await getEffectivePermissionsForRole(roleSlug)).length;
 }
 
-export async function countEffectivePermissionsByRoles(
+export async function getEffectivePermissionsByRoles(
 	roleSlugs: string[]
-): Promise<Record<string, number>> {
-	const counts: Record<string, number> = {};
-	if (roleSlugs.length === 0) return counts;
+): Promise<Record<string, string[]>> {
+	const bySlug: Record<string, string[]> = {};
+	if (roleSlugs.length === 0) return bySlug;
 
 	await Promise.all(
 		roleSlugs.map(async (slug) => {
-			counts[slug] = (await getEffectivePermissionsForRole(slug)).length;
+			bySlug[slug] = await getEffectivePermissionsForRole(slug);
 		})
 	);
-	return counts;
+	return bySlug;
+}
+
+export async function countEffectivePermissionsByRoles(
+	roleSlugs: string[]
+): Promise<Record<string, number>> {
+	const bySlug = await getEffectivePermissionsByRoles(roleSlugs);
+	return Object.fromEntries(roleSlugs.map((slug) => [slug, bySlug[slug]?.length ?? 0]));
 }
 
 export async function listAppRoles() {

@@ -2,7 +2,9 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -207,37 +209,34 @@
 	</div>
 </div>
 
-<!-- Modal d'ajout de traducteur -->
 {#if data.isAdmin && showAddModal}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Ajouter un traducteur</h3>
+	<DaisyDashboardModal
+		open={showAddModal}
+		title="Ajouter un traducteur"
+		onClose={() => (showAddModal = false)}
+	>
+		{#snippet children()}
 			{#if addError}
 				<div class="mb-4 alert alert-error">
 					<span>{addError}</span>
 				</div>
 			{/if}
 			<form
+				id="add-translator-form"
 				method="POST"
 				action="?/addTranslator"
-				use:enhance={() => {
-					addError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							showAddModal = false;
-							pages = [{ name: '', link: '' }];
-							addError = null;
-						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data;
-							const message =
-								typeof errorData === 'object' && errorData && 'message' in errorData
-									? String(errorData.message)
-									: "Erreur lors de l'ajout du traducteur";
-							addError = message;
-						}
-					};
-				}}
+				use:enhance={createFormEnhance({
+					onStart: () => {
+						addError = null;
+					},
+					onFailure: (message) => {
+						addError = message;
+					},
+					onSuccess: () => {
+						showAddModal = false;
+						pages = [{ name: '', link: '' }];
+					}
+				})}
 			>
 				<div class="form-control w-full">
 					<label for="add-name" class="label">
@@ -316,151 +315,146 @@
 						value={JSON.stringify(pages.filter((page) => page.name !== '' || page.link !== ''))}
 					/>
 				</div>
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={() => (showAddModal = false)}>
-						Annuler
-					</button>
-					<button type="submit" class="btn btn-primary"> Ajouter </button>
-				</div>
 			</form>
-		</div>
-	</div>
+		{/snippet}
+		{#snippet footer()}
+			<button type="button" class="btn" onclick={() => (showAddModal = false)}>Annuler</button>
+			<button type="submit" form="add-translator-form" class="btn btn-primary">Ajouter</button>
+		{/snippet}
+	</DaisyDashboardModal>
 {/if}
 
-<!-- Modal d'édition de traducteur -->
 {#if showEditModal && selectedTranslator}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Modifier le traducteur</h3>
-			{#if editError}
-				<div class="mb-4 alert alert-error">
-					<span>{editError}</span>
-				</div>
-			{/if}
-			<form
-				method="POST"
-				action={data.isAdmin ? '?/editTranslator' : '?/requestTranslatorPagesUpdate'}
-				use:enhance={() => {
-					editError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							handleEditSuccess();
-							editError = null;
-						} else if (result.type === 'failure' && result.data) {
-							const errorData = result.data;
-							const message =
-								typeof errorData === 'object' && errorData && 'message' in errorData
-									? String(errorData.message)
-									: 'Erreur lors de la modification du traducteur';
-							editError = message;
-						}
-					};
-				}}
-			>
-				<input type="hidden" name="id" value={selectedTranslator.id} />
-				{#if data.isAdmin}
-					<div class="form-control w-full">
-						<label for="edit-name" class="label">
-							<span class="label-text">Nom du traducteur</span>
-						</label>
-						<input
-							id="edit-name"
-							type="text"
-							name="name"
-							class="input-bordered input w-full"
-							class:input-error={editError}
-							value={selectedTranslator.name}
-							required
-						/>
+	<DaisyDashboardModal
+		open={showEditModal}
+		title="Modifier le traducteur"
+		onClose={() => (showEditModal = false)}
+	>
+		{#snippet children()}
+			{#if selectedTranslator}
+				{#if editError}
+					<div class="mb-4 alert alert-error">
+						<span>{editError}</span>
 					</div>
-					<div class="form-control w-full">
-						<label for="edit-discord" class="label">
-							<span class="label-text">ID Discord</span>
-						</label>
-						<input
-							id="edit-discord"
-							type="number"
-							name="discordId"
-							class="input-bordered input w-full"
-							value={selectedTranslator.discordId || ''}
-						/>
-					</div>
-					<div class="form-control w-full">
-						<label for="edit-user-link" class="label">
-							<span class="label-text">Compte utilisateur lié</span>
-						</label>
-						<select id="edit-user-link" name="userId" class="select-bordered select w-full">
-							<option value="" selected={!selectedTranslator.userId}>Aucun</option>
-							{#each data.users as u (u.id)}
-								<option value={u.id} selected={selectedTranslator.userId === u.id}>
-									{u.username} ({u.email})
-								</option>
-							{/each}
-						</select>
-					</div>
-				{:else}
-					<input type="hidden" name="translatorId" value={selectedTranslator.id} />
-					<p class="mb-2 text-sm opacity-80">
-						{#if data.translatorPagesWriteMode === 'direct'}
-							Les modifications des pages sont appliquées immédiatement.
-						{:else}
-							La modification des pages sera soumise à validation admin.
-						{/if}
-					</p>
-					{#if data.roleEditMode === 'user_direct_mode'}
-						<input type="hidden" name="directMode" value={data.directMode ? 'true' : 'false'} />
-					{/if}
 				{/if}
-				<div class="form-control w-full">
-					<label class="label" for="pages">
-						<span class="label-text">Pages</span>
-					</label>
-					<div class="space-y-2">
-						{#each pages as page, index (index)}
-							<div class="flex items-center gap-2">
-								<input
-									type="text"
-									placeholder="Nom de la page"
-									class="input-bordered input flex-1"
-									bind:value={page.name}
-								/>
-								<input
-									type="url"
-									placeholder="Lien"
-									class="input-bordered input flex-1"
-									bind:value={page.link}
-								/>
-								{#if pages.length > 1}
-									<button
-										type="button"
-										class="btn btn-sm btn-error"
-										onclick={() => removePage(index)}
-									>
-										✕
-									</button>
-								{/if}
-							</div>
-						{/each}
-						<button type="button" class="btn btn-outline btn-sm" onclick={addPage}>
-							+ Ajouter une page
-						</button>
+				<form
+					id="edit-translator-form"
+					method="POST"
+					action={data.isAdmin ? '?/editTranslator' : '?/requestTranslatorPagesUpdate'}
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							editError = null;
+						},
+						onFailure: (message) => {
+							editError = message;
+						},
+						onSuccess: () => {
+							handleEditSuccess();
+						}
+					})}
+				>
+					<input type="hidden" name="id" value={selectedTranslator.id} />
+					{#if data.isAdmin}
+						<div class="form-control w-full">
+							<label for="edit-name" class="label">
+								<span class="label-text">Nom du traducteur</span>
+							</label>
+							<input
+								id="edit-name"
+								type="text"
+								name="name"
+								class="input-bordered input w-full"
+								class:input-error={editError}
+								value={selectedTranslator.name}
+								required
+							/>
+						</div>
+						<div class="form-control w-full">
+							<label for="edit-discord" class="label">
+								<span class="label-text">ID Discord</span>
+							</label>
+							<input
+								id="edit-discord"
+								type="number"
+								name="discordId"
+								class="input-bordered input w-full"
+								value={selectedTranslator.discordId || ''}
+							/>
+						</div>
+						<div class="form-control w-full">
+							<label for="edit-user-link" class="label">
+								<span class="label-text">Compte utilisateur lié</span>
+							</label>
+							<select id="edit-user-link" name="userId" class="select-bordered select w-full">
+								<option value="" selected={!selectedTranslator.userId}>Aucun</option>
+								{#each data.users as u (u.id)}
+									<option value={u.id} selected={selectedTranslator.userId === u.id}>
+										{u.username} ({u.email})
+									</option>
+								{/each}
+							</select>
+						</div>
+					{:else}
+						<input type="hidden" name="translatorId" value={selectedTranslator.id} />
+						<p class="mb-2 text-sm opacity-80">
+							{#if data.translatorPagesWriteMode === 'direct'}
+								Les modifications des pages sont appliquées immédiatement.
+							{:else}
+								La modification des pages sera soumise à validation admin.
+							{/if}
+						</p>
+						{#if data.roleEditMode === 'user_direct_mode'}
+							<input type="hidden" name="directMode" value={data.directMode ? 'true' : 'false'} />
+						{/if}
+					{/if}
+					<div class="form-control w-full">
+						<label class="label" for="pages">
+							<span class="label-text">Pages</span>
+						</label>
+						<div class="space-y-2">
+							{#each pages as page, index (index)}
+								<div class="flex items-center gap-2">
+									<input
+										type="text"
+										placeholder="Nom de la page"
+										class="input-bordered input flex-1"
+										bind:value={page.name}
+									/>
+									<input
+										type="url"
+										placeholder="Lien"
+										class="input-bordered input flex-1"
+										bind:value={page.link}
+									/>
+									{#if pages.length > 1}
+										<button
+											type="button"
+											class="btn btn-sm btn-error"
+											onclick={() => removePage(index)}
+										>
+											✕
+										</button>
+									{/if}
+								</div>
+							{/each}
+							<button type="button" class="btn btn-outline btn-sm" onclick={addPage}>
+								+ Ajouter une page
+							</button>
+						</div>
+						<input
+							type="hidden"
+							name="pages"
+							value={JSON.stringify(pages.filter((page) => page.name !== '' || page.link !== ''))}
+						/>
 					</div>
-					<input
-						type="hidden"
-						name="pages"
-						value={JSON.stringify(pages.filter((page) => page.name !== '' || page.link !== ''))}
-					/>
-				</div>
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={() => (showEditModal = false)}>
-						Annuler
-					</button>
-					<button type="submit" class="btn btn-primary">
-						{data.isAdmin ? 'Modifier' : 'Soumettre'}
-					</button>
-				</div>
-			</form>
-		</div>
-	</div>
+				</form>
+			{/if}
+		{/snippet}
+		{#snippet footer()}
+			<button type="button" class="btn" onclick={() => (showEditModal = false)}>Annuler</button>
+			<button type="submit" form="edit-translator-form" class="btn btn-primary">
+				{data.isAdmin ? 'Modifier' : 'Soumettre'}
+			</button>
+		{/snippet}
+	</DaisyDashboardModal>
 {/if}

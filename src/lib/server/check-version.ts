@@ -10,7 +10,7 @@ import {
 	isF95CheckerVersionAligned,
 	needsF95VersionBump,
 	normalizeCheckerVersion
-} from '$lib/server/f95-checker-alignment';
+} from '$lib/utils/f95-checker-alignment';
 import { disableGameAndTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';

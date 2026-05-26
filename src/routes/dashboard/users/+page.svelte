@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import User from '@lucide/svelte/icons/user';
@@ -135,136 +137,138 @@
 </section>
 
 {#if showEditUserModal && selectedUser}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Modifier l'utilisateur</h3>
+	<DaisyDashboardModal
+		open={showEditUserModal}
+		title="Modifier l'utilisateur"
+		onClose={closeEditUserModal}
+	>
+		{#snippet children()}
+			{#if selectedUser}
+				{#if userError}
+					<div class="alert alert-error">
+						<span>{userError}</span>
+					</div>
+				{/if}
 
-			{#if userError}
-				<div class="mt-4 alert alert-error">
-					<span>{userError}</span>
-				</div>
-			{/if}
-
-			<form
-				method="POST"
-				action="?/updateUser"
-				use:enhance={() => {
-					userError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							closeEditUserModal();
-						} else if (result.type === 'failure' && result.data) {
-							const message =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
+				<form
+					id="edit-user-form"
+					method="POST"
+					action="?/updateUser"
+					use:enhance={createFormEnhance({
+						updateOnlyOnSuccess: true,
+						onStart: () => {
+							userError = null;
+						},
+						onFailure: (message) => {
 							userError = message;
+						},
+						onSuccess: () => {
+							closeEditUserModal();
 						}
-					};
-				}}
-			>
-				<input type="hidden" name="userId" value={selectedUser.id} />
+					})}
+				>
+					<input type="hidden" name="userId" value={selectedUser.id} />
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-username" class="label">
-						<span class="label-text">Nom d'utilisateur</span>
-					</label>
-					<input
-						id="edit-username"
-						name="username"
-						type="text"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.username}
-						required
-					/>
-				</div>
+					<div class="form-control mt-4 w-full">
+						<label for="edit-username" class="label">
+							<span class="label-text">Nom d'utilisateur</span>
+						</label>
+						<input
+							id="edit-username"
+							name="username"
+							type="text"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.username}
+							required
+						/>
+					</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-email" class="label">
-						<span class="label-text">Email</span>
-					</label>
-					<input
-						id="edit-email"
-						name="email"
-						type="email"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.email}
-						required
-					/>
-				</div>
+					<div class="form-control mt-4 w-full">
+						<label for="edit-email" class="label">
+							<span class="label-text">Email</span>
+						</label>
+						<input
+							id="edit-email"
+							name="email"
+							type="email"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.email}
+							required
+						/>
+					</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-avatar" class="label">
-						<span class="label-text">Image de profil (URL)</span>
-					</label>
-					<input
-						id="edit-avatar"
-						name="avatar"
-						type="url"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.avatar}
-						placeholder="https://example.com/avatar.jpg"
-					/>
-				</div>
+					<div class="form-control mt-4 w-full">
+						<label for="edit-avatar" class="label">
+							<span class="label-text">Image de profil (URL)</span>
+						</label>
+						<input
+							id="edit-avatar"
+							name="avatar"
+							type="url"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.avatar}
+							placeholder="https://example.com/avatar.jpg"
+						/>
+					</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-role" class="label">
-						<span class="label-text">Rôle</span>
-					</label>
-					<select
-						id="edit-role"
-						name="role"
-						class="select-bordered select w-full"
-						class:select-error={userError}
-						value={selectedUser.role}
-						required
-					>
-						{#each roles as role (role.value)}
-							{#if role.assignable || role.value === selectedUser.role}
-								<option value={role.value} disabled={!role.assignable}>
-									{role.label}{role.assignable ? '' : ' (non attribuable)'}
-								</option>
-							{/if}
-						{/each}
-					</select>
-				</div>
-
-				<div class="form-control mt-4 w-full">
-					<label for="edit-translator" class="label">
-						<span class="label-text">Profil traducteur lié</span>
-					</label>
-					<select
-						id="edit-translator"
-						name="linkedTranslatorId"
-						class="select-bordered select w-full"
-						class:select-error={userError}
-					>
-						<option
-							value=""
-							selected={!data.translators.some((t) => t.userId === selectedUser?.id)}
+					<div class="form-control mt-4 w-full">
+						<label for="edit-role" class="label">
+							<span class="label-text">Rôle</span>
+						</label>
+						<select
+							id="edit-role"
+							name="role"
+							class="select-bordered select w-full"
+							class:select-error={userError}
+							value={selectedUser.role}
+							required
 						>
-							Aucun
-						</option>
-						{#each data.translators as tr (tr.id)}
-							<option value={tr.id} selected={tr.userId === selectedUser?.id}>
-								{tr.name}
-							</option>
-						{/each}
-					</select>
-					<p class="label text-xs text-base-content/60">
-						Lie ce compte à une fiche traducteur/relecteur (même choix que sur la page Traducteurs).
-					</p>
-				</div>
+							{#each roles as role (role.value)}
+								{#if role.assignable || role.value === selectedUser.role}
+									<option value={role.value} disabled={!role.assignable}>
+										{role.label}{role.assignable ? '' : ' (non attribuable)'}
+									</option>
+								{/if}
+							{/each}
+						</select>
+					</div>
 
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={closeEditUserModal}> Annuler </button>
-					<button type="submit" class="btn btn-primary"> Enregistrer </button>
-				</div>
-			</form>
-		</div>
-	</div>
+					<div class="form-control mt-4 w-full">
+						<label for="edit-translator" class="label">
+							<span class="label-text">Profil traducteur lié</span>
+						</label>
+						<select
+							id="edit-translator"
+							name="linkedTranslatorId"
+							class="select-bordered select w-full"
+							class:select-error={userError}
+						>
+							<option
+								value=""
+								selected={!data.translators.some((t) => t.userId === selectedUser?.id)}
+							>
+								Aucun
+							</option>
+							{#each data.translators as tr (tr.id)}
+								<option value={tr.id} selected={tr.userId === selectedUser?.id}>
+									{tr.name}
+								</option>
+							{/each}
+						</select>
+						<p class="label text-xs text-base-content/60">
+							Lie ce compte à une fiche traducteur/relecteur (même choix que sur la page
+							Traducteurs).
+						</p>
+					</div>
+				</form>
+			{/if}
+		{/snippet}
+		{#snippet footer()}
+			<button type="button" class="btn" onclick={closeEditUserModal}>Annuler</button>
+			<button type="submit" form="edit-user-form" class="btn btn-primary">Enregistrer</button>
+		{/snippet}
+	</DaisyDashboardModal>
 {/if}

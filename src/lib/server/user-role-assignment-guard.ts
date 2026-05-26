@@ -2,6 +2,7 @@ import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import { systemRoleRank } from '$lib/permissions/sort-roles';
 import {
 	countEffectivePermissionsForRole,
+	getEffectivePermissionsByRoles,
 	getEffectivePermissionsForRole,
 	hasPermission
 } from '$lib/server/permissions';
@@ -15,6 +16,10 @@ function isRoleAllowedWithoutAssignAdmin(roleSlug: string): boolean {
 	return (ROLES_ASSIGNABLE_WITHOUT_ADMIN as readonly string[]).includes(roleSlug);
 }
 
+async function getRolePermissionCount(roleSlug: string): Promise<number> {
+	return (await getEffectivePermissionsForRole(roleSlug)).length;
+}
+
 /** Droits effectifs de l’utilisateur connecté (session courante, après dépendances). */
 async function getActorPermissionCount(locals: App.Locals): Promise<number> {
 	if (locals.permissions?.length) {
@@ -22,10 +27,6 @@ async function getActorPermissionCount(locals: App.Locals): Promise<number> {
 	}
 	if (!locals.user?.role) return 0;
 	return countEffectivePermissionsForRole(locals.user.role);
-}
-
-async function getRolePermissionCount(roleSlug: string): Promise<number> {
-	return (await getEffectivePermissionsForRole(roleSlug)).length;
 }
 
 /**
@@ -162,13 +163,10 @@ export async function listRolesAssignableToUsers(
 	}
 
 	const actorCount = await getActorPermissionCount(locals);
-	const counts = await Promise.all(
-		roles.map(async (r) => ({
-			slug: r.slug,
-			count: await getRolePermissionCount(r.slug)
-		}))
+	const effectiveBySlug = await getEffectivePermissionsByRoles(roles.map((r) => r.slug));
+	const countBySlug = Object.fromEntries(
+		roles.map((r) => [r.slug, effectiveBySlug[r.slug]?.length ?? 0])
 	);
-	const countBySlug = Object.fromEntries(counts.map((c) => [c.slug, c.count]));
 
 	const canAssignAdmin = hasPermission(locals, 'users.assign_admin');
 	const actorRank = systemRoleRank(locals.user.role);

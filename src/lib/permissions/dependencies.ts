@@ -57,6 +57,28 @@ export function enforcePermissionDependencies(keys: Iterable<string>): Permissio
 	return out;
 }
 
+/** Construit l’état initial des cases à cocher pour la page rôles. */
+export function buildPermissionChecksFromRole(options: {
+	allPermissionKeys: readonly string[];
+	permissionGroups: { items: { key: string }[] }[];
+	selectedKeys: readonly string[];
+	allGranted: boolean;
+}): Record<string, boolean> {
+	const next: Record<string, boolean> = {};
+	if (options.allGranted) {
+		for (const key of options.allPermissionKeys) {
+			next[key] = true;
+		}
+	} else {
+		for (const group of options.permissionGroups) {
+			for (const item of group.items) {
+				next[item.key] = options.selectedKeys.includes(item.key);
+			}
+		}
+	}
+	return applyPermissionDependenciesToChecks(next);
+}
+
 /** Applique les dépendances à un état case à cocher (décoche les enfants orphelins). */
 export function applyPermissionDependenciesToChecks(
 	checks: Record<string, boolean>
