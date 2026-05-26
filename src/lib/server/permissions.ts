@@ -105,7 +105,7 @@ export async function attachPermissionsToLocals(locals: App.Locals): Promise<voi
 		locals.permissions = [];
 		return;
 	}
-	locals.permissions = await getPermissionsForRole(locals.user.role);
+	locals.permissions = await getEffectivePermissionsForRole(locals.user.role);
 }
 
 export async function countPermissionsByRoles(
@@ -132,15 +132,48 @@ export async function countPermissionsByRoles(
 	return counts;
 }
 
+/**
+ * Permissions réellement actives pour un rôle (droits en base + règles de dépendance).
+ * C’est la « vraie vision » utilisée pour les comparaisons et l’affichage des totaux.
+ */
+export async function getEffectivePermissionsForRole(roleSlug: string): Promise<string[]> {
+	const permissions = await getPermissionsForRole(roleSlug);
+	return enforcePermissionDependencies(permissions);
+}
+
+export async function countEffectivePermissionsForRole(roleSlug: string): Promise<number> {
+	return (await getEffectivePermissionsForRole(roleSlug)).length;
+}
+
+export async function countEffectivePermissionsByRoles(
+	roleSlugs: string[]
+): Promise<Record<string, number>> {
+	const counts: Record<string, number> = {};
+	if (roleSlugs.length === 0) return counts;
+
+	await Promise.all(
+		roleSlugs.map(async (slug) => {
+			counts[slug] = (await getEffectivePermissionsForRole(slug)).length;
+		})
+	);
+	return counts;
+}
+
+/** @deprecated Préférer `countEffectivePermissionsForRole` / `getEffectivePermissionsForRole`. */
+export function effectivePermissionCount(
+	roleSlug: string,
+	countsByRole: Record<string, number>
+): number {
+	if (isSuperadminRole(roleSlug)) {
+		return PERMISSION_CATALOG.length;
+	}
+	return countsByRole[roleSlug] ?? 0;
+}
+
 export async function listAppRoles() {
 	const roles = await selectAllAppRoles();
 	const slugs = roles.map((r) => r.slug);
-	const permissionCounts = await countPermissionsByRoles(slugs);
-	for (const slug of slugs) {
-		if (isSuperadminRole(slug)) {
-			permissionCounts[slug] = PERMISSION_CATALOG.length;
-		}
-	}
+	const permissionCounts = await countEffectivePermissionsByRoles(slugs);
 	return sortRolesByPrivileges(roles, permissionCounts);
 }
 

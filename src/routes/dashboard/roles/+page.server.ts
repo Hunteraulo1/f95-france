@@ -17,8 +17,9 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
 	assertPermission,
-	countPermissionsByRoles,
+	countEffectivePermissionsByRoles,
 	countUsersWithRoles,
+	getEffectivePermissionsForRole,
 	invalidateRolePermissionsCache,
 	listAppRoles,
 	listRolePermissions,
@@ -70,7 +71,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const roleSlugs = roles.map((r) => r.slug);
 	const [userCounts, permissionCounts] = await Promise.all([
 		countUsersWithRoles(roleSlugs),
-		countPermissionsByRoles(roleSlugs)
+		countEffectivePermissionsByRoles(roleSlugs)
 	]);
 	const orderedSlugs = roleSlugs;
 	const defaultSlug = orderedSlugs[0] ?? 'user';
@@ -85,11 +86,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		redirect(303, rolePageUrl(selectedSlug));
 	}
 	const isSelectedRoleSuperadmin = isSuperadminRole(selectedSlug);
-	const selectedPermissionsEffective = isSelectedRoleSuperadmin
-		? PERMISSION_CATALOG.map((p) => p.key)
-		: selectedSlug
-			? await listRolePermissions(selectedSlug)
-			: [];
+	const selectedPermissionsEffective = selectedSlug
+		? await getEffectivePermissionsForRole(selectedSlug)
+		: [];
 	const selectedPermissions = isSelectedRoleSuperadmin
 		? [...selectedPermissionsEffective]
 		: selectedSlug
@@ -101,11 +100,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const rolesWithAccess = await Promise.all(
 		roles.map(async (r) => {
-			const targetPerms = await listRolePermissions(r.slug);
+			const effectivePerms = await getEffectivePermissionsForRole(r.slug);
 			const access = isSuperadmin
 				? ({ allowed: true } as const)
-				: await assertCanManageRole(locals, r.slug, targetPerms);
-			const hasGamesManage = targetPerms.includes(GAMES_MANAGE_PERMISSION);
+				: await assertCanManageRole(locals, r.slug, effectivePerms);
+			const hasGamesManage = effectivePerms.includes(GAMES_MANAGE_PERMISSION);
 			const storedEditMode = r.editMode && isRoleEditMode(r.editMode) ? r.editMode : null;
 			const badgeStyle = resolveRoleBadgeStyle(r.slug, r.badgeStyle);
 			return {
@@ -116,9 +115,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				badgeStyle,
 				editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
 				userCount: userCounts[r.slug] ?? 0,
-				permissionCount: isSuperadminRole(r.slug)
-					? PERMISSION_CATALOG.length
-					: (permissionCounts[r.slug] ?? 0),
+				permissionCount: permissionCounts[r.slug] ?? 0,
 				canManage: access.allowed,
 				manageBlockedReason: access.allowed ? null : access.message
 			};

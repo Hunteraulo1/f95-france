@@ -2,20 +2,21 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES,
+	assertDevImpersonationTargetAllowed,
 	DEV_IMPERSONATION_ORIGIN_COOKIE,
-	isDevImpersonationTargetAllowed,
+	filterUsersForDevImpersonation,
+	getDevImpersonationActorUser,
 	returnToOwnAccount as returnToOwnAccountAction
 } from '$lib/server/dev-impersonation';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne, notInArray } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, cookies }) => {
 	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		throw new Error('Non authentifié');
@@ -23,16 +24,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const canImpersonateUsers = hasPermission(locals, 'dev.impersonate');
 
-	const devUsers = canImpersonateUsers
-		? await db
-				.select({
-					id: table.user.id,
-					username: table.user.username,
-					role: table.user.role
-				})
-				.from(table.user)
-				.where(notInArray(table.user.role, [...DEV_IMPERSONATION_FORBIDDEN_TARGET_ROLES]))
-		: [];
+	let devUsers: { id: string; username: string; role: string }[] = [];
+	if (canImpersonateUsers) {
+		const actor = await getDevImpersonationActorUser(locals.user);
+		const candidates = await db
+			.select({
+				id: table.user.id,
+				username: table.user.username,
+				role: table.user.role
+			})
+			.from(table.user);
+		devUsers = actor ? await filterUsersForDevImpersonation(actor.role, candidates) : [];
+	}
 
 	const passkeys = await db
 		.select({
@@ -374,6 +377,11 @@ export const actions: Actions = {
 			return fail(401, { message: 'Session introuvable' });
 		}
 
+		const actor = await getDevImpersonationActorUser(locals.user);
+		if (!actor) {
+			return fail(401, { message: 'Compte dev introuvable' });
+		}
+
 		const formData = await request.formData();
 		const targetUserId = String(formData.get('targetUserId') ?? '').trim();
 		if (!targetUserId) {
@@ -393,8 +401,13 @@ export const actions: Actions = {
 		if (!targetUser) {
 			return fail(404, { message: 'Utilisateur introuvable' });
 		}
-		if (!isDevImpersonationTargetAllowed(targetUser.role)) {
-			return fail(403, { message: 'Impossible de basculer vers un super administrateur' });
+
+		const impersonationCheck = await assertDevImpersonationTargetAllowed(
+			actor.role,
+			targetUser.role
+		);
+		if (!impersonationCheck.allowed) {
+			return fail(403, { message: impersonationCheck.message });
 		}
 
 		try {

@@ -224,8 +224,10 @@
 						required
 					>
 						{#each roles as role (role.value)}
-							{#if data.canAssignAdmin || (role.value !== 'admin' && role.value !== 'superadmin')}
-								<option value={role.value}>{role.label}</option>
+							{#if role.assignable || role.value === selectedUser.role}
+								<option value={role.value} disabled={!role.assignable}>
+									{role.label}{role.assignable ? '' : ' (non attribuable)'}
+								</option>
 							{/if}
 						{/each}
 					</select>

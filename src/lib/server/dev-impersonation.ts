@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { hasPermissionForUser } from '$lib/server/permissions';
+import { countEffectivePermissionsForRole, hasPermissionForUser } from '$lib/server/permissions';
 import type { Cookies } from '@sveltejs/kit';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -15,6 +15,78 @@ const forbiddenTargetRoles = new Set<string>(DEV_IMPERSONATION_FORBIDDEN_TARGET_
 
 export function isDevImpersonationTargetAllowed(role: string): boolean {
 	return !forbiddenTargetRoles.has(role);
+}
+
+export type DevImpersonationTargetUser = {
+	id: string;
+	username: string;
+	role: string;
+};
+
+export type DevImpersonationCheckResult = { allowed: true } | { allowed: false; message: string };
+
+/** Vérifie qu’un compte dev peut impersonner la cible (rôle interdit + total des droits). */
+export async function assertDevImpersonationTargetAllowed(
+	actorRole: string,
+	targetRole: string
+): Promise<DevImpersonationCheckResult> {
+	if (!isDevImpersonationTargetAllowed(targetRole)) {
+		return {
+			allowed: false,
+			message: 'Impossible de basculer vers un super administrateur'
+		};
+	}
+
+	const [actorCount, targetCount] = await Promise.all([
+		countEffectivePermissionsForRole(actorRole),
+		countEffectivePermissionsForRole(targetRole)
+	]);
+
+	if (targetCount > actorCount) {
+		return {
+			allowed: false,
+			message: `Cet utilisateur a plus de droits que vous (${targetCount} contre ${actorCount}) — bascule refusée`
+		};
+	}
+
+	return { allowed: true };
+}
+
+/** Utilisateurs éligibles à l’impersonation pour un compte donné (même règles que `assertDevImpersonationTargetAllowed`). */
+export async function filterUsersForDevImpersonation(
+	actorRole: string,
+	candidates: DevImpersonationTargetUser[]
+): Promise<DevImpersonationTargetUser[]> {
+	if (candidates.length === 0) return [];
+
+	const actorCount = await countEffectivePermissionsForRole(actorRole);
+
+	const eligible: DevImpersonationTargetUser[] = [];
+	for (const user of candidates) {
+		if (!isDevImpersonationTargetAllowed(user.role)) continue;
+		const targetCount = await countEffectivePermissionsForRole(user.role);
+		if (targetCount <= actorCount) {
+			eligible.push(user);
+		}
+	}
+	return eligible;
+}
+
+/** Compte dont les droits effectifs plafonnent l’impersonation (session courante uniquement). */
+export async function getDevImpersonationActorUser(
+	currentUser: { id: string; role: string } | null | undefined
+): Promise<{ id: string; username: string; role: string } | null> {
+	if (!currentUser) return null;
+	const [user] = await db
+		.select({
+			id: table.user.id,
+			username: table.user.username,
+			role: table.user.role
+		})
+		.from(table.user)
+		.where(eq(table.user.id, currentUser.id))
+		.limit(1);
+	return user ?? null;
 }
 
 export async function getDevImpersonationOriginUser(cookies: Cookies) {

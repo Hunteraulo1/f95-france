@@ -660,7 +660,9 @@
 					{/if}
 					<div class="flex w-full items-center justify-between gap-4">
 						<span class="opacity-70"
-							>Fonctionnalité permettant d'utiliser un autre compte utilisateur.</span
+							>Basculer vers un autre compte. Seuls les utilisateurs avec au plus autant de droits
+							effectifs que votre session actuelle sont listés — les super administrateurs sont
+							exclus. Utilisez « Retour à mon compte » pour revenir au compte d’origine.</span
 						>
 					</div>
 					<form

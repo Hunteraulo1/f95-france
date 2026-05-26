@@ -135,7 +135,10 @@
 										{/if}
 									</span>
 									<span class="text-xs opacity-60"
-										>{role.permissionCount} droit{role.permissionCount > 1 ? 's' : ''}</span
+										>{role.permissionCount} droit{role.permissionCount > 1 ? 's' : ''} effectif{role.permissionCount >
+										1
+											? 's'
+											: ''}</span
 									>
 								</span>
 								<span class="badge badge-ghost badge-xs">{role.userCount}</span>

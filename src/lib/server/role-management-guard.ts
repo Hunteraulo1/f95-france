@@ -1,7 +1,6 @@
 import { isSuperadminRole, type PermissionKey } from '$lib/permissions/catalog';
+import { systemRoleRank } from '$lib/permissions/sort-roles';
 import { getPermissionsForRole } from '$lib/server/permissions';
-
-const SYSTEM_ROLE_ORDER = ['user', 'translator', 'admin', 'superadmin'] as const;
 
 export function isRolesManagementSuperadmin(locals: App.Locals): boolean {
 	return locals.user?.role === 'superadmin';
@@ -14,11 +13,6 @@ export async function getActorPermissionSet(locals: App.Locals): Promise<Set<str
 			? locals.permissions
 			: await getPermissionsForRole(locals.user.role);
 	return new Set(perms);
-}
-
-function systemRoleRank(slug: string): number {
-	const idx = SYSTEM_ROLE_ORDER.indexOf(slug as (typeof SYSTEM_ROLE_ORDER)[number]);
-	return idx === -1 ? -1 : idx;
 }
 
 export type RoleManageCheckResult = { allowed: true } | { allowed: false; message: string };
@@ -48,8 +42,11 @@ export async function assertCanManageRole(
 
 	const actorRank = systemRoleRank(locals.user.role);
 	const targetRank = systemRoleRank(targetSlug);
-	if (actorRank !== -1 && targetRank !== -1 && targetRank > actorRank) {
-		return { allowed: false, message: 'Ce rôle système a un niveau supérieur au vôtre' };
+	if (actorRank !== -1 && targetRank !== -1 && targetRank >= actorRank) {
+		return {
+			allowed: false,
+			message: 'Ce rôle système a un niveau supérieur ou égal au vôtre'
+		};
 	}
 
 	const targetPerms = targetPermissionKeys ?? (await getPermissionsForRole(targetSlug));
