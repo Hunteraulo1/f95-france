@@ -27,7 +27,7 @@
 		getTranslatorFieldErrors
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { get, writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
@@ -39,7 +39,7 @@
 
 	let { data }: Props = $props();
 	let step = $state(0);
-	let translatorsList = $state([...data.translators]);
+	let translatorsList = $state(untrack(() => [...data.translators]));
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({

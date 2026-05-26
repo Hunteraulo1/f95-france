@@ -16,7 +16,7 @@ import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est authentifié
 	if (!locals.user) {
 		throw new Error('Non authentifié');
