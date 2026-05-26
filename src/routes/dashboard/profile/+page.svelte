@@ -17,4 +17,7 @@
 	profileCustomize={data.profileCustomize}
 	customProfile={data.customProfile}
 	linkedTranslator={data.linkedTranslator}
+	translatorPagesWriteMode={data.translatorPagesWriteMode}
+	roleEditMode={data.roleEditMode}
+	directMode={data.directMode}
 />

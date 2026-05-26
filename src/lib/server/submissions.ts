@@ -21,6 +21,7 @@ import {
 	syncTranslatorLinksInJeuxSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
@@ -379,15 +380,7 @@ export async function applySubmission(submissionId: string) {
 			})
 			.where(eq(table.submission.id, submissionId));
 
-		await db
-			.update(table.translator)
-			.set({ pages: JSON.stringify(pages), updatedAt: new Date() })
-			.where(eq(table.translator.id, translatorId));
-
-		// Important: en environnement serverless, le fire-and-forget peut être interrompu
-		// à la fin de la requête. On attend explicitement la sync Sheets.
-		await syncTranslatorToGoogleSheet(translatorId);
-		await syncTranslatorLinksInJeuxSheet(translatorId);
+		await applyTranslatorPagesDirect(translatorId, pages);
 	} else if (sub.type === 'game') {
 		// Créer un nouveau jeu
 		const gameData = parsedData.game;

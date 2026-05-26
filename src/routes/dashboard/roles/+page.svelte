@@ -275,7 +275,7 @@
 												value={option.value}
 												class="radio mt-0.5 radio-sm"
 												checked={selectedRole.badgeStyle === option.value}
-												disabled={isSelectedSuperadmin}
+												disabled={isSelectedSuperadmin || option.disabled}
 											/>
 											<span class="flex min-w-0 flex-col gap-1">
 												<span

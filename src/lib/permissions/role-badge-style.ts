@@ -15,56 +15,67 @@ export const ROLE_BADGE_STYLE_OPTIONS: {
 	value: RoleBadgeStyle;
 	label: string;
 	description: string;
+	disabled?: boolean;
 }[] = [
 	{
 		value: 'default',
 		label: 'Par défaut',
-		description: 'Texte et badge standard, sans couleur de rôle.'
+		description: 'Texte et badge standard, sans couleur de rôle.',
+		disabled: false
 	},
 	{
 		value: 'primary',
 		label: 'Primaire',
-		description: 'Couleur principale du thème.'
+		description: 'Couleur principale du thème.',
+		disabled: false
 	},
 	{
 		value: 'secondary',
 		label: 'Secondaire',
-		description: 'Couleur secondaire du thème.'
+		description: 'Couleur secondaire du thème.',
+		disabled: false
 	},
 	{
 		value: 'accent',
 		label: 'Accent',
-		description: 'Couleur d’accent du thème.'
+		description: 'Couleur d’accent du thème.',
+		disabled: false
 	},
 	{
 		value: 'info',
 		label: 'Info',
-		description: 'Bleu informatif.'
+		description: 'Bleu informatif.',
+		disabled: false
 	},
 	{
 		value: 'success',
 		label: 'Succès',
-		description: 'Vert « succès ».'
+		description: 'Vert « succès ».',
+		disabled: false
 	},
 	{
 		value: 'warning',
 		label: 'Avertissement',
-		description: 'Jaune / ambre d’avertissement.'
+		description: 'Jaune / ambre d’avertissement.',
+		disabled: false
 	},
 	{
 		value: 'error',
 		label: 'Erreur',
-		description: 'Rouge « danger ».'
+		description: 'Rouge « danger ».',
+		disabled: false
 	},
 	{
 		value: 'neutral',
 		label: 'Neutre',
-		description: 'Gris neutre du thème.'
+		description: 'Gris neutre du thème.',
+		disabled: false
 	},
 	{
 		value: 'superadmin',
 		label: 'Superadmin (animé)',
-		description: 'Dégradé animé primaire / secondaire / accent.'
+		description: 'Dégradé animé primaire / secondaire / accent.',
+		disabled: true
 	}
 ];
 

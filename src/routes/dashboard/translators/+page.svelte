@@ -402,8 +402,15 @@
 				{:else}
 					<input type="hidden" name="translatorId" value={selectedTranslator.id} />
 					<p class="mb-2 text-sm opacity-80">
-						La modification des pages sera soumise à validation admin.
+						{#if data.translatorPagesWriteMode === 'direct'}
+							Les modifications des pages sont appliquées immédiatement.
+						{:else}
+							La modification des pages sera soumise à validation admin.
+						{/if}
 					</p>
+					{#if data.roleEditMode === 'user_direct_mode'}
+						<input type="hidden" name="directMode" value={data.directMode ? 'true' : 'false'} />
+					{/if}
 				{/if}
 				<div class="form-control w-full">
 					<label class="label" for="pages">

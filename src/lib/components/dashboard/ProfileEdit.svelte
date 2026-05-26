@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import type { RoleEditMode } from '$lib/permissions/edit-mode';
 	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
 	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
 	import {
@@ -22,6 +23,9 @@
 		profileCustomize: ProfileCustomizeFlags;
 		customProfile?: CustomProfileTheme | null;
 		linkedTranslator?: LinkedTranslator | null;
+		translatorPagesWriteMode?: 'direct' | 'submission' | null;
+		roleEditMode?: RoleEditMode | null;
+		directMode?: boolean;
 	}
 
 	let {
@@ -30,7 +34,10 @@
 		publicProfileHref,
 		profileCustomize,
 		customProfile = null,
-		linkedTranslator = null
+		linkedTranslator = null,
+		translatorPagesWriteMode = null,
+		roleEditMode = null,
+		directMode = true
 	}: Props = $props();
 
 	let profileUsername = $state('');
@@ -170,8 +177,12 @@
 				<p class="text-sm text-base-content/70">
 					Liens affichés sur votre
 					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
-					<span class="font-medium">{linkedTranslator.name}</span>. Les modifications sont soumises
-					à validation admin.
+					<span class="font-medium">{linkedTranslator.name}</span>.
+					{#if translatorPagesWriteMode === 'direct'}
+						Les modifications sont appliquées immédiatement.
+					{:else}
+						Les modifications sont soumises à validation admin.
+					{/if}
 				</p>
 
 				{#if translatorPagesError}
@@ -197,7 +208,9 @@
 								translatorPagesInfo =
 									typeof result.data === 'object' && result.data && 'message' in result.data
 										? String(result.data.message)
-										: 'Demande envoyée. En attente de validation admin.';
+										: translatorPagesWriteMode === 'direct'
+											? 'Pages traducteur mises à jour.'
+											: 'Demande envoyée. En attente de validation admin.';
 							} else if (result.type === 'failure' && result.data) {
 								translatorPagesError =
 									typeof result.data === 'object' && 'message' in result.data
@@ -208,6 +221,9 @@
 					}}
 				>
 					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
+					{#if roleEditMode === 'user_direct_mode'}
+						<input type="hidden" name="directMode" value={directMode ? 'true' : 'false'} />
+					{/if}
 					<div class="space-y-2">
 						{#each translatorPages as pageEntry, index (index)}
 							<div class="flex flex-col gap-2 sm:flex-row sm:items-center">

@@ -1,6 +1,11 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
+import { getRoleEditMode } from '$lib/server/role-edit-mode';
+import {
+	handleTranslatorPagesUpdate,
+	resolveTranslatorPagesWriteMode
+} from '$lib/server/translator-pages-write';
 import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
@@ -44,6 +49,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	const isAdmin = hasPermission(locals, 'translators.manage');
+	const hasGamesManage = hasPermission(locals, 'games.manage');
+	const roleEditMode = hasGamesManage ? await getRoleEditMode(locals.user.role) : null;
 
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
@@ -103,10 +110,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		pages: JSON.parse(translator.pages || '[]')
 	}));
 
+	const translatorPagesWriteMode = await resolveTranslatorPagesWriteMode({
+		hasGamesManage,
+		roleSlug: locals.user.role,
+		userDirectMode: locals.user.directMode ?? true
+	});
+
 	return {
 		translator: translatorsWithPages,
 		users,
 		isAdmin,
+		hasGamesManage,
+		roleEditMode,
+		translatorPagesWriteMode,
+		directMode: locals.user.directMode ?? true,
 		currentUserId: locals.user.id,
 		q,
 		page,
@@ -249,53 +266,12 @@ export const actions: Actions = {
 			return fail(500, { message: 'Erreur lors de la modification du traducteur' });
 		}
 	},
-	requestTranslatorPagesUpdate: async ({ request, locals }) => {
-		if (!locals.user) {
-			return fail(401, { message: 'Non authentifié' });
+	requestTranslatorPagesUpdate: async (event) => {
+		const hasGamesManage = hasPermission(event.locals, 'games.manage');
+		const result = await handleTranslatorPagesUpdate(event, { hasGamesManage });
+		if (!result.ok) {
+			return fail(result.status, { message: result.message });
 		}
-
-		const formData = await request.formData();
-		const translatorId = String(formData.get('translatorId') ?? '').trim();
-		const pagesRaw = String(formData.get('pages') ?? '');
-		if (!translatorId) {
-			return fail(400, { message: 'Traducteur introuvable' });
-		}
-
-		let pagesParsed: Array<{ name: string; link: string }> = [];
-		try {
-			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
-			if (Array.isArray(raw)) {
-				pagesParsed = raw
-					.map((p) => ({ name: String(p.name ?? '').trim(), link: String(p.link ?? '').trim() }))
-					.filter((p) => p.name !== '' || p.link !== '');
-			}
-		} catch {
-			return fail(400, { message: 'Format des pages invalide' });
-		}
-
-		const [translatorRow] = await db
-			.select({
-				id: table.translator.id,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.where(eq(table.translator.id, translatorId))
-			.limit(1);
-
-		if (!translatorRow || translatorRow.userId !== locals.user.id) {
-			return fail(403, { message: 'Vous pouvez modifier uniquement votre profil traducteur lié.' });
-		}
-
-		await db.insert(table.submission).values({
-			userId: locals.user.id,
-			type: 'translator_pages',
-			status: 'pending',
-			data: JSON.stringify({
-				translatorId,
-				pages: pagesParsed
-			})
-		});
-
-		return { success: true, message: 'Demande envoyée. Un admin doit la valider.' };
+		return { success: true, message: result.message, mode: result.mode };
 	}
 };

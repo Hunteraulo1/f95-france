@@ -33,13 +33,3 @@ export function roleBadgeClass(
 ): string {
 	return roleUsernameClass(roleSlug, badgeStyle);
 }
-
-/** @deprecated Utiliser `roleUsernameClass`. */
-export function superadminUsernameClass(role: string | null | undefined): string {
-	return roleUsernameClass(role);
-}
-
-/** @deprecated Utiliser `roleBadgeClass`. */
-export function superadminBadgeClass(role: string | null | undefined): string {
-	return roleBadgeClass(role);
-}

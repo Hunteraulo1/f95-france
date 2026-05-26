@@ -159,17 +159,6 @@ export async function countEffectivePermissionsByRoles(
 	return counts;
 }
 
-/** @deprecated Préférer `countEffectivePermissionsForRole` / `getEffectivePermissionsForRole`. */
-export function effectivePermissionCount(
-	roleSlug: string,
-	countsByRole: Record<string, number>
-): number {
-	if (isSuperadminRole(roleSlug)) {
-		return PERMISSION_CATALOG.length;
-	}
-	return countsByRole[roleSlug] ?? 0;
-}
-
 export async function listAppRoles() {
 	const roles = await selectAllAppRoles();
 	const slugs = roles.map((r) => r.slug);
