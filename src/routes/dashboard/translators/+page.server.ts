@@ -83,8 +83,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			name: table.translator.name,
 			discordId: table.translator.discordId,
 			pages: table.translator.pages,
-			tradCount: table.translator.tradCount,
-			readCount: table.translator.readCount,
 			userId: table.translator.userId
 		})
 		.from(table.translator);

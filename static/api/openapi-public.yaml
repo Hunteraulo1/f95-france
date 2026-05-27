@@ -274,6 +274,7 @@ paths:
         La liaison interne `userId` n’est pas renvoyée.
 
         Filtres optionnels sur les compteurs : `tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax` (entiers ≥ 0, bornes inclusives).
+        Les compteurs `tradCount` et `readCount` sont calculés à la volée depuis les traductions liées (`game_translation`), pas stockés sur le traducteur.
         `hasDiscord=true` : uniquement les traducteurs avec un `discordId` renseigné ; `hasDiscord=false` : uniquement ceux sans `discordId`. Sans ce paramètre, la liste ne filtre pas sur Discord (tous les traducteurs peuvent apparaître).
       operationId: listTranslators
       parameters:
@@ -910,10 +911,10 @@ components:
           description: JSON ou texte des pages / liens
         tradCount:
           type: integer
-          nullable: true
+          description: Nombre de traductions où ce profil est traducteur (calculé depuis `game_translation`).
         readCount:
           type: integer
-          nullable: true
+          description: Nombre de traductions où ce profil est relecteur (calculé depuis `game_translation`).
         createdAt:
           type: string
           format: date-time

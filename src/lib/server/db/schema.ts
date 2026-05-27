@@ -180,8 +180,6 @@ export const translator = pgTable('translator', {
 	userId: varchar('user_id', { length: 255 }).references(() => user.id),
 	pages: text('pages').notNull(),
 	discordId: varchar('discord_id', { length: 255 }).unique(),
-	tradCount: integer('trad_count').notNull().default(0),
-	readCount: integer('read_count').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });

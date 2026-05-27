@@ -123,8 +123,6 @@ type LegacyTranslator = {
 	name?: string | number | null;
 	discordId?: string | number | null;
 	pages?: string[] | string | LegacyTranslatorPage[] | null;
-	tradCount?: number | string | null;
-	readCount?: number | string | null;
 };
 
 const normalizeLegacyText = (value: string | null | undefined): string =>
@@ -234,15 +232,6 @@ const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
 	return null;
 };
 
-const safeNumber = (value: unknown): number | null => {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string') {
-		const parsed = Number.parseInt(value, 10);
-		return Number.isFinite(parsed) ? parsed : null;
-	}
-	return null;
-};
-
 /** Same shape as le tableau édité dans /dashboard/translators : { name, link }[] */
 const parsePages = (value: unknown): string => {
 	const normalizeEntry = (entry: unknown): { name: string; link: string } | null => {
@@ -313,9 +302,7 @@ const upsertLegacyTranslators = async (
 			id: table.translator.id,
 			name: table.translator.name,
 			discordId: table.translator.discordId,
-			pages: table.translator.pages,
-			tradCount: table.translator.tradCount,
-			readCount: table.translator.readCount
+			pages: table.translator.pages
 		})
 		.from(table.translator);
 
@@ -346,8 +333,6 @@ const upsertLegacyTranslators = async (
 					? String(item.discordId)
 					: null;
 		const pages = parsePages(item.pages);
-		const tradCount = safeNumber(item.tradCount) ?? 0;
-		const readCount = safeNumber(item.readCount) ?? 0;
 
 		let current =
 			(discordId ? byDiscordId.get(discordId) : undefined) ??
@@ -361,12 +346,10 @@ const upsertLegacyTranslators = async (
 					id,
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				});
 			}
-			const created = { id, name, discordId, pages, tradCount, readCount };
+			const created = { id, name, discordId, pages };
 			byName.set(name.toLowerCase(), created);
 			if (discordId) byDiscordId.set(discordId, created);
 			inserted++;
@@ -374,11 +357,7 @@ const upsertLegacyTranslators = async (
 		}
 
 		const shouldUpdate =
-			current.name !== name ||
-			(current.discordId ?? null) !== discordId ||
-			current.pages !== pages ||
-			current.tradCount !== tradCount ||
-			current.readCount !== readCount;
+			current.name !== name || (current.discordId ?? null) !== discordId || current.pages !== pages;
 
 		if (!shouldUpdate) continue;
 
@@ -388,14 +367,12 @@ const upsertLegacyTranslators = async (
 				.set({
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				})
 				.where(eq(table.translator.id, current.id));
 		}
 
-		current = { ...current, name, discordId, pages, tradCount, readCount };
+		current = { ...current, name, discordId, pages };
 		byName.set(name.toLowerCase(), current);
 		if (discordId) byDiscordId.set(discordId, current);
 		updated++;
