@@ -8,9 +8,10 @@ const STATIC_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 	'Permissions-Policy':
 		'accelerometer=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), autoplay=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), camera=(), geolocation=(), gyroscope=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), encrypted-media=(self "https://www.youtube.com" "https://www.youtube-nocookie.com"), picture-in-picture=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
 	'Cross-Origin-Opener-Policy': 'same-origin',
+	/** Isolation partielle (audit COEP) ; moins strict que require-corp pour les iframes tierces (YouTube). */
+	'Cross-Origin-Embedder-Policy': 'credentialless',
 	/** Protège les réponses de ce site ; n’empêche pas le chargement d’images tierces (F95, etc.). */
 	'Cross-Origin-Resource-Policy': 'same-site'
-	// Pas de COEP : credentialless / require-corp bloquent les iframes YouTube (Firefox, Zen).
 };
 
 function shouldSendHsts(): boolean {
