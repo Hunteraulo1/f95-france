@@ -13,6 +13,9 @@
 	const ogImage = $derived(absoluteUrl(SITE.ogImagePath, env.PUBLIC_APP_ORIGIN));
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');
+	const isDashboardRoute = $derived(
+		page.url.pathname.startsWith('/dashboard') || page.url.pathname.startsWith('/dashbord')
+	);
 
 	onMount(() => {
 		themeChange(false);
@@ -36,9 +39,13 @@
 	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
-<div class="flex flex-col min-h-screen bg-base-200">
-	{#if !isHome}
-		<Header />
-	{/if}
+{#if isDashboardRoute}
 	{@render children()}
-</div>
+{:else}
+	<div class="flex flex-col min-h-screen bg-base-200">
+		{#if !isHome}
+			<Header />
+		{/if}
+		{@render children()}
+	</div>
+{/if}

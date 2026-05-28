@@ -23,7 +23,7 @@
 	];
 </script>
 
-<div class="navbar h-32 px-12 items-center">
+<div class="navbar h-32 px-12 z-10 items-center">
 	<a href="/" class="">
 		<img src={banner} alt="Bannière de F95 France" class="w-auto h-auto" />
 	</a>
@@ -77,7 +77,7 @@
 					<a
 						aria-current={page.url.pathname === '/dashboard/register'}
 						href={resolve('/dashboard/register')}
-						class="btn text-sm bg-base-100 border-base-content/10 w-28 shadow-lg font-semibold hover:bg-base-300 hover:text-primary-content p-2 rounded-md aria-current:bg-primary aria-current:text-primary-content"
+						class="btn btn-primary text-sm border-base-content/10 w-28 shadow-lg font-semibold hover:text-primary-content p-2 rounded-md aria-current:bg-primary aria-current:text-primary-content"
 					>
 						Inscription
 					</a>
