@@ -1,13 +1,25 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
+	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
+	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
 	import '../app.css';
 
 	let { children } = $props();
+
+	let ageCheckReady = $state(false);
+	let ageVerified = $state(false);
+
+	$effect(() => {
+		if (!ageCheckReady) return;
+		document.documentElement.classList.toggle('overflow-hidden', !ageVerified);
+		return () => document.documentElement.classList.remove('overflow-hidden');
+	});
 
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
 	const ogImage = $derived(absoluteUrl(SITE.ogImagePath, env.PUBLIC_APP_ORIGIN));
@@ -17,7 +29,14 @@
 		page.url.pathname.startsWith('/dashboard') || page.url.pathname.startsWith('/dashbord')
 	);
 
+	const confirmAge = () => {
+		setAgeVerified();
+		ageVerified = true;
+	};
+
 	onMount(() => {
+		ageVerified = isAgeVerified();
+		ageCheckReady = true;
 		themeChange(false);
 	});
 </script>
@@ -39,13 +58,34 @@
 	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
-{#if isDashboardRoute}
-	{@render children()}
+{#if !ageCheckReady}
+	<div class="flex min-h-screen items-center justify-center bg-base-200">
+		<div class="flex h-full flex-col items-center justify-center gap-2">
+			<LoaderCircle size={40} class="animate-spin" />
+			<span class="text-lg font-medium text-base-content/80">Chargement...</span>
+		</div>
+	</div>
 {:else}
-	<div class="flex flex-col min-h-screen bg-base-200">
-		{#if !isHome}
-			<Header />
+	<div class="relative min-h-screen">
+		<div
+			class:pointer-events-none={!ageVerified}
+			class:select-none={!ageVerified}
+			inert={!ageVerified}
+		>
+			{#if isDashboardRoute}
+				{@render children()}
+			{:else}
+				<div class="flex min-h-screen flex-col bg-base-200">
+					{#if !isHome}
+						<Header />
+					{/if}
+					{@render children()}
+				</div>
+			{/if}
+		</div>
+
+		{#if !ageVerified}
+			<AgeVerificationModal onConfirm={confirmAge} />
 		{/if}
-		{@render children()}
 	</div>
 {/if}

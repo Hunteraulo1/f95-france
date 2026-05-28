@@ -8,17 +8,6 @@
 
 	let { data }: PageProps = $props();
 
-	const formattedDate = new Intl.DateTimeFormat('fr-FR', {
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	});
-
-	const parseTags = (tags: string | null) =>
-		(tags ?? '')
-			.split(',')
-			.map((tag) => tag.trim())
-			.filter(Boolean);
-
 	const statusClass = (status: string | null) => {
 		switch (status) {
 			case 'new':
@@ -44,8 +33,6 @@
 				return 'Info';
 		}
 	};
-
-	const normalizeHref = (href: string): string => href;
 
 	const DEFAULT_FIELD_SIZE = 2000;
 
@@ -112,9 +99,9 @@
 	});
 </script>
 
-<main class="flex w-full flex-1 flex-col gap-10">
+<main class="flex w-full flex-1 flex-col gap-10 pb-10">
 	<section class="hero min-h-screen relative overflow-hidden bg-transparent">
-		<div class="top-0 absolute w-full">
+		<div class="top-0 absolute w-full z-40">
 			<Header />
 		</div>
 		<div class="pointer-events-none absolute inset-0">
@@ -136,17 +123,17 @@
 			class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
 		></div>
 		<div
-			class="hero-content max-w-none 2xl:px-64 px-16 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
+			class="hero-content max-w-none 2xl:px-64 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
 		>
-			<div class="space-y-4">
-				<h1 class="text-4xl font-bold leading-tight md:text-5xl">
+			<div class="space-y-4 text-center sm:text-left">
+				<h1 class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl">
 					La communauté française qui fait vivre vos lewd games en VF
 				</h1>
 				<p class="text-neutral-content/90">
 					F95 France rassemble traducteurs, relecteurs et joueurs pour suivre les sorties, améliorer
 					les traductions et partager chaque avancée en français.
 				</p>
-				<div class="flex flex-wrap gap-3">
+				<div class="flex flex-wrap gap-3 justify-center sm:justify-start pt-4">
 					<a href="/games" class="btn btn-primary">Explorer les jeux</a>
 					<a
 						href="/updates"
@@ -155,7 +142,9 @@
 					>
 				</div>
 			</div>
-			<div class="relative mt-4 w-full max-w-2xl perspective-distant">
+			<div
+				class="lg:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 lg:opacity-100 px-8 lg:px-0"
+			>
 				<div
 					class="absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] blur-[20px] opacity-50"
 				></div>
@@ -166,12 +155,12 @@
 						<span class="badge badge-primary badge-soft">Liste des traductions</span>
 					</div>
 					<div
-						class="grid grid-cols-4 gap-2 rounded-lg bg-primary/16 p-2.5 text-[0.78rem] font-semibold text-base-content/82"
+						class="grid grid-cols-4 gap-2 rounded-lg bg-primary/16 p-2.5 sm:text-sm font-semibold text-base-content/82 text-xs"
 					>
-						<div>NON DU JEU</div>
-						<div>VERSION</div>
-						<div>TRAD. VER.</div>
-						<div>STATUS</div>
+						<div class="line-clamp-1">NOM DU JEU</div>
+						<div class="line-clamp-1">VERSION</div>
+						<div class="line-clamp-1">TRAD. VER.</div>
+						<div class="line-clamp-1">STATUS</div>
 					</div>
 					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
 						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
@@ -224,9 +213,9 @@
 		{/if}
 	</section>
 
-	<div class="mx-auto max-w-7xl flex flex-col gap-10">
+	<div class="mx-auto flex flex-col gap-10 px-2">
 		<section class="space-y-6">
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-12">
 				<h2 class="text-2xl font-bold">Dernières mises à jour</h2>
 				<a href="/updates">
 					<div
@@ -252,60 +241,28 @@
 					</div>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 					{#each data.updates as update (update.updateId)}
-						<article class="card card-border bg-base-100">
-							<div class="card-body gap-3">
-								<div class="flex items-start justify-between gap-3">
-									<h3 class="card-title text-lg">{update.game.name ?? 'Jeu inconnu'}</h3>
-									<span class={statusClass(update.updateStatus)}
+						<article
+							class="card card-border bg-base-100 aspect-4/3 last:hidden xl:last:flex md:last:hidden sm:last:flex max-w-sm"
+						>
+							<div
+								class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
+								style={`background-image: url(${update.game.gameImage});`}
+							>
+								<div class="flex flex-col items-start justify-between gap-3">
+									<span
+										class={statusClass(update.updateStatus) + ' text-xs text-nowrap font-semibold'}
 										>{statusLabel(update.updateStatus)}</span
 									>
-								</div>
-								<div class="space-y-1 text-sm">
+									<h3 class="card-title text-lg line-clamp-1">
+										{update.game.name ?? 'Jeu inconnu'}
+									</h3>
 									<p>
 										<span class="font-semibold">Version:</span>
 										{update.game.gameVersion ?? '—'}
 									</p>
-									<p>
-										<span class="font-semibold">Site:</span>
-										{update.game.gameWebsite ?? '—'}
-									</p>
-									<p>
-										<span class="font-semibold">Date:</span>
-										{update.updateCreatedAt
-											? formattedDate.format(new Date(update.updateCreatedAt))
-											: '—'}
-									</p>
 								</div>
-								<div class="flex flex-wrap gap-2">
-									{#if parseTags(update.game.gameTags).length}
-										{#each parseTags(update.game.gameTags) as tag (tag)}
-											<span class="badge badge-outline">{tag}</span>
-										{/each}
-									{:else}
-										<span class="badge badge-ghost">Aucun tag</span>
-									{/if}
-								</div>
-								{#if update.game.gameEngineTypes.length}
-									<div class="flex flex-wrap gap-2">
-										{#each update.game.gameEngineTypes as engine (engine)}
-											<span class="badge badge-secondary badge-soft">{engine}</span>
-										{/each}
-									</div>
-								{/if}
-								{#if update.game.gameLink}
-									<div class="card-actions justify-end">
-										<a
-											class="btn btn-primary btn-sm"
-											href={normalizeHref(update.game.gameLink)}
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											Voir le jeu
-										</a>
-									</div>
-								{/if}
 							</div>
 						</article>
 					{/each}

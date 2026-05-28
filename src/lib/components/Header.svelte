@@ -23,7 +23,7 @@
 	];
 </script>
 
-<div class="navbar h-32 px-12 z-10 items-center">
+<div class="navbar h-32 sm:px-12 px-8 z-10 items-center gap-4">
 	<a href="/" class="h-full py-10">
 		<img src={banner} alt="Bannière de F95 France" class="w-auto h-full object-contain" />
 	</a>
@@ -36,7 +36,7 @@
 				<Menu />
 			</label>
 		</div>
-		<ul class="hidden lg:flex flex-wrap items-center gap-4">
+		<ul class="hidden lg:flex flex-wrap items-center gap-2 xl:gap-4">
 			{#each links as link (link.href)}
 				<li
 					aria-current={page.url.pathname === link.href}
