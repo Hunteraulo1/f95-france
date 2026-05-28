@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
+	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
@@ -10,6 +12,7 @@
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
 	const ogImage = $derived(absoluteUrl(SITE.ogImagePath, env.PUBLIC_APP_ORIGIN));
 	const pageUrl = $derived(origin);
+	const isHome = $derived(page.url.pathname === '/');
 
 	onMount(() => {
 		themeChange(false);
@@ -33,4 +36,9 @@
 	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
-{@render children()}
+<div class="flex flex-col min-h-screen bg-base-200">
+	{#if !isHome}
+		<Header />
+	{/if}
+	{@render children()}
+</div>
