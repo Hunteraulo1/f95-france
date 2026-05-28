@@ -97,6 +97,9 @@
 		window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
 	};
 
+	const sheetLineClass =
+		'relative h-[0.7rem] overflow-hidden rounded-sm bg-base-content/16 before:absolute before:inset-y-0 before:left-0 before:w-[35%] before:bg-primary/28 before:opacity-50 before:animate-drift before:content-[""]';
+
 	onMount(() => {
 		refreshStars();
 		updateScrollState();
@@ -116,15 +119,15 @@
 		</div>
 		<div class="pointer-events-none absolute inset-0">
 			<div
-				class="stars-layer"
+				class="hero-stars-layer"
 				style={`--star-size:1px;--star-duration:50s;--star-shadow:${starsSmall};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
 			></div>
 			<div
-				class="stars-layer"
+				class="hero-stars-layer"
 				style={`--star-size:2px;--star-duration:100s;--star-shadow:${starsMedium};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
 			></div>
 			<div
-				class="stars-layer"
+				class="hero-stars-layer"
 				style={`--star-size:3px;--star-duration:150s;--star-shadow:${starsLarge};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
 			></div>
 		</div>
@@ -152,53 +155,59 @@
 					>
 				</div>
 			</div>
-			<div class="sheet-illustration">
-				<div class="sheet-glow"></div>
-				<div class="sheet-paper">
-					<div class="sheet-toolbar">
+			<div class="relative mt-4 w-full max-w-2xl perspective-distant">
+				<div
+					class="absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] blur-[20px] opacity-50"
+				></div>
+				<div
+					class="relative grid gap-[0.55rem] rounded-2xl border border-base-content/20 bg-base-100/85 p-4 shadow-[0_25px_50px_-12px_color-mix(in_oklab,var(--color-neutral)_45%,transparent),inset_0_1px_0_color-mix(in_oklab,white_40%,transparent)] animate-float-sheet"
+				>
+					<div class="flex items-center justify-between px-0.5 pt-0.5 pb-2">
 						<span class="badge badge-primary badge-soft">Liste des traductions</span>
 					</div>
-					<div class="sheet-header">
+					<div
+						class="grid grid-cols-4 gap-2 rounded-lg bg-primary/16 p-2.5 text-[0.78rem] font-semibold text-base-content/82"
+					>
 						<div>NON DU JEU</div>
 						<div>VERSION</div>
 						<div>TRAD. VER.</div>
 						<div>STATUS</div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-a"></div>
-						<div class="sheet-text-line line-b"></div>
-						<div class="sheet-text-line line-c"></div>
-						<div class="sheet-text-line line-d"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-b"></div>
-						<div class="sheet-text-line line-d"></div>
-						<div class="sheet-text-line line-a"></div>
-						<div class="sheet-text-line line-c"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-d"></div>
-						<div class="sheet-text-line line-c"></div>
-						<div class="sheet-text-line line-b"></div>
-						<div class="sheet-text-line line-a"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-c"></div>
-						<div class="sheet-text-line line-a"></div>
-						<div class="sheet-text-line line-d"></div>
-						<div class="sheet-text-line line-b"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-a"></div>
-						<div class="sheet-text-line line-b"></div>
-						<div class="sheet-text-line line-c"></div>
-						<div class="sheet-text-line line-d"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
 					</div>
-					<div class="sheet-row">
-						<div class="sheet-text-line line-b"></div>
-						<div class="sheet-text-line line-c"></div>
-						<div class="sheet-text-line line-d"></div>
-						<div class="sheet-text-line line-a"></div>
+					<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div class="{sheetLineClass} w-[64%] before:[animation-delay:-1s]"></div>
+						<div class="{sheetLineClass} w-[74%] before:[animation-delay:-1.8s]"></div>
+						<div class="{sheetLineClass} w-[52%] before:[animation-delay:-2.6s]"></div>
+						<div class="{sheetLineClass} w-[82%] before:[animation-delay:-0.2s]"></div>
 					</div>
 				</div>
 			</div>
@@ -305,164 +314,3 @@
 		</section>
 	</div>
 </main>
-
-<style>
-	.stars-layer,
-	.stars-layer::after {
-		position: absolute;
-		left: var(--star-offset-x);
-		width: var(--star-size);
-		height: var(--star-size);
-		background: transparent;
-		box-shadow: var(--star-shadow);
-		animation: animStar var(--star-duration) linear infinite;
-		content: '';
-	}
-
-	.stars-layer::after {
-		top: var(--star-travel);
-	}
-
-	@keyframes animStar {
-		from {
-			transform: translateY(0);
-		}
-		to {
-			transform: translateY(calc(var(--star-travel) * -1));
-		}
-	}
-
-	.sheet-illustration {
-		position: relative;
-		width: 100%;
-		max-width: 42rem;
-		margin-top: 1rem;
-		perspective: 1200px;
-	}
-
-	.sheet-glow {
-		position: absolute;
-		inset: 12% -6% -12%;
-		border-radius: 1.25rem;
-		background: radial-gradient(
-			circle at 50% 50%,
-			color-mix(in oklab, var(--color-primary) 42%, transparent) 0%,
-			transparent 70%
-		);
-		filter: blur(20px);
-		opacity: 0.5;
-	}
-
-	.sheet-paper {
-		position: relative;
-		display: grid;
-		gap: 0.55rem;
-		padding: 1rem;
-		border: 1px solid color-mix(in oklab, var(--color-base-content) 20%, transparent);
-		border-radius: 1rem;
-		background: color-mix(in oklab, var(--color-base-100) 85%, transparent);
-		box-shadow:
-			0 25px 50px -12px color-mix(in oklab, var(--color-neutral) 45%, transparent),
-			inset 0 1px 0 color-mix(in oklab, white 40%, transparent);
-		transform: rotateX(14deg) rotateY(-16deg) rotateZ(3deg);
-		animation: floatSheet 8s ease-in-out infinite;
-	}
-
-	.sheet-toolbar {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.2rem 0.1rem 0.5rem;
-	}
-
-	.sheet-header,
-	.sheet-row {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.5rem;
-		padding: 0.55rem;
-		border-radius: 0.5rem;
-	}
-
-	.sheet-header {
-		background-color: color-mix(in oklab, var(--color-primary) 16%, transparent);
-		font-size: 0.78rem;
-		font-weight: 600;
-		color: color-mix(in oklab, var(--color-base-content) 82%, transparent);
-	}
-
-	.sheet-row {
-		border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
-	}
-
-	.sheet-text-line {
-		position: relative;
-		height: 0.7rem;
-		overflow: hidden;
-		border-radius: 0.25rem;
-		background: color-mix(in oklab, var(--color-base-content) 16%, transparent);
-	}
-
-	.sheet-text-line::before {
-		position: absolute;
-		inset-block: 0;
-		left: 0;
-		width: 35%;
-		background: color-mix(in oklab, var(--color-primary) 28%, transparent);
-		opacity: 0.5;
-		animation: drift 6s ease-in-out infinite;
-		content: '';
-	}
-
-	.line-a {
-		width: 82%;
-	}
-
-	.line-b {
-		width: 64%;
-	}
-
-	.line-c {
-		width: 74%;
-	}
-
-	.line-d {
-		width: 52%;
-	}
-
-	.line-a::before {
-		animation-delay: -0.2s;
-	}
-
-	.line-b::before {
-		animation-delay: -1s;
-	}
-
-	.line-c::before {
-		animation-delay: -1.8s;
-	}
-
-	.line-d::before {
-		animation-delay: -2.6s;
-	}
-
-	@keyframes drift {
-		0%,
-		100% {
-			transform: translateX(0);
-		}
-		50% {
-			transform: translateX(160%);
-		}
-	}
-
-	@keyframes floatSheet {
-		0%,
-		100% {
-			transform: rotateX(14deg) rotateY(-16deg) rotateZ(3deg) translateY(0);
-		}
-		50% {
-			transform: rotateX(12deg) rotateY(-12deg) rotateZ(2deg) translateY(-8px);
-		}
-	}
-</style>
