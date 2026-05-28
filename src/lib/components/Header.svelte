@@ -24,8 +24,8 @@
 </script>
 
 <div class="navbar h-32 px-12 z-10 items-center">
-	<a href="/" class="">
-		<img src={banner} alt="Bannière de F95 France" class="w-auto h-auto" />
+	<a href="/" class="h-full py-10">
+		<img src={banner} alt="Bannière de F95 France" class="w-auto h-full object-contain" />
 	</a>
 	<div class="flex flex-1 justify-end">
 		<div
