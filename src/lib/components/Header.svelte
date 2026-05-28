@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { user } from '$lib/stores';
-	import { profileDashboardHref } from '$lib/utils/profile-url';
+	import { profilePublicHref } from '$lib/utils/profile-url';
 	import Menu from '@lucide/svelte/icons/menu';
 	import User from '@lucide/svelte/icons/user';
 	import banner from '../assets/banner.webp';
@@ -49,7 +49,7 @@
 				<li class="dropdown dropdown-end">
 					<a
 						href={$user
-							? resolve(profileDashboardHref($user.username))
+							? resolve(profilePublicHref($user.username))
 							: resolve('/dashboard/profile')}
 					>
 						<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">

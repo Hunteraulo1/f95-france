@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { user } from '$lib/stores';
-	import { profileDashboardHref } from '$lib/utils/profile-url';
+	import { profilePublicHref } from '$lib/utils/profile-url';
 	import Menu from '@lucide/svelte/icons/menu';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import User from '@lucide/svelte/icons/user';
@@ -49,9 +49,7 @@
 			<Notifications />
 		{/if}
 		<div class="dropdown dropdown-end">
-			<a
-				href={$user ? resolve(profileDashboardHref($user.username)) : resolve('/dashboard/profile')}
-			>
+			<a href={$user ? resolve(profilePublicHref($user.username)) : resolve('/dashboard/profile')}>
 				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
 					<div class="flex w-10 items-center justify-center rounded-full">
 						{#if $user?.avatar && $user.avatar !== ''}

@@ -13,7 +13,12 @@ import {
 	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
 import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
-import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import {
+	parseRolePriorityInput,
+	ROLE_PRIORITY_MAX,
+	ROLE_PRIORITY_MIN
+} from '$lib/permissions/role-priority';
+import { sortRolesByPriority } from '$lib/permissions/sort-roles';
 import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -33,10 +38,15 @@ import {
 } from '$lib/server/role-badge-styles';
 import {
 	assertCanManageRole,
+	canAssignAllRolePermissions,
 	filterPermissionsAssignableByActor,
-	getActorPermissionSet,
-	canAssignAllRolePermissions
+	getActorPermissionSet
 } from '$lib/server/role-management-guard';
+import {
+	applyStaffRoleConfigurationFix,
+	listStaffRoleConfigurationIssues
+} from '$lib/server/staff-role-configuration';
+import { listStaffUsers } from '$lib/server/staff-users';
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -92,14 +102,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const rolesRaw = await selectAllAppRoles();
 	const roleSlugs = rolesRaw.map((r) => r.slug);
-	const [userCounts, effectivePermsBySlug] = await Promise.all([
+	const [userCounts, effectivePermsBySlug, staffUsers, staffRoleIssues] = await Promise.all([
 		countUsersWithRoles(roleSlugs),
-		getEffectivePermissionsByRoles(roleSlugs)
+		getEffectivePermissionsByRoles(roleSlugs),
+		listStaffUsers(),
+		listStaffRoleConfigurationIssues()
 	]);
 	const permissionCounts = Object.fromEntries(
 		roleSlugs.map((slug) => [slug, effectivePermsBySlug[slug]?.length ?? 0])
 	);
-	const roles = sortRolesByPrivileges(rolesRaw, permissionCounts);
+	const roles = sortRolesByPriority(rolesRaw);
 	const defaultSlug = roles[0]?.slug ?? 'user';
 	const roleParam = url.searchParams.get('role');
 
@@ -152,9 +164,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			? ROLE_NOTICE_MESSAGES[noticeKey as keyof typeof ROLE_NOTICE_MESSAGES]
 			: null;
 
+	const canEditRolePriority = isSuperadminRole(locals.user?.role);
+	const canFixStaffRoles = isSuperadminRole(locals.user?.role);
+
 	return {
 		canAssignAllPermissions: canAssignAll,
+		canEditRolePriority,
+		canFixStaffRoles,
+		staffRoleIssues,
 		isSelectedRoleSuperadmin,
+		rolePriorityMin: ROLE_PRIORITY_MIN,
+		rolePriorityMax: ROLE_PRIORITY_MAX,
+		staffUsers,
 		roles: rolesWithAccess,
 		noticeMessage,
 		selectedSlug,
@@ -193,6 +214,18 @@ export const actions: Actions = {
 		const badgeStyle = parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? ''));
 		if (!badgeStyle) {
 			return fail(400, { message: 'Couleur de rôle invalide' });
+		}
+		const staff = formData.has('staff') && formData.get('staff') === 'on';
+		const canEditPriority = isSuperadminRole(locals.user?.role);
+		let priority = 0;
+		if (canEditPriority && formData.has('priority')) {
+			const parsedPriority = parseRolePriorityInput(formData.get('priority'));
+			if (parsedPriority === null) {
+				return fail(400, {
+					message: `Force du rôle invalide (${ROLE_PRIORITY_MIN}–${ROLE_PRIORITY_MAX})`
+				});
+			}
+			priority = parsedPriority;
 		}
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
@@ -235,6 +268,8 @@ export const actions: Actions = {
 				description,
 				editMode,
 				badgeStyle,
+				staff,
+				priority,
 				isSystem: false
 			});
 			await setRolePermissions(slug, assignableInitial);
@@ -272,7 +307,6 @@ export const actions: Actions = {
 		const badgeStyle =
 			parseRoleBadgeStyleInput(String(formData.get('badgeStyle') ?? '')) ??
 			resolveRoleBadgeStyle(slug, role.badgeStyle);
-
 		const guard = await rejectUnlessCanManageRole(locals, slug);
 		if (!guard.ok) return fail(403, { message: guard.message });
 
@@ -282,6 +316,19 @@ export const actions: Actions = {
 			return fail(400, { message: 'Mode d’enregistrement invalide' });
 		}
 
+		const staff = formData.has('staff') ? formData.get('staff') === 'on' : role.staff;
+		const canEditPriority = isSuperadminRole(locals.user?.role);
+		let priorityPatch: { priority?: number } = {};
+		if (canEditPriority && formData.has('priority')) {
+			const parsedPriority = parseRolePriorityInput(formData.get('priority'));
+			if (parsedPriority === null) {
+				return fail(400, {
+					message: `Force du rôle invalide (${ROLE_PRIORITY_MIN}–${ROLE_PRIORITY_MAX})`
+				});
+			}
+			priorityPatch = { priority: parsedPriority };
+		}
+
 		try {
 			await db
 				.update(table.appRole)
@@ -289,6 +336,8 @@ export const actions: Actions = {
 					label: role.isSystem ? (SYSTEM_ROLE_LABELS[slug] ?? label) : label,
 					description: role.isSystem ? role.description : description,
 					badgeStyle,
+					staff,
+					...priorityPatch,
 					...(hasGamesManage && editMode ? { editMode } : {}),
 					updatedAt: new Date()
 				})
@@ -401,12 +450,33 @@ export const actions: Actions = {
 			const nextCounts = Object.fromEntries(
 				remainingSlugs.map((slug) => [slug, effectiveBySlug[slug]?.length ?? 0])
 			);
-			const nextSlug = sortRolesByPrivileges(remaining, nextCounts)[0]?.slug ?? 'user';
+			const nextSlug = sortRolesByPriority(remaining)[0]?.slug ?? 'user';
 			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
 			if (isRedirect(error)) throw error;
 			console.error('deleteRole:', error);
 			return fail(500, { message: 'Impossible de supprimer le rôle' });
+		}
+	},
+
+	fixStaffRole: async ({ request, locals }) => {
+		await assertPermission(locals, 'roles.manage');
+
+		if (!isSuperadminRole(locals.user?.role)) {
+			return fail(403, { message: 'Réservé aux super administrateurs' });
+		}
+
+		const slug = String((await request.formData()).get('slug') ?? '').trim();
+		if (!slug) {
+			return fail(400, { message: 'Rôle requis' });
+		}
+
+		try {
+			await applyStaffRoleConfigurationFix(slug);
+			return { success: true, fixedSlug: slug };
+		} catch (error) {
+			console.error('fixStaffRole:', error);
+			return fail(500, { message: 'Impossible de corriger ce rôle' });
 		}
 	}
 };

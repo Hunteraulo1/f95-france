@@ -9,7 +9,8 @@ import {
 import { anyPermissionGranted, permissionGranted } from '$lib/permissions/check';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import { SYSTEM_ROLE_BADGE_STYLES } from '$lib/permissions/role-badge-style';
-import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { SYSTEM_ROLE_PRIORITIES } from '$lib/permissions/role-priority';
+import { sortRolesByPriority } from '$lib/permissions/sort-roles';
 import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -164,9 +165,7 @@ export async function countEffectivePermissionsByRoles(
 
 export async function listAppRoles() {
 	const roles = await selectAllAppRoles();
-	const slugs = roles.map((r) => r.slug);
-	const permissionCounts = await countEffectivePermissionsByRoles(slugs);
-	return sortRolesByPrivileges(roles, permissionCounts);
+	return sortRolesByPriority(roles);
 }
 
 export async function listRolePermissions(roleSlug: string): Promise<string[]> {
@@ -234,6 +233,8 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 			label: slug,
 			editMode: SYSTEM_ROLE_EDIT_MODES[slug as keyof typeof SYSTEM_ROLE_EDIT_MODES],
 			badgeStyle: SYSTEM_ROLE_BADGE_STYLES[slug] ?? 'default',
+			staff: slug === 'admin' || slug === 'superadmin',
+			priority: SYSTEM_ROLE_PRIORITIES[slug] ?? 0,
 			isSystem: true
 		}))
 	);

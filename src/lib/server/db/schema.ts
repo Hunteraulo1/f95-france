@@ -262,6 +262,10 @@ export const appRole = pgTable('app_role', {
 	editMode: varchar('edit_mode', { length: 32 }).notNull().default('direct'),
 	/** Style badge / pseudo — voir `$lib/permissions/role-badge-style`. */
 	badgeStyle: varchar('badge_style', { length: 32 }).notNull().default('default'),
+	/** Compte comme membre de l'équipe (affichage, modération, etc.). */
+	staff: boolean('staff').notNull().default(false),
+	/** Force / priorité d'affichage (tri staff et liste des rôles). Éditable par superadmin uniquement. */
+	priority: integer('priority').notNull().default(0),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

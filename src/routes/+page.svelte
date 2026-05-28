@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import Header from '$lib/components/Header.svelte';
+	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
@@ -214,15 +216,15 @@
 		{/if}
 	</section>
 
-	<div class="mx-auto flex flex-col gap-10 px-2">
-		<section class="space-y-6">
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-12">
+	<div class="mx-auto flex flex-col gap-32 px-2">
+		<section>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-16">
 				<h2 class="text-2xl font-bold">Dernières mises à jour</h2>
 				<a href="/updates">
 					<div
 						class="badge badge-primary badge-soft badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
 					>
-						<span class="mb-0.5">En voir plus</span>
+						<span class="mb-0.5 select-none">En voir plus</span>
 						<ArrowRight class="h-4 w-4 hover:translate-x-1 transition-transform duration-300" />
 					</div>
 				</a>
@@ -242,7 +244,9 @@
 					</div>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+				<div
+					class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 select-none"
+				>
 					{#each data.updates as update (update.updateId)}
 						<article
 							class="card card-border bg-base-100 aspect-4/3 last:hidden xl:last:flex md:last:hidden sm:last:flex max-w-sm"
@@ -250,6 +254,7 @@
 							<a
 								href={update.game.gameLink}
 								class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
+								draggable="false"
 							>
 								<SquareArrowOutUpRight size={40} />
 							</a>
@@ -272,6 +277,76 @@
 								</div>
 							</div>
 						</article>
+					{/each}
+				</div>
+			{/if}
+		</section>
+
+		<section>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-16">
+				<h2 class="text-2xl font-bold">Membre de l'équipe</h2>
+				<a href="/team">
+					<div
+						class="badge badge-primary badge-soft badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
+					>
+						<span class="mb-0.5 select-none">En savoir plus</span>
+						<ArrowRight class="h-4 w-4 hover:translate-x-1 transition-transform duration-300" />
+					</div>
+				</a>
+			</div>
+			{#if !data.team.length}
+				<div class="card card-border bg-base-100">
+					<div class="card-body items-center gap-2 py-10 text-center">
+						<p class="font-medium">Aucun membre staff à afficher</p>
+						<p class="text-sm text-base-content/70">
+							Les comptes dont le rôle est marqué « staff » apparaîtront ici.
+						</p>
+					</div>
+				</div>
+			{:else}
+				<div
+					class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 select-none"
+				>
+					{#each data.team as team (team.teamId)}
+						<a
+							href={resolve(team.teamLink)}
+							class="group card card-border bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
+							draggable="false"
+						>
+							<div class="card-body items-center gap-3 p-4 text-center">
+								<div class="avatar">
+									<div
+										class="w-20 rounded-full ring-2 ring-base-300 ring-offset-2 ring-offset-base-100 transition group-hover:ring-primary/50 sm:w-24"
+									>
+										<img draggable="false" src={team.teamImage} alt="" loading="lazy" />
+									</div>
+								</div>
+								<div class="min-w-0 w-full space-y-2">
+									<h3
+										class="truncate text-base font-bold sm:text-lg {roleDaisyTextClass(
+											team.teamRoleSlug,
+											team.teamBadgeStyle
+										)}"
+									>
+										{team.teamName}
+									</h3>
+									<span
+										class="badge-sm max-w-full truncate {roleDaisyBadgeClass(
+											team.teamRoleSlug,
+											team.teamBadgeStyle
+										)}"
+									>
+										{team.teamRole}
+									</span>
+								</div>
+								<span
+									class="flex items-center gap-1 text-xs font-medium text-base-content/50 transition group-hover:text-primary"
+								>
+									Voir le profil
+									<SquareArrowOutUpRight class="h-3.5 w-3.5" />
+								</span>
+							</div>
+						</a>
 					{/each}
 				</div>
 			{/if}

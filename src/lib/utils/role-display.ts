@@ -28,3 +28,25 @@ export function roleUsernameClass(
 
 /** Classes pour un badge de rôle (à combiner avec `badge`, `badge-outline`, etc.). */
 export const roleBadgeClass = roleUsernameClass;
+
+function resolveDisplayStyle(roleSlug: string, badgeStyle?: string | null): RoleBadgeStyle {
+	return badgeStyle && isRoleBadgeStyle(badgeStyle)
+		? badgeStyle
+		: resolveRoleBadgeStyle(roleSlug, badgeStyle);
+}
+
+/** Badge daisyUI (`badge-primary badge-soft`, etc.) selon le style du rôle. */
+export function roleDaisyBadgeClass(roleSlug: string, badgeStyle?: string | null): string {
+	const style = resolveDisplayStyle(roleSlug, badgeStyle);
+	if (style === 'superadmin') return 'badge username-superadmin';
+	if (style === 'default') return 'badge badge-neutral badge-soft';
+	return `badge badge-${style} badge-soft`;
+}
+
+/** Couleur de texte daisyUI pour le pseudo (`text-primary`, etc.). */
+export function roleDaisyTextClass(roleSlug: string, badgeStyle?: string | null): string {
+	const style = resolveDisplayStyle(roleSlug, badgeStyle);
+	if (style === 'superadmin') return 'username-superadmin';
+	if (style === 'default') return '';
+	return `text-${style}`;
+}
