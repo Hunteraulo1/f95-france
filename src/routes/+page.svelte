@@ -2,6 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import type { PageProps } from './$types';
@@ -246,6 +247,12 @@
 						<article
 							class="card card-border bg-base-100 aspect-4/3 last:hidden xl:last:flex md:last:hidden sm:last:flex max-w-sm"
 						>
+							<a
+								href={update.game.gameLink}
+								class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
+							>
+								<SquareArrowOutUpRight size={40} />
+							</a>
 							<div
 								class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
 								style={`background-image: url(${update.game.gameImage});`}
