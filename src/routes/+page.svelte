@@ -137,16 +137,16 @@
 					les traductions et partager chaque avancée en français.
 				</p>
 				<div class="flex flex-wrap gap-3 justify-center sm:justify-start pt-4">
-					<a href="/games" class="btn btn-primary">Explorer les jeux</a>
+					<a href="/games" class="btn btn-primary" draggable="false">Explorer les jeux</a>
 					<a
 						href="/updates"
 						class="btn btn-ghost text-neutral-content hover:border-primary transition-colors duration-300 hover:text-primary"
-						>Voir les mises à jour</a
+						draggable="false">Voir les mises à jour</a
 					>
 				</div>
 			</div>
 			<div
-				class="lg:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 lg:opacity-100 px-8 lg:px-0"
+				class="lg:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 lg:opacity-100 px-8 lg:px-0 select-none"
 			>
 				<div
 					class="absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] blur-[20px] opacity-50"
@@ -285,14 +285,6 @@
 		<section>
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-16">
 				<h2 class="text-2xl font-bold">Membre de l'équipe</h2>
-				<a href="/team">
-					<div
-						class="badge badge-primary badge-soft badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
-					>
-						<span class="mb-0.5 select-none">En savoir plus</span>
-						<ArrowRight class="h-4 w-4 hover:translate-x-1 transition-transform duration-300" />
-					</div>
-				</a>
 			</div>
 			{#if !data.team.length}
 				<div class="card card-border bg-base-100">

@@ -5,12 +5,23 @@
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import { initializeUserFromLocals } from '$lib/stores';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
 	import '../app.css';
+	import type { LayoutData } from './$types';
 
-	let { children } = $props();
+	interface Props {
+		data: LayoutData;
+		children: import('svelte').Snippet;
+	}
+
+	let { data, children }: Props = $props();
+
+	$effect(() => {
+		initializeUserFromLocals(data.user);
+	});
 
 	let ageCheckReady = $state(false);
 	let ageVerified = $state(false);
