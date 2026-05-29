@@ -39,5 +39,6 @@
 		translationsTotalPages={data.translationsTotalPages}
 		{translationsHrefForPage}
 		{editProfileHref}
+		musicUrl={data.customProfile?.musicUrl ?? data.user.profileMusicUrl}
 	/>
 </main>

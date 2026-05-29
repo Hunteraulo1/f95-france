@@ -54,7 +54,7 @@
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
 			<div class="navbar-start">
-				<a href={resolve('/')} class="h-full select-none py-10" draggable="false">
+				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
 					<img
 						src={banner}
 						alt="Bannière de F95 France"

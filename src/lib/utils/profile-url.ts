@@ -8,5 +8,7 @@ export function profilePublicHref(username: string): `/profile/${string}` {
 	return `/profile/${profilePublicSlug(username)}`;
 }
 
-/** @deprecated Utiliser {@link profilePublicHref}. */
-export const profileDashboardHref = profilePublicHref;
+/** Chemin du profil dans le dashboard (`/dashboard/profile/{pseudo}`). */
+export function profileDashboardHref(username: string): `/dashboard/profile/${string}` {
+	return `/dashboard/profile/${profilePublicSlug(username)}`;
+}

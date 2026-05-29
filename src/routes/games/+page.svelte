@@ -135,7 +135,9 @@
 					</div>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+				<div
+					class="grid grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+				>
 					{#each data.games as game (game.id)}
 						{@const imageSrc = resolveGameImageSrc(game.image, { website: game.website })}
 						<article class="card card-border bg-base-100 shadow-sm transition hover:shadow-md">
