@@ -245,11 +245,11 @@
 				</div>
 			{:else}
 				<div
-					class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 select-none"
+					class="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 select-none"
 				>
 					{#each data.updates as update (update.updateId)}
 						<article
-							class="card card-border bg-base-100 aspect-4/3 last:hidden xl:last:flex md:last:hidden sm:last:flex max-w-sm"
+							class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex max-w-sm"
 						>
 							<a
 								href={update.game.gameLink}
