@@ -11,7 +11,6 @@
 	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -141,39 +140,38 @@
 						{@const imageSrc = resolveGameImageSrc(game.image, { website: game.website })}
 						<article class="card card-border bg-base-100 shadow-sm transition hover:shadow-md">
 							<figure class="relative aspect-video overflow-hidden bg-base-300">
-								{#if imageSrc}
-									<img
-										src={imageSrc}
-										alt=""
-										class="h-full w-full object-cover"
-										loading="lazy"
-										referrerpolicy="no-referrer"
-									/>
-								{:else}
-									<div
-										class="flex h-full w-full items-center justify-center text-sm text-base-content/50"
-									>
-										Pas d’aperçu
-									</div>
-								{/if}
-								<span class="badge absolute top-2 left-2 badge-sm badge-neutral">
+								<a
+									href={resolve(`/games/${game.id}`)}
+									class="block h-full w-full"
+									aria-label={`Voir la fiche de ${game.name}`}
+								>
+									{#if imageSrc}
+										<img
+											src={imageSrc}
+											alt=""
+											class="h-full w-full object-cover"
+											loading="lazy"
+											referrerpolicy="no-referrer"
+										/>
+									{:else}
+										<div
+											class="flex h-full w-full items-center justify-center text-sm text-base-content/50"
+										>
+											Pas d’aperçu
+										</div>
+									{/if}
+								</a>
+								<span
+									class="badge pointer-events-none absolute top-2 left-2 badge-sm badge-neutral"
+								>
 									{websiteLabel(game.website)}
 								</span>
-								{#if game.link}
-									<a
-										href={game.link}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="absolute inset-0 flex items-center justify-center bg-black/0 text-secondary opacity-0 transition hover:bg-black/35 hover:opacity-100"
-										aria-label={`Ouvrir le thread de ${game.name}`}
-									>
-										<SquareArrowOutUpRight class="h-8 w-8" />
-									</a>
-								{/if}
 							</figure>
 							<div class="card-body gap-2 p-4">
 								<h2 class="card-title text-base leading-snug line-clamp-1">
-									{game.name}
+									<a href={resolve(`/games/${game.id}`)} class="link link-hover line-clamp-1">
+										{game.name}
+									</a>
 								</h2>
 								<div class="flex flex-wrap gap-1">
 									{#each game.engineTypes as engine (engine)}
