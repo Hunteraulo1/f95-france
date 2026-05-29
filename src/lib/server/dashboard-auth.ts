@@ -22,9 +22,16 @@ export function isPublicDashboardPath(pathname: string): boolean {
 	return false;
 }
 
+/** Catalogue jeux public. */
+export function isPublicGamesPath(pathname: string): boolean {
+	return pathname === '/games' || pathname.startsWith('/games/');
+}
+
 /** Pages accessibles sans connexion (hors assets). */
 export function isPublicSitePath(pathname: string): boolean {
-	return isPublicProfilePath(pathname) || isPublicDashboardPath(pathname);
+	return (
+		isPublicProfilePath(pathname) || isPublicDashboardPath(pathname) || isPublicGamesPath(pathname)
+	);
 }
 
 /** Redirige vers la page de connexion si la session est absente (pages dashboard protégées). */

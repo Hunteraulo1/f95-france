@@ -225,6 +225,13 @@
       "when": 1780005332494,
       "tag": "0031_yellow_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780050503728,
+      "tag": "0032_safe_marvel_zombies",
+      "breakpoints": true
     }
   ]
 }

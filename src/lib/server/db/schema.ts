@@ -31,6 +31,8 @@ export const user = pgTable('user', {
 	profileBackgroundUrl: varchar('profile_background_url', { length: 2048 }),
 	profileMusicUrl: varchar('profile_music_url', { length: 2048 }),
 	profileCursorUrl: varchar('profile_cursor_url', { length: 2048 }),
+	/** Presets de filtres de la page jeux (JSON sérialisé). */
+	savedGamesFilters: text('saved_games_filters').notNull().default('[]'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
