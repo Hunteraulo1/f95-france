@@ -33,13 +33,33 @@ function isLocalPostgresHost(host: string): boolean {
 	return /^(localhost|127\.0\.0\.1)$/i.test(host.trim());
 }
 
+/** Réseau privé / Docker Coolify : pas de TLS par défaut (hostname sans point, IP privée). */
+function isInternalPostgresHost(host: string): boolean {
+	const h = host.trim();
+	if (isLocalPostgresHost(h)) return true;
+
+	const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+	if (m) {
+		const a = Number(m[1]);
+		const b = Number(m[2]);
+		if (a === 10) return true;
+		if (a === 172 && b >= 16 && b <= 31) return true;
+		if (a === 192 && b === 168) return true;
+	}
+
+	// Nom de service Docker (ex. g62ovatby0hdggb8dwx5n831 sur le réseau Coolify)
+	if (!h.includes('.')) return true;
+
+	return false;
+}
+
 /** `POSTGRES_SSL_MODE=disable` en local ; `require` pour Postgres distant si non précisé. */
 function sslFromEnv(source: DbEnvSource, host: string): boolean | 'require' {
 	const m = pickEnv(source, 'POSTGRES_SSL_MODE', 'PGSSLMODE')?.toLowerCase();
 	if (m === 'disable') return false;
 	if (m === 'require' || m === 'verify-full' || m === 'verify-ca') return 'require';
 	if (m === 'prefer' || m === 'allow') return 'require';
-	if (isLocalPostgresHost(host)) return false;
+	if (isInternalPostgresHost(host)) return false;
 	return 'require';
 }
 
