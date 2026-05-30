@@ -1,4 +1,9 @@
 import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
+import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import {
+	effectiveTranslationVersion,
+	isTranslationOutdated
+} from '$lib/server/api/translation-public';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
 import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
@@ -6,6 +11,8 @@ import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery
 import { game, update as updateTable } from '$lib/server/db/schema';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
 import { listStaffUsers } from '$lib/server/staff-users';
+import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import { pickTranslationForUpdate } from '$lib/updates/pick-update-translation';
 import { profilePublicHref } from '$lib/utils/profile-url';
 import { desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -21,6 +28,7 @@ export const load: PageServerLoad = async () => {
 						updateId: updateTable.id,
 						updateStatus: updateTable.status,
 						updateCreatedAt: updateTable.createdAt,
+						updateUpdatedAt: updateTable.updatedAt,
 						gameId: game.id,
 						gameName: game.name,
 						gameImage: game.image,
@@ -42,19 +50,55 @@ export const load: PageServerLoad = async () => {
 			listRoleBadgeStylesMap()
 		]);
 
+		const byGame = await translationsByGameIds(flat.map((row) => row.gameId));
+
 		const updates = flat.map((row) => {
 			const embedded = embeddedGameFromRow(row);
+			const translations = byGame.get(row.gameId) ?? [];
+			const translation = pickTranslationForUpdate(
+				{
+					status: row.updateStatus,
+					createdAt: row.updateCreatedAt,
+					updatedAt: row.updateUpdatedAt
+				},
+				translations
+			);
+			const gameVersion = embedded.gameVersion?.trim() || null;
+			const tversion = translation?.tversion?.trim() || null;
+			const referenceVersion = translation
+				? effectiveTranslationVersion(translation.version, gameVersion)
+				: gameVersion;
+			const isIntegrated = translation
+				? tradVerIndicatesIntegrated(translation.tversion, translation.tname)
+				: false;
+			const isOutdated = translation
+				? isTranslationOutdated(
+						{
+							version: translation.version,
+							tversion: translation.tversion,
+							tname: translation.tname
+						},
+						gameVersion
+					)
+				: false;
+
 			return {
 				updateId: row.updateId,
 				updateStatus: row.updateStatus,
 				updateCreatedAt: row.updateCreatedAt,
 				game: {
+					gameId: embedded.id,
 					name: embedded.name,
 					gameLink: embedded.link,
 					gameImage: embedded.image,
 					gameWebsite: embedded.website,
-					gameVersion: embedded.gameVersion,
-					gameEngineTypes: embedded.engineTypes.map((value) => String(value))
+					gameVersion,
+					gameEngineTypes: embedded.engineTypes.map((value) => String(value)),
+					hasTranslation: translation !== null,
+					tversion,
+					referenceVersion,
+					isOutdated,
+					isIntegrated
 				}
 			};
 		});
