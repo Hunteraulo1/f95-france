@@ -11,6 +11,7 @@ import {
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
 	createGameUpdateRow,
@@ -409,11 +410,17 @@ export async function applySubmission(submissionId: string) {
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
+		const descFields = await resolveGameDescriptionFields({
+			description: gameData.description,
+			autoTranslate: true
+		});
+
 		const [insertedGame] = await db
 			.insert(table.game)
 			.values({
 				name: gameData.name,
-				description: gameData.description || null,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
 				website: gameData.website as 'f95z' | 'lc' | 'other',
 				threadId: gameData.threadId
 					? typeof gameData.threadId === 'string'
@@ -569,6 +576,7 @@ export async function applySubmission(submissionId: string) {
 			originalGame: {
 				name: originalGame.name,
 				description: originalGame.description,
+				descriptionFr: originalGame.descriptionFr,
 				website: originalGame.website,
 				threadId: originalGame.threadId,
 				tags: originalGame.tags,
@@ -595,12 +603,20 @@ export async function applySubmission(submissionId: string) {
 					: null
 				: (originalGame.gameVersion ?? null);
 
+		const descFields = await resolveGameDescriptionFields({
+			description: gameData.description,
+			previousDescription: originalGame.description,
+			previousDescriptionFr: originalGame.descriptionFr,
+			autoTranslate: true
+		});
+
 		// Mettre à jour le jeu
 		await db
 			.update(table.game)
 			.set({
 				name: gameData.name,
-				description: gameData.description || null,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
 				website: gameData.website as 'f95z' | 'lc' | 'other',
 				threadId: gameData.threadId
 					? typeof gameData.threadId === 'string'
@@ -1001,6 +1017,7 @@ export async function applySubmission(submissionId: string) {
 				originalGame: {
 					name: originalGame.name,
 					description: originalGame.description,
+					descriptionFr: originalGame.descriptionFr,
 					website: originalGame.website,
 					threadId: originalGame.threadId,
 					tags: originalGame.tags,
@@ -1150,6 +1167,7 @@ export async function revertSubmission(submissionId: string) {
 		originalGame?: {
 			name: string;
 			description?: string | null;
+			descriptionFr?: string | null;
 			/** Anciennes soumissions (type sur le jeu) */
 			type?: string;
 			website: string;
@@ -1245,6 +1263,7 @@ export async function revertSubmission(submissionId: string) {
 			.set({
 				name: originalGame.name,
 				description: originalGame.description || null,
+				descriptionFr: originalGame.descriptionFr ?? null,
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'
@@ -1435,6 +1454,7 @@ export async function revertSubmission(submissionId: string) {
 				id: sub.gameId,
 				name: originalGame.name,
 				description: originalGame.description || null,
+				descriptionFr: originalGame.descriptionFr ?? null,
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'

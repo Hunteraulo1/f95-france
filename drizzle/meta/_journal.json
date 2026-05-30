@@ -239,6 +239,13 @@
       "when": 1780144765212,
       "tag": "0033_absurd_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1780149745888,
+      "tag": "0034_cultured_energizer",
+      "breakpoints": true
     }
   ]
 }

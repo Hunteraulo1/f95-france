@@ -34,6 +34,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 				id: table.game.id,
 				name: table.game.name,
 				description: table.game.description,
+				descriptionFr: table.game.descriptionFr,
 				website: table.game.website,
 				threadId: table.game.threadId,
 				link: table.game.link,

@@ -8,7 +8,7 @@
 	import GameImagePreviewModal from '$lib/components/dashboard/game/GameImagePreviewModal.svelte';
 	import GameUpdateHistoryPanel from '$lib/components/dashboard/game/GameUpdateHistoryPanel.svelte';
 	import { hasPermission } from '$lib/permissions/client';
-	import type { ScrapedThreadGame } from '$lib/server/scrape';
+	import type { ScrapedThreadGame } from '$lib/scrape/types';
 	import { newToast } from '$lib/stores';
 	import {
 		isF95CheckerVersionAligned,
@@ -193,6 +193,7 @@
 	let editingGame = $state({
 		name: '',
 		description: '',
+		descriptionFr: '',
 		website: '',
 		threadId: '',
 		tags: '',
@@ -322,13 +323,13 @@
 	// « Pas de traduction » impose le type « hs » ; intégrée → version de traduction « Intégrée » (comme formulaire jeu)
 	$effect(() => {
 		if (newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation') {
-			newTranslation.tlink = '';
+			if (newTranslation.tlink) newTranslation.tlink = '';
 		}
 		if (newTranslation.tname === 'integrated') {
-			newTranslation.tversion = 'Intégrée';
+			if (newTranslation.tversion !== 'Intégrée') newTranslation.tversion = 'Intégrée';
 		} else if (newTranslation.tname === 'no_translation') {
-			newTranslation.ttype = 'hs';
-			newTranslation.tversion = '';
+			if (newTranslation.ttype !== 'hs') newTranslation.ttype = 'hs';
+			if (newTranslation.tversion) newTranslation.tversion = '';
 		} else if (newTranslation.tversion === 'Intégrée') {
 			newTranslation.tversion = '';
 		}
@@ -336,8 +337,8 @@
 
 	$effect(() => {
 		if (!translationAcUiAllowed) {
-			newTranslation.ac = false;
-			editingTranslation.ac = false;
+			if (newTranslation.ac) newTranslation.ac = false;
+			if (editingTranslation.ac) editingTranslation.ac = false;
 		}
 	});
 
@@ -348,13 +349,13 @@
 			editingTranslation.tname === 'integrated' ||
 			editingTranslation.tname === 'no_translation'
 		) {
-			editingTranslation.tlink = '';
+			if (editingTranslation.tlink) editingTranslation.tlink = '';
 		}
 		if (editingTranslation.tname === 'integrated') {
-			editingTranslation.tversion = 'Intégrée';
+			if (editingTranslation.tversion !== 'Intégrée') editingTranslation.tversion = 'Intégrée';
 		} else if (editingTranslation.tname === 'no_translation') {
-			editingTranslation.ttype = 'hs';
-			editingTranslation.tversion = '';
+			if (editingTranslation.ttype !== 'hs') editingTranslation.ttype = 'hs';
+			if (editingTranslation.tversion) editingTranslation.tversion = '';
 		} else if (editingTranslation.tversion === 'Intégrée') {
 			editingTranslation.tversion = '';
 		}
@@ -367,8 +368,8 @@
 		if (editingTranslation.tname === 'no_translation') return;
 		const gv = (game.gameVersion ?? '').trim();
 		if (editingTranslation.tname === 'integrated') {
-			editingTranslation.version = gv;
-			editingTranslation.tversion = 'Intégrée';
+			if (editingTranslation.version !== gv) editingTranslation.version = gv;
+			if (editingTranslation.tversion !== 'Intégrée') editingTranslation.tversion = 'Intégrée';
 		}
 	});
 
@@ -903,6 +904,7 @@
 		editingGame = {
 			name: game.name,
 			description: game.description || '',
+			descriptionFr: game.descriptionFr || '',
 			website: game.website,
 			threadId: game.threadId ? String(game.threadId) : '',
 			tags: game.tags || '',
@@ -920,6 +922,7 @@
 		editingGame = {
 			name: '',
 			description: '',
+			descriptionFr: '',
 			website: '',
 			threadId: '',
 			tags: '',
@@ -954,6 +957,7 @@
 				},
 				body: JSON.stringify({
 					...editingGame,
+					description_fr: editingGame.descriptionFr,
 					website: game.website,
 					image: storedImage,
 					gameAutoCheck: Boolean(editGameAutoCheck)
@@ -984,7 +988,10 @@
 
 <svelte:head>
 	<title>{game.name} - F95 France</title>
-	<meta name="description" content={game.description || `Détails du jeu ${game.name}`} />
+	<meta
+		name="description"
+		content={game.descriptionFr || game.description || `Détails du jeu ${game.name}`}
+	/>
 </svelte:head>
 
 <div class="min-h-screen bg-base-200">
@@ -1104,8 +1111,16 @@
 					<div class="flex-1">
 						<h1 class="mb-4 text-3xl font-bold text-base-content">{game.name}</h1>
 
-						{#if game.description}
-							<p class="mb-4 leading-relaxed text-base-content/80">{game.description}</p>
+						{#if game.descriptionFr || game.description}
+							{#if game.descriptionFr}
+								<p class="mb-4 leading-relaxed text-base-content/80">{game.descriptionFr}</p>
+							{/if}
+							{#if game.description && game.description !== game.descriptionFr}
+								<details class="mb-4 text-sm text-base-content/70">
+									<summary class="cursor-pointer font-medium">Description originale</summary>
+									<p class="mt-2 leading-relaxed whitespace-pre-wrap">{game.description}</p>
+								</details>
+							{/if}
 						{/if}
 
 						<div class="mb-4 flex flex-wrap gap-2">

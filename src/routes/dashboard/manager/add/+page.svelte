@@ -53,6 +53,7 @@
 		threadId: null,
 		link: '',
 		description: null,
+		descriptionFr: null,
 		gameAutoCheck: true,
 		gameVersion: null,
 		createdAt: new Date(),

@@ -35,6 +35,7 @@ export type PublicGameDetail = {
 	id: string;
 	name: string;
 	description: string | null;
+	descriptionFr: string | null;
 	website: string;
 	websiteLabel: string;
 	threadId: number | null;
@@ -67,6 +68,7 @@ export async function loadPublicGameDetail(gameId: string): Promise<PublicGameDe
 			id: game.id,
 			name: game.name,
 			description: game.description,
+			descriptionFr: game.descriptionFr,
 			website: game.website,
 			threadId: game.threadId,
 			link: game.link,
@@ -140,6 +142,7 @@ export async function loadPublicGameDetail(gameId: string): Promise<PublicGameDe
 		id: row.id,
 		name: row.name,
 		description: row.description,
+		descriptionFr: row.descriptionFr,
 		website: row.website,
 		websiteLabel: websiteLabel(row.website),
 		threadId: row.threadId,

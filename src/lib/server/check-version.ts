@@ -6,6 +6,7 @@ import {
 	sendDiscordWebhookUpdatesAutoCheckVersionBump,
 	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
@@ -246,6 +247,23 @@ export async function runAutoCheckVersions(
 	}
 
 	const changedGameIds = changedGames.map((g) => g.gameId);
+	const gameDescriptionRows =
+		changedGameIds.length > 0
+			? await db
+					.select({
+						id: table.game.id,
+						description: table.game.description,
+						descriptionFr: table.game.descriptionFr
+					})
+					.from(table.game)
+					.where(inArray(table.game.id, changedGameIds))
+			: [];
+	const descriptionByGameId = new Map(
+		gameDescriptionRows.map((row) => [
+			row.id,
+			{ description: row.description, descriptionFr: row.descriptionFr }
+		])
+	);
 	const impactedTranslations = rows.filter((r) => changedGameIds.includes(r.gameId));
 	const bumpTranslations = await db
 		.select({
@@ -306,9 +324,23 @@ export async function runAutoCheckVersions(
 			if (scraped.image?.trim()) {
 				game.gameImage = scraped.image.trim();
 			}
+			const currentDesc = descriptionByGameId.get(game.gameId);
+			const nextDescription = scraped.description?.trim()
+				? scraped.description.trim()
+				: (currentDesc?.description ?? null);
+			const descFields = await resolveGameDescriptionFields({
+				description: nextDescription,
+				previousDescription: currentDesc?.description ?? null,
+				previousDescriptionFr: currentDesc?.descriptionFr ?? null,
+				autoTranslate: Boolean(scraped.description?.trim())
+			});
 			await db
 				.update(table.game)
-				.set(autoCheckGamePatchFromScrape(scraped))
+				.set({
+					...autoCheckGamePatchFromScrape(scraped),
+					description: descFields.description,
+					descriptionFr: descFields.descriptionFr
+				})
 				.where(eq(table.game.id, game.gameId));
 			if (scraped.gameType) {
 				const gt = coerceGameEngineType(scraped.gameType);

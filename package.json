@@ -8,6 +8,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
+		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && vite dev --force",
 		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
 		"start": "node build/index.js",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",

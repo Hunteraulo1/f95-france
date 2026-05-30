@@ -3,7 +3,6 @@
 	import { resolve } from '$app/paths';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import RestoreHistoryModal from '$lib/components/dashboard/game/RestoreHistoryModal.svelte';
-	import type { GameUpdateHistoryEntry } from '$lib/server/game-update-history-query';
 	import { newToast } from '$lib/stores';
 	import {
 		formatUpdateHistoryDate,
@@ -14,6 +13,7 @@
 		resolveHistoryTranslationName,
 		visibleHistoryDeltas
 	} from '$lib/updates/update-history-display';
+	import type { GameUpdateHistoryEntry } from '$lib/updates/update-history-types';
 	import History from '@lucide/svelte/icons/history';
 	import Undo2 from '@lucide/svelte/icons/undo-2';
 

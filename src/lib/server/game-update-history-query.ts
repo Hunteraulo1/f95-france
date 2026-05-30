@@ -7,30 +7,18 @@ import {
 	type TranslationUpdateHistoryChanges,
 	type UpdateHistoryAction
 } from '$lib/server/update-history';
+import {
+	GAME_UPDATE_HISTORY_PAGE_SIZE,
+	type GameUpdateHistoryEntry,
+	type GameUpdateHistoryPage
+} from '$lib/updates/update-history-types';
 import { desc, eq, sql } from 'drizzle-orm';
 
-export const GAME_UPDATE_HISTORY_PAGE_SIZE = 15;
-
-export type GameUpdateHistoryEntry = {
-	id: string;
-	action: UpdateHistoryAction;
-	createdAt: Date;
-	userId: string | null;
-	username: string | null;
-	updateId: string;
-	updateStatus: string;
-	changes: TranslationUpdateHistoryChanges | null;
-	revertible: boolean;
-	revertCascadeCount: number;
-};
-
-export type GameUpdateHistoryPage = {
-	entries: GameUpdateHistoryEntry[];
-	totalCount: number;
-	page: number;
-	totalPages: number;
-	pageSize: number;
-};
+export {
+	GAME_UPDATE_HISTORY_PAGE_SIZE,
+	type GameUpdateHistoryEntry,
+	type GameUpdateHistoryPage
+} from '$lib/updates/update-history-types';
 
 function parseHistoryChanges(raw: string | null): TranslationUpdateHistoryChanges | null {
 	return parseTranslationUpdateHistoryChanges(raw);

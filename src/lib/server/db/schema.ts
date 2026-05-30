@@ -131,6 +131,7 @@ export const game = pgTable('game', {
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 	description: text('description'),
+	descriptionFr: text('description_fr'),
 	website: varchar('website', { length: 32 }).notNull().default('f95z'),
 	threadId: integer('thread_id'),
 	link: varchar('link', { length: 500 }).notNull().default(''),

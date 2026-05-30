@@ -4,6 +4,7 @@
 	export type EditingGameForm = {
 		name: string;
 		description: string;
+		descriptionFr: string;
 		website: string;
 		threadId: string;
 		tags: string;
@@ -213,13 +214,28 @@
 								bind:value={editingGame.tags}
 							></textarea>
 						</div>
-						<div class="form-control w-full">
+						<div class="form-control w-full md:col-span-2">
+							<label class="label" for="edit-game-description-fr">
+								<span class="label-text">Description (français)</span>
+							</label>
+							<textarea
+								id="edit-game-description-fr"
+								placeholder="Description traduite en français"
+								class="textarea-bordered textarea min-h-28 w-full"
+								bind:value={editingGame.descriptionFr}
+							></textarea>
+							<p class="mt-1 text-xs text-base-content/60">
+								Remplie automatiquement lors du scrape ou de l’actualisation. Modifiable
+								manuellement.
+							</p>
+						</div>
+						<div class="form-control w-full md:col-span-2">
 							<label class="label" for="edit-game-description">
-								<span class="label-text">Description</span>
+								<span class="label-text">Description (original)</span>
 							</label>
 							<textarea
 								id="edit-game-description"
-								placeholder="Description du jeu"
+								placeholder="Description du jeu (langue source)"
 								class="textarea-bordered textarea min-h-28 w-full"
 								bind:value={editingGame.description}
 							></textarea>

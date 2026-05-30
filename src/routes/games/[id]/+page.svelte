@@ -120,8 +120,16 @@
 							</div>
 						{/if}
 
-						{#if game.description?.trim()}
-							<p class="whitespace-pre-wrap text-base-content/80">{game.description}</p>
+						{#if game.descriptionFr?.trim() || game.description?.trim()}
+							<p class="whitespace-pre-wrap text-base-content/80">
+								{game.descriptionFr?.trim() || game.description}
+							</p>
+							{#if game.descriptionFr?.trim() && game.description?.trim() && game.descriptionFr.trim() !== game.description.trim()}
+								<details class="mt-3 text-sm text-base-content/70">
+									<summary class="cursor-pointer font-medium">Description originale</summary>
+									<p class="mt-2 whitespace-pre-wrap">{game.description}</p>
+								</details>
+							{/if}
 						{/if}
 
 						{#if game.tags.length > 0}

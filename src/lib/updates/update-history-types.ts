@@ -31,3 +31,27 @@ export type UpdateHistoryContext = {
 	action: UpdateHistoryAction;
 	changes: TranslationUpdateHistoryChanges;
 };
+
+export const GAME_UPDATE_HISTORY_PAGE_SIZE = 15;
+
+/** Entrée d’historique traduction (partagé client / serveur). */
+export type GameUpdateHistoryEntry = {
+	id: string;
+	action: UpdateHistoryAction;
+	createdAt: Date;
+	userId: string | null;
+	username: string | null;
+	updateId: string;
+	updateStatus: string;
+	changes: TranslationUpdateHistoryChanges | null;
+	revertible: boolean;
+	revertCascadeCount: number;
+};
+
+export type GameUpdateHistoryPage = {
+	entries: GameUpdateHistoryEntry[];
+	totalCount: number;
+	page: number;
+	totalPages: number;
+	pageSize: number;
+};

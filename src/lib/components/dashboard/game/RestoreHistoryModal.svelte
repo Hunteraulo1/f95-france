@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { GameUpdateHistoryEntry } from '$lib/server/game-update-history-query';
 	import {
 		formatUpdateHistoryDate,
 		formatUpdateHistoryFieldValue,
@@ -9,6 +8,7 @@
 		resolveHistoryTranslationName,
 		visibleHistoryDeltas
 	} from '$lib/updates/update-history-display';
+	import type { GameUpdateHistoryEntry } from '$lib/updates/update-history-types';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import History from '@lucide/svelte/icons/history';
 	import Undo2 from '@lucide/svelte/icons/undo-2';
