@@ -3,6 +3,7 @@ import { splitGameTags } from '$lib/games/public-game-display';
 import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
 import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import { countUpToDateTranslations } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game } from '$lib/server/db/schema';
@@ -11,7 +12,6 @@ import {
 	combineSqlParts,
 	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
-import { countUpToDateTranslations } from '$lib/server/api/translation-public';
 import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 import { asc, count, desc, eq } from 'drizzle-orm';
 
@@ -81,6 +81,7 @@ export async function listPublicGames(params: PublicGamesListParams) {
 	const safePage = Math.min(page, totalPages);
 	const offset = (safePage - 1) * PUBLIC_GAMES_PAGE_SIZE;
 
+	const enginesSq = enginesPerGameSubquery();
 	const rows = await db
 		.select({
 			id: game.id,
@@ -91,10 +92,10 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			gameVersion: game.gameVersion,
 			updatedAt: game.updatedAt,
 			tags: game.tags,
-			engineTypes: enginesPerGameSubquery.engineTypes
+			engineTypes: enginesSq.engineTypes
 		})
 		.from(game)
-		.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+		.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
 		.where(where)
 		.orderBy(buildOrderBy(params.sort))
 		.limit(PUBLIC_GAMES_PAGE_SIZE)
