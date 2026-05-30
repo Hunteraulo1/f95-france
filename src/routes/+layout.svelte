@@ -93,8 +93,8 @@
 					{/if}
 					{@render children()}
 				</div>
+				<Footer />
 			{/if}
-			<Footer />
 		</div>
 
 		{#if !ageVerified}
