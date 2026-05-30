@@ -9,7 +9,8 @@ import {
 import { anyPermissionGranted, permissionGranted } from '$lib/permissions/check';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
 import { SYSTEM_ROLE_BADGE_STYLES } from '$lib/permissions/role-badge-style';
-import { sortRolesByPrivileges } from '$lib/permissions/sort-roles';
+import { SYSTEM_ROLE_PRIORITIES } from '$lib/permissions/role-priority';
+import { sortRolesByPriority } from '$lib/permissions/sort-roles';
 import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -164,9 +165,7 @@ export async function countEffectivePermissionsByRoles(
 
 export async function listAppRoles() {
 	const roles = await selectAllAppRoles();
-	const slugs = roles.map((r) => r.slug);
-	const permissionCounts = await countEffectivePermissionsByRoles(slugs);
-	return sortRolesByPrivileges(roles, permissionCounts);
+	return sortRolesByPriority(roles);
 }
 
 export async function listRolePermissions(roleSlug: string): Promise<string[]> {
@@ -196,16 +195,38 @@ export async function syncPermissionsCatalog(): Promise<void> {
 	const existing = await db.select({ key: table.appPermission.key }).from(table.appPermission);
 	const existingKeys = new Set(existing.map((row) => row.key));
 	const missing = PERMISSION_CATALOG.filter((p) => !existingKeys.has(p.key));
-	if (missing.length === 0) return;
+	if (missing.length > 0) {
+		await db.insert(table.appPermission).values(
+			missing.map((p) => ({
+				key: p.key,
+				label: p.label,
+				description: p.description,
+				group: p.group
+			}))
+		);
+	}
 
-	await db.insert(table.appPermission).values(
-		missing.map((p) => ({
-			key: p.key,
-			label: p.label,
-			description: p.description,
-			group: p.group
-		}))
-	);
+	await syncSystemRolePermissionLinks();
+}
+
+/** Ajoute aux rôles système les liens permission manquants (déploiements existants). */
+async function syncSystemRolePermissionLinks(): Promise<void> {
+	for (const [roleSlug, keys] of Object.entries(SYSTEM_ROLE_PERMISSIONS)) {
+		if (isSuperadminRole(roleSlug)) continue;
+
+		const rows = await db
+			.select({ permissionKey: table.appRolePermission.permissionKey })
+			.from(table.appRolePermission)
+			.where(eq(table.appRolePermission.roleSlug, roleSlug));
+		const existingKeys = new Set(rows.map((row) => row.permissionKey));
+		const missing = keys.filter((key) => !existingKeys.has(key));
+		if (missing.length === 0) continue;
+
+		await db
+			.insert(table.appRolePermission)
+			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })))
+			.onConflictDoNothing();
+	}
 }
 
 export async function ensurePermissionsCatalogSeeded(): Promise<void> {
@@ -234,6 +255,8 @@ export async function ensurePermissionsCatalogSeeded(): Promise<void> {
 			label: slug,
 			editMode: SYSTEM_ROLE_EDIT_MODES[slug as keyof typeof SYSTEM_ROLE_EDIT_MODES],
 			badgeStyle: SYSTEM_ROLE_BADGE_STYLES[slug] ?? 'default',
+			staff: slug === 'admin' || slug === 'superadmin',
+			priority: SYSTEM_ROLE_PRIORITIES[slug] ?? 0,
 			isSystem: true
 		}))
 	);

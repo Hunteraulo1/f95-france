@@ -36,6 +36,7 @@
 		translationsTotalPages?: number;
 		translationsHrefForPage?: (page: number) => string;
 		editProfileHref?: string | null;
+		musicUrl?: string | null;
 	}
 
 	let {
@@ -49,14 +50,15 @@
 		translationsPage = 1,
 		translationsTotalPages = 1,
 		translationsHrefForPage = () => '',
-		editProfileHref = null
+		editProfileHref = null,
+		musicUrl = null
 	}: Props = $props();
 
 	let customCursorActive = $state(false);
 	let customCursorX = $state(0);
 	let customCursorY = $state(0);
 
-	const musicVideoId = $derived(extractYoutubeVideoId(customProfile?.musicUrl));
+	const musicVideoId = $derived(extractYoutubeVideoId(musicUrl ?? customProfile?.musicUrl ?? null));
 	const hasCustomCursor = $derived(!!customProfile?.cursorUrl);
 	const hasBackground = $derived(!!customProfile?.backgroundUrl);
 
@@ -152,7 +154,7 @@
 					Modifier mon profil
 				</a>
 			{/if}
-			{#if musicVideoId && customProfile?.musicUrl}
+			{#if musicVideoId}
 				<YoutubeAudioPlayer videoId={musicVideoId} />
 			{/if}
 		</div>

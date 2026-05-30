@@ -6,7 +6,12 @@ const DASHBOARD_PUBLIC_EXACT = new Set([
 	'/dashboard/logout'
 ]);
 
-/** Routes dashboard accessibles sans session (auth, déconnexion, profils publics). */
+/** Profil public canonique (`/profile/{pseudo}`). */
+export function isPublicProfilePath(pathname: string): boolean {
+	return pathname.startsWith('/profile/') && pathname !== '/profile';
+}
+
+/** Routes dashboard accessibles sans session (auth, déconnexion, redirections profil). */
 export function isPublicDashboardPath(pathname: string): boolean {
 	if (DASHBOARD_PUBLIC_EXACT.has(pathname)) {
 		return true;
@@ -15,6 +20,18 @@ export function isPublicDashboardPath(pathname: string): boolean {
 		return true;
 	}
 	return false;
+}
+
+/** Catalogue jeux public. */
+export function isPublicGamesPath(pathname: string): boolean {
+	return pathname === '/games' || pathname.startsWith('/games/');
+}
+
+/** Pages accessibles sans connexion (hors assets). */
+export function isPublicSitePath(pathname: string): boolean {
+	return (
+		isPublicProfilePath(pathname) || isPublicDashboardPath(pathname) || isPublicGamesPath(pathname)
+	);
 }
 
 /** Redirige vers la page de connexion si la session est absente (pages dashboard protégées). */

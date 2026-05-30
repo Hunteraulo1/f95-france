@@ -13,6 +13,8 @@ export const PERMISSION_KEYS = [
 	'games.manage',
 	'games.auto_check',
 	'games.silent_mode',
+	'games.view_history',
+	'games.revert_history',
 	'translations.own',
 	'submissions.own',
 	'submissions.review',
@@ -113,6 +115,19 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		label: 'Mode silencieux',
 		description:
 			'Ajouter ou modifier des traductions sans envoyer de notification Discord (mode silencieux)',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.view_history',
+		label: 'Historique des traductions',
+		description: 'Consulter l’historique des changements sur les traductions d’un jeu',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.revert_history',
+		label: 'Restaurer depuis l’historique',
+		description:
+			'Restaurer un état antérieur des traductions à partir de l’historique (y compris plusieurs modifications d’un coup)',
 		group: 'Contenu'
 	},
 	{
@@ -233,6 +248,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'games.manage',
 		'games.auto_check',
 		'games.silent_mode',
+		'games.view_history',
+		'games.revert_history',
 		'translations.own',
 		'submissions.own',
 		'submissions.review',

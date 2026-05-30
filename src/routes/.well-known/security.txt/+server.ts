@@ -2,6 +2,29 @@ import { privateEnv } from '$lib/server/private-env';
 import { SITE } from '$lib/site';
 import type { RequestHandler } from './$types';
 
+function encryptionLines(): string[] {
+	const lines: string[] = [];
+
+	const fingerprint = privateEnv('SECURITY_OPENPGP_FINGERPRINT')?.replace(/\s/g, '');
+	if (fingerprint) {
+		const value = fingerprint.toLowerCase().startsWith('openpgp4fpr:')
+			? fingerprint
+			: `openpgp4fpr:${fingerprint}`;
+		lines.push(`Encryption: ${value}`);
+	}
+
+	const keyUrl = privateEnv('SECURITY_OPENPGP_KEY_URL')?.trim();
+	if (keyUrl) {
+		try {
+			lines.push(`Encryption: ${new URL(keyUrl).href}`);
+		} catch {
+			/* URL invalide — ignorée */
+		}
+	}
+
+	return lines;
+}
+
 /** RFC 9116 — security.txt (contact divulgation responsable). */
 export const GET: RequestHandler = () => {
 	const contact = privateEnv('SECURITY_CONTACT') || SITE.defaultSecurityContact;
@@ -12,6 +35,7 @@ export const GET: RequestHandler = () => {
 
 	const body = [
 		`Contact: ${contact}`,
+		...encryptionLines(),
 		`Expires: ${expires.toISOString().replace('.000Z', 'Z')}`,
 		`Canonical: ${canonical}`,
 		'Preferred-Languages: fr'

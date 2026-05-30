@@ -13,6 +13,7 @@
 		getPermissionParent,
 		permissionRequirementLabel
 	} from '$lib/permissions/dependencies';
+	import { profileDashboardHref } from '$lib/utils/profile-url';
 	import { roleBadgeClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
 
@@ -112,6 +113,37 @@
 			</span>
 		</div>
 	{/if}
+	{#if data.canFixStaffRoles && data.staffRoleIssues.length > 0}
+		<div role="alert" class="alert alert-warning">
+			<div class="flex w-full flex-col gap-3">
+				<p class="font-medium">Configuration des rôles staff incomplète</p>
+				<ul class="flex flex-col gap-2 text-sm">
+					{#each data.staffRoleIssues as issue (issue.slug)}
+						<li
+							class="flex flex-col gap-2 rounded-lg border border-warning/30 bg-base-100/80 p-3 sm:flex-row sm:items-center sm:justify-between"
+						>
+							<div>
+								<span class="font-semibold">{issue.label}</span>
+								<span class="font-mono text-xs opacity-60"> ({issue.slug})</span>
+								<ul class="mt-1 list-inside list-disc text-base-content/80">
+									{#if issue.missingStaff}
+										<li>Flag « staff » non activé</li>
+									{/if}
+									{#if issue.missingColor}
+										<li>Couleur de badge non définie (défaut)</li>
+									{/if}
+								</ul>
+							</div>
+							<form method="POST" action="?/fixStaffRole" use:enhance={formEnhance()}>
+								<input type="hidden" name="slug" value={issue.slug} />
+								<button type="submit" class="btn btn-sm btn-primary">Corriger</button>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+	{/if}
 
 	<div class="grid gap-6 lg:grid-cols-[minmax(220px,280px)_1fr]">
 		<div class="card border border-base-300 bg-base-100 shadow">
@@ -133,6 +165,10 @@
 										{/if}
 									</span>
 									<span class="text-xs opacity-60">
+										{#if data.canEditRolePriority}
+											Force {role.priority}
+											<span class="opacity-50">·</span>
+										{/if}
 										{role.permissionCount} droit{role.permissionCount > 1 ? 's' : ''} effectif{role.permissionCount >
 										1
 											? 's'
@@ -144,6 +180,35 @@
 						</li>
 					{/each}
 				</ul>
+
+				{#if data.staffUsers.length > 0}
+					<div class="divider my-1"></div>
+					<h4 class="px-1 text-sm font-semibold text-base-content/80">
+						Équipe staff
+						<span class="badge badge-accent badge-xs ml-1">{data.staffUsers.length}</span>
+					</h4>
+					<ul class="menu w-full menu-sm rounded-box bg-base-200 p-1 overflow-y-auto">
+						{#each data.staffUsers as member (member.id)}
+							<li class="w-full">
+								<a href={resolve(profileDashboardHref(member.username))} class="gap-2">
+									<div class="avatar">
+										<div class="w-7 rounded-full">
+											<img src={member.avatar} alt="" />
+										</div>
+									</div>
+									<span class="flex min-w-0 flex-col">
+										<span class={roleBadgeClass(member.role, member.badgeStyle)}
+											>{member.username}</span
+										>
+										<span class="text-xs opacity-60">{member.roleLabel}</span>
+									</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="px-1 text-xs text-base-content/60">Aucun utilisateur avec un rôle staff.</p>
+				{/if}
 			</div>
 		</div>
 
@@ -183,9 +248,14 @@
 									{selectedRole.label}
 								</h3>
 								<p class="font-mono text-sm opacity-70">{selectedRole.slug}</p>
-								{#if selectedRole.isSystem}
-									<span class="mt-1 badge badge-sm badge-info">Rôle système</span>
-								{/if}
+								<div class="mt-1 flex flex-wrap gap-1">
+									{#if selectedRole.isSystem}
+										<span class="badge badge-sm badge-info">Rôle système</span>
+									{/if}
+									{#if selectedRole.staff}
+										<span class="badge badge-sm badge-accent">Staff</span>
+									{/if}
+								</div>
 							</div>
 							{#if !selectedRole.isSystem && canManageSelected}
 								<form method="POST" action="?/deleteRole" use:enhance={formEnhance()}>
@@ -250,6 +320,41 @@
 									>
 								{/snippet}
 							</RoleOptionRadios>
+							<fieldset class="fieldset">
+								<legend class="fieldset-legend">Équipe</legend>
+								<label class="label cursor-pointer justify-start gap-3">
+									<input
+										type="checkbox"
+										name="staff"
+										value="on"
+										class="checkbox checkbox-primary"
+										checked={selectedRole.staff}
+										disabled={roleFieldsLocked}
+									/>
+									<span class="label-text">
+										Membre du staff (équipe du site, modération, outils internes)
+									</span>
+								</label>
+							</fieldset>
+							{#if data.canEditRolePriority}
+								<fieldset class="fieldset">
+									<legend class="fieldset-legend">Force du rôle</legend>
+									<input
+										type="number"
+										name="priority"
+										class="input w-full max-w-xs"
+										min={data.rolePriorityMin}
+										max={data.rolePriorityMax}
+										step="1"
+										value={selectedRole.priority}
+										disabled={!canManageSelected && !isSelectedSuperadmin}
+									/>
+									<p class="label text-xs">
+										Plus la valeur est élevée, plus le rôle apparaît en premier (staff, liste des
+										rôles). Réservé aux super administrateurs ({data.rolePriorityMin}–{data.rolePriorityMax}).
+									</p>
+								</fieldset>
+							{/if}
 							{#if selectedHasGamesManage}
 								<RoleOptionRadios
 									legend="Mode d'enregistrement"
@@ -405,6 +510,30 @@
 				checkedValue="direct"
 				vertical
 			/>
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend">Équipe</legend>
+				<label class="label cursor-pointer justify-start gap-3">
+					<input type="checkbox" name="staff" value="on" class="checkbox checkbox-primary" />
+					<span class="label-text">Membre du staff</span>
+				</label>
+			</fieldset>
+			{#if data.canEditRolePriority}
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">Force du rôle</legend>
+					<input
+						type="number"
+						name="priority"
+						class="input w-full max-w-xs"
+						min={data.rolePriorityMin}
+						max={data.rolePriorityMax}
+						step="1"
+						value="0"
+					/>
+					<p class="label text-xs">
+						Ordre d'affichage (staff, liste). {data.rolePriorityMin}–{data.rolePriorityMax}.
+					</p>
+				</fieldset>
+			{/if}
 		</form>
 		{#snippet footer()}
 			<button type="button" class="btn" onclick={() => (showCreateModal = false)}>Annuler</button>

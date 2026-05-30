@@ -41,6 +41,10 @@ export async function hasUpdateStatusColumn(): Promise<boolean> {
 	return hasPublicColumn('update', 'status');
 }
 
+export async function hasUpdateHistoryTable(): Promise<boolean> {
+	return hasPublicColumn('update_history', 'id');
+}
+
 /** Message Postgres exploitable côté client (sans fuite de détail interne). */
 export function publicErrorFromUnknown(error: unknown, fallback: string): string {
 	if (!error || typeof error !== 'object') return fallback;

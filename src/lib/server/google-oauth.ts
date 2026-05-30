@@ -1,7 +1,7 @@
 import { getEffectiveConfigFromRow, oauthTokenFieldsForDb } from '$lib/server/app-config';
+import { eq } from 'drizzle-orm';
 import { db } from './db';
 import * as table from './db/schema';
-import { eq } from 'drizzle-orm';
 
 interface GoogleTokenResponse {
 	access_token: string;

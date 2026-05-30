@@ -10,6 +10,7 @@ import {
 	gameAutoCheckEnabledForWebsite,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
 	assertDirectGameWriteAllowed,
@@ -332,6 +333,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await assertDirectGameWriteAllowed(writeModeParams);
 
+		const descFields = await resolveGameDescriptionFields({
+			description: description || null,
+			autoTranslate: true
+		});
+
 		// Mode direct (rôle + permission vérifiés côté serveur)
 		const shouldCreateTranslation = Boolean(translation) && !translationIsNoTranslation;
 		const normalizedTranslationTversion = shouldCreateTranslation
@@ -343,7 +349,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.insert(table.game)
 				.values({
 					name,
-					description: description || null,
+					description: descFields.description,
+					descriptionFr: descFields.descriptionFr,
 					website,
 					threadId: validThreadId,
 					tags: typeof tags === 'string' ? tags.trim() || '' : '',

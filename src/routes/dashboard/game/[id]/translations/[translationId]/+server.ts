@@ -13,7 +13,10 @@ import {
 	parseRequestDirectMode,
 	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import {
+	recordTranslationChangeInUpdateHistory,
+	touchGameUpdatedToday
+} from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
@@ -28,8 +31,10 @@ import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -181,7 +186,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				gameId,
 				translationId,
 				{
-					translationName: translationName || null,
+					translationName: normalizeNullableHistoryString(translationName),
 					version: normalizedVersion,
 					tversion,
 					status,
@@ -245,7 +250,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: isF95VersionRefresh ? before.translationName : translationName || null,
+			translationName: isF95VersionRefresh
+				? before.translationName
+				: normalizeNullableHistoryString(translationName),
 			version: normalizedVersion,
 			tversion: effectiveTversion,
 			status: effectiveStatus,
@@ -274,7 +281,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const dataJson = JSON.stringify({
 			gameId,
 			translation: {
-				translationName: translationName || null,
+				translationName: normalizeNullableHistoryString(translationName),
 				version: normalizedVersion,
 				tversion,
 				status,
@@ -322,7 +329,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		if (!isSilentMode) {
-			await touchGameUpdatedToday(gameId);
+			await recordTranslationChangeInUpdateHistory(gameId, {
+				userId: currentUser.id,
+				translationId,
+				before: translationRowToHistorySnapshot(before),
+				after: translationRowToHistorySnapshot({
+					translationName: directSet.translationName,
+					version: directSet.version,
+					tversion: directSet.tversion,
+					status: directSet.status,
+					ttype: directSet.ttype,
+					tlink: directSet.tlink,
+					tname: directSet.tname,
+					gameType: directSet.gameType ?? before.gameType,
+					translatorId: directSet.translatorId,
+					proofreaderId: directSet.proofreaderId,
+					ac: directSet.ac
+				}),
+				updateKind: 'update'
+			});
 		}
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
@@ -426,6 +451,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
+		await recordTranslationChangeInUpdateHistory(gameId, {
+			userId: currentUser.id,
+			translationId,
+			before: translationRowToHistorySnapshot(tr),
+			after: null,
+			updateKind: 'update'
+		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});

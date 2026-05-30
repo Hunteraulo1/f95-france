@@ -11,8 +11,13 @@ import {
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
-import { createGameUpdateRow, touchGameUpdatedToday } from '$lib/server/game-updates';
+import {
+	createGameUpdateRow,
+	recordTranslationChangeInUpdateHistory,
+	touchGameUpdatedToday
+} from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	deleteTranslationFromGoogleSheet,
@@ -22,6 +27,10 @@ import {
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
+import {
+	translationRowToHistorySnapshot,
+	type TranslationHistorySnapshot
+} from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
@@ -401,11 +410,17 @@ export async function applySubmission(submissionId: string) {
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
+		const descFields = await resolveGameDescriptionFields({
+			description: gameData.description,
+			autoTranslate: true
+		});
+
 		const [insertedGame] = await db
 			.insert(table.game)
 			.values({
 				name: gameData.name,
-				description: gameData.description || null,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
 				website: gameData.website as 'f95z' | 'lc' | 'other',
 				threadId: gameData.threadId
 					? typeof gameData.threadId === 'string'
@@ -561,6 +576,7 @@ export async function applySubmission(submissionId: string) {
 			originalGame: {
 				name: originalGame.name,
 				description: originalGame.description,
+				descriptionFr: originalGame.descriptionFr,
 				website: originalGame.website,
 				threadId: originalGame.threadId,
 				tags: originalGame.tags,
@@ -587,12 +603,20 @@ export async function applySubmission(submissionId: string) {
 					: null
 				: (originalGame.gameVersion ?? null);
 
+		const descFields = await resolveGameDescriptionFields({
+			description: gameData.description,
+			previousDescription: originalGame.description,
+			previousDescriptionFr: originalGame.descriptionFr,
+			autoTranslate: true
+		});
+
 		// Mettre à jour le jeu
 		await db
 			.update(table.game)
 			.set({
 				name: gameData.name,
-				description: gameData.description || null,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
 				website: gameData.website as 'f95z' | 'lc' | 'other',
 				threadId: gameData.threadId
 					? typeof gameData.threadId === 'string'
@@ -642,6 +666,7 @@ export async function applySubmission(submissionId: string) {
 		const resolvedContributors = await resolveSubmissionContributorIds(parsedData, translationData);
 		const allowsAc = await getGameAllowsTranslationAutoCheck(sub.gameId);
 		let syncedTranslationId: string | null = null;
+		let translationHistoryBefore: TranslationHistorySnapshot | null = null;
 
 		if (sub.translationId) {
 			// Vérifier si la traduction existe toujours (elle peut avoir été supprimée lors d'un revert)
@@ -737,6 +762,7 @@ export async function applySubmission(submissionId: string) {
 					.update(table.gameTranslation)
 					.set(trSet)
 					.where(eq(table.gameTranslation.id, sub.translationId));
+				translationHistoryBefore = translationRowToHistorySnapshot(originalTranslation);
 				syncedTranslationId = sub.translationId;
 				editCount += 1;
 			} else {
@@ -848,6 +874,22 @@ export async function applySubmission(submissionId: string) {
 			addCount += 1;
 		}
 		if (syncedTranslationId) {
+			const [appliedTranslation] = await db
+				.select()
+				.from(table.gameTranslation)
+				.where(eq(table.gameTranslation.id, syncedTranslationId))
+				.limit(1);
+
+			if (appliedTranslation) {
+				await recordTranslationChangeInUpdateHistory(sub.gameId, {
+					userId: sub.openedByUserId ?? sub.userId,
+					translationId: syncedTranslationId,
+					before: translationHistoryBefore,
+					after: translationRowToHistorySnapshot(appliedTranslation),
+					updateKind: translationHistoryBefore ? 'update' : 'adding'
+				});
+			}
+
 			void syncTranslationToGoogleSheet(syncedTranslationId).catch((err) => {
 				console.warn('[google-sheets-sync] submission apply failed:', err);
 			});
@@ -875,13 +917,6 @@ export async function applySubmission(submissionId: string) {
 					console.warn('[google-sheets-sync] submission translator lookup failed:', err);
 				}
 			})();
-		}
-		if (sub.translationId) {
-			// Soumission de modification de traduction.
-			await touchGameUpdatedToday(sub.gameId);
-		} else {
-			// Soumission d'ajout de traduction.
-			await createGameUpdateRow(sub.gameId, 'adding');
 		}
 	} else if (sub.type === 'delete') {
 		// Supprimer un jeu ou une traduction
@@ -944,6 +979,13 @@ export async function applySubmission(submissionId: string) {
 
 			// Supprimer la traduction
 			await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, sub.translationId));
+			await recordTranslationChangeInUpdateHistory(sub.gameId, {
+				userId: sub.openedByUserId ?? sub.userId,
+				translationId: sub.translationId,
+				before: translationRowToHistorySnapshot(originalTranslation),
+				after: null,
+				updateKind: 'update'
+			});
 			void deleteTranslationFromGoogleSheet(sub.translationId).catch((err) => {
 				console.warn('[google-sheets-sync] submission delete translation row failed:', err);
 			});
@@ -975,6 +1017,7 @@ export async function applySubmission(submissionId: string) {
 				originalGame: {
 					name: originalGame.name,
 					description: originalGame.description,
+					descriptionFr: originalGame.descriptionFr,
 					website: originalGame.website,
 					threadId: originalGame.threadId,
 					tags: originalGame.tags,
@@ -1124,6 +1167,7 @@ export async function revertSubmission(submissionId: string) {
 		originalGame?: {
 			name: string;
 			description?: string | null;
+			descriptionFr?: string | null;
 			/** Anciennes soumissions (type sur le jeu) */
 			type?: string;
 			website: string;
@@ -1219,6 +1263,7 @@ export async function revertSubmission(submissionId: string) {
 			.set({
 				name: originalGame.name,
 				description: originalGame.description || null,
+				descriptionFr: originalGame.descriptionFr ?? null,
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'
@@ -1409,6 +1454,7 @@ export async function revertSubmission(submissionId: string) {
 				id: sub.gameId,
 				name: originalGame.name,
 				description: originalGame.description || null,
+				descriptionFr: originalGame.descriptionFr ?? null,
 				website: originalGame.website as 'f95z' | 'lc' | 'other',
 				threadId: originalGame.threadId
 					? typeof originalGame.threadId === 'string'

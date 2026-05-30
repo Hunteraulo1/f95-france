@@ -1,6 +1,10 @@
 import { parseTranslatorCountFilters } from '$lib/server/api/translator-count-filters';
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
+import {
+	translatorReadCountExpr,
+	translatorTradCountExpr
+} from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -30,8 +34,8 @@ export const GET: RequestHandler = async ({ url }) => {
 					name: translator.name,
 					discordId: translator.discordId,
 					pages: translator.pages,
-					tradCount: translator.tradCount,
-					readCount: translator.readCount,
+					tradCount: translatorTradCountExpr().as('tradCount'),
+					readCount: translatorReadCountExpr().as('readCount'),
 					createdAt: translator.createdAt,
 					updatedAt: translator.updatedAt
 				})

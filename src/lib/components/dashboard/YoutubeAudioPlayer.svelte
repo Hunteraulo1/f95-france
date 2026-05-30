@@ -23,6 +23,7 @@
 	let embedSrc = $state('');
 	let ready = $state(false);
 	let playing = $state(false);
+	let pendingPlay = $state(false);
 	let volume = $state(DEFAULT_VOLUME);
 	let volumeBeforeMute = $state(DEFAULT_VOLUME);
 	let loadError = $state<string | null>(null);
@@ -32,8 +33,6 @@
 	const YT_PAUSED = 2;
 
 	const EMBED_TARGETS = ['https://www.youtube-nocookie.com', 'https://www.youtube.com'] as const;
-
-	type YtCommandFunc = 'playVideo' | 'pauseVideo' | 'setVolume' | 'mute' | 'unMute';
 
 	function readStoredVolume(): number {
 		try {
@@ -62,30 +61,33 @@
 		}
 	}
 
-	function postCommand(func: YtCommandFunc, args: number[] = []) {
-		postToEmbed({ event: 'command', func, args });
+	function postCommand(func: 'playVideo' | 'pauseVideo' | 'mute' | 'unMute') {
+		postToEmbed({ event: 'command', func, args: '' });
 	}
 
-	/** Requis pour que playVideo / pauseVideo et onStateChange fonctionnent. */
+	function postSetVolume(level: number) {
+		postToEmbed({ event: 'command', func: 'setVolume', args: [level] });
+	}
+
 	function subscribeEmbed() {
 		postToEmbed({ event: 'listening', id: YOUTUBE_EMBED_WIDGET_ID, channel: 'widget' });
 	}
 
 	function scheduleEmbedSubscription() {
 		subscribeEmbed();
-		for (const delay of [100, 300, 800]) {
+		for (const delay of [100, 300, 800, 1500]) {
 			window.setTimeout(subscribeEmbed, delay);
 		}
 	}
 
 	function applyVolumeToPlayer(level: number) {
-		const clamped = Math.round(Math.max(0, Math.min(100, level)));
 		if (!ready) return;
+		const clamped = Math.round(Math.max(0, Math.min(100, level)));
 		if (clamped === 0) {
 			postCommand('mute');
 		} else {
 			postCommand('unMute');
-			postCommand('setVolume', [clamped]);
+			postSetVolume(clamped);
 		}
 	}
 
@@ -95,6 +97,13 @@
 		if (clamped > 0) volumeBeforeMute = clamped;
 		persistVolume(clamped);
 		applyVolumeToPlayer(clamped);
+	}
+
+	function requestPlay() {
+		pendingPlay = true;
+		playing = true;
+		scheduleEmbedSubscription();
+		postCommand('playVideo');
 	}
 
 	function handleEmbedMessage(event: MessageEvent) {
@@ -108,13 +117,17 @@
 
 			if (data.event === 'onReady') {
 				ready = true;
-				playing = true;
+				loadError = null;
 				applyVolumeToPlayer(volume);
+				if (pendingPlay) {
+					postCommand('playVideo');
+				}
 				return;
 			}
 
 			if (data.event === 'onStateChange' && typeof data.info === 'number') {
 				ready = true;
+				loadError = null;
 				playing = data.info === YT_PLAYING;
 				if (data.info === YT_ENDED || data.info === YT_PAUSED) playing = false;
 				return;
@@ -127,6 +140,7 @@
 				typeof data.info.playerState === 'number'
 			) {
 				ready = true;
+				loadError = null;
 				const state = data.info.playerState;
 				playing = state === YT_PLAYING;
 				if (state === YT_ENDED || state === YT_PAUSED) playing = false;
@@ -149,31 +163,31 @@
 	});
 
 	const togglePlayback = () => {
-		if (!ready || loadError) return;
+		if (loadError) return;
+
 		if (playing) {
+			pendingPlay = false;
 			playing = false;
-			postCommand('pauseVideo');
-		} else {
-			playing = true;
-			postCommand('playVideo');
+			if (ready) postCommand('pauseVideo');
+			return;
 		}
+
+		requestPlay();
 	};
 
 	const toggleMute = () => {
-		if (!ready || loadError) return;
 		setVolumeLevel(volume > 0 ? 0 : volumeBeforeMute);
 	};
 </script>
 
 <div class="flex flex-col gap-2">
-	<div class="flex flex-wrap items-center gap-3">
+	<div class="relative flex flex-wrap items-center gap-3">
 		<div class="yt-audio-player-host" aria-hidden="true">
 			{#if embedSrc}
 				<iframe
 					bind:this={iframeEl}
 					title="Lecteur YouTube"
 					src={embedSrc}
-					allow="autoplay; encrypted-media"
 					referrerpolicy="strict-origin-when-cross-origin"
 					onload={() => {
 						scheduleEmbedSubscription();
@@ -185,7 +199,7 @@
 		<button
 			type="button"
 			class="btn btn-sm btn-outline gap-2"
-			disabled={!ready || !!loadError}
+			disabled={!!loadError}
 			aria-pressed={playing}
 			onclick={togglePlayback}
 		>
@@ -203,7 +217,7 @@
 				type="button"
 				tabindex="0"
 				class="btn btn-sm btn-outline btn-square"
-				disabled={!ready || !!loadError}
+				disabled={!!loadError}
 				aria-label="Régler le volume ({volume} %)"
 			>
 				{#if volume === 0}
@@ -228,14 +242,14 @@
 							step="1"
 							class="range range-xs w-36"
 							value={volume}
-							disabled={!ready || !!loadError}
+							disabled={!!loadError}
 							oninput={(e) => setVolumeLevel(Number(e.currentTarget.value))}
 						/>
 					</label>
 					<button
 						type="button"
 						class="btn btn-ghost btn-xs w-fit"
-						disabled={!ready || !!loadError}
+						disabled={!!loadError}
 						onclick={toggleMute}
 					>
 						{volume === 0 ? 'Réactiver le son' : 'Couper le son'}
@@ -244,6 +258,10 @@
 			</div>
 		</div>
 	</div>
+
+	{#if !ready && !loadError}
+		<p class="text-xs text-base-content/60">Cliquez sur « Écouter » pour lancer la lecture.</p>
+	{/if}
 
 	{#if loadError}
 		<p class="text-sm text-warning">{loadError}</p>

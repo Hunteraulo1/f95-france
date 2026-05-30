@@ -29,8 +29,7 @@ function parseTranslationsPage(url: URL): number {
 }
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
-	const { id } = params;
-	const profileRef = String(id ?? '').trim();
+	const profileRef = String(params.id ?? '').trim();
 
 	const userByUsername = await db
 		.select(userProfileSelect)

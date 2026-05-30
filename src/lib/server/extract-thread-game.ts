@@ -4,14 +4,15 @@ import type { PermissionKey } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ManagerExtractDraft } from '$lib/server/extract-draft';
-import { normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { scrapeThread, type ScrapedThreadGame } from '$lib/server/scrape';
 import type { GameEngineType } from '$lib/types';
+import { normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { and, eq, sql } from 'drizzle-orm';
 
 const EXTRACT_PERMISSION: PermissionKey = 'games.manage';
@@ -449,11 +450,17 @@ export async function runExtractThreadGame(input: {
 		};
 	}
 
+	const descFields = await resolveGameDescriptionFields({
+		description: payload.description,
+		autoTranslate: true
+	});
+
 	const [inserted] = await db
 		.insert(table.game)
 		.values({
 			name: payload.name,
-			description: payload.description,
+			description: descFields.description,
+			descriptionFr: descFields.descriptionFr,
 			website,
 			threadId: threadIdParsed,
 			tags: payload.tags,
