@@ -209,7 +209,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				prevGameAutoCheck ?? true
 			);
 		} else if (hasNonVersionChanges) {
-			nextGameAutoCheck = resolveGameAutoCheckForWebsite(website, false, false);
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				undefined,
+				prevGameAutoCheck ?? true
+			);
 		} else {
 			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 				website,

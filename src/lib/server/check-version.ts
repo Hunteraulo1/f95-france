@@ -6,17 +6,16 @@ import {
 	sendDiscordWebhookUpdatesAutoCheckVersionBump,
 	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
-import {
-	isF95CheckerVersionAligned,
-	needsF95VersionBump,
-	normalizeCheckerVersion
-} from '$lib/utils/f95-checker-alignment';
-import { disableGameAndTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import {
+	isF95CheckerVersionAligned,
+	needsF95VersionBump,
+	normalizeCheckerVersion
+} from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
@@ -233,10 +232,6 @@ export async function runAutoCheckVersions(
 	const alignedGames = Array.from(uniqueByGame.values()).filter(
 		(g) => !gameNeedsCheckerBump(g) && gameIsCheckerAligned(g)
 	);
-
-	for (const game of alignedGames) {
-		await disableGameAndTranslationAutoCheck(game.gameId);
-	}
 
 	if (changedGames.length === 0) {
 		return {
