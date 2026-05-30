@@ -4,8 +4,7 @@ nixPkgs = ["nodejs_24", "bun"]
 [phases.install]
 cmds = [
   "rm -rf node_modules bun.lockb || true",
-  "bun install",
-  "bun run db:migrate"
+  "bun install --production"
 ]
 
 [phases.build]
@@ -14,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "node build/handler.js"
+cmd = "bun run start"
