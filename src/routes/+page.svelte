@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Header from '$lib/components/Header.svelte';
+	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -261,7 +262,7 @@
 						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex"
 					>
 						<a
-							href={update.game.gameLink}
+							href={resolve(`/games/${update.game.gameId}`)}
 							class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
 							draggable="false"
 						>
@@ -281,7 +282,16 @@
 								</h3>
 								<p>
 									<span class="font-semibold">Version:</span>
-									{update.game.gameVersion ?? '—'}
+									{#if update.game.hasTranslation}
+										{formatTranslationVersionDisplay({
+											tversion: update.game.tversion,
+											referenceVersion: update.game.referenceVersion,
+											isOutdated: update.game.isOutdated,
+											isIntegrated: update.game.isIntegrated
+										})}
+									{:else}
+										{update.game.gameVersion ?? '—'}
+									{/if}
 								</p>
 							</div>
 						</div>
