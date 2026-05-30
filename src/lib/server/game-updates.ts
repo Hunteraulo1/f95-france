@@ -20,7 +20,7 @@ export async function createGameUpdateRow(
 	status: 'adding' | 'update',
 	history?: UpdateHistoryContext
 ): Promise<string | null> {
-	let updateId: string | null = null;
+	let updateId: string | null;
 
 	if (await hasUpdateStatusColumn()) {
 		const [row] = await db

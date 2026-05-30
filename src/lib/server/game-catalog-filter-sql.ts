@@ -89,9 +89,6 @@ function applyGroupFilter(
 	const includes = group.includes
 		.map((v) => matchValue(v))
 		.filter((c): c is SQL => c !== undefined);
-	const excludes = group.excludes
-		.map((v) => matchValue(v))
-		.filter((c): c is SQL => c !== undefined);
 
 	if (includes.length > 0) {
 		if (options?.tagsAndIncludes) {

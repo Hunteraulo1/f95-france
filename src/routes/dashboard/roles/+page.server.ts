@@ -108,9 +108,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		listStaffUsers(),
 		listStaffRoleConfigurationIssues()
 	]);
-	const permissionCounts = Object.fromEntries(
-		roleSlugs.map((slug) => [slug, effectivePermsBySlug[slug]?.length ?? 0])
-	);
 	const roles = sortRolesByPriority(rolesRaw);
 	const defaultSlug = roles[0]?.slug ?? 'user';
 	const roleParam = url.searchParams.get('role');
@@ -445,11 +442,6 @@ export const actions: Actions = {
 			invalidateRolePermissionsCache(slug);
 			invalidateRoleBadgeStylesCache();
 			const remaining = await selectAllAppRoles();
-			const remainingSlugs = remaining.map((r) => r.slug);
-			const effectiveBySlug = await getEffectivePermissionsByRoles(remainingSlugs);
-			const nextCounts = Object.fromEntries(
-				remainingSlugs.map((slug) => [slug, effectiveBySlug[slug]?.length ?? 0])
-			);
 			const nextSlug = sortRolesByPriority(remaining)[0]?.slug ?? 'user';
 			redirect(303, rolePageUrl(nextSlug, 'deleted'));
 		} catch (error) {
