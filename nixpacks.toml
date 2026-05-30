@@ -4,7 +4,7 @@ nixPkgs = ["nodejs_24", "bun"]
 [phases.install]
 cmds = [
   "rm -rf node_modules bun.lockb || true",
-  "bun install"
+  "bun install --production"
 ]
 
 [phases.build]
