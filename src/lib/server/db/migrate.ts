@@ -9,13 +9,14 @@ import { getPostgresConfig } from './connection';
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const clientConfig = getPostgresConfig();
-const client = postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
-const db = drizzle(client);
-
 async function runMigrations() {
+	const clientConfig = getPostgresConfig();
+	const client = postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
+	const db = drizzle(client);
 	try {
-		console.log('Démarrage des migrations...');
+		console.log(
+			`Démarrage des migrations… (${clientConfig.host}:${clientConfig.port}/${clientConfig.database}, ssl=${clientConfig.ssl === 'require' || clientConfig.ssl === true})`
+		);
 		// Sur une base déjà peuplée, ADD CONSTRAINT (FK) valide toute la table et peut dépasser
 		// le statement_timeout du fournisseur (ex. Neon ~2 min) → erreur 57014.
 		await client.unsafe('SET statement_timeout = 0');
