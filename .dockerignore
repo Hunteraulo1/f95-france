@@ -4,7 +4,6 @@ build
 .env
 .env.*
 docker
-drizzle
 scripts
 *.md
 .git
