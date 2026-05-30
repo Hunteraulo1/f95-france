@@ -15,6 +15,7 @@ export const load: PageServerLoad = async () => {
 		const listWhere = await buildUpdatesListWhere('featured');
 		const [flat, staffUsers, roleBadgeStyles] = await Promise.all([
 			(() => {
+				const enginesSq = enginesPerGameSubquery();
 				const q = db
 					.select({
 						updateId: updateTable.id,
@@ -27,12 +28,12 @@ export const load: PageServerLoad = async () => {
 						gameWebsite: game.website,
 						gameThreadId: game.threadId,
 						gameGameVersion: game.gameVersion,
-						gameEngineTypes: enginesPerGameSubquery.engineTypes,
+						gameEngineTypes: enginesSq.engineTypes,
 						gameTags: game.tags
 					})
 					.from(updateTable)
 					.innerJoin(game, eq(updateTable.gameId, game.id))
-					.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+					.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
 					.orderBy(desc(updateTable.createdAt))
 					.limit(4);
 				return listWhere ? q.where(listWhere) : q;

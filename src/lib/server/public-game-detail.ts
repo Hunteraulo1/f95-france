@@ -63,6 +63,7 @@ async function loadTranslatorNames(ids: string[]): Promise<Map<string, string>> 
 }
 
 export async function loadPublicGameDetail(gameId: string): Promise<PublicGameDetail> {
+	const enginesSq = enginesPerGameSubquery();
 	const [row] = await db
 		.select({
 			id: game.id,
@@ -77,10 +78,10 @@ export async function loadPublicGameDetail(gameId: string): Promise<PublicGameDe
 			gameVersion: game.gameVersion,
 			createdAt: game.createdAt,
 			updatedAt: game.updatedAt,
-			engineTypes: enginesPerGameSubquery.engineTypes
+			engineTypes: enginesSq.engineTypes
 		})
 		.from(game)
-		.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+		.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
 		.where(eq(game.id, gameId))
 		.limit(1);
 

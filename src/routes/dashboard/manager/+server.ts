@@ -103,6 +103,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const whereClause = Number.isNaN(threadIdQuery)
 			? ilike(table.game.name, `%${query}%`)
 			: or(ilike(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
+		const enginesSq = enginesPerGameSubquery();
 		const rawGames = await db
 			.select({
 				id: table.game.id,
@@ -112,13 +113,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				threadId: table.game.threadId,
 				link: table.game.link,
 				tags: table.game.tags,
-				engineTypes: enginesPerGameSubquery.engineTypes,
+				engineTypes: enginesSq.engineTypes,
 				image: table.game.image,
 				createdAt: table.game.createdAt,
 				updatedAt: table.game.updatedAt
 			})
 			.from(table.game)
-			.leftJoin(enginesPerGameSubquery, eq(table.game.id, enginesPerGameSubquery.gameId))
+			.leftJoin(enginesSq, eq(table.game.id, enginesSq.gameId))
 			.where(whereClause)
 			.orderBy(table.game.name)
 			.limit(20);

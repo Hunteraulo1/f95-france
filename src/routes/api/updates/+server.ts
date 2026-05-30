@@ -73,6 +73,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json(rows, { headers: corsHeaders });
 		}
 
+		const enginesSq = enginesPerGameSubquery();
 		const flatBase = db
 			.select({
 				updateId: updateTable.id,
@@ -86,12 +87,12 @@ export const GET: RequestHandler = async ({ url }) => {
 				gameWebsite: game.website,
 				gameThreadId: game.threadId,
 				gameGameVersion: game.gameVersion,
-				gameEngineTypes: enginesPerGameSubquery.engineTypes,
+				gameEngineTypes: enginesSq.engineTypes,
 				gameTags: game.tags
 			})
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
-			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId));
+			.leftJoin(enginesSq, eq(game.id, enginesSq.gameId));
 
 		const flat = await (listWhere ? flatBase.where(listWhere) : flatBase)
 			.orderBy(desc(updateTable.createdAt))
