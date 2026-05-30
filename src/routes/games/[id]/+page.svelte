@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import {
 		engineDisplayLabel,
@@ -26,12 +27,10 @@
 
 	const updateStatusLabel = (status: string) => {
 		switch (status) {
-			case 'new':
-				return 'Nouvelle sortie';
 			case 'update':
 				return 'Mise à jour';
-			case 'hotfix':
-				return 'Correctif';
+			case 'adding':
+				return 'Ajout de jeu';
 			default:
 				return status;
 		}
@@ -39,15 +38,22 @@
 
 	const updateStatusClass = (status: string) => {
 		switch (status) {
-			case 'new':
-				return 'badge badge-success badge-soft';
 			case 'update':
 				return 'badge badge-info badge-soft';
-			case 'hotfix':
-				return 'badge badge-warning badge-soft';
+			case 'adding':
+				return 'badge badge-primary badge-soft';
 			default:
 				return 'badge badge-neutral badge-soft';
 		}
+	};
+
+	const backLink = $derived(typeof history !== 'undefined' && history.length > 1);
+	const goBack = () => {
+		if (backLink) {
+			history.back();
+			return;
+		}
+		void goto(resolve('/games'));
 	};
 </script>
 
@@ -56,10 +62,10 @@
 </svelte:head>
 
 <main class="mx-auto w-full flex-1 px-4 py-8 sm:px-16">
-	<a href={resolve('/games')} class="btn btn-ghost btn-sm mb-6 gap-2">
+	<button type="button" class="btn btn-ghost btn-sm mb-6 gap-2" onclick={goBack}>
 		<ArrowLeft class="h-4 w-4" />
-		Retour aux jeux
-	</a>
+		{backLink ? 'Retour en arrière' : 'Retour aux jeux'}
+	</button>
 
 	{#if data.error || !game}
 		<div role="alert" class="alert alert-warning">

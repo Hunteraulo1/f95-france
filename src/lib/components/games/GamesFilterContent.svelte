@@ -15,20 +15,43 @@
 		cloneFilterGroups,
 		filterGroupsToSelections
 	} from '$lib/games/games-filter-url';
-	import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
+	import { PUBLIC_GAMES_SORT_OPTIONS } from '$lib/games/public-games-query';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
 	import { onMount } from 'svelte';
 
+	type SortOption = { value: string; label: string };
+
+	type BuildSearchParams = (params: {
+		query: string;
+		sort: string;
+		page?: number;
+		filters: ReturnType<typeof filterGroupsToSelections>;
+	}) => URLSearchParams;
+
 	interface Props {
 		query: string;
-		sort: PublicGamesSort;
+		sort?: string;
 		filterGroups: GamesFilterGroupState[];
 		translatorIds: { id: string; name: string }[];
+		basePath?: '/games' | '/updates';
+		sortOptions?: readonly SortOption[];
+		defaultSort?: string;
+		savedFiltersKey?: string;
+		savedFiltersApiPath?: string | null;
+		maxSavedFilters?: number;
+		buildSearchParams?: BuildSearchParams;
+		createDefaultFilterGroups?: (
+			translators: { id: string; name: string }[]
+		) => GamesFilterGroupState[];
+		cloneGroups?: (groups: GamesFilterGroupState[]) => GamesFilterGroupState[];
 		isAuthenticated?: boolean;
 		initialSavedFilters?: SavedGamesFilterPreset[];
 		disabled?: boolean;
+		showSort?: boolean;
+		showTagsExpandToggle?: boolean;
+		tagsExpanded?: boolean;
 	}
 
 	let {
@@ -36,9 +59,21 @@
 		sort = $bindable('updated_desc'),
 		filterGroups = $bindable([]),
 		translatorIds,
+		basePath = '/games',
+		sortOptions = PUBLIC_GAMES_SORT_OPTIONS,
+		defaultSort = 'updated_desc',
+		savedFiltersKey = SAVED_GAMES_FILTERS_KEY,
+		savedFiltersApiPath = '/api/games/saved-filters',
+		maxSavedFilters = MAX_SAVED_GAMES_FILTERS,
+		buildSearchParams = buildPublicGamesListSearchParams,
+		createDefaultFilterGroups = createDefaultGamesFilterGroups,
+		cloneGroups = cloneFilterGroups,
 		isAuthenticated = false,
 		initialSavedFilters = [],
-		disabled = false
+		disabled = false,
+		showSort = true,
+		showTagsExpandToggle = false,
+		tagsExpanded = $bindable(false)
 	}: Props = $props();
 
 	let savedFilters = $state<SavedGamesFilterPreset[]>([]);
@@ -46,14 +81,14 @@
 
 	onMount(() => {
 		if (isAuthenticated) {
-			savedFilters = initialSavedFilters.slice(0, MAX_SAVED_GAMES_FILTERS);
+			savedFilters = initialSavedFilters.slice(0, maxSavedFilters);
 			return;
 		}
 		try {
-			const raw = localStorage.getItem(SAVED_GAMES_FILTERS_KEY);
+			const raw = localStorage.getItem(savedFiltersKey);
 			if (!raw) return;
 			const parsed = JSON.parse(raw) as SavedGamesFilterPreset[];
-			if (Array.isArray(parsed)) savedFilters = parsed.slice(0, MAX_SAVED_GAMES_FILTERS);
+			if (Array.isArray(parsed)) savedFilters = parsed.slice(0, maxSavedFilters);
 		} catch {
 			savedFilters = [];
 		}
@@ -61,19 +96,22 @@
 
 	$effect(() => {
 		if (isAuthenticated) {
-			savedFilters = initialSavedFilters.slice(0, MAX_SAVED_GAMES_FILTERS);
+			savedFilters = initialSavedFilters.slice(0, maxSavedFilters);
 		}
 	});
 
+	const listHref = (search: string) =>
+		search ? resolve(`${basePath}?${search}` as '/games' | '/updates') : resolve(basePath);
+
 	const persistSaved = () => {
 		if (isAuthenticated) return;
-		localStorage.setItem(SAVED_GAMES_FILTERS_KEY, JSON.stringify(savedFilters));
+		localStorage.setItem(savedFiltersKey, JSON.stringify(savedFilters));
 	};
 
 	const persistSavedToDb = async () => {
-		if (!isAuthenticated) return;
+		if (!isAuthenticated || !savedFiltersApiPath) return;
 		try {
-			await fetch(resolve('/api/games/saved-filters'), {
+			await fetch(resolve(savedFiltersApiPath as '/api/games/saved-filters'), {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ filters: savedFilters })
@@ -84,21 +122,14 @@
 	};
 
 	const navigateWithCurrentFilters = (page = 1) => {
-		const params = buildPublicGamesListSearchParams({
+		const params = buildSearchParams({
 			query: query.trim(),
 			sort,
 			page,
 			filters: filterGroupsToSelections(filterGroups)
 		});
 		const search = params.toString();
-		if (search) {
-			void goto(resolve(`/games?${search}`), {
-				keepFocus: true,
-				noScroll: false
-			});
-			return;
-		}
-		void goto(resolve('/games'), {
+		void goto(listHref(search), {
 			keepFocus: true,
 			noScroll: false
 		});
@@ -106,10 +137,10 @@
 
 	const handleReset = () => {
 		query = '';
-		sort = 'updated_desc';
-		filterGroups = createDefaultGamesFilterGroups(translatorIds);
+		sort = defaultSort;
+		filterGroups = createDefaultFilterGroups(translatorIds);
 		filterRemoveIndex = null;
-		void goto(resolve('/games'), { keepFocus: true });
+		void goto(resolve(basePath), { keepFocus: true });
 	};
 
 	const handleApply = () => {
@@ -128,21 +159,21 @@
 
 		filterRemoveIndex = null;
 		query = preset.query;
-		sort = (preset.sort as PublicGamesSort) || 'updated_desc';
-		filterGroups = cloneFilterGroups(preset.groups);
+		sort = preset.sort || defaultSort;
+		filterGroups = cloneGroups(preset.groups);
 		navigateWithCurrentFilters(1);
 	};
 
 	const handleSavedAdd = () => {
 		filterRemoveIndex = null;
-		if (savedFilters.length >= MAX_SAVED_GAMES_FILTERS) return;
+		if (savedFilters.length >= maxSavedFilters) return;
 
 		savedFilters = [
 			...savedFilters,
 			{
 				query: query.trim(),
 				sort,
-				groups: cloneFilterGroups(filterGroups)
+				groups: cloneGroups(filterGroups)
 			}
 		];
 		persistSaved();
@@ -161,16 +192,18 @@
 	};
 
 	const selectedSortLabel = $derived(
-		PUBLIC_GAMES_SORT_OPTIONS.find((option) => option.value === sort)?.label ?? 'Tri'
+		sortOptions.find((option) => option.value === sort)?.label ?? 'Tri'
 	);
 
-	const handleSortSelect = (value: PublicGamesSort) => {
+	const handleSortSelect = (value: string) => {
 		if (disabled) return;
 		sort = value;
 	};
 
 	const hasActiveFilters = $derived(
-		Boolean(query.trim()) || sort !== 'updated_desc' || hasActiveGamesFilterGroups(filterGroups)
+		Boolean(query.trim()) ||
+			(showSort && sort !== defaultSort) ||
+			hasActiveGamesFilterGroups(filterGroups)
 	);
 </script>
 
@@ -197,7 +230,7 @@
 					{/if}
 				</button>
 			{/each}
-			{#if savedFilters.length < MAX_SAVED_GAMES_FILTERS}
+			{#if savedFilters.length < maxSavedFilters}
 				<button
 					type="button"
 					class="btn btn-circle btn-sm btn-primary"
@@ -261,40 +294,56 @@
 		{/each}
 	</div>
 
-	<label class="form-control w-full max-w-xs">
-		<span class="label py-1">
-			<span class="label-text text-xs font-medium">Tri</span>
-		</span>
-		<div class="dropdown w-full">
-			<div
-				tabindex={disabled ? -1 : 0}
-				role="button"
-				class="btn btn-sm w-full justify-between font-normal btn-outline"
-				class:btn-disabled={disabled}
-			>
-				<span class="truncate text-left">{selectedSortLabel}</span>
-				<ChevronDown class="h-4 w-4 shrink-0 opacity-60" />
+	{#if showTagsExpandToggle}
+		<label
+			class="flex cursor-pointer items-center justify-between gap-3 rounded-box border border-base-300 px-3 py-2"
+		>
+			<span class="text-sm font-medium">Tags dépliés</span>
+			<input
+				type="checkbox"
+				class="toggle toggle-sm toggle-primary"
+				bind:checked={tagsExpanded}
+				{disabled}
+			/>
+		</label>
+	{/if}
+
+	{#if showSort}
+		<label class="form-control w-full max-w-xs">
+			<span class="label py-1">
+				<span class="label-text text-xs font-medium">Tri</span>
+			</span>
+			<div class="dropdown w-full">
+				<div
+					tabindex={disabled ? -1 : 0}
+					role="button"
+					class="btn btn-sm w-full justify-between font-normal btn-outline"
+					class:btn-disabled={disabled}
+				>
+					<span class="truncate text-left">{selectedSortLabel}</span>
+					<ChevronDown class="h-4 w-4 shrink-0 opacity-60" />
+				</div>
+				<div
+					tabindex={disabled ? -1 : 0}
+					role="menu"
+					class="dropdown-content z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+				>
+					<ul class="menu w-full p-0">
+						{#each sortOptions as option (option.value)}
+							<li>
+								<button
+									type="button"
+									class={option.value === sort ? 'menu-active font-medium bg-base-300' : ''}
+									onclick={() => handleSortSelect(option.value)}
+									{disabled}
+								>
+									{option.label}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
 			</div>
-			<div
-				tabindex={disabled ? -1 : 0}
-				role="menu"
-				class="dropdown-content z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
-			>
-				<ul class="menu w-full p-0">
-					{#each PUBLIC_GAMES_SORT_OPTIONS as option (option.value)}
-						<li>
-							<button
-								type="button"
-								class={option.value === sort ? 'menu-active font-medium bg-base-300' : ''}
-								onclick={() => handleSortSelect(option.value)}
-								{disabled}
-							>
-								{option.label}
-							</button>
-						</li>
-					{/each}
-				</ul>
-			</div>
-		</div>
-	</label>
+		</label>
+	{/if}
 </div>

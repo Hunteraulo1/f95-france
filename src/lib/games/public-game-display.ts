@@ -70,7 +70,21 @@ export function translationVersionSyncBadgeClass(
 	isOutdated: boolean,
 	isIntegrated: boolean
 ): string {
-	if (isIntegrated) return 'badge badge-neutral badge-soft';
+	if (isIntegrated) return 'badge badge-accent badge-soft';
 	if (isOutdated) return 'badge badge-warning badge-soft';
 	return 'badge badge-success badge-soft';
+}
+
+/** Affichage version traduction : à jour, pas à jour, ou intégrée. */
+export function formatTranslationVersionDisplay(opts: {
+	tversion: string | null | undefined;
+	referenceVersion: string | null | undefined;
+	isOutdated: boolean;
+	isIntegrated: boolean;
+}): string {
+	const reference = opts.referenceVersion?.trim() || '—';
+	if (opts.isIntegrated) return reference;
+	const tversion = opts.tversion?.trim() || '—';
+	if (opts.isOutdated) return `${tversion} / ${reference}`;
+	return tversion;
 }

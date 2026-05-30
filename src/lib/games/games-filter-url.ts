@@ -79,10 +79,10 @@ export function parsePublicGamesListParams(searchParams: URLSearchParams): Publi
 
 export function applySelectionsToFilterGroups(
 	groups: GamesFilterGroupState[],
-	selections: Record<GamesFilterGroupName, FilterSelection>
+	selections: Record<string, FilterSelection>
 ): GamesFilterGroupState[] {
 	return groups.map((group) => {
-		const sel = selections[group.name as GamesFilterGroupName];
+		const sel = selections[group.name];
 		if (!sel) return group;
 
 		return {
@@ -102,26 +102,30 @@ export function applySelectionsToFilterGroups(
 
 export function filterGroupsToSelections(
 	groups: GamesFilterGroupState[]
-): Record<GamesFilterGroupName, FilterSelection> {
-	const out = emptySelections();
+): Record<string, FilterSelection> {
+	const out: Record<string, FilterSelection> = {};
 
 	for (const group of groups) {
-		const key = group.name as GamesFilterGroupName;
-		if (!out[key]) continue;
+		out[group.name] = { includes: [], excludes: [] };
+	}
 
+	for (const group of groups) {
 		for (const v of group.values) {
 			if (!v.checked) continue;
-			if (v.inverse) out[key].excludes.push(v.value);
-			else out[key].includes.push(v.value);
+			if (v.inverse) out[group.name].excludes.push(v.value);
+			else out[group.name].includes.push(v.value);
 		}
 	}
 
 	return out;
 }
 
-export function buildPublicGamesListSearchParams(
-	params: Pick<PublicGamesListParams, 'query' | 'sort' | 'filters'> & { page?: number }
-): URLSearchParams {
+export function buildPublicGamesListSearchParams(params: {
+	query: string;
+	sort: string;
+	page?: number;
+	filters: Record<string, FilterSelection>;
+}): URLSearchParams {
 	const search = new URLSearchParams();
 
 	if (params.query) search.set('q', params.query);
@@ -129,7 +133,7 @@ export function buildPublicGamesListSearchParams(
 	if (params.page && params.page > 1) search.set('page', String(params.page));
 
 	for (const name of GAMES_FILTER_GROUP_NAMES) {
-		const sel = params.filters[name];
+		const sel = params.filters[name] ?? { includes: [], excludes: [] };
 		if (sel.includes.length) {
 			search.set(name, sel.includes.map((v) => encodeURIComponent(v)).join(','));
 		}

@@ -1,12 +1,17 @@
-import type { FilterSelection, PublicGamesListParams } from '$lib/games/games-filter-url';
+import type { PublicGamesListParams } from '$lib/games/games-filter-url';
 import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
 import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
-import { game, gameTranslation } from '$lib/server/db/schema';
+import { game } from '$lib/server/db/schema';
+import {
+	buildGameCatalogFilterParts,
+	combineSqlParts,
+	type GameCatalogFilters
+} from '$lib/server/game-catalog-filter-sql';
 import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
-import { and, asc, count, desc, eq, exists, ilike, not, or, sql, type SQL } from 'drizzle-orm';
+import { asc, count, desc, eq } from 'drizzle-orm';
 
 export {
 	buildPublicGamesListSearchParams,
@@ -43,138 +48,10 @@ function pickPrimaryTranslation(translations: GameTranslationRow[]): GameTransla
 	return translations[0];
 }
 
-function translationExistsWhere(extra?: SQL): SQL {
-	const conditions = extra
-		? and(eq(gameTranslation.gameId, game.id), extra)
-		: eq(gameTranslation.gameId, game.id);
-	return exists(db.select({ one: gameTranslation.id }).from(gameTranslation).where(conditions));
-}
-
-function versionIntegratedCondition(): SQL {
-	return or(
-		sql`lower(trim(${gameTranslation.tversion})) in ('intégrée', 'integree')`,
-		eq(gameTranslation.tname, 'integrated')
-	)!;
-}
-
-function versionUpToDateCondition(): SQL {
-	return or(
-		and(
-			sql`nullif(trim(coalesce(${gameTranslation.version}, '')), '') is not null`,
-			sql`trim(coalesce(${gameTranslation.version}, '')) = trim(coalesce(${gameTranslation.tversion}, ''))`
-		),
-		versionIntegratedCondition()
-	)!;
-}
-
-function versionOutdatedCondition(): SQL {
-	return and(
-		sql`trim(coalesce(${gameTranslation.version}, '')) <> trim(coalesce(${gameTranslation.tversion}, ''))`,
-		not(versionIntegratedCondition())
-	)!;
-}
-
-function buildVersionMatch(value: string): SQL | undefined {
-	switch (value) {
-		case 'up_to_date':
-			return translationExistsWhere(versionUpToDateCondition());
-		case 'integrated':
-			return translationExistsWhere(versionIntegratedCondition());
-		case 'outdated':
-			return translationExistsWhere(versionOutdatedCondition());
-		default:
-			return undefined;
-	}
-}
-
-function buildSiteMatch(value: string): SQL | undefined {
-	if (!['f95z', 'lc', 'other'].includes(value)) return undefined;
-	return eq(game.website, value);
-}
-
-function buildTypeMatch(value: string): SQL | undefined {
-	return translationExistsWhere(eq(gameTranslation.gameType, value));
-}
-
-function buildStatusMatch(value: string): SQL | undefined {
-	if (!['in_progress', 'abandoned', 'completed'].includes(value)) return undefined;
-	return translationExistsWhere(eq(gameTranslation.status, value));
-}
-
-function buildTtypeMatch(value: string): SQL | undefined {
-	return translationExistsWhere(eq(gameTranslation.ttype, value));
-}
-
-function buildTraductorMatch(value: string): SQL | undefined {
-	return translationExistsWhere(
-		or(eq(gameTranslation.translatorId, value), eq(gameTranslation.proofreaderId, value))
-	);
-}
-
-function buildTagInclude(tag: string): SQL {
-	return ilike(game.tags, `%${tag}%`);
-}
-
-function buildTagExclude(tag: string): SQL {
-	return not(ilike(game.tags, `%${tag}%`));
-}
-
-function applyGroupFilter(
-	parts: SQL[],
-	group: FilterSelection,
-	matchValue: (value: string) => SQL | undefined,
-	options?: { tagsAndIncludes?: boolean }
-): void {
-	const includes = group.includes
-		.map((v) => matchValue(v))
-		.filter((c): c is SQL => c !== undefined);
-	const excludes = group.excludes
-		.map((v) => matchValue(v))
-		.filter((c): c is SQL => c !== undefined);
-
-	if (includes.length > 0) {
-		if (options?.tagsAndIncludes) {
-			for (const clause of group.includes.map((t) => buildTagInclude(t))) {
-				parts.push(clause);
-			}
-		} else {
-			parts.push(or(...includes)!);
-		}
-	}
-
-	for (const value of group.excludes) {
-		if (options?.tagsAndIncludes) {
-			parts.push(buildTagExclude(value));
-		} else {
-			const clause = matchValue(value);
-			if (clause) parts.push(not(clause));
-		}
-	}
-}
-
 function buildWhereClause(params: PublicGamesListParams) {
-	const parts: SQL[] = [];
-
-	if (params.query) {
-		const threadIdQuery = Number.parseInt(params.query, 10);
-		parts.push(
-			Number.isNaN(threadIdQuery)
-				? ilike(game.name, `%${params.query}%`)
-				: or(ilike(game.name, `%${params.query}%`), eq(game.threadId, threadIdQuery))!
-		);
-	}
-
-	applyGroupFilter(parts, params.filters.site, buildSiteMatch);
-	applyGroupFilter(parts, params.filters.version, buildVersionMatch);
-	applyGroupFilter(parts, params.filters.type, buildTypeMatch);
-	applyGroupFilter(parts, params.filters.status, buildStatusMatch);
-	applyGroupFilter(parts, params.filters.ttype, buildTtypeMatch);
-	applyGroupFilter(parts, params.filters.traductor, buildTraductorMatch);
-	applyGroupFilter(parts, params.filters.tags, buildTagInclude, { tagsAndIncludes: true });
-
-	if (parts.length === 0) return undefined;
-	if (parts.length === 1) return parts[0];
-	return and(...parts);
+	return combineSqlParts(
+		buildGameCatalogFilterParts(params.filters as GameCatalogFilters, params.query)
+	);
 }
 
 function buildOrderBy(sort: PublicGamesSort) {

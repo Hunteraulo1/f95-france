@@ -53,7 +53,7 @@
 
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
-			<div class="navbar-start">
+			<div class="navbar-start w-full">
 				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
 					<img
 						src={banner}
@@ -64,12 +64,12 @@
 				</a>
 			</div>
 
-			<div class="navbar-end gap-2">
+			<div class="navbar-end gap-2 w-full">
 				<label for={NAV_DRAWER_ID} class="btn btn-ghost px-2 lg:hidden" aria-label="Ouvrir le menu">
 					<Menu class="h-6 w-6" />
 				</label>
 
-				<ul class="hidden flex-wrap items-center gap-2 lg:flex xl:gap-4">
+				<ul class="hidden items-center gap-2 lg:flex xl:gap-4 flex-nowrap text-nowrap">
 					{#each links as link (link.href)}
 						<li aria-current={isCurrentPath(link.href) ? 'page' : undefined}>
 							<a

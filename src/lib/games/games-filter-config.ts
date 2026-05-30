@@ -68,7 +68,8 @@ export const GAMES_FILTER_GROUP_NAMES = [
 
 export type GamesFilterGroupName = (typeof GAMES_FILTER_GROUP_NAMES)[number];
 
-function optionValues(
+/** @internal Réutilisé par les filtres mises à jour. */
+export function optionValuesFromOptions(
 	options: readonly { value: string; label: string }[]
 ): GamesFilterValueState[] {
 	return options.map((o) => ({
@@ -77,6 +78,12 @@ function optionValues(
 		checked: false,
 		inverse: false
 	}));
+}
+
+function optionValues(
+	options: readonly { value: string; label: string }[]
+): GamesFilterValueState[] {
+	return optionValuesFromOptions(options);
 }
 
 /** Groupes de filtres (structure alignée sur l’extension f95list). */

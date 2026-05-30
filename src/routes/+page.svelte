@@ -13,12 +13,10 @@
 
 	const statusClass = (status: string | null) => {
 		switch (status) {
-			case 'new':
-				return 'badge badge-success badge-soft';
 			case 'update':
 				return 'badge badge-info badge-soft';
-			case 'hotfix':
-				return 'badge badge-warning badge-soft';
+			case 'adding':
+				return 'badge badge-primary badge-soft';
 			default:
 				return 'badge badge-neutral badge-soft';
 		}
@@ -26,12 +24,10 @@
 
 	const statusLabel = (status: string | null) => {
 		switch (status) {
-			case 'new':
-				return 'Nouvelle sortie';
 			case 'update':
 				return 'Mise à jour';
-			case 'hotfix':
-				return 'Correctif';
+			case 'adding':
+				return 'Ajout de jeu';
 			default:
 				return 'Info';
 		}
