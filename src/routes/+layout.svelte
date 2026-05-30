@@ -3,6 +3,7 @@
 	import { env } from '$env/dynamic/public';
 	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
 	import { initializeUserFromLocals } from '$lib/stores';
@@ -99,4 +100,5 @@
 			<AgeVerificationModal onConfirm={confirmAge} />
 		{/if}
 	</div>
+	<Footer />
 {/if}

@@ -130,7 +130,9 @@
 		>
 			<div class="space-y-4 text-center sm:text-left">
 				<h1 class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl">
-					La communauté française qui fait vivre vos lewd games en VF
+					La communauté française qui fait vivre vos
+					<span class="mx-1 inline-block animate-neon-glow text-white">LewdGames</span>
+					en VF
 				</h1>
 				<p class="text-neutral-content/90">
 					F95 France rassemble traducteurs, relecteurs et joueurs pour suivre les sorties, améliorer

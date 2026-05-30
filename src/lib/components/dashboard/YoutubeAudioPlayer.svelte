@@ -34,8 +34,6 @@
 
 	const EMBED_TARGETS = ['https://www.youtube-nocookie.com', 'https://www.youtube.com'] as const;
 
-	type YtCommandFunc = 'playVideo' | 'pauseVideo' | 'setVolume' | 'mute' | 'unMute';
-
 	function readStoredVolume(): number {
 		try {
 			const raw = localStorage.getItem(VOLUME_STORAGE_KEY);

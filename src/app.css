@@ -11,6 +11,7 @@
 	--animate-text: text 5s ease infinite;
 	--animate-drift: drift 6s ease-in-out infinite;
 	--animate-float-sheet: floatSheet 8s ease-in-out infinite;
+	--animate-neon-glow: neon-glow 2s ease-in-out infinite alternate;
 
 	@keyframes text {
 		0%,
@@ -41,6 +42,23 @@
 		}
 		50% {
 			transform: rotateX(12deg) rotateY(-12deg) rotateZ(2deg) translateY(-8px);
+		}
+	}
+
+	@keyframes neon-glow {
+		0% {
+			text-shadow:
+				0 0 5px color-mix(in oklab, #ff005e 52%, transparent),
+				0 0 12px color-mix(in oklab, #ff005e 38%, transparent),
+				0 0 24px color-mix(in oklab, #ff005e 22%, transparent),
+				0 0 48px color-mix(in oklab, #ff005e 8%, transparent);
+		}
+		100% {
+			text-shadow:
+				0 0 8px color-mix(in oklab, #00d4ff 52%, transparent),
+				0 0 16px color-mix(in oklab, #00d4ff 38%, transparent),
+				0 0 32px color-mix(in oklab, #00d4ff 22%, transparent),
+				0 0 64px color-mix(in oklab, #00d4ff 8%, transparent);
 		}
 	}
 
