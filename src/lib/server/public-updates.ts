@@ -1,7 +1,12 @@
 import type { FilterSelection } from '$lib/games/games-filter-url';
 import { splitGameTags } from '$lib/games/public-game-display';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import {
+	effectiveTranslationVersion,
+	isTranslationOutdated
+} from '$lib/server/api/translation-public';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
+import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
 import {
@@ -9,10 +14,6 @@ import {
 	combineSqlParts,
 	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
-import {
-	effectiveTranslationVersion,
-	isTranslationOutdated
-} from '$lib/server/api/translation-public';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { pickTranslationForUpdate } from '$lib/updates/pick-update-translation';
 import type { PublicUpdatesListParams } from '$lib/updates/updates-filter-url';
@@ -69,7 +70,7 @@ function applyUpdateTypeFilter(parts: SQL[], group: FilterSelection): void {
 	for (const clause of excludes) parts.push(not(clause));
 }
 
-function buildWhereClause(params: PublicUpdatesListParams) {
+async function buildWhereClause(params: PublicUpdatesListParams) {
 	const parts = buildGameCatalogFilterParts(
 		{
 			site: params.filters.site,
@@ -85,6 +86,8 @@ function buildWhereClause(params: PublicUpdatesListParams) {
 
 	applyUpdateTypeFilter(parts, params.filters.update_type);
 
+	parts.unshift(await featuredUpdatesScopeWhere());
+
 	return combineSqlParts(parts);
 }
 
@@ -98,7 +101,7 @@ const updatesOrderBy = [
 
 export async function listPublicUpdates(params: PublicUpdatesListParams) {
 	const page = Math.max(1, params.page);
-	const where = buildWhereClause(params);
+	const where = await buildWhereClause(params);
 
 	const countBase = db
 		.select({ total: count() })

@@ -1,3 +1,4 @@
+import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -1699,11 +1700,12 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 
 	let todayRows: Array<{ status: string; gameName: string }>;
 	try {
+		const featuredWhere = await featuredUpdatesScopeWhere();
 		todayRows = await db
 			.select({ status: table.update.status, gameName: table.game.name })
 			.from(table.update)
 			.innerJoin(table.game, eq(table.update.gameId, table.game.id))
-			.where(sql`DATE(${table.update.createdAt}) = CURRENT_DATE`);
+			.where(and(sql`DATE(${table.update.createdAt}) = CURRENT_DATE`, featuredWhere));
 	} catch {
 		// Compat si la colonne `update.status` n'est pas encore migrée:
 		// on considère temporairement tout en "update".

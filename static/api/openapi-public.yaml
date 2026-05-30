@@ -347,9 +347,22 @@ paths:
         - $ref: '#/components/parameters/Include'
         - $ref: '#/components/parameters/UpdatesStartDate'
         - $ref: '#/components/parameters/UpdatesEndDate'
+        - name: scope
+          in: query
+          description: |
+            Portée des résultats. Par défaut (`featured`) : uniquement les ajouts de jeu/traduction
+            (`updateStatus=adding`) ou les mises à jour avec changement de version (`version` ou `tversion`
+            dans l’historique). `all` : toutes les entrées de la table `update`.
+          schema:
+            type: string
+            enum: [featured, all]
+            default: featured
       responses:
         '200':
           description: |
+            Par défaut (`scope=featured`) : ajouts ou changements de version uniquement.
+            `scope=all` : toutes les mises à jour enregistrées.
+
             Par défaut : champs de la mise à jour et `gameId`.
             `include=game` : ajoute un objet `game` enrichi (sans tableau `translations` dans `game`).
             `include=translations` : ajoute un objet `game` minimal (clés `id` et `translations` dans `game`, sans les autres champs enrichis).

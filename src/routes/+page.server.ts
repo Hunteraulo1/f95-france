@@ -1,5 +1,6 @@
 import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
+import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game, update as updateTable } from '$lib/server/db/schema';
@@ -11,27 +12,31 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	try {
+		const listWhere = await buildUpdatesListWhere('featured');
 		const [flat, staffUsers, roleBadgeStyles] = await Promise.all([
-			db
-				.select({
-					updateId: updateTable.id,
-					updateStatus: updateTable.status,
-					updateCreatedAt: updateTable.createdAt,
-					gameId: game.id,
-					gameName: game.name,
-					gameImage: game.image,
-					gameLink: game.link,
-					gameWebsite: game.website,
-					gameThreadId: game.threadId,
-					gameGameVersion: game.gameVersion,
-					gameEngineTypes: enginesPerGameSubquery.engineTypes,
-					gameTags: game.tags
-				})
-				.from(updateTable)
-				.innerJoin(game, eq(updateTable.gameId, game.id))
-				.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
-				.orderBy(desc(updateTable.createdAt))
-				.limit(4),
+			(() => {
+				const q = db
+					.select({
+						updateId: updateTable.id,
+						updateStatus: updateTable.status,
+						updateCreatedAt: updateTable.createdAt,
+						gameId: game.id,
+						gameName: game.name,
+						gameImage: game.image,
+						gameLink: game.link,
+						gameWebsite: game.website,
+						gameThreadId: game.threadId,
+						gameGameVersion: game.gameVersion,
+						gameEngineTypes: enginesPerGameSubquery.engineTypes,
+						gameTags: game.tags
+					})
+					.from(updateTable)
+					.innerJoin(game, eq(updateTable.gameId, game.id))
+					.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+					.orderBy(desc(updateTable.createdAt))
+					.limit(4);
+				return listWhere ? q.where(listWhere) : q;
+			})(),
 			listStaffUsers(),
 			listRoleBadgeStylesMap()
 		]);
