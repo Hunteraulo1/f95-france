@@ -57,6 +57,7 @@
 	const canViewUpdateHistory = $derived(
 		data.canViewUpdateHistory === true || $hasPermission('games.view_history')
 	);
+	const canRevertUpdateHistory = $derived(data.canRevertUpdateHistory === true);
 	const hasGamesManage = $derived($hasPermission('games.manage'));
 
 	type FormTranslator = (typeof data.translators)[number];
@@ -1363,7 +1364,12 @@
 
 		{#if canViewUpdateHistory}
 			<GameUpdateHistoryPanel
-				history={data.updateHistory ?? []}
+				gameId={game.id}
+				canRevert={canRevertUpdateHistory}
+				history={data.updateHistoryPage?.entries ?? []}
+				historyPage={data.updateHistoryPage?.page ?? 1}
+				historyTotalPages={data.updateHistoryPage?.totalPages ?? 1}
+				historyTotalCount={data.updateHistoryPage?.totalCount ?? 0}
 				translators={data.translators}
 				translations={translations.map((t) => ({
 					id: t.id,

@@ -1,5 +1,10 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
+	import RestoreHistoryModal from '$lib/components/dashboard/game/RestoreHistoryModal.svelte';
 	import type { GameUpdateHistoryEntry } from '$lib/server/game-update-history-query';
+	import { newToast } from '$lib/stores';
 	import {
 		formatUpdateHistoryDate,
 		formatUpdateHistoryFieldValue,
@@ -10,21 +15,81 @@
 		visibleHistoryDeltas
 	} from '$lib/updates/update-history-display';
 	import History from '@lucide/svelte/icons/history';
+	import Undo2 from '@lucide/svelte/icons/undo-2';
 
 	type TranslatorRow = { id: string; name: string };
 	type TranslationRow = { id: string; translationName: string | null };
 
 	let {
+		gameId,
+		canRevert = false,
 		history,
+		historyPage = 1,
+		historyTotalPages = 1,
+		historyTotalCount = 0,
 		translators,
 		translations
 	}: {
+		gameId: string;
+		canRevert?: boolean;
 		history: GameUpdateHistoryEntry[];
+		historyPage?: number;
+		historyTotalPages?: number;
+		historyTotalCount?: number;
 		translators: TranslatorRow[];
 		translations: TranslationRow[];
 	} = $props();
 
+	const hrefForHistoryPage = (page: number) => {
+		const base = resolve(`/dashboard/game/${gameId}`);
+		if (page <= 1) return base;
+		return `${base}?historyPage=${page}`;
+	};
+
+	let revertingId = $state<string | null>(null);
+	let pendingRestoreEntry = $state<GameUpdateHistoryEntry | null>(null);
+
 	const translatorLookup = $derived(translators.map((t) => ({ id: t.id, name: t.name })));
+	const isConfirmingRestore = $derived(
+		revertingId !== null && pendingRestoreEntry?.id === revertingId
+	);
+
+	function openRestoreModal(entry: GameUpdateHistoryEntry) {
+		if (!canRevert || !entry.revertible || revertingId) return;
+		pendingRestoreEntry = entry;
+	}
+
+	function closeRestoreModal() {
+		if (revertingId) return;
+		pendingRestoreEntry = null;
+	}
+
+	async function confirmRestore() {
+		const entry = pendingRestoreEntry;
+		if (!entry || revertingId) return;
+
+		revertingId = entry.id;
+		try {
+			const response = await fetch(`/dashboard/game/${gameId}/update-history/${entry.id}`, {
+				method: 'POST'
+			});
+			const body = (await response.json()) as { error?: string };
+			if (!response.ok) {
+				throw new Error(body.error ?? 'Impossible de restaurer cet état.');
+			}
+
+			newToast({ alertType: 'success', message: 'État restauré.' });
+			pendingRestoreEntry = null;
+			await invalidateAll();
+		} catch (err) {
+			newToast({
+				alertType: 'error',
+				message: err instanceof Error ? err.message : 'Impossible de restaurer cet état.'
+			});
+		} finally {
+			revertingId = null;
+		}
+	}
 </script>
 
 <div class="card w-full border border-base-300 bg-base-100 shadow-xl">
@@ -71,6 +136,24 @@
 											translations
 										)}
 									</span>
+								{/if}
+								{#if canRevert && entry.revertible}
+									<button
+										type="button"
+										class="btn btn-ghost btn-xs ml-auto gap-1"
+										disabled={revertingId === entry.id}
+										onclick={() => openRestoreModal(entry)}
+										title={entry.revertCascadeCount > 1
+											? `Restaure ${entry.revertCascadeCount} modification(s)`
+											: 'Restaurer cet état'}
+									>
+										{#if revertingId === entry.id}
+											<span class="loading loading-spinner loading-xs"></span>
+										{:else}
+											<Undo2 size={14} />
+										{/if}
+										Restaurer
+									</button>
 								{/if}
 							</div>
 
@@ -132,6 +215,25 @@
 					</li>
 				{/each}
 			</ul>
+
+			<div class="mt-2 border-t border-base-300 pt-4">
+				<Pagination
+					currentPage={historyPage}
+					totalPages={historyTotalPages}
+					totalCount={historyTotalCount}
+					hrefForPage={hrefForHistoryPage}
+					countLabel="entrée"
+				/>
+			</div>
 		{/if}
 	</div>
 </div>
+
+<RestoreHistoryModal
+	entry={pendingRestoreEntry}
+	{translators}
+	{translations}
+	confirming={isConfirmingRestore}
+	onClose={closeRestoreModal}
+	onConfirm={confirmRestore}
+/>

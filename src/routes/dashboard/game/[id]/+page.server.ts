@@ -2,7 +2,7 @@ import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { listGameUpdateHistory } from '$lib/server/game-update-history-query';
+import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
 import { hasPermission } from '$lib/server/permissions';
 import {
 	assertRoleEditMode,
@@ -15,7 +15,7 @@ import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
 	await assertGameManageAccess(locals);
 	if (locals.user?.role) {
 		await assertRoleEditMode(locals.user.role);
@@ -154,15 +154,23 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 
 		const canViewUpdateHistory = hasPermission(locals, 'games.view_history');
-		const updateHistory = canViewUpdateHistory ? await listGameUpdateHistory(gameId) : [];
+		const canRevertUpdateHistory = hasPermission(locals, 'games.revert_history') && !usesSubmission;
+
+		const historyPageRaw = Number.parseInt(url.searchParams.get('historyPage') ?? '1', 10);
+		const historyPage = Number.isFinite(historyPageRaw) && historyPageRaw > 0 ? historyPageRaw : 1;
+
+		const updateHistoryPage = canViewUpdateHistory
+			? await listGameUpdateHistoryPage(gameId, historyPage)
+			: { entries: [], totalCount: 0, page: 1, totalPages: 1, pageSize: 15 };
 
 		return {
 			game: game[0],
 			translations,
 			translators,
 			pendingSubmissions,
-			updateHistory,
+			updateHistoryPage,
 			canViewUpdateHistory,
+			canRevertUpdateHistory,
 			user: locals.user,
 			canManageGameAutoCheck: hasPermission(locals, 'games.auto_check'),
 			canUseSilentMode: hasPermission(locals, 'games.silent_mode'),

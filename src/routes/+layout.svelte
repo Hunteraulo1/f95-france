@@ -94,11 +94,11 @@
 					{@render children()}
 				</div>
 			{/if}
+			<Footer />
 		</div>
 
 		{#if !ageVerified}
 			<AgeVerificationModal onConfirm={confirmAge} />
 		{/if}
 	</div>
-	<Footer />
 {/if}

@@ -5,6 +5,7 @@ export const PERMISSION_REQUIRES: Partial<Record<PermissionKey, PermissionKey>> 
 	'games.auto_check': 'games.manage',
 	'games.silent_mode': 'games.manage',
 	'games.view_history': 'games.manage',
+	'games.revert_history': 'games.manage',
 	'submissions.own': 'games.manage',
 	'submissions.review': 'games.manage',
 	'users.assign_admin': 'users.manage',

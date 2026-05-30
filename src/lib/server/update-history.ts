@@ -1,40 +1,22 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
+import type {
+	TranslationHistorySnapshot,
+	TranslationUpdateHistoryChanges,
+	UpdateHistoryContext,
+	UpdateHistoryFieldDelta
+} from '$lib/updates/update-history-types';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 
-export type UpdateHistoryAction = 'created' | 'status_changed' | 'deleted';
-
-export type TranslationHistorySnapshot = {
-	translationName?: string | null;
-	version?: string | null;
-	tversion?: string;
-	status?: string;
-	ttype?: string;
-	tlink?: string;
-	tname?: string;
-	gameType?: string;
-	translatorId?: string | null;
-	proofreaderId?: string | null;
-	ac?: boolean;
-};
-
-export type UpdateHistoryFieldDelta = {
-	field: string;
-	oldValue: unknown;
-	newValue: unknown;
-};
-
-export type TranslationUpdateHistoryChanges = {
-	entity: 'translation';
-	translationId: string;
-	deltas: UpdateHistoryFieldDelta[];
-};
-
-export type UpdateHistoryContext = {
-	userId?: string | null;
-	action: UpdateHistoryAction;
-	changes: TranslationUpdateHistoryChanges;
-};
+export type {
+	TranslationHistorySnapshot,
+	TranslationUpdateHistoryChanges,
+	UpdateHistoryAction,
+	UpdateHistoryContext,
+	UpdateHistoryFieldDelta
+} from '$lib/updates/update-history-types';
+export { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 
 const TRACKED_TRANSLATION_FIELDS = [
 	'translationName',
@@ -54,8 +36,8 @@ export function translationRowToHistorySnapshot(
 	row: TranslationHistorySnapshot
 ): TranslationHistorySnapshot {
 	return {
-		translationName: row.translationName ?? null,
-		version: row.version ?? null,
+		translationName: normalizeNullableHistoryString(row.translationName),
+		version: normalizeNullableHistoryString(row.version),
 		tversion: row.tversion,
 		status: row.status,
 		ttype: row.ttype,
@@ -119,6 +101,80 @@ export function buildTranslationHistoryContext(
 	}
 
 	return null;
+}
+
+export function parseTranslationUpdateHistoryChanges(
+	raw: string | null
+): TranslationUpdateHistoryChanges | null {
+	if (!raw) return null;
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (
+			typeof parsed === 'object' &&
+			parsed !== null &&
+			(parsed as TranslationUpdateHistoryChanges).entity === 'translation' &&
+			typeof (parsed as TranslationUpdateHistoryChanges).translationId === 'string' &&
+			Array.isArray((parsed as TranslationUpdateHistoryChanges).deltas)
+		) {
+			return parsed as TranslationUpdateHistoryChanges;
+		}
+	} catch {
+		return null;
+	}
+	return null;
+}
+
+export function snapshotFromHistoryDeltas(
+	deltas: UpdateHistoryFieldDelta[],
+	source: 'old' | 'new'
+): TranslationHistorySnapshot {
+	const snap: TranslationHistorySnapshot = {};
+	for (const delta of deltas) {
+		const value = source === 'old' ? delta.oldValue : delta.newValue;
+		switch (delta.field) {
+			case 'translationName':
+				snap.translationName = normalizeNullableHistoryString(value);
+				break;
+			case 'version':
+				snap.version = normalizeNullableHistoryString(value);
+				break;
+			case 'tversion':
+				if (value != null) snap.tversion = String(value);
+				break;
+			case 'status':
+				if (value != null) snap.status = String(value);
+				break;
+			case 'ttype':
+				if (value != null) snap.ttype = String(value);
+				break;
+			case 'tlink':
+				if (value != null) snap.tlink = String(value);
+				break;
+			case 'tname':
+				if (value != null) snap.tname = String(value);
+				break;
+			case 'gameType':
+				if (value != null) snap.gameType = String(value);
+				break;
+			case 'translatorId':
+				snap.translatorId = value == null || value === '' ? null : String(value);
+				break;
+			case 'proofreaderId':
+				snap.proofreaderId = value == null || value === '' ? null : String(value);
+				break;
+			case 'ac':
+				snap.ac = Boolean(value);
+				break;
+		}
+	}
+	return snap;
+}
+
+export function applyHistorySnapshotToTranslationSnapshot(
+	base: TranslationHistorySnapshot,
+	patch: TranslationHistorySnapshot
+): TranslationHistorySnapshot {
+	return translationRowToHistorySnapshot({ ...base, ...patch });
 }
 
 export async function recordUpdateHistoryEntry(

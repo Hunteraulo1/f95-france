@@ -1,11 +1,15 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { enrichHistoryRevertMeta } from '$lib/server/revert-update-history';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
 import {
+	parseTranslationUpdateHistoryChanges,
 	type TranslationUpdateHistoryChanges,
 	type UpdateHistoryAction
 } from '$lib/server/update-history';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
+
+export const GAME_UPDATE_HISTORY_PAGE_SIZE = 15;
 
 export type GameUpdateHistoryEntry = {
 	id: string;
@@ -16,32 +20,97 @@ export type GameUpdateHistoryEntry = {
 	updateId: string;
 	updateStatus: string;
 	changes: TranslationUpdateHistoryChanges | null;
+	revertible: boolean;
+	revertCascadeCount: number;
+};
+
+export type GameUpdateHistoryPage = {
+	entries: GameUpdateHistoryEntry[];
+	totalCount: number;
+	page: number;
+	totalPages: number;
+	pageSize: number;
 };
 
 function parseHistoryChanges(raw: string | null): TranslationUpdateHistoryChanges | null {
-	if (!raw) return null;
-	try {
-		const parsed = JSON.parse(raw) as unknown;
-		if (
-			typeof parsed === 'object' &&
-			parsed !== null &&
-			(parsed as TranslationUpdateHistoryChanges).entity === 'translation' &&
-			typeof (parsed as TranslationUpdateHistoryChanges).translationId === 'string' &&
-			Array.isArray((parsed as TranslationUpdateHistoryChanges).deltas)
-		) {
-			return parsed as TranslationUpdateHistoryChanges;
-		}
-	} catch {
-		return null;
-	}
-	return null;
+	return parseTranslationUpdateHistoryChanges(raw);
 }
 
-export async function listGameUpdateHistory(
+async function countGameUpdateHistory(gameId: string): Promise<number> {
+	const rows = await db
+		.select({ count: sql<number>`count(*)::int`.as('count') })
+		.from(table.updateHistory)
+		.innerJoin(table.update, eq(table.updateHistory.updateId, table.update.id))
+		.where(eq(table.update.gameId, gameId));
+	return Number(rows[0]?.count ?? 0);
+}
+
+async function mapHistoryRows(
 	gameId: string,
-	limit = 40
+	rows: {
+		id: string;
+		action: string;
+		createdAt: Date;
+		userId: string | null;
+		username: string | null;
+		updateId: string;
+		updateStatus: string;
+		changes: string | null;
+	}[]
 ): Promise<GameUpdateHistoryEntry[]> {
-	if (!(await hasUpdateHistoryTable())) return [];
+	const entries = rows.map((row) => ({
+		id: row.id,
+		action: row.action as UpdateHistoryAction,
+		createdAt: row.createdAt,
+		userId: row.userId,
+		username: row.username,
+		updateId: row.updateId,
+		updateStatus: row.updateStatus,
+		changes: parseHistoryChanges(row.changes),
+		revertible: false,
+		revertCascadeCount: 0
+	}));
+
+	const revertMeta = await enrichHistoryRevertMeta(
+		gameId,
+		entries.map((entry) => ({
+			id: entry.id,
+			action: entry.action,
+			changes: entry.changes
+		}))
+	);
+
+	return entries.map((entry) => {
+		const meta = revertMeta.get(entry.id);
+		return {
+			...entry,
+			revertible: meta?.revertible ?? false,
+			revertCascadeCount: meta?.cascadeCount ?? 0
+		};
+	});
+}
+
+export async function listGameUpdateHistoryPage(
+	gameId: string,
+	requestedPage = 1,
+	pageSize = GAME_UPDATE_HISTORY_PAGE_SIZE
+): Promise<GameUpdateHistoryPage> {
+	const empty: GameUpdateHistoryPage = {
+		entries: [],
+		totalCount: 0,
+		page: 1,
+		totalPages: 1,
+		pageSize
+	};
+
+	if (!(await hasUpdateHistoryTable())) return empty;
+
+	const totalCount = await countGameUpdateHistory(gameId);
+	if (totalCount === 0) return empty;
+
+	const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+	const page = Math.min(Math.max(1, requestedPage), totalPages);
+	const offset = (page - 1) * pageSize;
 
 	const rows = await db
 		.select({
@@ -59,16 +128,23 @@ export async function listGameUpdateHistory(
 		.leftJoin(table.user, eq(table.user.id, table.updateHistory.userId))
 		.where(eq(table.update.gameId, gameId))
 		.orderBy(desc(table.updateHistory.createdAt))
-		.limit(limit);
+		.limit(pageSize)
+		.offset(offset);
 
-	return rows.map((row) => ({
-		id: row.id,
-		action: row.action as UpdateHistoryAction,
-		createdAt: row.createdAt,
-		userId: row.userId,
-		username: row.username,
-		updateId: row.updateId,
-		updateStatus: row.updateStatus,
-		changes: parseHistoryChanges(row.changes)
-	}));
+	return {
+		entries: await mapHistoryRows(gameId, rows),
+		totalCount,
+		page,
+		totalPages,
+		pageSize
+	};
+}
+
+/** @deprecated Préférer {@link listGameUpdateHistoryPage} */
+export async function listGameUpdateHistory(
+	gameId: string,
+	limit = 40
+): Promise<GameUpdateHistoryEntry[]> {
+	const page = await listGameUpdateHistoryPage(gameId, 1, limit);
+	return page.entries;
 }

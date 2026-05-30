@@ -34,6 +34,7 @@ import {
 import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -185,7 +186,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				gameId,
 				translationId,
 				{
-					translationName: translationName || null,
+					translationName: normalizeNullableHistoryString(translationName),
 					version: normalizedVersion,
 					tversion,
 					status,
@@ -249,7 +250,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: isF95VersionRefresh ? before.translationName : translationName || null,
+			translationName: isF95VersionRefresh
+				? before.translationName
+				: normalizeNullableHistoryString(translationName),
 			version: normalizedVersion,
 			tversion: effectiveTversion,
 			status: effectiveStatus,
@@ -278,7 +281,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const dataJson = JSON.stringify({
 			gameId,
 			translation: {
-				translationName: translationName || null,
+				translationName: normalizeNullableHistoryString(translationName),
 				version: normalizedVersion,
 				tversion,
 				status,

@@ -1,10 +1,14 @@
 import { translationKindLabel } from '$lib/games/public-game-display';
-import type { UpdateHistoryAction, UpdateHistoryFieldDelta } from '$lib/server/update-history';
+import type {
+	UpdateHistoryAction,
+	UpdateHistoryFieldDelta
+} from '$lib/updates/update-history-types';
 import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
 import {
 	getTranslationProgressLabel,
 	getTranslationTypeLabel
 } from '$lib/utils/game-translation-labels';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 
 type TranslatorLookup = { id: string; name: string };
 
@@ -62,7 +66,17 @@ export function formatUpdateHistoryFieldValue(
 	value: unknown,
 	translators: TranslatorLookup[]
 ): string {
-	if (value === null || value === undefined || value === '') {
+	if (value === null || value === undefined) {
+		return '—';
+	}
+
+	if (field === 'translationName' || field === 'version') {
+		const normalized = normalizeNullableHistoryString(value);
+		if (normalized === null) return '—';
+		value = normalized;
+	}
+
+	if (value === '') {
 		return '—';
 	}
 
@@ -97,16 +111,14 @@ export function visibleHistoryDeltas(
 	action: UpdateHistoryAction,
 	deltas: UpdateHistoryFieldDelta[]
 ): UpdateHistoryFieldDelta[] {
+	const isMeaningful = (value: unknown) => normalizeNullableHistoryString(value) !== null;
+
 	if (action === 'created') {
-		return deltas.filter(
-			(delta) => delta.newValue !== null && delta.newValue !== undefined && delta.newValue !== ''
-		);
+		return deltas.filter((delta) => isMeaningful(delta.newValue));
 	}
 
 	if (action === 'deleted') {
-		return deltas.filter(
-			(delta) => delta.oldValue !== null && delta.oldValue !== undefined && delta.oldValue !== ''
-		);
+		return deltas.filter((delta) => isMeaningful(delta.oldValue));
 	}
 
 	return deltas;
@@ -118,11 +130,13 @@ export function resolveHistoryTranslationName(
 	translations: Array<{ id: string; translationName: string | null }>
 ): string {
 	const fromCurrent = translations.find((t) => t.id === translationId)?.translationName;
-	if (fromCurrent?.trim()) return fromCurrent.trim();
+	const normalizedCurrent = normalizeNullableHistoryString(fromCurrent);
+	if (normalizedCurrent) return normalizedCurrent;
 
 	const fromDelta = deltas.find((d) => d.field === 'translationName');
 	const candidate = fromDelta?.newValue ?? fromDelta?.oldValue;
-	if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+	const normalized = normalizeNullableHistoryString(candidate);
+	if (normalized) return normalized;
 
 	return 'Traduction sans nom';
 }
