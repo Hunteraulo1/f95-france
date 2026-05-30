@@ -2,6 +2,7 @@ import { dateRangeOnColumn, parseOptionalDateRangeQuery } from '$lib/server/api/
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { parseInclude } from '$lib/server/api/include-query';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
+import { buildUpdatesListWhere, parseUpdatesApiScope } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game, update as updateTable } from '$lib/server/db/schema';
@@ -32,6 +33,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: range.message }, { status: 400, headers: corsHeaders });
 		}
 		const updateDateWhere = dateRangeOnColumn(updateTable.createdAt, range.from, range.to);
+		const scope = parseUpdatesApiScope(url.searchParams);
+		const listWhere = await buildUpdatesListWhere(scope, updateDateWhere);
 
 		const inc = parseInclude(url.searchParams);
 		const withGame = inc.has('game');
@@ -49,14 +52,14 @@ export const GET: RequestHandler = async ({ url }) => {
 				.from(updateTable);
 
 		if (!withGame && !withTranslations) {
-			const slim = await (updateDateWhere ? slimSelect().where(updateDateWhere) : slimSelect())
+			const slim = await (listWhere ? slimSelect().where(listWhere) : slimSelect())
 				.orderBy(desc(updateTable.createdAt))
 				.limit(limit);
 			return json(slim, { headers: corsHeaders });
 		}
 
 		if (!withGame && withTranslations) {
-			const slim = await (updateDateWhere ? slimSelect().where(updateDateWhere) : slimSelect())
+			const slim = await (listWhere ? slimSelect().where(listWhere) : slimSelect())
 				.orderBy(desc(updateTable.createdAt))
 				.limit(limit);
 			const byGame = await translationsByGameIds(slim.map((s) => s.gameId));
@@ -90,7 +93,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			.innerJoin(game, eq(updateTable.gameId, game.id))
 			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId));
 
-		const flat = await (updateDateWhere ? flatBase.where(updateDateWhere) : flatBase)
+		const flat = await (listWhere ? flatBase.where(listWhere) : flatBase)
 			.orderBy(desc(updateTable.createdAt))
 			.limit(limit);
 

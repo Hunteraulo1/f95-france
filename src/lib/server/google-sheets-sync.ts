@@ -1,8 +1,15 @@
+import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { getValidAccessToken } from '$lib/server/google-oauth';
+import {
+	getTranslatorActivityCounts,
+	getTranslatorActivityCountsForId,
+	loadTranslatorActivityCountsById,
+	type TranslatorActivityCounts
+} from '$lib/server/translator-activity-counts';
 import { and, count, eq, inArray, or, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
@@ -1278,8 +1285,9 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
 	set('Id Discord', '');
-	set('Traduction', String(tr.tradCount ?? 0));
-	set('Relecture', String(tr.readCount ?? 0));
+	const activity = await getTranslatorActivityCountsForId(tr.id);
+	set('Traduction', String(activity.tradCount));
+	set('Relecture', String(activity.readCount));
 	set('Id Db', tr.id);
 	set('ID DB', tr.id);
 
@@ -1402,7 +1410,8 @@ function buildJeuxRow(
 
 function buildTranslatorRow(
 	headersRow: string[],
-	tr: typeof table.translator.$inferSelect
+	tr: typeof table.translator.$inferSelect,
+	activity: TranslatorActivityCounts
 ): string[] {
 	const rowValues = new Array(headersRow.length).fill('');
 	const set = (headers: string | string[], value: string) => {
@@ -1412,8 +1421,8 @@ function buildTranslatorRow(
 	set('Nom', tr.name ?? '');
 	set('Pages', pagesToPlainText(tr.pages));
 	set('Id Discord', '');
-	set('Traduction', String(tr.tradCount ?? 0));
-	set('Relecture', String(tr.readCount ?? 0));
+	set('Traduction', String(activity.tradCount));
+	set('Relecture', String(activity.readCount));
 	set(['Id Db', 'ID DB'], tr.id);
 	return rowValues;
 }
@@ -1589,11 +1598,13 @@ export async function syncDbToSpreadsheetBulk(
 		} else {
 			onProgress?.(`Sheets TR : snapshot + sync (${translators.length} traducteur(s))…`);
 			const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
+			const activityCountsById = await loadTranslatorActivityCountsById();
 			const updates: Array<{ range: string; values: string[][] }> = [];
 			const appends: string[][] = [];
 			for (const tr of translators) {
 				try {
-					const row = buildTranslatorRow(trSnap.headersRow, tr);
+					const activity = getTranslatorActivityCounts(activityCountsById, tr.id);
+					const row = buildTranslatorRow(trSnap.headersRow, tr, activity);
 					const rowNumber = trSnap.rowNumberById.get(tr.id);
 					if (rowNumber) {
 						updates.push({
@@ -1689,11 +1700,12 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 
 	let todayRows: Array<{ status: string; gameName: string }>;
 	try {
+		const featuredWhere = await featuredUpdatesScopeWhere();
 		todayRows = await db
 			.select({ status: table.update.status, gameName: table.game.name })
 			.from(table.update)
 			.innerJoin(table.game, eq(table.update.gameId, table.game.id))
-			.where(sql`DATE(${table.update.createdAt}) = CURRENT_DATE`);
+			.where(and(sql`DATE(${table.update.createdAt}) = CURRENT_DATE`, featuredWhere));
 	} catch {
 		// Compat si la colonne `update.status` n'est pas encore migrée:
 		// on considère temporairement tout en "update".

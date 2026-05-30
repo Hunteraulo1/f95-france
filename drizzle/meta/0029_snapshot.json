@@ -1,6 +1,6 @@
 {
-  "id": "a463b896-5e27-4713-a719-d930d825e4d3",
-  "prevId": "c63995a8-6f69-4163-a0d2-810d0673bf66",
+  "id": "ffa7fcfa-5010-4e07-9d7a-967230e53e58",
+  "prevId": "a463b896-5e27-4713-a719-d930d825e4d3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1216,20 +1216,6 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
-        },
-        "trad_count": {
-          "name": "trad_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "read_count": {
-          "name": "read_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         },
         "created_at": {
           "name": "created_at",

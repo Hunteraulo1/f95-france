@@ -9,6 +9,7 @@ import {
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
+import { isPublicSitePath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { logApiAction } from '$lib/server/logger';
@@ -163,7 +164,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 				const isAuthException =
 					path === '/dashboard/login' ||
 					path === '/dashboard/register' ||
-					path === '/dashboard/logout';
+					path === '/dashboard/logout' ||
+					isPublicSitePath(path);
 				const isMaintenancePage = path === '/maintenance' || path.startsWith('/maintenance/');
 				const isStaticAsset =
 					path.startsWith('/_app/') ||

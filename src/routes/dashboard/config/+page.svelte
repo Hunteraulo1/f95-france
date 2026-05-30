@@ -226,15 +226,19 @@
 							</div>
 							<div class="form-control w-full">
 								<a href="/api/google-oauth/authorize" class="btn btn-outline btn-primary">
-									Autoriser avec Google
+									{data.config?.hasGoogleOAuthToken
+										? 'Reconnecter Google OAuth'
+										: 'Autoriser avec Google'}
 								</a>
 								<div class="label">
 									<span class="label-text-alt text-wrap text-base-content/50">
 										{#if data.config?.hasGoogleOAuthToken}
-											<span class="text-success">✓ Jetons OAuth présents (voir serveur / base)</span
-											>
+											<span class="text-success">✓ Jetons OAuth présents</span>
+											— Google Sheets. La traduction des descriptions utilise MyMemory par défaut.
 										{:else}
-											Cliquez pour autoriser l'accès à Google Sheets
+											Accès Google Sheets. Traduction auto : MyMemory (gratuit), voir
+											<code class="text-xs">TRANSLATION_PROVIDER</code> dans
+											<code class="text-xs">.env</code>.
 										{/if}
 									</span>
 								</div>

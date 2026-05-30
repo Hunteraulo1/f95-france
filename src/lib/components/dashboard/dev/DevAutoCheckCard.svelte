@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
-	import type { ConfigClientSafe } from '$lib/server/app-config';
 	import {
 		mapAutoCheckResult,
 		type AutoCheckManualResult
 	} from '$lib/components/dashboard/dev/dev-page-mappers';
+	import { createDevActionEnhance } from '$lib/forms/dev-action';
+	import type { ConfigClientSafe } from '$lib/server/app-config';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';
@@ -57,7 +57,7 @@
 							{#if result.details && typeof result.details === 'object'}
 								<p class="mt-1 text-sm">
 									Jeux scannés: {result.details.scannedGames} | Jeux mis à jour:
-									{result.details.updatedGames} | Alignés (auto-check off):
+									{result.details.updatedGames} | Déjà alignés:
 									{result.details.disabledAlignedGames} | Traductions impactées:
 									{result.details.updatedTranslations} | Webhooks traducteurs:
 									{result.details.translatorWebhooksSent ?? 0}

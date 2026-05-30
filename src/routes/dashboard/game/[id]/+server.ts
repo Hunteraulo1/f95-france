@@ -10,6 +10,7 @@ import {
 	disableGameAndTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
@@ -50,6 +51,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				id: table.game.id,
 				name: table.game.name,
 				description: table.game.description,
+				descriptionFr: table.game.descriptionFr,
 				website: table.game.website,
 				threadId: table.game.threadId,
 				link: table.game.link,
@@ -117,6 +119,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const {
 			name,
 			description,
+			description_fr: descriptionFrBody,
 			website,
 			threadId,
 			tags,
@@ -137,6 +140,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				id: table.game.id,
 				name: table.game.name,
 				description: table.game.description,
+				descriptionFr: table.game.descriptionFr,
 				website: table.game.website,
 				threadId: table.game.threadId,
 				tags: table.game.tags,
@@ -209,7 +213,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				prevGameAutoCheck ?? true
 			);
 		} else if (hasNonVersionChanges) {
-			nextGameAutoCheck = resolveGameAutoCheckForWebsite(website, false, false);
+			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
+				website,
+				undefined,
+				prevGameAutoCheck ?? true
+			);
 		} else {
 			nextGameAutoCheck = resolveGameAutoCheckForWebsite(
 				website,
@@ -289,10 +297,23 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
 		});
 
+		const hasExplicitDescriptionFr = Object.prototype.hasOwnProperty.call(body, 'description_fr');
+		const descFields = await resolveGameDescriptionFields({
+			description: typeof description === 'string' ? description : null,
+			explicitDescriptionFr: hasExplicitDescriptionFr
+				? typeof descriptionFrBody === 'string'
+					? descriptionFrBody
+					: null
+				: undefined,
+			previousDescription: existingGame.description,
+			previousDescriptionFr: existingGame.descriptionFr,
+			autoTranslate: isF95VersionRefresh || !hasExplicitDescriptionFr
+		});
+
 		if (shouldCreateSubmission) {
 			await createGameUpdateSubmission(currentUser.id, gameId, {
 				name,
-				description: description || null,
+				description: descFields.description,
 				website,
 				threadId: nextThreadId,
 				tags: tags || null,
@@ -321,7 +342,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			.update(table.game)
 			.set({
 				name,
-				description: description || null,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
 				website,
 				threadId: threadId ? parseInt(threadId) : null,
 				tags: tags || null,

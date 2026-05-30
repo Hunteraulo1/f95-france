@@ -68,7 +68,7 @@ export async function clearAllTranslationAutoCheckForGame(gameId: string): Promi
 		.where(eq(table.gameTranslation.gameId, gameId));
 }
 
-/** Version à jour sur le checker : désactive l’auto-check jeu et sur toutes les traductions. */
+/** Version checker inconnue (Unknown) : désactive l’auto-check jeu et sur toutes les traductions. */
 export async function disableGameAndTranslationAutoCheck(gameId: string): Promise<void> {
 	await db
 		.update(table.game)
