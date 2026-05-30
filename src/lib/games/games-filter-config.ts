@@ -23,6 +23,9 @@ export type SavedGamesFilterPreset = {
 
 export const SAVED_GAMES_FILTERS_KEY = 'f95-france-saved-games-filters';
 export const MAX_SAVED_GAMES_FILTERS = 5;
+export const GAMES_VIEW_MODE_KEY = 'f95-france-games-view-mode';
+
+export type GamesListViewMode = 'grid' | 'list';
 
 const SITE_OPTIONS = [
 	{ value: 'f95z', label: 'F95z' },

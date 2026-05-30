@@ -20,20 +20,22 @@ function versionIntegratedCondition(): SQL {
 	)!;
 }
 
+/** Même règle que `effectiveTranslationVersion` : traduction, sinon version du jeu. */
+const translationReferenceVersion = sql`nullif(trim(coalesce(${gameTranslation.version}, '')), '')`;
+const gameReferenceVersion = sql`nullif(trim(coalesce(${game.gameVersion}, '')), '')`;
+const effectiveReferenceVersion = sql`coalesce(${translationReferenceVersion}, ${gameReferenceVersion})`;
+
 function versionUpToDateCondition(): SQL {
 	return or(
-		and(
-			sql`nullif(trim(coalesce(${gameTranslation.version}, '')), '') is not null`,
-			sql`trim(coalesce(${gameTranslation.version}, '')) = trim(coalesce(${gameTranslation.tversion}, ''))`
-		),
-		versionIntegratedCondition()
+		versionIntegratedCondition(),
+		sql`trim(coalesce(${gameTranslation.tversion}, '')) = trim(coalesce(${effectiveReferenceVersion}, ''))`
 	)!;
 }
 
 function versionOutdatedCondition(): SQL {
 	return and(
-		sql`trim(coalesce(${gameTranslation.version}, '')) <> trim(coalesce(${gameTranslation.tversion}, ''))`,
-		not(versionIntegratedCondition())
+		not(versionIntegratedCondition()),
+		sql`trim(coalesce(${gameTranslation.tversion}, '')) <> trim(coalesce(${effectiveReferenceVersion}, ''))`
 	)!;
 }
 

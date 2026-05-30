@@ -54,6 +54,18 @@ export function isTranslationOutdated(
 	return referenceVersion !== strTrim(row.tversion);
 }
 
+export function countUpToDateTranslations(
+	translations: Array<{
+		version: string | null;
+		tversion: string;
+		tname: string;
+	}>,
+	gameVersion: string | null | undefined
+): number {
+	return translations.filter((translation) => !isTranslationOutdated(translation, gameVersion))
+		.length;
+}
+
 async function loadGameVersionsByGameIds(gameIds: string[]): Promise<Map<string, string | null>> {
 	const unique = [...new Set(gameIds)];
 	if (unique.length === 0) return new Map();

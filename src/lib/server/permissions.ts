@@ -195,16 +195,38 @@ export async function syncPermissionsCatalog(): Promise<void> {
 	const existing = await db.select({ key: table.appPermission.key }).from(table.appPermission);
 	const existingKeys = new Set(existing.map((row) => row.key));
 	const missing = PERMISSION_CATALOG.filter((p) => !existingKeys.has(p.key));
-	if (missing.length === 0) return;
+	if (missing.length > 0) {
+		await db.insert(table.appPermission).values(
+			missing.map((p) => ({
+				key: p.key,
+				label: p.label,
+				description: p.description,
+				group: p.group
+			}))
+		);
+	}
 
-	await db.insert(table.appPermission).values(
-		missing.map((p) => ({
-			key: p.key,
-			label: p.label,
-			description: p.description,
-			group: p.group
-		}))
-	);
+	await syncSystemRolePermissionLinks();
+}
+
+/** Ajoute aux rôles système les liens permission manquants (déploiements existants). */
+async function syncSystemRolePermissionLinks(): Promise<void> {
+	for (const [roleSlug, keys] of Object.entries(SYSTEM_ROLE_PERMISSIONS)) {
+		if (isSuperadminRole(roleSlug)) continue;
+
+		const rows = await db
+			.select({ permissionKey: table.appRolePermission.permissionKey })
+			.from(table.appRolePermission)
+			.where(eq(table.appRolePermission.roleSlug, roleSlug));
+		const existingKeys = new Set(rows.map((row) => row.permissionKey));
+		const missing = keys.filter((key) => !existingKeys.has(key));
+		if (missing.length === 0) continue;
+
+		await db
+			.insert(table.appRolePermission)
+			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })))
+			.onConflictDoNothing();
+	}
 }
 
 export async function ensurePermissionsCatalogSeeded(): Promise<void> {

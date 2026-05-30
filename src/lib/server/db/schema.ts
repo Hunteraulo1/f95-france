@@ -293,6 +293,26 @@ export const appRolePermission = pgTable(
 	(t) => [primaryKey({ columns: [t.roleSlug, t.permissionKey] })]
 );
 
+/** Historique des changements sur une entrée `update` (statut, etc.). */
+export const updateHistory = pgTable('update_history', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	updateId: varchar('update_id', { length: 255 })
+		.notNull()
+		.references(() => update.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	/** `created` | `status_changed` | `deleted` */
+	action: varchar('action', { length: 32 }).notNull(),
+	/** Delta JSON (ex. `{ "field": "status", "oldValue": "update", "newValue": "done" }`). */
+	changes: text('changes'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export type UpdateHistory = typeof updateHistory.$inferSelect;
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 export type Passkey = typeof passkey.$inferSelect;

@@ -11,6 +11,7 @@ import {
 	combineSqlParts,
 	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
+import { countUpToDateTranslations } from '$lib/server/api/translation-public';
 import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 import { asc, count, desc, eq } from 'drizzle-orm';
 
@@ -35,9 +36,9 @@ export type PublicGameListItem = {
 	engineTypes: string[];
 	updatedAt: Date;
 	translationCount: number;
+	upToDateTranslationCount: number;
 	translationStatus: string | null;
 	translationStatusLabel: string | null;
-	translationVersion: string | null;
 	tags: string[];
 };
 
@@ -104,6 +105,7 @@ export async function listPublicGames(params: PublicGamesListParams) {
 	const games: PublicGameListItem[] = rows.map((row) => {
 		const translations = byGame.get(row.id) ?? [];
 		const primary = pickPrimaryTranslation(translations);
+		const gameVersion = row.gameVersion?.trim() || null;
 		return {
 			id: row.id,
 			name: row.name,
@@ -114,9 +116,9 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			engineTypes: Array.isArray(row.engineTypes) ? row.engineTypes.map(String) : [],
 			updatedAt: row.updatedAt,
 			translationCount: translations.length,
+			upToDateTranslationCount: countUpToDateTranslations(translations, gameVersion),
 			translationStatus: primary?.status ?? null,
 			translationStatusLabel: primary ? getTranslationProgressLabel(primary.status) : null,
-			translationVersion: primary?.tversion ?? null,
 			tags: splitGameTags(row.tags)
 		};
 	});

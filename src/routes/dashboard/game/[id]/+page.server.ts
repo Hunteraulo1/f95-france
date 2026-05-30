@@ -1,7 +1,8 @@
+import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
+import { listGameUpdateHistory } from '$lib/server/game-update-history-query';
 import { hasPermission } from '$lib/server/permissions';
 import {
 	assertRoleEditMode,
@@ -152,11 +153,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			addContributorMode = warnUnknownTranslators ? 'direct' : 'submission';
 		}
 
+		const canViewUpdateHistory = hasPermission(locals, 'games.view_history');
+		const updateHistory = canViewUpdateHistory ? await listGameUpdateHistory(gameId) : [];
+
 		return {
 			game: game[0],
 			translations,
 			translators,
 			pendingSubmissions,
+			updateHistory,
+			canViewUpdateHistory,
 			user: locals.user,
 			canManageGameAutoCheck: hasPermission(locals, 'games.auto_check'),
 			canUseSilentMode: hasPermission(locals, 'games.silent_mode'),

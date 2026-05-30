@@ -12,13 +12,17 @@ import {
 	parseRequestDirectMode,
 	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
-import { createGameUpdateRow } from '$lib/server/game-updates';
+import {
+	createGameUpdateRow,
+	recordTranslationChangeInUpdateHistory
+} from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createTranslationSubmission } from '$lib/server/submissions';
+import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
@@ -231,7 +235,29 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] add proofreader failed:', err);
 			});
 		}
-		await createGameUpdateRow(gameId, 'adding');
+		if (created?.id) {
+			await recordTranslationChangeInUpdateHistory(gameId, {
+				userId: currentUser.id,
+				translationId: created.id,
+				before: null,
+				after: translationRowToHistorySnapshot({
+					translationName: translationName || null,
+					version: typeof version === 'string' ? version.trim() || null : null,
+					tversion,
+					status,
+					ttype,
+					tlink: tlinkStored,
+					tname:
+						(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+						'translation',
+					gameType: engineTr,
+					translatorId: translatorId || null,
+					proofreaderId: proofreaderId || null,
+					ac: acValue
+				}),
+				updateKind: 'adding'
+			});
+		}
 		await incrementUserGameCounter(currentUser.id, 'add', 1);
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });

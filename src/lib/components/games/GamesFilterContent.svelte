@@ -52,6 +52,8 @@
 		showSort?: boolean;
 		showTagsExpandToggle?: boolean;
 		tagsExpanded?: boolean;
+		showViewModeToggle?: boolean;
+		viewMode?: 'grid' | 'list';
 	}
 
 	let {
@@ -73,7 +75,9 @@
 		disabled = false,
 		showSort = true,
 		showTagsExpandToggle = false,
-		tagsExpanded = $bindable(false)
+		tagsExpanded = $bindable(false),
+		showViewModeToggle = false,
+		viewMode = $bindable('grid')
 	}: Props = $props();
 
 	let savedFilters = $state<SavedGamesFilterPreset[]>([]);
@@ -293,6 +297,30 @@
 			/>
 		{/each}
 	</div>
+
+	{#if showViewModeToggle}
+		<div class="flex flex-col gap-2 rounded-box border border-base-300 px-3 py-2">
+			<span class="text-sm font-medium">Affichage</span>
+			<div class="join w-full">
+				<button
+					type="button"
+					class="join-item btn btn-sm flex-1 {viewMode === 'grid' ? 'btn-primary' : 'btn-ghost'}"
+					onclick={() => (viewMode = 'grid')}
+					{disabled}
+				>
+					Grille
+				</button>
+				<button
+					type="button"
+					class="join-item btn btn-sm flex-1 {viewMode === 'list' ? 'btn-primary' : 'btn-ghost'}"
+					onclick={() => (viewMode = 'list')}
+					{disabled}
+				>
+					Liste
+				</button>
+			</div>
+		</div>
+	{/if}
 
 	{#if showTagsExpandToggle}
 		<label

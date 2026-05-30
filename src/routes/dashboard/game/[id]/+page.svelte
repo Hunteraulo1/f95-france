@@ -6,6 +6,7 @@
 	import EditGameModal from '$lib/components/dashboard/game/EditGameModal.svelte';
 	import EditTranslationModal from '$lib/components/dashboard/game/EditTranslationModal.svelte';
 	import GameImagePreviewModal from '$lib/components/dashboard/game/GameImagePreviewModal.svelte';
+	import GameUpdateHistoryPanel from '$lib/components/dashboard/game/GameUpdateHistoryPanel.svelte';
 	import { hasPermission } from '$lib/permissions/client';
 	import type { ScrapedThreadGame } from '$lib/server/scrape';
 	import { newToast } from '$lib/stores';
@@ -52,6 +53,9 @@
 	);
 	const canShowInternalIds = $derived(
 		data.canShowInternalIds === true || $hasPermission('content.view_ids')
+	);
+	const canViewUpdateHistory = $derived(
+		data.canViewUpdateHistory === true || $hasPermission('games.view_history')
 	);
 	const hasGamesManage = $derived($hasPermission('games.manage'));
 
@@ -1355,6 +1359,17 @@
 					</button>
 				</div>
 			</div>
+		{/if}
+
+		{#if canViewUpdateHistory}
+			<GameUpdateHistoryPanel
+				history={data.updateHistory ?? []}
+				translators={data.translators}
+				translations={translations.map((t) => ({
+					id: t.id,
+					translationName: t.translationName
+				}))}
+			/>
 		{/if}
 	</div>
 </div>
