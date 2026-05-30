@@ -22,6 +22,7 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -35,14 +36,18 @@
 	let searchQuery = $derived(data.query);
 	let filterGroups = $derived(structuredClone(data.filterGroups));
 	let tagsExpanded = $state(false);
-	let expandedTagRowIds = $state<Set<string>>(new Set());
+	let expandedTagRowIds = new SvelteSet<string>();
 
 	$effect(() => {
-		if (tagsExpanded) expandedTagRowIds = new Set();
+		if (tagsExpanded) expandedTagRowIds.clear();
 	});
 
 	const expandRowTags = (updateId: string) => {
-		expandedTagRowIds = new Set([...expandedTagRowIds, updateId]);
+		expandedTagRowIds.add(updateId);
+	};
+
+	const collapseRowTags = (updateId: string) => {
+		expandedTagRowIds.delete(updateId);
 	};
 
 	const rowTagsExpanded = (updateId: string) => tagsExpanded || expandedTagRowIds.has(updateId);
@@ -181,7 +186,15 @@
 							{#each visibleTags as tag (tag)}
 								<span class="badge badge-xs badge-ghost">{tag}</span>
 							{/each}
-							{#if !showAllTags && hiddenTagsCount > 0}
+							{#if !tagsExpanded && expandedTagRowIds.has(update.id) && game.tags.length > TAGS_PREVIEW_LIMIT}
+								<button
+									type="button"
+									class="btn btn-xs btn-ghost h-auto min-h-0 px-1 py-0 font-normal"
+									onclick={() => collapseRowTags(update.id)}
+								>
+									Replier
+								</button>
+							{:else if !showAllTags && hiddenTagsCount > 0}
 								<button
 									type="button"
 									class="btn btn-xs btn-ghost h-auto min-h-0 px-1 py-0 font-normal"

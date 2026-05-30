@@ -1,4 +1,5 @@
 import type { PublicGamesListParams } from '$lib/games/games-filter-url';
+import { splitGameTags } from '$lib/games/public-game-display';
 import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
 import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
@@ -37,6 +38,7 @@ export type PublicGameListItem = {
 	translationStatus: string | null;
 	translationStatusLabel: string | null;
 	translationVersion: string | null;
+	tags: string[];
 };
 
 function pickPrimaryTranslation(translations: GameTranslationRow[]): GameTranslationRow | null {
@@ -87,6 +89,7 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			website: game.website,
 			gameVersion: game.gameVersion,
 			updatedAt: game.updatedAt,
+			tags: game.tags,
 			engineTypes: enginesPerGameSubquery.engineTypes
 		})
 		.from(game)
@@ -113,7 +116,8 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			translationCount: translations.length,
 			translationStatus: primary?.status ?? null,
 			translationStatusLabel: primary ? getTranslationProgressLabel(primary.status) : null,
-			translationVersion: primary?.tversion ?? null
+			translationVersion: primary?.tversion ?? null,
+			tags: splitGameTags(row.tags)
 		};
 	});
 

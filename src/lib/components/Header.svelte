@@ -23,8 +23,8 @@
 	const links: Link[] = [
 		{ label: 'Accueil', href: resolve('/') },
 		{ label: 'Jeux', href: resolve('/games') },
-		{ label: 'Traducteurs', href: '/translators' },
-		{ label: 'Mises à jour', href: '/updates' }
+		{ label: 'Mises à jour', href: '/updates' },
+		{ label: 'Traducteurs', href: '/translators' }
 	];
 
 	let navDrawerOpen = $state(false);

@@ -1,4 +1,7 @@
-import { MAX_SAVED_GAMES_FILTERS, type SavedGamesFilterPreset } from '$lib/games/games-filter-config';
+import {
+	MAX_SAVED_GAMES_FILTERS,
+	type SavedGamesFilterPreset
+} from '$lib/games/games-filter-config';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;

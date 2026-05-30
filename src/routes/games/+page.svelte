@@ -11,6 +11,7 @@
 	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -19,15 +20,33 @@
 
 	let { data }: Props = $props();
 
+	const TAGS_PREVIEW_LIMIT = 4;
+
 	let searchQuery = $state('');
 	let sortValue = $state<PageData['sort']>('updated_desc');
 	let filterGroups = $state<PageData['filterGroups']>([]);
+	let tagsExpanded = $state(false);
+	let expandedTagRowIds = new SvelteSet<string>();
 
 	$effect(() => {
 		searchQuery = data.query;
 		sortValue = data.sort;
 		filterGroups = structuredClone(data.filterGroups);
 	});
+
+	$effect(() => {
+		if (tagsExpanded) expandedTagRowIds.clear();
+	});
+
+	const expandRowTags = (gameId: string) => {
+		expandedTagRowIds.add(gameId);
+	};
+
+	const collapseRowTags = (gameId: string) => {
+		expandedTagRowIds.delete(gameId);
+	};
+
+	const rowTagsExpanded = (gameId: string) => tagsExpanded || expandedTagRowIds.has(gameId);
 
 	const listParams = $derived.by(
 		(): PublicGamesListParams => ({
@@ -101,6 +120,8 @@
 				translatorIds={data.translatorIds}
 				isAuthenticated={data.isAuthenticated}
 				initialSavedFilters={data.savedFilters}
+				showTagsExpandToggle
+				bind:tagsExpanded
 				disabled={Boolean(data.error)}
 			/>
 		</div>
@@ -207,6 +228,42 @@
 									{:else}
 										<div class="text-base-content/60">Aucune traduction enregistrée</div>
 									{/if}
+								</dl>
+								<dl class="flex flex-col gap-2 text-sm h-fit">
+									<dt class="shrink-0 text-base-content/60">Tags</dt>
+									<dd>
+										{#if game.tags.length}
+											{@const showAllTags = rowTagsExpanded(game.id)}
+											{@const visibleTags = showAllTags
+												? game.tags
+												: game.tags.slice(0, TAGS_PREVIEW_LIMIT)}
+											{@const hiddenTagsCount = game.tags.length - visibleTags.length}
+											<div class="flex flex-wrap items-center gap-1">
+												{#each visibleTags as tag (tag)}
+													<span class="badge badge-xs badge-ghost">{tag}</span>
+												{/each}
+												{#if !tagsExpanded && expandedTagRowIds.has(game.id) && game.tags.length > TAGS_PREVIEW_LIMIT}
+													<button
+														type="button"
+														class="btn h-auto min-h-0 px-1 py-0 font-normal btn-ghost text-xs"
+														onclick={() => collapseRowTags(game.id)}
+													>
+														Replier
+													</button>
+												{:else if !showAllTags && hiddenTagsCount > 0}
+													<button
+														type="button"
+														class="btn h-auto min-h-0 px-1 py-0 font-normal btn-ghost text-xs"
+														onclick={() => expandRowTags(game.id)}
+													>
+														Voir plus ({hiddenTagsCount})
+													</button>
+												{/if}
+											</div>
+										{:else}
+											<span class="text-base-content/60">—</span>
+										{/if}
+									</dd>
 								</dl>
 								{#if game.translationCount > 1}
 									<p class="text-xs text-base-content/50">

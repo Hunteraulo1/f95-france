@@ -79,8 +79,8 @@
 		isAtTop = window.scrollY < window.innerHeight / 4;
 	};
 
-	const scrollDownOneVh = () => {
-		window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+	const scrollToNextSection = () => {
+		document.getElementById('home-updates')?.scrollIntoView({ behavior: 'smooth' });
 	};
 
 	const sheetLineClass =
@@ -98,7 +98,7 @@
 	});
 </script>
 
-<main class="flex w-full flex-1 flex-col gap-10 pb-10">
+<main class="flex w-full flex-1 flex-col pb-10">
 	<section class="hero min-h-screen relative overflow-hidden bg-transparent">
 		<div class="top-0 absolute w-full z-40">
 			<Header />
@@ -207,17 +207,17 @@
 				transition:fade={{ duration: 250 }}
 				aria-label="Faire défiler vers le bas"
 				class="btn hover:border-primary hover:text-primary btn-circle mt-auto mb-8 btn-outline animate-bounce absolute bottom-0"
-				onclick={scrollDownOneVh}
+				onclick={scrollToNextSection}
 			>
 				<ChevronDown class="h-5 w-5" />
 			</button>
 		{/if}
 	</section>
 
-	<div class="mx-auto flex flex-col gap-32 px-2">
+	<div class="mx-auto flex flex-col gap-32 px-2 pt-10" id="home-updates">
 		<section>
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-16">
-				<h2 class="text-2xl font-bold">Dernières mises à jour</h2>
+				<h2 class="text-2xl font-bold">Derniers changements</h2>
 				<a href="/updates">
 					<div
 						class="badge badge-primary badge-soft badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
