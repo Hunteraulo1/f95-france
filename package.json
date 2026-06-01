@@ -48,7 +48,7 @@
 		"svelte-check": "4.5.0",
 		"tailwindcss": "4.3.0",
 		"typescript": "6.0.3",
-		"typescript-eslint": "8.60.0"
+		"typescript-eslint": "8.60.1"
 	},
 	"dependencies": {
 		"@lucide/svelte": "1.17.0",
