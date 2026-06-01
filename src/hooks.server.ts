@@ -9,6 +9,7 @@ import {
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
+import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -64,7 +65,8 @@ function getRequestLoggingDecision(
 	url: URL
 ): { shouldLog: boolean; shouldCaptureBody: boolean; shouldCaptureQuery: boolean } {
 	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
-	const isHighFrequencyPollRoute = pathname.startsWith('/api/notifications');
+	const isHighFrequencyPollRoute =
+		pathname.startsWith('/api/notifications') || pathname === '/api/health';
 	const isDashboardRoute = pathname.startsWith('/dashboard');
 	const isMaintenanceRoute = pathname === '/maintenance' || pathname.startsWith('/maintenance/');
 	const isSensitiveSettingsAction =
@@ -320,7 +322,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			route,
 			status: response.status,
 			userId: event.locals.user?.id ?? null,
-			ipAddress: event.getClientAddress(),
+			ipAddress: getRequestClientAddressOrUnknown(event),
 			payload: capturedBody,
 			errorMessage: null // Sera rempli par handleError pour les erreurs 500
 		}).catch((error) => {
@@ -378,7 +380,7 @@ export const handleError = async ({
 			route,
 			status,
 			userId: event.locals.user?.id ?? null,
-			ipAddress: event.getClientAddress(),
+			ipAddress: getRequestClientAddressOrUnknown(event),
 			payload: null,
 			errorMessage
 		});

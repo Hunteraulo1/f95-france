@@ -1,3 +1,4 @@
+import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -9,7 +10,7 @@ const MAX_FAILURES = 10;
 const LOCK_MS = 15 * 60 * 1000;
 
 function clientKey(event: RequestEvent): string {
-	return event.getClientAddress();
+	return getRequestClientAddressOrUnknown(event);
 }
 
 function scopedClientKey(event: RequestEvent, scope: string): string {
