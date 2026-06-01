@@ -70,6 +70,14 @@
 			transform: translateY(calc(var(--star-travel) * -1));
 		}
 	}
+
+	/* Mockup extension (f95list-ext, thème sombre) — préfixe --color-* pour bg-ext-*, text-ext-*, etc. */
+	--color-ext-background: hsl(222.2 84% 7%);
+	--color-ext-foreground: hsl(210 40% 98%);
+	--color-ext-card: hsl(222.2 47.4% 11.2%);
+	--color-ext-border: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary-foreground: hsl(210 40% 98%);
 }
 
 .hero-stars-layer,
@@ -98,6 +106,7 @@
 		var(--color-primary)
 	);
 	background-size: 200% auto;
+	-moz-background-clip: text;
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
