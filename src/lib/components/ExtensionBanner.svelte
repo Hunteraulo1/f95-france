@@ -105,9 +105,9 @@
 
 				{#if browserTarget === 'chromium'}
 					<div
-						class="rounded-lg border border-base-300 bg-base-200/60 p-3 text-sm text-base-content/80"
+						class="rounded-lg border border-base-300 bg-base-200/60 p-3 text-sm text-base-content"
 					>
-						<p class="mb-2 font-medium text-base-content">
+						<p class="mb-2 font-medium text-secondary">
 							Installation sur Chrome / Edge / Brave / Opera
 						</p>
 						<ol class="list-decimal space-y-1.5 ps-4 text-xs leading-relaxed">
