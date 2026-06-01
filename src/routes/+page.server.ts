@@ -49,7 +49,7 @@ export const load: PageServerLoad = async ({ request }) => {
 						.innerJoin(game, eq(updateTable.gameId, game.id))
 						.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
 						.orderBy(desc(updateTable.createdAt))
-						.limit(5);
+						.limit(4);
 					return listWhere ? q.where(listWhere) : q;
 				})(),
 				listStaffUsers(),
