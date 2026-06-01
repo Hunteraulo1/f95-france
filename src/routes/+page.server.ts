@@ -1,3 +1,4 @@
+import { detectExtensionBrowserTarget } from '$lib/extension-browser';
 import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import {
@@ -9,6 +10,8 @@ import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game, update as updateTable } from '$lib/server/db/schema';
+import { getExtensionReleaseDownloadUrls } from '$lib/server/extension-release-downloads';
+import { listHomeExtensionMockupGames } from '$lib/server/home-extension-mockup-games';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
 import { listStaffUsers } from '$lib/server/staff-users';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
@@ -17,38 +20,43 @@ import { profilePublicHref } from '$lib/utils/profile-url';
 import { desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ request }) => {
+	const extensionBrowserTarget = detectExtensionBrowserTarget(request.headers.get('user-agent'));
+
 	try {
 		const listWhere = await buildUpdatesListWhere('featured');
-		const [flat, staffUsers, roleBadgeStyles] = await Promise.all([
-			(() => {
-				const enginesSq = enginesPerGameSubquery();
-				const q = db
-					.select({
-						updateId: updateTable.id,
-						updateStatus: updateTable.status,
-						updateCreatedAt: updateTable.createdAt,
-						updateUpdatedAt: updateTable.updatedAt,
-						gameId: game.id,
-						gameName: game.name,
-						gameImage: game.image,
-						gameLink: game.link,
-						gameWebsite: game.website,
-						gameThreadId: game.threadId,
-						gameGameVersion: game.gameVersion,
-						gameEngineTypes: enginesSq.engineTypes,
-						gameTags: game.tags
-					})
-					.from(updateTable)
-					.innerJoin(game, eq(updateTable.gameId, game.id))
-					.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
-					.orderBy(desc(updateTable.createdAt))
-					.limit(4);
-				return listWhere ? q.where(listWhere) : q;
-			})(),
-			listStaffUsers(),
-			listRoleBadgeStylesMap()
-		]);
+		const [flat, staffUsers, roleBadgeStyles, extensionMockupGames, extensionDownloads] =
+			await Promise.all([
+				(() => {
+					const enginesSq = enginesPerGameSubquery();
+					const q = db
+						.select({
+							updateId: updateTable.id,
+							updateStatus: updateTable.status,
+							updateCreatedAt: updateTable.createdAt,
+							updateUpdatedAt: updateTable.updatedAt,
+							gameId: game.id,
+							gameName: game.name,
+							gameImage: game.image,
+							gameLink: game.link,
+							gameWebsite: game.website,
+							gameThreadId: game.threadId,
+							gameGameVersion: game.gameVersion,
+							gameEngineTypes: enginesSq.engineTypes,
+							gameTags: game.tags
+						})
+						.from(updateTable)
+						.innerJoin(game, eq(updateTable.gameId, game.id))
+						.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
+						.orderBy(desc(updateTable.createdAt))
+						.limit(5);
+					return listWhere ? q.where(listWhere) : q;
+				})(),
+				listStaffUsers(),
+				listRoleBadgeStylesMap(),
+				listHomeExtensionMockupGames(5),
+				getExtensionReleaseDownloadUrls()
+			]);
 
 		const byGame = await translationsByGameIds(flat.map((row) => row.gameId));
 
@@ -117,13 +125,20 @@ export const load: PageServerLoad = async () => {
 		return {
 			updates,
 			team,
+			extensionMockupGames,
+			extensionDownloads,
+			extensionBrowserTarget,
 			error: null as string | null
 		};
 	} catch (error) {
 		console.error('Erreur chargement accueil:', error);
+		const extensionDownloads = await getExtensionReleaseDownloadUrls();
 		return {
 			updates: [],
 			team: [],
+			extensionMockupGames: [],
+			extensionDownloads,
+			extensionBrowserTarget,
 			error: 'Impossible de charger les mises a jour pour le moment.'
 		};
 	}

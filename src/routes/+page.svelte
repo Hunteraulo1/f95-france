@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import DiscordBanner from '$lib/components/DiscordBanner.svelte';
+	import ExtensionBanner from '$lib/components/ExtensionBanner.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
@@ -163,9 +165,9 @@
 			class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
 		></div>
 		<div
-			class="hero-content max-w-none 2xl:px-64 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
+			class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
 		>
-			<div class="space-y-4 text-center sm:text-left">
+			<div class="space-y-4 text-center sm:text-left max-w-2xl">
 				<h1 class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl">
 					La communauté française qui fait vivre vos
 					<span class="mx-1 inline-block animate-neon-glow text-white">LewdGames</span>
@@ -227,7 +229,7 @@
 	</section>
 
 	<section
-		class="px-auto max-w-6xl mx-auto flex flex-col gap-16 px-2 w-full pt-16"
+		class="px-auto max-w-7xl mx-auto flex flex-col gap-16 px-2 w-full pt-16"
 		id="home-updates"
 	>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -301,7 +303,19 @@
 		{/if}
 	</section>
 
-	<section class="px-auto max-w-6xl mx-auto flex flex-col gap-16 px-2 w-full">
+	<section class="mx-auto w-full max-w-7xl px-2 pt-16">
+		<DiscordBanner />
+	</section>
+
+	<section class="mx-auto w-full max-w-7xl px-2">
+		<ExtensionBanner
+			games={data.extensionMockupGames}
+			extensionDownloads={data.extensionDownloads}
+			extensionBrowserTarget={data.extensionBrowserTarget}
+		/>
+	</section>
+
+	<section class="px-auto max-w-7xl mx-auto flex flex-col gap-16 px-2 w-full">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<h2 class="text-2xl font-bold">Membre de l'équipe</h2>
 		</div>

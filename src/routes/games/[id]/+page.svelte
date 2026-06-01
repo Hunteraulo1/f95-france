@@ -61,7 +61,7 @@
 	<title>{game ? `${game.name} — Jeu` : 'Jeu'} — F95 France</title>
 </svelte:head>
 
-<main class="mx-auto w-full flex-1 px-4 py-8 sm:px-16">
+<main class="mx-auto w-full flex-1 px-4 py-8 sm:px-16 max-w-7xl">
 	<button type="button" class="btn btn-ghost btn-sm mb-6 gap-2" onclick={goBack}>
 		<ArrowLeft class="h-4 w-4" />
 		{backLink ? 'Retour en arrière' : 'Retour aux jeux'}
