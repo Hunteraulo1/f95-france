@@ -2,6 +2,8 @@ import { absoluteUrl, siteOrigin } from '$lib/site';
 
 const SITEMAP_BASE_PATHS = [
 	{ path: '/', changefreq: 'weekly' as const, priority: 1 },
+	{ path: '/legal-notice', changefreq: 'monthly' as const, priority: 0.3 },
+	{ path: '/privacy-policy', changefreq: 'monthly' as const, priority: 0.3 },
 	{ path: '/dashboard/login', changefreq: 'monthly' as const, priority: 0.4 }
 ] as const;
 
