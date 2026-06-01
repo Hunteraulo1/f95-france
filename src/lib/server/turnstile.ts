@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/public';
+import { getRequestClientAddress } from '$lib/server/client-address';
 import { privateEnv } from '$lib/server/private-env';
 import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -86,7 +87,7 @@ export async function verifyTurnstileFromForm(
 	}
 
 	const secretKey = privateEnv('TURNSTILE_SECRET_KEY')?.trim() ?? '';
-	const valid = await verifyTurnstileToken(trimmed, event.getClientAddress(), secretKey);
+	const valid = await verifyTurnstileToken(trimmed, getRequestClientAddress(event), secretKey);
 	if (!valid) {
 		return { ok: false, message: TURNSTILE_INVALID_MESSAGE };
 	}
