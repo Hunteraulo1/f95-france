@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
 	import { user } from '$lib/stores';
 	import Menu from '@lucide/svelte/icons/menu';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import User from '@lucide/svelte/icons/user';
 	import pkg from '../../../../package.json';
 	import Notifications from './Notifications.svelte';
 
@@ -46,19 +45,7 @@
 	<div class="flex gap-2">
 		{#if $user}
 			<Notifications />
+			<UserAvatarMenu class="z-50" />
 		{/if}
-		<div class="dropdown dropdown-end">
-			<a href={$user ? resolve(`/dashboard/profile/${$user.id}`) : resolve('/dashboard/profile')}>
-				<div tabindex="0" role="button" class="btn avatar btn-circle btn-ghost">
-					<div class="flex w-10 items-center justify-center rounded-full">
-						{#if $user?.avatar && $user.avatar !== ''}
-							<img alt="avatar" src={$user.avatar} />
-						{:else}
-							<User />
-						{/if}
-					</div>
-				</div>
-			</a>
-		</div>
 	</div>
 </div>

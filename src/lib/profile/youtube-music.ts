@@ -2,18 +2,26 @@ import { normalizeOptionalMediaUrl } from '$lib/profile/custom-profile';
 
 const VIDEO_ID_RE = /^[\w-]{11}$/;
 
+function pickVideoId(candidate: string | null | undefined): string | null {
+	const id = String(candidate ?? '').trim();
+	return VIDEO_ID_RE.test(id) ? id : null;
+}
+
 /** Extrait l’identifiant vidéo depuis une URL YouTube ou YouTube Music. */
 export function extractYoutubeVideoId(raw: string | null | undefined): string | null {
 	const trimmed = String(raw ?? '').trim();
 	if (!trimmed) return null;
+
+	const bareId = pickVideoId(trimmed);
+	if (bareId) return bareId;
 
 	try {
 		const url = new URL(trimmed);
 		const host = url.hostname.toLowerCase().replace(/^www\./, '');
 
 		if (host === 'youtu.be') {
-			const id = url.pathname.replace(/^\//, '').split('/')[0] ?? '';
-			return VIDEO_ID_RE.test(id) ? id : null;
+			const id = url.pathname.replace(/^\//, '').split('/')[0]?.split('?')[0] ?? '';
+			return pickVideoId(id);
 		}
 
 		const allowedHosts = new Set([
@@ -25,14 +33,16 @@ export function extractYoutubeVideoId(raw: string | null | undefined): string | 
 		if (!allowedHosts.has(host)) return null;
 
 		const embedMatch = url.pathname.match(/\/embed\/([\w-]{11})/);
-		if (embedMatch?.[1]) return embedMatch[1];
+		if (embedMatch?.[1]) return pickVideoId(embedMatch[1]);
 
-		const v = url.searchParams.get('v') ?? url.searchParams.get('vi');
-		if (v && VIDEO_ID_RE.test(v)) return v;
+		const fromQuery = pickVideoId(url.searchParams.get('v') ?? url.searchParams.get('vi'));
+		if (fromQuery) return fromQuery;
 
-		// music.youtube.com/watch/VIDEO_ID (format parfois partagé)
-		const watchPath = url.pathname.match(/^\/watch\/([\w-]{11})$/);
-		if (watchPath?.[1]) return watchPath[1];
+		const watchPath = url.pathname.match(/\/watch\/([\w-]{11})(?:\/|$)/);
+		if (watchPath?.[1]) return pickVideoId(watchPath[1]);
+
+		const shortsMatch = url.pathname.match(/\/shorts\/([\w-]{11})(?:\/|$)/);
+		if (shortsMatch?.[1]) return pickVideoId(shortsMatch[1]);
 
 		return null;
 	} catch {

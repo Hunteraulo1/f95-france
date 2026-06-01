@@ -86,6 +86,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			);
 		}
 
+		const enginesSq = enginesPerGameSubquery();
 		const flat = await db
 			.select({
 				updateId: updateTable.id,
@@ -99,12 +100,12 @@ export const GET: RequestHandler = async ({ params, url }) => {
 				gameWebsite: game.website,
 				gameThreadId: game.threadId,
 				gameGameVersion: game.gameVersion,
-				gameEngineTypes: enginesPerGameSubquery.engineTypes,
+				gameEngineTypes: enginesSq.engineTypes,
 				gameTags: game.tags
 			})
 			.from(updateTable)
 			.innerJoin(game, eq(updateTable.gameId, game.id))
-			.leftJoin(enginesPerGameSubquery, eq(game.id, enginesPerGameSubquery.gameId))
+			.leftJoin(enginesSq, eq(game.id, enginesSq.gameId))
 			.where(eq(updateTable.id, updateId))
 			.limit(1);
 

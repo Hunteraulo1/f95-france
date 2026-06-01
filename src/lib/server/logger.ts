@@ -6,6 +6,7 @@ type LogPayload = {
 	route: string;
 	status: number;
 	userId?: string | null;
+	ipAddress?: string | null;
 	payload?: string | null;
 	errorMessage?: string | null;
 };
@@ -24,6 +25,7 @@ export const logApiAction = async ({
 	route,
 	status,
 	userId,
+	ipAddress,
 	payload,
 	errorMessage
 }: LogPayload) => {
@@ -33,6 +35,7 @@ export const logApiAction = async ({
 			route,
 			status,
 			userId: userId ?? null,
+			ipAddress: ipAddress ?? null,
 			payload: payload ?? null,
 			errorMessage: errorMessage ?? null
 		});

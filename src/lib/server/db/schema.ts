@@ -31,12 +31,15 @@ export const user = pgTable('user', {
 	profileBackgroundUrl: varchar('profile_background_url', { length: 2048 }),
 	profileMusicUrl: varchar('profile_music_url', { length: 2048 }),
 	profileCursorUrl: varchar('profile_cursor_url', { length: 2048 }),
+	/** Presets de filtres de la page jeux (JSON sérialisé). */
+	savedGamesFilters: text('saved_games_filters').notNull().default('[]'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
 export const session = pgTable('session', {
 	id: varchar('id', { length: 255 }).primaryKey(),
+	secretHash: varchar('secret_hash', { length: 64 }).notNull(),
 	userId: varchar('user_id', { length: 255 })
 		.notNull()
 		.references(() => user.id),
@@ -128,6 +131,7 @@ export const game = pgTable('game', {
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow(),
 	description: text('description'),
+	descriptionFr: text('description_fr'),
 	website: varchar('website', { length: 32 }).notNull().default('f95z'),
 	threadId: integer('thread_id'),
 	link: varchar('link', { length: 500 }).notNull().default(''),
@@ -179,8 +183,6 @@ export const translator = pgTable('translator', {
 	userId: varchar('user_id', { length: 255 }).references(() => user.id),
 	pages: text('pages').notNull(),
 	discordId: varchar('discord_id', { length: 255 }).unique(),
-	tradCount: integer('trad_count').notNull().default(0),
-	readCount: integer('read_count').notNull().default(0),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
@@ -261,6 +263,12 @@ export const appRole = pgTable('app_role', {
 	description: text('description'),
 	/** direct | submission | user_direct_mode — voir `$lib/permissions/edit-mode`. */
 	editMode: varchar('edit_mode', { length: 32 }).notNull().default('direct'),
+	/** Style badge / pseudo — voir `$lib/permissions/role-badge-style`. */
+	badgeStyle: varchar('badge_style', { length: 32 }).notNull().default('default'),
+	/** Compte comme membre de l'équipe (affichage, modération, etc.). */
+	staff: boolean('staff').notNull().default(false),
+	/** Force / priorité d'affichage (tri staff et liste des rôles). Éditable par superadmin uniquement. */
+	priority: integer('priority').notNull().default(0),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -286,6 +294,26 @@ export const appRolePermission = pgTable(
 	(t) => [primaryKey({ columns: [t.roleSlug, t.permissionKey] })]
 );
 
+/** Historique des changements sur une entrée `update` (statut, etc.). */
+export const updateHistory = pgTable('update_history', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	updateId: varchar('update_id', { length: 255 })
+		.notNull()
+		.references(() => update.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	userId: varchar('user_id', { length: 255 }).references(() => user.id, {
+		onDelete: 'set null',
+		onUpdate: 'cascade'
+	}),
+	/** `created` | `status_changed` | `deleted` */
+	action: varchar('action', { length: 32 }).notNull(),
+	/** Delta JSON (ex. `{ "field": "status", "oldValue": "update", "newValue": "done" }`). */
+	changes: text('changes'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export type UpdateHistory = typeof updateHistory.$inferSelect;
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 export type Passkey = typeof passkey.$inferSelect;

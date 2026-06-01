@@ -1,4 +1,7 @@
 <script lang="ts">
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { roleUsernameClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -118,7 +121,9 @@
 					</select>
 				</label>
 				<label class="form-control flex flex-col">
-					<span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
+					<span class="label-text"
+						>Recherche <span class="text-sm">(route, IP ou payload)</span></span
+					>
 					<input
 						type="text"
 						name="q"
@@ -223,6 +228,7 @@
 							<th>Route</th>
 							<th>Statut</th>
 							<th>Utilisateur</th>
+							<th>IP</th>
 							<th>Payload</th>
 							<th>Erreur</th>
 						</tr>
@@ -247,9 +253,21 @@
 									</td>
 									<td>
 										{#if log.user?.username}
-											<span class="font-semibold">{log.user.username}</span>
+											<span
+												class="font-semibold {roleUsernameClass(
+													log.user.role,
+													$roleBadgeStyles[log.user.role]
+												)}">{log.user.username}</span
+											>
 										{:else}
 											<span class="text-base-content/60">Anonyme</span>
+										{/if}
+									</td>
+									<td class="font-mono text-xs whitespace-nowrap">
+										{#if log.ipAddress}
+											{log.ipAddress}
+										{:else}
+											<span class="text-base-content/60">—</span>
 										{/if}
 									</td>
 									<td class="max-w-xs">
@@ -291,47 +309,43 @@
 	</div>
 </div>
 
-{#if showPayloadModal && formattedPayload}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold">Payload de la requête</h3>
-					<p class="text-sm text-base-content/60">Aperçu brut limité à 4000 caractères.</p>
-				</div>
-				<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
-					{payloadFormat === 'json' ? 'JSON' : 'Texte'}
-				</span>
-			</div>
-			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
+<DaisyDashboardModal
+	open={showPayloadModal && formattedPayload !== null}
+	title="Payload de la requête"
+	description="Aperçu brut limité à 4000 caractères."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closePayloadModal}
+>
+	{#if formattedPayload}
+		<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
+			{payloadFormat === 'json' ? 'JSON' : 'Texte'}
+		</span>
+		<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
 {formattedPayload}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closePayloadModal}> Fermer </button>
-	</div>
-{/if}
+	{/if}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>
 
-{#if showErrorModal && errorMessage}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold text-error">Détails de l'erreur</h3>
-					<p class="text-sm text-base-content/60">Message d'erreur et stack trace.</p>
-				</div>
-				<span class="badge badge-error">Erreur</span>
-			</div>
-			<pre
-				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
+<DaisyDashboardModal
+	open={showErrorModal && errorMessage !== null}
+	title="Détails de l'erreur"
+	description="Message d'erreur et stack trace."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closeErrorModal}
+>
+	{#if errorMessage}
+		<span class="badge badge-error">Erreur</span>
+		<pre
+			class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
 {errorMessage}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closeErrorModal}> Fermer </button>
-	</div>
-{/if}
+	{/if}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>

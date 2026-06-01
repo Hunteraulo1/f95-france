@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import type { PermissionKey } from '$lib/permissions/catalog';
-	import { effectivePermissions } from '$lib/permissions/client';
+	import { hasPermission } from '$lib/permissions/client';
 	import { user } from '$lib/stores';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
@@ -91,7 +92,7 @@
 
 	const canAccessNav = (access: NavAccess) => {
 		if (access === 'all') return true;
-		return $effectivePermissions.includes(access);
+		return $hasPermission(access);
 	};
 
 	const nav: (NavItem | NavItemSplit)[] = [
@@ -254,22 +255,18 @@
 						method="POST"
 						action="/dashboard/settings?/returnToOwnAccount"
 						class="w-full"
-						use:enhance={() => {
-							returnUserError = null;
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update();
-									window.location.href = '/dashboard';
-									return;
-								}
-								if (result.type === 'failure' && result.data) {
-									returnUserError =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: 'Erreur lors du retour au compte';
-								}
-							};
-						}}
+						use:enhance={createFormEnhance({
+							updateOnlyOnSuccess: true,
+							onStart: () => {
+								returnUserError = null;
+							},
+							onSuccess: () => {
+								window.location.href = '/dashboard';
+							},
+							onFailure: (message) => {
+								returnUserError = message;
+							}
+						})}
 					>
 						<button
 							type="submit"

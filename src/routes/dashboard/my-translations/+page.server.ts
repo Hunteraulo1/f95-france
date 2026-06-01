@@ -44,7 +44,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 		path: FILTER_COOKIE_PATH,
 		maxAge: FILTER_COOKIE_MAX_AGE,
 		sameSite: 'lax' as const,
-		httpOnly: false
+		httpOnly: true,
+		secure: url.protocol === 'https:'
 	};
 	cookies.set('mt_status', statusFilter, cookieOptions);
 	cookies.set('mt_role', roleFilter, cookieOptions);

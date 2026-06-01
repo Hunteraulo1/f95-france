@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { newToast, user } from '$lib/stores';
+	import { hasPermission } from '$lib/permissions/client';
+	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -193,7 +194,7 @@
 											</div>
 										</div>
 									</a>
-									{#if $user?.role === 'superadmin'}
+									{#if $hasPermission('content.view_ids')}
 										<button
 											type="button"
 											class="absolute right-0 mt-3 mr-2 badge shrink-0 self-start overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200"

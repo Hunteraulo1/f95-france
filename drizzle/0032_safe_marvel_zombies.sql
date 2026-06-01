@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "saved_games_filters" text DEFAULT '[]' NOT NULL;

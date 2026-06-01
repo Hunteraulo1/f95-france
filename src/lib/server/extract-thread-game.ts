@@ -4,14 +4,15 @@ import type { PermissionKey } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ManagerExtractDraft } from '$lib/server/extract-draft';
-import { normalizeCheckerVersion } from '$lib/server/f95-checker-alignment';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { createGameUpdateRow } from '$lib/server/game-updates';
-import { hasPermission, userHasPermission } from '$lib/server/permissions';
+import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { scrapeThread, type ScrapedThreadGame } from '$lib/server/scrape';
 import type { GameEngineType } from '$lib/types';
+import { normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import { and, eq, sql } from 'drizzle-orm';
 
 const EXTRACT_PERMISSION: PermissionKey = 'games.manage';
@@ -97,14 +98,8 @@ function clampStr(s: string, max: number): string {
 	return s.slice(0, max);
 }
 
-export async function canUseExtract(locals: App.Locals): Promise<boolean> {
-	if (locals.permissions && hasPermission(locals.permissions, EXTRACT_PERMISSION)) {
-		return true;
-	}
-	if (locals.user) {
-		return userHasPermission(locals.user, EXTRACT_PERMISSION);
-	}
-	return false;
+export function canUseExtract(locals: App.Locals): boolean {
+	return hasPermission(locals, EXTRACT_PERMISSION);
 }
 
 /** Version forum utilisable pour faire confiance au scrape (exclut `Unknown` et vide). */
@@ -373,7 +368,7 @@ export async function runExtractThreadGame(input: {
 			}
 		};
 	}
-	if (!(await canUseExtract(locals))) {
+	if (!canUseExtract(locals)) {
 		return {
 			ok: false,
 			status: 403,
@@ -455,11 +450,17 @@ export async function runExtractThreadGame(input: {
 		};
 	}
 
+	const descFields = await resolveGameDescriptionFields({
+		description: payload.description,
+		autoTranslate: true
+	});
+
 	const [inserted] = await db
 		.insert(table.game)
 		.values({
 			name: payload.name,
-			description: payload.description,
+			description: descFields.description,
+			descriptionFr: descFields.descriptionFr,
 			website,
 			threadId: threadIdParsed,
 			tags: payload.tags,

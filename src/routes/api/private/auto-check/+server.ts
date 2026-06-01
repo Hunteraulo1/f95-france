@@ -1,13 +1,14 @@
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { hasPermission } from '$lib/server/permissions';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
-/** Session ou clé API : le compte effectif doit être superadmin (propriétaire de la clé). */
+/** Session ou clé API : permission `games.auto_check`. */
 function canTriggerAutoCheck(locals: App.Locals): boolean {
-	return locals.user?.role === 'superadmin';
+	return hasPermission(locals, 'games.auto_check');
 }
 
 /** Déclenche l’auto-check des versions (même logique que le cron / le bouton dev). */
@@ -16,7 +17,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 		return json(
 			{
 				error:
-					'Accès refusé : réservé aux superadmins (session) ou à une clé API dont le propriétaire est superadmin.'
+					'Accès refusé : permission « Suivi auto-check » requise (session ou propriétaire de la clé API).'
 			},
 			{ status: 403 }
 		);

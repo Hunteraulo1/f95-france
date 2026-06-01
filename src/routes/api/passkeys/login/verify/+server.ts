@@ -5,6 +5,7 @@ import {
 	checkLoginThrottle,
 	clearLoginThrottle,
 	LOGIN_THROTTLE_MESSAGE,
+	loginRequiresCaptcha,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
 import {
@@ -13,6 +14,7 @@ import {
 	getExpectedOrigin,
 	getRpID
 } from '$lib/server/passkeys';
+import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '$lib/server/turnstile';
 import {
 	verifyAuthenticationResponse,
 	type AuthenticationResponseJSON
@@ -40,7 +42,7 @@ export const POST: RequestHandler = async (event) => {
 		body = (await request.json()) as {
 			username?: string;
 			response?: AuthenticationResponseJSON;
-		};
+		} & Record<string, unknown>;
 	} catch {
 		return json({ error: 'Requête JSON invalide.' }, { status: 400 });
 	}
@@ -54,6 +56,13 @@ export const POST: RequestHandler = async (event) => {
 		const throttle = await checkLoginThrottle(event);
 		if (!throttle.ok) {
 			return json({ error: LOGIN_THROTTLE_MESSAGE }, { status: 429 });
+		}
+
+		if (await loginRequiresCaptcha(event)) {
+			const captcha = await verifyTurnstileFromForm(event, extractTurnstileTokenFromJson(body));
+			if (!captcha.ok) {
+				return json({ error: captcha.message, requiresCaptcha: true }, { status: 400 });
+			}
 		}
 
 		const [stored] = await db
@@ -71,12 +80,18 @@ export const POST: RequestHandler = async (event) => {
 			.limit(1);
 		if (!stored) {
 			await recordLoginFailure(event);
-			return json({ error: "Cette clé d'accès n'est pas enregistrée." }, { status: 400 });
+			return json(
+				{ error: "Cette clé d'accès n'est pas enregistrée.", requiresCaptcha: true },
+				{ status: 400 }
+			);
 		}
 		if (username && stored.username !== username) {
 			await recordLoginFailure(event);
 			return json(
-				{ error: "Cette clé d'accès n'appartient pas à cet utilisateur." },
+				{
+					error: "Cette clé d'accès n'appartient pas à cet utilisateur.",
+					requiresCaptcha: true
+				},
 				{ status: 400 }
 			);
 		}
@@ -87,7 +102,10 @@ export const POST: RequestHandler = async (event) => {
 		});
 		if (!expectedChallenge) {
 			await recordLoginFailure(event);
-			return json({ error: 'Challenge expiré, recommencez la connexion.' }, { status: 400 });
+			return json(
+				{ error: 'Challenge expiré, recommencez la connexion.', requiresCaptcha: true },
+				{ status: 400 }
+			);
 		}
 
 		const verification = await verifyAuthenticationResponse({
@@ -105,7 +123,10 @@ export const POST: RequestHandler = async (event) => {
 
 		if (!verification.verified) {
 			await recordLoginFailure(event);
-			return json({ error: "Échec de vérification de la clé d'accès." }, { status: 400 });
+			return json(
+				{ error: "Échec de vérification de la clé d'accès.", requiresCaptcha: true },
+				{ status: 400 }
+			);
 		}
 
 		await db

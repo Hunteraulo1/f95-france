@@ -2,8 +2,7 @@ import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
-import { hasPermission } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -21,10 +20,9 @@ const DEFAULT_CONFIG_ROW = {
 } satisfies Config;
 
 function permissionFlags(locals: App.Locals) {
-	const permissions = locals.permissions ?? [];
 	return {
-		canEditConfig: hasPermission(permissions, 'config.edit'),
-		canManageMaintenance: hasPermission(permissions, 'maintenance.manage')
+		canEditConfig: hasPermission(locals, 'config.edit'),
+		canManageMaintenance: hasPermission(locals, 'maintenance.manage')
 	};
 }
 

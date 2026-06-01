@@ -3,6 +3,7 @@
 	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
@@ -72,22 +73,16 @@
 				<form
 					method="POST"
 					action="?/updateConfig"
-					use:enhance={() => {
-						if (!canSave) return () => {};
-						configError = null;
-						return async function ({ result, update }) {
-							if (result.type === 'success') {
-								await update({ invalidateAll: true });
-								configError = null;
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour';
-								configError = message;
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						locked: !canSave,
+						invalidateAll: true,
+						onStart: () => {
+							configError = null;
+						},
+						onFailure: (message) => {
+							configError = message;
+						}
+					})}
 				>
 					<div class="flex flex-col gap-4">
 						<div class="form-control w-full">
@@ -231,15 +226,19 @@
 							</div>
 							<div class="form-control w-full">
 								<a href="/api/google-oauth/authorize" class="btn btn-outline btn-primary">
-									Autoriser avec Google
+									{data.config?.hasGoogleOAuthToken
+										? 'Reconnecter Google OAuth'
+										: 'Autoriser avec Google'}
 								</a>
 								<div class="label">
 									<span class="label-text-alt text-wrap text-base-content/50">
 										{#if data.config?.hasGoogleOAuthToken}
-											<span class="text-success">✓ Jetons OAuth présents (voir serveur / base)</span
-											>
+											<span class="text-success">✓ Jetons OAuth présents</span>
+											— Google Sheets. La traduction des descriptions utilise MyMemory par défaut.
 										{:else}
-											Cliquez pour autoriser l'accès à Google Sheets
+											Accès Google Sheets. Traduction auto : MyMemory (gratuit), voir
+											<code class="text-xs">TRANSLATION_PROVIDER</code> dans
+											<code class="text-xs">.env</code>.
 										{/if}
 									</span>
 								</div>

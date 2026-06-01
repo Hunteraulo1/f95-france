@@ -1,6 +1,10 @@
+import { translator } from '$lib/server/db/schema';
+import {
+	translatorReadCountExpr,
+	translatorTradCountExpr
+} from '$lib/server/translator-activity-counts';
 import type { SQL } from 'drizzle-orm';
 import { and, gte, isNotNull, isNull, lte } from 'drizzle-orm';
-import { translator } from '$lib/server/db/schema';
 
 export type TranslatorCountFiltersParseResult =
 	| { ok: true; where?: SQL }
@@ -8,7 +12,7 @@ export type TranslatorCountFiltersParseResult =
 
 /**
  * Filtres optionnels : compteurs (`tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax`),
- * et `hasDiscord` (true = `discordId` renseigné, false = absent).
+ * calculés depuis `game_translation`, et `hasDiscord` (true = `discordId` renseigné, false = absent).
  */
 export function parseTranslatorCountFilters(
 	searchParams: URLSearchParams
@@ -38,10 +42,10 @@ export function parseTranslatorCountFilters(
 	}
 
 	const parts: SQL[] = [];
-	if (tradCountMin !== undefined) parts.push(gte(translator.tradCount, tradCountMin));
-	if (tradCountMax !== undefined) parts.push(lte(translator.tradCount, tradCountMax));
-	if (readCountMin !== undefined) parts.push(gte(translator.readCount, readCountMin));
-	if (readCountMax !== undefined) parts.push(lte(translator.readCount, readCountMax));
+	if (tradCountMin !== undefined) parts.push(gte(translatorTradCountExpr(), tradCountMin));
+	if (tradCountMax !== undefined) parts.push(lte(translatorTradCountExpr(), tradCountMax));
+	if (readCountMin !== undefined) parts.push(gte(translatorReadCountExpr(), readCountMin));
+	if (readCountMax !== undefined) parts.push(lte(translatorReadCountExpr(), readCountMax));
 	if (hasDiscord === true) parts.push(isNotNull(translator.discordId));
 	if (hasDiscord === false) parts.push(isNull(translator.discordId));
 

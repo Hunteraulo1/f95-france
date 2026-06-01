@@ -31,7 +31,8 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 		throw redirect(302, '/dashboard/settings?discord_error=invalid_state');
 	}
 
-	const { clientId, clientSecret, guildId, translatorRoleId } = getDiscordOAuthConfig();
+	const { clientId, clientSecret, guildId, translatorRoleId, autoRoleSync } =
+		getDiscordOAuthConfig();
 	if (!clientId || !clientSecret) {
 		throw redirect(302, '/dashboard/settings?discord_error=oauth_not_configured');
 	}
@@ -79,22 +80,23 @@ export const GET: RequestHandler = async ({ locals, url, cookies }) => {
 			}
 		}
 
-		if (guildId && translatorRoleId) {
+		if (autoRoleSync && guildId && translatorRoleId) {
 			const roleIds = await getDiscordGuildMemberRoles({
 				accessToken: token.access_token,
 				guildId
 			});
 			const hasTranslatorRole = roleIds.includes(translatorRoleId);
 			const currentRole = currentUser?.role ?? 'user';
-			const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
+			const isStaffAccount =
+				locals.user != null && (locals.permissions?.includes('users.manage') ?? false);
 
-			if (!isAdminLike && hasTranslatorRole && currentRole === 'user') {
+			if (!isStaffAccount && hasTranslatorRole && currentRole === 'user') {
 				await db
 					.update(table.user)
 					.set({ role: 'translator' })
 					.where(eq(table.user.id, locals.user.id));
 			}
-			if (!isAdminLike && !hasTranslatorRole && currentRole === 'translator') {
+			if (!isStaffAccount && !hasTranslatorRole && currentRole === 'translator') {
 				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, locals.user.id));
 			}
 		}

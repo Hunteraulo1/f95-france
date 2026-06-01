@@ -1,17 +1,32 @@
 import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+/** Origines autorisées pour les actions POST (CSRF) — localhost + URL publique au build. */
+function buildTrustedOrigins() {
+	const local = [
+		'http://localhost:3000',
+		'http://127.0.0.1:3000',
+		'http://localhost:4173',
+		'http://127.0.0.1:4173',
+		'http://localhost:5173',
+		'http://127.0.0.1:5173'
+	];
+	const fqdn = process.env.COOLIFY_FQDN?.trim();
+	const fromEnv = [
+		process.env.ORIGIN,
+		process.env.PUBLIC_APP_ORIGIN,
+		process.env.COOLIFY_URL,
+		fqdn ? `https://${fqdn}` : undefined
+	];
+	return [...new Set([...local, ...fromEnv.filter(Boolean)])];
+}
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		csrf: {
-			trustedOrigins: [
-				'http://localhost:4173',
-				'http://127.0.0.1:4173',
-				'http://localhost:5173',
-				'http://127.0.0.1:5173'
-			]
+			trustedOrigins: buildTrustedOrigins()
 		},
 		typescript: {
 			config(config) {
@@ -32,7 +47,7 @@ const config = {
 			directives: {
 				'default-src': ['self'],
 				'base-uri': ['self'],
-				'script-src': ['self'],
+				'script-src': ['self', 'https://challenges.cloudflare.com'],
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': [
 					'self',
@@ -61,14 +76,16 @@ const config = {
 					'self',
 					'https://www.youtube.com',
 					'https://www.youtube-nocookie.com',
-					'https://www.google.com'
+					'https://www.google.com',
+					'https://challenges.cloudflare.com'
 				],
 				'form-action': ['self'],
 				'frame-src': [
 					'self',
 					'https://www.youtube.com',
 					'https://www.youtube-nocookie.com',
-					'https://music.youtube.com'
+					'https://music.youtube.com',
+					'https://challenges.cloudflare.com'
 				],
 				'frame-ancestors': ['none'],
 				'object-src': ['none'],

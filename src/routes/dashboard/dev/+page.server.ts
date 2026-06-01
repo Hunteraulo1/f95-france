@@ -13,7 +13,7 @@ import {
 	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission } from '$lib/server/permissions';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -123,8 +123,6 @@ type LegacyTranslator = {
 	name?: string | number | null;
 	discordId?: string | number | null;
 	pages?: string[] | string | LegacyTranslatorPage[] | null;
-	tradCount?: number | string | null;
-	readCount?: number | string | null;
 };
 
 const normalizeLegacyText = (value: string | null | undefined): string =>
@@ -219,19 +217,6 @@ const parseLegacyBoolean = (value: unknown): boolean => {
 	return false;
 };
 
-const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
-	if (Array.isArray(input)) return input as LegacyGame[];
-	if (
-		typeof input === 'object' &&
-		input !== null &&
-		'games' in input &&
-		Array.isArray((input as { games?: unknown }).games)
-	) {
-		return (input as { games: LegacyGame[] }).games;
-	}
-	return null;
-};
-
 const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
 	if (
 		typeof input === 'object' &&
@@ -243,15 +228,6 @@ const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
 		Array.isArray((input as { data: { traductors?: unknown[] } }).data.traductors)
 	) {
 		return (input as { data: { traductors: LegacyTranslator[] } }).data.traductors;
-	}
-	return null;
-};
-
-const safeNumber = (value: unknown): number | null => {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string') {
-		const parsed = Number.parseInt(value, 10);
-		return Number.isFinite(parsed) ? parsed : null;
 	}
 	return null;
 };
@@ -326,9 +302,7 @@ const upsertLegacyTranslators = async (
 			id: table.translator.id,
 			name: table.translator.name,
 			discordId: table.translator.discordId,
-			pages: table.translator.pages,
-			tradCount: table.translator.tradCount,
-			readCount: table.translator.readCount
+			pages: table.translator.pages
 		})
 		.from(table.translator);
 
@@ -359,8 +333,6 @@ const upsertLegacyTranslators = async (
 					? String(item.discordId)
 					: null;
 		const pages = parsePages(item.pages);
-		const tradCount = safeNumber(item.tradCount) ?? 0;
-		const readCount = safeNumber(item.readCount) ?? 0;
 
 		let current =
 			(discordId ? byDiscordId.get(discordId) : undefined) ??
@@ -374,12 +346,10 @@ const upsertLegacyTranslators = async (
 					id,
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				});
 			}
-			const created = { id, name, discordId, pages, tradCount, readCount };
+			const created = { id, name, discordId, pages };
 			byName.set(name.toLowerCase(), created);
 			if (discordId) byDiscordId.set(discordId, created);
 			inserted++;
@@ -387,11 +357,7 @@ const upsertLegacyTranslators = async (
 		}
 
 		const shouldUpdate =
-			current.name !== name ||
-			(current.discordId ?? null) !== discordId ||
-			current.pages !== pages ||
-			current.tradCount !== tradCount ||
-			current.readCount !== readCount;
+			current.name !== name || (current.discordId ?? null) !== discordId || current.pages !== pages;
 
 		if (!shouldUpdate) continue;
 
@@ -401,14 +367,12 @@ const upsertLegacyTranslators = async (
 				.set({
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				})
 				.where(eq(table.translator.id, current.id));
 		}
 
-		current = { ...current, name, discordId, pages, tradCount, readCount };
+		current = { ...current, name, discordId, pages };
 		byName.set(name.toLowerCase(), current);
 		if (discordId) byDiscordId.set(discordId, current);
 		updated++;
@@ -1078,7 +1042,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} aligné(s) (auto-check désactivé), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} déjà aligné(s), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
 				details: result
 			};
 		} catch (error: unknown) {
@@ -1245,44 +1209,6 @@ export const actions: Actions = {
 				success: false,
 				message: 'Erreur lors du scraping',
 				details: errorMessage
-			};
-		}
-	},
-	importLegacyGamesJson: async ({ request, locals }) => {
-		await assertPermission(locals, 'dev.panel');
-		const formData = await request.formData();
-		const payload = String(formData.get('legacyJson') ?? '').trim();
-
-		if (!payload) {
-			return {
-				success: false,
-				message: 'JSON requis',
-				details: 'Collez un JSON contenant un tableau "games".'
-			};
-		}
-
-		try {
-			const parsed = JSON.parse(payload) as unknown;
-			const games = parseLegacyGames(parsed);
-
-			if (!games || games.length === 0) {
-				return {
-					success: false,
-					message: 'Aucun jeu trouvé',
-					details: 'Le JSON doit être un tableau ou contenir { "games": [...] }.'
-				};
-			}
-
-			return {
-				success: true,
-				message: 'Import terminé',
-				details: await upsertLegacyGames(games)
-			};
-		} catch (error: unknown) {
-			return {
-				success: false,
-				message: "Erreur lors de l'import",
-				details: error instanceof Error ? error.message : 'Erreur inconnue'
 			};
 		}
 	},

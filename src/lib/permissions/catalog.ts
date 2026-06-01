@@ -1,3 +1,5 @@
+import type { RoleEditMode } from './edit-mode';
+
 /** Clés de permission stables (utilisées en base et dans le code). */
 export const PERMISSION_KEYS = [
 	'dashboard.view',
@@ -11,6 +13,8 @@ export const PERMISSION_KEYS = [
 	'games.manage',
 	'games.auto_check',
 	'games.silent_mode',
+	'games.view_history',
+	'games.revert_history',
 	'translations.own',
 	'submissions.own',
 	'submissions.review',
@@ -23,6 +27,7 @@ export const PERMISSION_KEYS = [
 	'config.edit',
 	'maintenance.manage',
 	'logs.view',
+	'content.view_ids',
 	'dev.panel',
 	'dev.impersonate',
 	'maintenance.bypass'
@@ -113,6 +118,19 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Contenu'
 	},
 	{
+		key: 'games.view_history',
+		label: 'Historique des traductions',
+		description: 'Consulter l’historique des changements sur les traductions d’un jeu',
+		group: 'Contenu'
+	},
+	{
+		key: 'games.revert_history',
+		label: 'Restaurer depuis l’historique',
+		description:
+			'Restaurer un état antérieur des traductions à partir de l’historique (y compris plusieurs modifications d’un coup)',
+		group: 'Contenu'
+	},
+	{
 		key: 'translations.own',
 		label: 'Mes traductions',
 		description: 'Voir et gérer ses traductions liées au profil traducteur',
@@ -185,6 +203,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Système'
 	},
 	{
+		key: 'content.view_ids',
+		label: 'Identifiants internes',
+		description: 'Afficher et copier les UUID (jeux, traductions, soumissions)',
+		group: 'Modération'
+	},
+	{
 		key: 'dev.panel',
 		label: 'Panel développeur',
 		description: 'Outils de développement internes',
@@ -224,14 +248,25 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'games.manage',
 		'games.auto_check',
 		'games.silent_mode',
+		'games.view_history',
+		'games.revert_history',
 		'translations.own',
 		'submissions.own',
 		'submissions.review',
 		'translators.manage',
 		'users.manage',
-		'config.edit'
+		'config.edit',
+		'content.view_ids'
 	],
 	superadmin: PERMISSION_KEYS
+};
+
+/** `edit_mode` initial des rôles système (seed / migration `0018_role_edit_mode`). */
+export const SYSTEM_ROLE_EDIT_MODES: Record<keyof typeof SYSTEM_ROLE_PERMISSIONS, RoleEditMode> = {
+	user: 'direct',
+	translator: 'submission',
+	admin: 'direct',
+	superadmin: 'user_direct_mode'
 };
 
 export const SYSTEM_ROLE_LABELS: Record<string, string> = {
@@ -240,3 +275,13 @@ export const SYSTEM_ROLE_LABELS: Record<string, string> = {
 	admin: 'Administrateur',
 	superadmin: 'Super administrateur'
 };
+
+export function permissionCatalogGrouped(): Map<string, typeof PERMISSION_CATALOG> {
+	const groups = new Map<string, typeof PERMISSION_CATALOG>();
+	for (const def of PERMISSION_CATALOG) {
+		const list = groups.get(def.group) ?? [];
+		list.push(def);
+		groups.set(def.group, list);
+	}
+	return groups;
+}

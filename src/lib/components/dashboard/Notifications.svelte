@@ -177,7 +177,7 @@
 	});
 </script>
 
-<div class="dropdown dropdown-end">
+<div class="dropdown dropdown-end z-9999">
 	<button type="button" tabindex="0" class="btn relative btn-circle btn-ghost">
 		<Bell size={20} />
 		{#if unreadCount > 0}

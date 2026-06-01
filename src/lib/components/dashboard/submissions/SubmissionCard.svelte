@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { newToast, user } from '$lib/stores';
+	import { hasPermission } from '$lib/permissions/client';
+	import { newToast, roleBadgeStyles } from '$lib/stores';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import { roleUsernameClass } from '$lib/utils/role-display';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
@@ -40,11 +42,13 @@
 			id: string;
 			username: string;
 			avatar: string | null;
+			role: string;
 		} | null;
 		openedByUser?: {
 			id: string;
 			username: string;
 			avatar: string | null;
+			role: string;
 		} | null;
 	}
 
@@ -79,7 +83,10 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.user.role,
+									$roleBadgeStyles[submission.user.role]
+								)}"
 								onclick={() => {
 									if (submission.user?.username) {
 										goto(resolve(`/dashboard/profile/${submission.user.username}`));
@@ -108,7 +115,10 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.openedByUser.role,
+									$roleBadgeStyles[submission.openedByUser.role]
+								)}"
 								onclick={() => {
 									goto(resolve(`/dashboard/profile/${submission.openedByUser!.username}`));
 								}}
@@ -129,7 +139,7 @@
 								{statusBadge.label}
 							</div>
 						{/if}
-						{#if $user?.role === 'superadmin'}
+						{#if $hasPermission('content.view_ids')}
 							<button
 								class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
 								onclick={() => {

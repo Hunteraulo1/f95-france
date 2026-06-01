@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import User from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 
@@ -79,7 +83,10 @@
 									</div>
 									<a
 										href={resolve(`/dashboard/profile/${user.username}`)}
-										class="link font-bold text-nowrap link-hover"
+										class="link font-bold text-nowrap link-hover {roleUsernameClass(
+											user.role,
+											$roleBadgeStyles[user.role]
+										)}"
 									>
 										{user.username}
 									</a>
@@ -87,7 +94,12 @@
 							</td>
 							<td>{user.email}</td>
 							<td>
-								<div class="badge badge-outline text-nowrap">
+								<div
+									class="badge badge-outline text-nowrap {roleBadgeClass(
+										user.role,
+										$roleBadgeStyles[user.role]
+									)}"
+								>
 									{roles.find((r) => r.value === user.role)?.label || user.role}
 								</div>
 							</td>
@@ -125,34 +137,34 @@
 </section>
 
 {#if showEditUserModal && selectedUser}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Modifier l'utilisateur</h3>
-
+	<DaisyDashboardModal
+		open={showEditUserModal}
+		title="Modifier l'utilisateur"
+		onClose={closeEditUserModal}
+	>
+		{#if selectedUser}
 			{#if userError}
-				<div class="mt-4 alert alert-error">
+				<div class="alert alert-error">
 					<span>{userError}</span>
 				</div>
 			{/if}
 
 			<form
+				id="edit-user-form"
 				method="POST"
 				action="?/updateUser"
-				use:enhance={() => {
-					userError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							closeEditUserModal();
-						} else if (result.type === 'failure' && result.data) {
-							const message =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
-							userError = message;
-						}
-					};
-				}}
+				use:enhance={createFormEnhance({
+					updateOnlyOnSuccess: true,
+					onStart: () => {
+						userError = null;
+					},
+					onFailure: (message) => {
+						userError = message;
+					},
+					onSuccess: () => {
+						closeEditUserModal();
+					}
+				})}
 			>
 				<input type="hidden" name="userId" value={selectedUser.id} />
 
@@ -214,8 +226,10 @@
 						required
 					>
 						{#each roles as role (role.value)}
-							{#if data.canAssignAdmin || (role.value !== 'admin' && role.value !== 'superadmin')}
-								<option value={role.value}>{role.label}</option>
+							{#if role.assignable || role.value === selectedUser.role}
+								<option value={role.value} disabled={!role.assignable}>
+									{role.label}{role.assignable ? '' : ' (non attribuable)'}
+								</option>
 							{/if}
 						{/each}
 					</select>
@@ -247,12 +261,11 @@
 						Lie ce compte à une fiche traducteur/relecteur (même choix que sur la page Traducteurs).
 					</p>
 				</div>
-
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={closeEditUserModal}> Annuler </button>
-					<button type="submit" class="btn btn-primary"> Enregistrer </button>
-				</div>
 			</form>
-		</div>
-	</div>
+		{/if}
+		{#snippet footer()}
+			<button type="button" class="btn" onclick={closeEditUserModal}>Annuler</button>
+			<button type="submit" form="edit-user-form" class="btn btn-primary">Enregistrer</button>
+		{/snippet}
+	</DaisyDashboardModal>
 {/if}

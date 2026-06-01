@@ -1,7 +1,9 @@
+import { permissionGranted } from '$lib/permissions/check';
+import { EXTENSION_ONLY_API_ROUTE } from '$lib/server/api-keys';
 import { getUserById } from '$lib/server/auth';
 import type { User } from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
-import { userHasPermission } from '$lib/server/permissions';
+import { hasPermissionForUser } from '$lib/server/permissions';
 
 /** Préfixes d’`Origin` émis par le runtime extension (service worker, popup). */
 const EXTENSION_ORIGIN_PREFIXES = [
@@ -20,15 +22,8 @@ const EXTENSION_HOST_PAGE_ORIGIN_PREFIXES = [
 	'https://www.lewdcorner.com'
 ] as const;
 
-const EXTENSION_USER_AGENT_HINTS = ['f95-france-extension', 'f95france-extension'] as const;
-
-function hasExtensionUserAgent(request: Request): boolean {
-	const userAgent = request.headers.get('user-agent')?.toLowerCase().trim() ?? '';
-	if (!userAgent) return false;
-	return EXTENSION_USER_AGENT_HINTS.some((hint) => userAgent.includes(hint));
-}
-
 function isAllowedExtensionOrigin(origin: string): boolean {
+	if (!origin) return false;
 	return (
 		EXTENSION_ORIGIN_PREFIXES.some((prefix) => origin.startsWith(prefix)) ||
 		EXTENSION_HOST_PAGE_ORIGIN_PREFIXES.some((prefix) => origin.startsWith(prefix))
@@ -36,24 +31,23 @@ function isAllowedExtensionOrigin(origin: string): boolean {
 }
 
 /**
- * Requête émise par l’extension (UA dédié). L’`Origin` peut être `chrome-extension://…`
- * (background) ou celle du forum (content script) — pas celle du dashboard.
+ * Requête émise depuis un contexte extension (origine extension ou forum autorisé).
+ * Ne s’appuie pas sur le User-Agent (trivial à falsifier).
  */
 export function isExtensionClientRequest(request: Request): boolean {
-	if (!hasExtensionUserAgent(request)) return false;
-
 	const origin = request.headers.get('origin')?.trim() ?? '';
-	// Service worker / certains contextes n’envoient pas d’Origin.
-	if (!origin) return true;
-
 	return isAllowedExtensionOrigin(origin);
 }
 
+export type ExtensionApiGateContext = {
+	authenticatedViaApiKey?: boolean;
+	apiKeyRouteScope?: string | null;
+	/** Permissions effectives du compte (session) pour le contournement origine. */
+	permissions?: readonly string[];
+};
+
 /**
  * Identité pour le contournement superadmin sur `/api/extension-api`.
- * - Impersonation dev : le superadmin d’origine (cookie), pas le compte affiché.
- * - Clé API : propriétaire de la clé (évite de mélanger avec la session cookie du dashboard).
- * - Sinon : utilisateur de session.
  */
 export async function resolveUserForExtensionApiOriginGate(
 	locals: {
@@ -66,7 +60,7 @@ export async function resolveUserForExtensionApiOriginGate(
 	const devOriginUserId = cookies?.get(DEV_IMPERSONATION_ORIGIN_COOKIE)?.trim();
 	if (devOriginUserId) {
 		const originUser = await getUserById(devOriginUserId);
-		if (originUser && (await userHasPermission(originUser, 'dev.impersonate'))) {
+		if (originUser && (await hasPermissionForUser(originUser, 'dev.impersonate'))) {
 			return originUser;
 		}
 	}
@@ -79,10 +73,23 @@ export async function resolveUserForExtensionApiOriginGate(
 }
 
 /**
- * Accès à `/api/extension-api` : client extension (UA + origine extension ou forum),
- * ou superadmin effectif (voir `resolveUserForExtensionApiOriginGate`).
+ * Accès à `/api/extension-api` :
+ * - compte avec `dev.panel` (contournement origine) ;
+ * - clé API restreinte à cette route ;
+ * - session avec origine extension / forum autorisée.
  */
-export function isExtensionApiCallerAllowed(request: Request, user: User | null): boolean {
-	if (user?.role === 'superadmin') return true;
+export function isExtensionApiCallerAllowed(
+	request: Request,
+	user: User | null,
+	ctx?: ExtensionApiGateContext
+): boolean {
+	if (user && permissionGranted(user.role, ctx?.permissions, 'dev.panel')) {
+		return true;
+	}
+
+	if (ctx?.authenticatedViaApiKey && ctx.apiKeyRouteScope === EXTENSION_ONLY_API_ROUTE) {
+		return true;
+	}
+
 	return isExtensionClientRequest(request);
 }

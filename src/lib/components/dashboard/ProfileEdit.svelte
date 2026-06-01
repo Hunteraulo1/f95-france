@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import type { RoleEditMode } from '$lib/permissions/edit-mode';
 	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
 	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
 	import {
@@ -7,6 +9,7 @@
 		PROFILE_BIO_MAX_LENGTH,
 		PROFILE_CURSOR_DISPLAY_PX
 	} from '$lib/profile/custom-profile';
+	import { loadUserData } from '$lib/stores';
 
 	type LinkedTranslator = {
 		id: string;
@@ -16,19 +19,32 @@
 
 	interface Props {
 		username: string;
+		avatar: string;
 		publicProfileHref: string;
 		profileCustomize: ProfileCustomizeFlags;
 		customProfile?: CustomProfileTheme | null;
 		linkedTranslator?: LinkedTranslator | null;
+		translatorPagesWriteMode?: 'direct' | 'submission' | null;
+		roleEditMode?: RoleEditMode | null;
+		directMode?: boolean;
 	}
 
 	let {
 		username,
+		avatar,
 		publicProfileHref,
 		profileCustomize,
 		customProfile = null,
-		linkedTranslator = null
+		linkedTranslator = null,
+		translatorPagesWriteMode = null,
+		roleEditMode = null,
+		directMode = true
 	}: Props = $props();
+
+	let profileUsername = $state('');
+	let profileAvatar = $state('');
+	let profileInfoError = $state<string | null>(null);
+	let profileInfoSuccess = $state<string | null>(null);
 
 	let profileBio = $state('');
 	let profileBackgroundUrl = $state('');
@@ -40,6 +56,11 @@
 	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 	let translatorPagesError = $state<string | null>(null);
 	let translatorPagesInfo = $state<string | null>(null);
+
+	$effect(() => {
+		profileUsername = username;
+		profileAvatar = avatar;
+	});
 
 	$effect(() => {
 		if (profileCustomize.any && customProfile) {
@@ -78,6 +99,75 @@
 		<a href={publicProfileHref} class="btn btn-outline btn-sm">Voir mon profil</a>
 	</div>
 
+	<div class="card border border-base-300 bg-base-100 shadow-sm">
+		<div class="card-body gap-4">
+			<h2 class="text-lg font-semibold text-base-content">Informations du profil</h2>
+			<p class="text-sm text-base-content/70">
+				Ces champs sont affichés sur votre
+				<a href={publicProfileHref} class="link link-hover">profil public</a>.
+			</p>
+
+			{#if profileInfoError}
+				<div class="alert alert-error">
+					<span>{profileInfoError}</span>
+				</div>
+			{/if}
+			{#if profileInfoSuccess}
+				<div class="alert alert-success">
+					<span>{profileInfoSuccess}</span>
+				</div>
+			{/if}
+
+			<form
+				method="POST"
+				action="?/updateProfile"
+				use:enhance={createFormEnhance({
+					onStart: () => {
+						profileInfoError = null;
+						profileInfoSuccess = null;
+					},
+					onFailure: (message) => {
+						profileInfoError = message;
+					},
+					onSuccess: async (result) => {
+						await loadUserData();
+						profileInfoSuccess =
+							typeof result.data === 'object' && result.data && 'message' in result.data
+								? String(result.data.message)
+								: 'Profil mis à jour avec succès';
+					}
+				})}
+			>
+				<div class="flex w-full flex-col gap-4 md:flex-row">
+					<label class="input flex w-full items-start">
+						<span class="label h-full">Pseudo</span>
+						<input
+							type="text"
+							name="username"
+							class="grow w-full"
+							placeholder="Pseudo"
+							bind:value={profileUsername}
+							required
+						/>
+					</label>
+					<label class="input flex w-full items-start">
+						<span class="label h-full">Photo de profil</span>
+						<input
+							type="url"
+							name="avatar"
+							class="grow w-full"
+							placeholder="https://exemple.com/photo.jpg"
+							bind:value={profileAvatar}
+						/>
+					</label>
+				</div>
+				<div class="mt-4 flex justify-end">
+					<button type="submit" class="btn btn-primary">Enregistrer</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
 	{#if linkedTranslator}
 		<div class="card border border-base-300 bg-base-100 shadow-sm">
 			<div class="card-body gap-4">
@@ -85,8 +175,12 @@
 				<p class="text-sm text-base-content/70">
 					Liens affichés sur votre
 					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
-					<span class="font-medium">{linkedTranslator.name}</span>. Les modifications sont soumises
-					à validation admin.
+					<span class="font-medium">{linkedTranslator.name}</span>.
+					{#if translatorPagesWriteMode === 'direct'}
+						Les modifications sont appliquées immédiatement.
+					{:else}
+						Les modifications sont soumises à validation admin.
+					{/if}
 				</p>
 
 				{#if translatorPagesError}
@@ -103,26 +197,28 @@
 				<form
 					method="POST"
 					action="?/requestTranslatorPagesUpdate"
-					use:enhance={() => {
-						translatorPagesError = null;
-						translatorPagesInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								translatorPagesInfo =
-									typeof result.data === 'object' && result.data && 'message' in result.data
-										? String(result.data.message)
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							translatorPagesError = null;
+							translatorPagesInfo = null;
+						},
+						onFailure: (message) => {
+							translatorPagesError = message;
+						},
+						onSuccess: (result) => {
+							translatorPagesInfo =
+								typeof result.data === 'object' && result.data && 'message' in result.data
+									? String(result.data.message)
+									: translatorPagesWriteMode === 'direct'
+										? 'Pages traducteur mises à jour.'
 										: 'Demande envoyée. En attente de validation admin.';
-							} else if (result.type === 'failure' && result.data) {
-								translatorPagesError =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: "Erreur lors de l'envoi de la demande";
-							}
-						};
-					}}
+						}
+					})}
 				>
 					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
+					{#if roleEditMode === 'user_direct_mode'}
+						<input type="hidden" name="directMode" value={directMode ? 'true' : 'false'} />
+					{/if}
 					<div class="space-y-2">
 						{#each translatorPages as pageEntry, index (index)}
 							<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -203,24 +299,21 @@
 				<form
 					method="POST"
 					action="?/updateCustomProfile"
-					use:enhance={() => {
-						customProfileError = null;
-						customProfileInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								customProfileInfo =
-									typeof result.data === 'object' && result.data && 'message' in result.data
-										? String(result.data.message)
-										: 'Profil personnalisé mis à jour.';
-							} else if (result.type === 'failure' && result.data) {
-								customProfileError =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour.';
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							customProfileError = null;
+							customProfileInfo = null;
+						},
+						onFailure: (message) => {
+							customProfileError = message;
+						},
+						onSuccess: (result) => {
+							customProfileInfo =
+								typeof result.data === 'object' && result.data && 'message' in result.data
+									? String(result.data.message)
+									: 'Profil personnalisé mis à jour.';
+						}
+					})}
 				>
 					{#if profileCustomize.bio}
 						<fieldset class="fieldset gap-2">

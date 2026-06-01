@@ -5,6 +5,10 @@ import {
 	resolveUserForExtensionApiOriginGate
 } from '$lib/server/extension-api-access';
 import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
+import {
+	translatorReadCountExpr,
+	translatorTradCountExpr
+} from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -181,7 +185,13 @@ const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À 
 
 export const GET: RequestHandler = async ({ url, request, locals, cookies }) => {
 	const gateUser = await resolveUserForExtensionApiOriginGate(locals, cookies);
-	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+	if (
+		!isExtensionApiCallerAllowed(request, gateUser, {
+			authenticatedViaApiKey: locals.authenticatedViaApiKey,
+			apiKeyRouteScope: locals.apiKeyRouteScope ?? null,
+			permissions: locals.permissions
+		})
+	) {
 		return json(
 			{ error: "Accès interdit à l'API extension." },
 			{ status: 403, headers: corsHeaders }
@@ -319,8 +329,8 @@ export const GET: RequestHandler = async ({ url, request, locals, cookies }) => 
 				name: translator.name,
 				pages: translator.pages,
 				discordId: translator.discordId,
-				tradCount: translator.tradCount,
-				readCount: translator.readCount
+				tradCount: translatorTradCountExpr().as('tradCount'),
+				readCount: translatorReadCountExpr().as('readCount')
 			})
 			.from(translator)
 			.orderBy(translator.name);

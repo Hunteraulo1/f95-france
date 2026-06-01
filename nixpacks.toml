@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "node build/handler.js"
+cmd = "bun run start"

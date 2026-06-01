@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
@@ -121,11 +122,7 @@
 			<form
 				method="post"
 				action="?/create"
-				use:enhance={() => {
-					return async ({ update }) => {
-						await update();
-					};
-				}}
+				use:enhance={createFormEnhance()}
 				class="flex flex-col gap-3"
 			>
 				<label class="flex flex-col gap-1">
@@ -252,11 +249,19 @@
 						<td class="min-w-48">
 							{#if !row.revokedAt}
 								<div class="flex items-center gap-2">
-									<form method="post" action="?/rotate" use:enhance>
+									<form
+										method="post"
+										action="?/rotate"
+										use:enhance={createFormEnhance({ invalidateAll: true })}
+									>
 										<input type="hidden" name="id" value={row.id} />
 										<button type="submit" class="btn btn-outline btn-sm">Régénérer</button>
 									</form>
-									<form method="post" action="?/revoke" use:enhance>
+									<form
+										method="post"
+										action="?/revoke"
+										use:enhance={createFormEnhance({ invalidateAll: true })}
+									>
 										<input type="hidden" name="id" value={row.id} />
 										<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
 									</form>

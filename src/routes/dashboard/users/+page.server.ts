@@ -1,9 +1,13 @@
 import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { listAppRoles, roleExists, userHasPermission } from '$lib/server/permissions';
-import { assertPermission } from '$lib/server/permissions-guard';
+import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
+import {
+	assertCanAssignUserRole,
+	assertCanManageUserWithRole,
+	listRolesAssignableToUsers
+} from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -47,16 +51,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.offset((page - 1) * PAGE_SIZE);
 
 	const appRoles = await listAppRoles();
+	const roles = await listRolesAssignableToUsers(
+		locals,
+		appRoles.map((r) => ({
+			slug: r.slug,
+			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+			isSystem: r.isSystem
+		}))
+	);
 
 	return {
 		users,
 		translators: translatorsList,
-		roles: appRoles.map((r) => ({
-			value: r.slug,
-			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-			isSystem: r.isSystem
-		})),
-		canAssignAdmin: await userHasPermission(locals.user, 'users.assign_admin'),
+		roles,
+		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
@@ -112,27 +120,16 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 
-			const canAssignAdmin = await userHasPermission(locals.user, 'users.assign_admin');
-
-			if ((role === 'admin' || role === 'superadmin') && !canAssignAdmin) {
-				return fail(403, {
-					message:
-						role === 'admin'
-							? "Vous n'avez pas les permissions pour définir un admin"
-							: "Vous n'avez pas les permissions pour définir un superadmin"
-				});
+			const manageCheck = await assertCanManageUserWithRole(locals, currentUserRole, userId);
+			if (!manageCheck.allowed) {
+				return fail(403, { message: manageCheck.message });
 			}
 
-			if (currentUserRole === 'superadmin' && !canAssignAdmin) {
-				return fail(403, {
-					message: "Vous n'avez pas les permissions pour modifier un superadmin"
-				});
-			}
-
-			if (currentUserRole === 'admin' && !canAssignAdmin && locals.user!.id !== userId) {
-				return fail(403, {
-					message: 'Vous ne pouvez pas modifier un autre administrateur'
-				});
+			if (role !== currentUserRole) {
+				const assignCheck = await assertCanAssignUserRole(locals, role);
+				if (!assignCheck.allowed) {
+					return fail(403, { message: assignCheck.message });
+				}
 			}
 
 			await db

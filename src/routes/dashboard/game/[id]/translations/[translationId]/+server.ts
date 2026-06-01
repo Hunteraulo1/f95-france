@@ -1,4 +1,3 @@
-import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -7,14 +6,23 @@ import {
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import {
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
+} from '$lib/server/game-manage-guard';
+import {
+	recordTranslationChangeInUpdateHistory,
+	touchGameUpdatedToday
+} from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
 	syncTranslatorToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import {
 	hasGameTranslationGameTypeColumn,
 	publicErrorFromUnknown
@@ -23,18 +31,17 @@ import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 // PUT - Modifier une traduction
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const { id: gameId, translationId } = params;
 
@@ -58,6 +65,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			ac,
 			translatorId,
 			proofreaderId,
+			pendingNewTranslators,
 			f95VersionRefresh
 		} = body;
 
@@ -142,16 +150,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
-		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const canUseSilentMode = hasPermission(locals.permissions, 'games.silent_mode');
-		const canManuallyEditTranslationAc = hasPermission(locals.permissions, 'games.auto_check');
+		const canUseSilentMode = hasPermission(locals, 'games.silent_mode');
+		const canManuallyEditTranslationAc = hasPermission(locals, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
@@ -164,29 +166,42 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					? acRequested
 					: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+		const writeModeParams = {
 			roleSlug: userRole,
 			userDirectMode: currentUser.directMode ?? true,
-			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
-		});
+			requestDirectMode: parseRequestDirectMode(directMode)
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
-			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
-				translationName: translationName || null,
-				version: normalizedVersion,
-				tversion,
-				status,
-				ttype,
-				tlink: tlinkStored,
-				tname: effectiveTname,
-				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
-					? { gameType: gameTypeBody.trim() }
-					: {}),
-				translatorId: resolvedTranslatorId,
-				proofreaderId: resolvedProofreaderId,
-				ac: acValue
-			});
+		if (writeMode === 'submission') {
+			const pendingNames = Array.isArray(pendingNewTranslators)
+				? pendingNewTranslators
+						.filter((n): n is string => typeof n === 'string')
+						.map((n) => n.trim())
+						.filter((n) => n.length > 0)
+				: [];
+
+			await createTranslationUpdateSubmission(
+				currentUser.id,
+				gameId,
+				translationId,
+				{
+					translationName: normalizeNullableHistoryString(translationName),
+					version: normalizedVersion,
+					tversion,
+					status,
+					ttype,
+					tlink: tlinkStored,
+					tname: effectiveTname,
+					...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
+						? { gameType: gameTypeBody.trim() }
+						: {}),
+					translatorId: resolvedTranslatorId,
+					proofreaderId: resolvedProofreaderId,
+					ac: acValue
+				},
+				pendingNames.length > 0 ? pendingNames : undefined
+			);
 			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
 			if (!isSilentMode) {
 				await touchGameUpdatedToday(gameId);
@@ -202,8 +217,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
-		// Mettre à jour la traduction
+		const pendingNamesDirect = Array.isArray(pendingNewTranslators)
+			? pendingNewTranslators
+					.filter((n): n is string => typeof n === 'string')
+					.map((n) => n.trim())
+					.filter((n) => n.length > 0)
+			: [];
+		if (pendingNamesDirect.length > 0) {
+			return json(
+				{
+					error:
+						'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
+				},
+				{ status: 400 }
+			);
+		}
+
+		await assertDirectGameWriteAllowed(writeModeParams);
+
+		// Mode direct (rôle vérifié côté serveur)
 		const directSet: {
 			translationName: string | null;
 			version: string | null;
@@ -218,7 +250,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: isF95VersionRefresh ? before.translationName : translationName || null,
+			translationName: isF95VersionRefresh
+				? before.translationName
+				: normalizeNullableHistoryString(translationName),
 			version: normalizedVersion,
 			tversion: effectiveTversion,
 			status: effectiveStatus,
@@ -247,7 +281,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const dataJson = JSON.stringify({
 			gameId,
 			translation: {
-				translationName: translationName || null,
+				translationName: normalizeNullableHistoryString(translationName),
 				version: normalizedVersion,
 				tversion,
 				status,
@@ -295,7 +329,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		if (!isSilentMode) {
-			await touchGameUpdatedToday(gameId);
+			await recordTranslationChangeInUpdateHistory(gameId, {
+				userId: currentUser.id,
+				translationId,
+				before: translationRowToHistorySnapshot(before),
+				after: translationRowToHistorySnapshot({
+					translationName: directSet.translationName,
+					version: directSet.version,
+					tversion: directSet.tversion,
+					status: directSet.status,
+					ttype: directSet.ttype,
+					tlink: directSet.tlink,
+					tname: directSet.tname,
+					gameType: directSet.gameType ?? before.gameType,
+					translatorId: directSet.translatorId,
+					proofreaderId: directSet.proofreaderId,
+					ac: directSet.ac
+				}),
+				updateKind: 'update'
+			});
 		}
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
@@ -311,10 +363,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 // DELETE - Supprimer une traduction
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const { id: gameId, translationId } = params;
 
@@ -354,22 +403,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const tr = trRows[0];
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
-		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission = await resolveShouldCreateSubmissionForUser({
+		const writeModeParams = {
 			roleSlug: userRole,
 			userDirectMode: currentUser.directMode ?? true,
-			requestDirectMode: directMode !== undefined ? useDirectMode : undefined
-		});
+			requestDirectMode: parseRequestDirectMode(directMode)
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
+		if (writeMode === 'submission') {
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
@@ -383,7 +426,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
+		await assertDirectGameWriteAllowed(writeModeParams);
+
 		const dataJson = JSON.stringify({
 			gameId,
 			reason,
@@ -407,6 +451,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
+		await recordTranslationChangeInUpdateHistory(gameId, {
+			userId: currentUser.id,
+			translationId,
+			before: translationRowToHistorySnapshot(tr),
+			after: null,
+			updateKind: 'update'
+		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});

@@ -130,7 +130,7 @@
 		</div>
 	{/if}
 
-	{#if data.isAdmin && data.stats}
+	{#if data.canReviewSubmissions && data.stats}
 		<!-- Statistiques administrateur -->
 		<div>
 			<h2 class="mb-4 text-xl font-semibold text-base-content">Statistiques générales</h2>
