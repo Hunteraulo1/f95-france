@@ -87,7 +87,7 @@
 	<img
 		src={customProfile.cursorUrl}
 		alt=""
-		class="profile-custom-cursor pointer-events-none fixed z-9999 object-contain"
+		class="pointer-events-none fixed z-9999 object-contain [image-rendering:pixelated]"
 		style="left: {customCursorX}px; top: {customCursorY}px; width: {PROFILE_CURSOR_DISPLAY_PX}px; height: {PROFILE_CURSOR_DISPLAY_PX}px; transform: translate(-50%, -50%);"
 		referrerpolicy="no-referrer"
 		aria-hidden="true"
@@ -97,32 +97,36 @@
 <div
 	role="region"
 	aria-label={`Profil de ${user.username}`}
-	class="profile-theme-root relative flex w-full flex-col min-h-[calc(100vh-14rem)] overflow-hidden rounded-2xl border border-base-300 bg-base-100"
-	class:profile-theme-root--with-bg={hasBackground}
-	class:profile-theme-root--custom-cursor={hasCustomCursor}
+	class={[
+		'relative flex w-full min-h-[calc(100vh-14rem)] flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100',
+		hasCustomCursor && 'cursor-none **:cursor-none!'
+	]}
 	onmousemove={hasCustomCursor ? trackCustomCursor : undefined}
 	onmouseenter={hasCustomCursor ? showCustomCursor : undefined}
 	onmouseleave={hasCustomCursor ? hideCustomCursor : undefined}
 >
 	{#if hasBackground && customProfile?.backgroundUrl}
-		<div class="profile-theme-hero min-h-96" aria-hidden="true">
+		<div
+			class="pointer-events-none absolute top-0 right-0 left-0 z-0 aspect-5/3 min-h-96 overflow-hidden"
+			aria-hidden="true"
+		>
 			<img
 				src={customProfile.backgroundUrl}
 				alt=""
-				class="profile-theme-hero__image"
+				class="absolute inset-0 block h-full w-full object-cover object-top"
 				width={PROFILE_BACKGROUND_WIDTH}
 				height={PROFILE_BACKGROUND_HEIGHT}
 				referrerpolicy="no-referrer"
 			/>
-			<div class="profile-theme-hero-fade"></div>
+			<div
+				class="absolute inset-0 z-1 bg-[linear-gradient(to_right,var(--color-base-100)_0%,color-mix(in_oklch,var(--color-base-100)_92%,transparent)_18%,color-mix(in_oklch,var(--color-base-100)_50%,transparent)_42%,transparent_72%),linear-gradient(to_bottom,transparent_0%,transparent_42%,var(--color-base-100)_100%)]"
+				aria-hidden="true"
+			></div>
 		</div>
 	{/if}
 
-	<div class="profile-theme-body flex shrink-0 flex-col gap-8 p-4 md:flex-row md:p-6">
-		<div
-			class="profile-theme-sidebar flex flex-col gap-2 md:min-w-48"
-			class:profile-theme-sidebar--with-bg={hasBackground}
-		>
+	<div class="relative z-1 flex shrink-0 flex-col gap-8 p-4 md:flex-row md:p-6">
+		<div class={['flex flex-col gap-2 md:min-w-48', hasBackground && 'relative z-2']}>
 			<div
 				class="flex h-32 w-32 items-center justify-center rounded-full bg-base-300 p-1 shadow-md"
 			>
@@ -210,60 +214,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.profile-theme-root--with-bg .profile-theme-hero {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		z-index: 0;
-		overflow: hidden;
-		aspect-ratio: 5 / 3;
-		pointer-events: none;
-	}
-
-	.profile-theme-root--with-bg .profile-theme-body {
-		position: relative;
-		z-index: 1;
-	}
-
-	.profile-theme-hero__image {
-		position: absolute;
-		inset: 0;
-		display: block;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		object-position: top center;
-	}
-
-	.profile-theme-hero-fade {
-		position: absolute;
-		inset: 0;
-		z-index: 1;
-		background:
-			linear-gradient(
-				to right,
-				var(--color-base-100) 0%,
-				color-mix(in oklch, var(--color-base-100) 92%, transparent) 18%,
-				color-mix(in oklch, var(--color-base-100) 50%, transparent) 42%,
-				transparent 72%
-			),
-			linear-gradient(to bottom, transparent 0%, transparent 42%, var(--color-base-100) 100%);
-	}
-
-	.profile-theme-sidebar--with-bg {
-		position: relative;
-		z-index: 2;
-	}
-
-	.profile-theme-root--custom-cursor,
-	.profile-theme-root--custom-cursor :global(*) {
-		cursor: none !important;
-	}
-
-	.profile-custom-cursor {
-		image-rendering: pixelated;
-	}
-</style>
