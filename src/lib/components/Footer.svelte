@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SITE } from '$lib/site';
 	import HatGlasses from '@lucide/svelte/icons/hat-glasses';
 	import Scale from '@lucide/svelte/icons/scale';
 </script>
@@ -9,6 +10,18 @@
 		<a class="link link-hover" href="/games">Jeux</a>
 		<a class="link link-hover" href="/translators">Traducteurs</a>
 		<a class="link link-hover" href="/updates">Mises à jour</a>
+		<a
+			class="link link-hover"
+			href={SITE.discordInviteUrl}
+			target="_blank"
+			rel="noopener noreferrer">Discord</a
+		>
+		<a
+			class="link link-hover"
+			href={SITE.extensionDownloadUrl}
+			target="_blank"
+			rel="noopener noreferrer">Extension</a
+		>
 		<a class="link link-hover" href="/dashboard">Tableau de bord</a>
 	</nav>
 	<nav>
