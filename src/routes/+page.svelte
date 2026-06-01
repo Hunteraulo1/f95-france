@@ -259,45 +259,47 @@
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 select-none">
-				{#each data.updates as update (update.updateId)}
-					<article
-						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex"
-					>
-						<a
-							href={resolve(`/games/${update.game.gameId}`)}
-							class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
-							draggable="false"
+				{#each data.updates as update, index (update.updateId)}
+					{#if index < 4}
+						<article
+							class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex"
 						>
-							<SquareArrowOutUpRight size={40} />
-						</a>
-						<div
-							class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
-							style={`background-image: url(${update.game.gameImage});`}
-						>
-							<div class="flex flex-col items-start justify-between gap-3">
-								<span
-									class={statusClass(update.updateStatus) + ' text-xs text-nowrap font-semibold'}
-									>{statusLabel(update.updateStatus)}</span
-								>
-								<h3 class="card-title text-lg line-clamp-1">
-									{update.game.name ?? 'Jeu inconnu'}
-								</h3>
-								<p>
-									<span class="font-semibold">Version:</span>
-									{#if update.game.hasTranslation}
-										{formatTranslationVersionDisplay({
-											tversion: update.game.tversion,
-											referenceVersion: update.game.referenceVersion,
-											isOutdated: update.game.isOutdated,
-											isIntegrated: update.game.isIntegrated
-										})}
-									{:else}
-										{update.game.gameVersion ?? '—'}
-									{/if}
-								</p>
+							<a
+								href={resolve(`/games/${update.game.gameId}`)}
+								class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
+								draggable="false"
+							>
+								<SquareArrowOutUpRight size={40} />
+							</a>
+							<div
+								class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
+								style={`background-image: url(${update.game.gameImage});`}
+							>
+								<div class="flex flex-col items-start justify-between gap-3">
+									<span
+										class={statusClass(update.updateStatus) + ' text-xs text-nowrap font-semibold'}
+										>{statusLabel(update.updateStatus)}</span
+									>
+									<h3 class="card-title text-lg line-clamp-1">
+										{update.game.name ?? 'Jeu inconnu'}
+									</h3>
+									<p>
+										<span class="font-semibold">Version:</span>
+										{#if update.game.hasTranslation}
+											{formatTranslationVersionDisplay({
+												tversion: update.game.tversion,
+												referenceVersion: update.game.referenceVersion,
+												isOutdated: update.game.isOutdated,
+												isIntegrated: update.game.isIntegrated
+											})}
+										{:else}
+											{update.game.gameVersion ?? '—'}
+										{/if}
+									</p>
+								</div>
 							</div>
-						</div>
-					</article>
+						</article>
+					{/if}
 				{/each}
 			</div>
 		{/if}
