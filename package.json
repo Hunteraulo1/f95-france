@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.4.4",
+	"version": "4.4.5",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -51,28 +51,29 @@
 		"typescript-eslint": "8.60.0"
 	},
 	"dependencies": {
-		"postgres": "3.4.9",
-		"tsx": "4.22.4",
-		"dotenv": "17.4.2",
-		"drizzle-kit": "0.31.10",
+		"@lucide/svelte": "1.17.0",
+		"@oslojs/crypto": "1.0.1",
+		"@oslojs/encoding": "1.1.0",
 		"@simplewebauthn/browser": "13.3.0",
 		"@simplewebauthn/server": "13.3.1",
-		"qrcode": "1.5.4",
-		"@lucide/svelte": "1.17.0",
-		"otpauth": "9.5.1",
-		"linkedom": "0.18.12",
-		"@oslojs/encoding": "1.1.0",
-		"@oslojs/crypto": "1.0.1",
-		"drizzle-orm": "0.45.2",
-		"daisyui": "5.5.20",
-		"@tailwindcss/forms": "0.5.11",
 		"@sveltejs/adapter-node": "5.5.4",
-		"@tailwindcss/vite": "4.3.0",
 		"@sveltejs/kit": "2.61.1",
-		"vite": "8.0.16",
-		"valibot": "1.4.1",
+		"@tailwindcss/forms": "0.5.11",
+		"@tailwindcss/vite": "4.3.0",
+		"daisyui": "5.5.20",
+		"dotenv": "17.4.2",
+		"drizzle-kit": "0.31.10",
+		"drizzle-orm": "0.45.2",
+		"linkedom": "0.18.12",
+		"marked": "^18.0.4",
+		"otpauth": "9.5.1",
+		"postgres": "3.4.9",
+		"qrcode": "1.5.4",
+		"redoc": "2.5.3",
 		"theme-change": "2.5.0",
-		"redoc": "2.5.3"
+		"tsx": "4.22.4",
+		"valibot": "1.4.1",
+		"vite": "8.0.16"
 	},
 	"config": {
 		"commitizen": {
