@@ -97,7 +97,7 @@
 <div
 	role="region"
 	aria-label={`Profil de ${user.username}`}
-	class="profile-theme-root relative flex w-full flex-col min-h-full overflow-hidden rounded-2xl border border-base-300 bg-base-100"
+	class="profile-theme-root relative flex w-full flex-col min-h-[calc(100vh-14rem)] overflow-hidden rounded-2xl border border-base-300 bg-base-100"
 	class:profile-theme-root--with-bg={hasBackground}
 	class:profile-theme-root--custom-cursor={hasCustomCursor}
 	onmousemove={hasCustomCursor ? trackCustomCursor : undefined}
