@@ -38,7 +38,11 @@ function parseInlines(tokens: Token[] | undefined): Inline[] {
 	for (const token of tokens) {
 		switch (token.type) {
 			case 'text':
-				inlines.push({ kind: 'text', text: token.text });
+				if (token.tokens?.length) {
+					inlines.push(...parseInlines(token.tokens));
+				} else {
+					inlines.push({ kind: 'text', text: token.text });
+				}
 				break;
 			case 'strong':
 				inlines.push({ kind: 'strong', children: parseInlines(token.tokens) });
