@@ -22,7 +22,7 @@ import {
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createGameSubmission } from '$lib/server/submissions';
@@ -419,16 +419,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			void syncTranslationToGoogleSheet(createdTranslationId).catch((err) => {
 				console.warn('[google-sheets-sync] manager add translation failed:', err);
 			});
-			if (translation?.translatorId) {
-				void syncTranslatorToGoogleSheet(String(translation.translatorId)).catch((err) => {
-					console.warn('[google-sheets-sync] manager add translator failed:', err);
-				});
-			}
-			if (translation?.proofreaderId) {
-				void syncTranslatorToGoogleSheet(String(translation.proofreaderId)).catch((err) => {
-					console.warn('[google-sheets-sync] manager add proofreader failed:', err);
-				});
-			}
+			voidSyncTranslatorActivityCountsToGoogleSheet(
+				translation?.translatorId,
+				translation?.proofreaderId
+			);
 		}
 
 		if (gameId) {

@@ -5,7 +5,8 @@ import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
-	syncTranslationToGoogleSheet
+	syncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
 import {
@@ -265,6 +266,12 @@ export async function revertUpdateHistoryEntry(
 			console.warn('[google-sheets-sync] revert translation failed:', err);
 		});
 	}
+	voidSyncTranslatorActivityCountsToGoogleSheet(
+		beforeSnapshot?.translatorId,
+		beforeSnapshot?.proofreaderId,
+		afterSnapshot?.translatorId,
+		afterSnapshot?.proofreaderId
+	);
 
 	await incrementUserGameCounter(userId, 'edit', 1);
 

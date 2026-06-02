@@ -13,6 +13,7 @@ import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import {
+	hasF95CheckerGameVersionChange,
 	isF95CheckerVersionAligned,
 	needsF95VersionBump,
 	normalizeCheckerVersion
@@ -308,6 +309,11 @@ export async function runAutoCheckVersions(
 		const newVersion = normalizeCheckerVersion(versions.get(game.threadId));
 		if (!newVersion) continue;
 
+		const isActualVersionBump = hasF95CheckerGameVersionChange(
+			versions.get(game.threadId),
+			game.gameVersion
+		);
+
 		await db
 			.update(table.game)
 			.set({
@@ -369,6 +375,7 @@ export async function runAutoCheckVersions(
 			// Sécurité : ne jamais notifier une traduction dont l'auto-check n'est plus actif.
 			if (!t.ac) continue;
 			if (tradVerIndicatesIntegrated(t.tversion, t.tname)) continue;
+			if (!isActualVersionBump) continue;
 			translatorWebhookLines.push({
 				gameId: game.gameId,
 				gameName: game.gameName,
@@ -395,6 +402,7 @@ export async function runAutoCheckVersions(
 			(t) => t.gameId === game.gameId && t.tname === 'integrated'
 		);
 		for (const t of integratedRows) {
+			if (!isActualVersionBump) continue;
 			try {
 				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
 					gameName: game.gameName,
@@ -416,12 +424,14 @@ export async function runAutoCheckVersions(
 			}
 		}
 
-		// Table `update` : seulement si une traduction intégrée avec auto-check actif suit cette version
-		const hasIntegratedAc = impactedTranslations.some(
-			(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
-		);
-		if (hasIntegratedAc) {
-			await touchGameUpdatedToday(game.gameId);
+		// Table `update` : nouvelle version F95 + traduction intégrée en auto-check
+		if (isActualVersionBump) {
+			const hasIntegratedAc = impactedTranslations.some(
+				(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
+			);
+			if (hasIntegratedAc) {
+				await touchGameUpdatedToday(game.gameId);
+			}
 		}
 	}
 

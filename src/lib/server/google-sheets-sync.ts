@@ -1222,6 +1222,22 @@ export async function syncGameTranslationsToGoogleSheet(gameId: string): Promise
 	}
 }
 
+/** Recalcule Traduction/Relecture sur l’onglet TR (non bloquant, dédoublonne les ID). */
+export function voidSyncTranslatorActivityCountsToGoogleSheet(
+	...translatorIds: Array<string | null | undefined>
+): void {
+	const seen = new Set<string>();
+	for (const raw of translatorIds) {
+		if (raw == null) continue;
+		const id = String(raw).trim();
+		if (!id || seen.has(id)) continue;
+		seen.add(id);
+		void syncTranslatorToGoogleSheet(id).catch((err) => {
+			console.warn(`[google-sheets-sync] translator activity sync failed (${id}):`, err);
+		});
+	}
+}
+
 export async function syncTranslatorToGoogleSheet(translatorId: string): Promise<void> {
 	const auth = await getSheetsAuth();
 	if (!auth) return;

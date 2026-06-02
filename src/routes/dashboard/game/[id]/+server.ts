@@ -15,7 +15,8 @@ import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet
+	syncGameTranslationsToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
@@ -517,15 +518,21 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		let deletedTranslationIds: string[] = [];
+		let deletedContributorIds: Array<string | null> = [];
 		await db.transaction(async (tx) => {
 			// Détacher les FK de submission avant suppression physique.
 			const linkedTranslations = await tx
-				.select({ id: table.gameTranslation.id })
+				.select({
+					id: table.gameTranslation.id,
+					translatorId: table.gameTranslation.translatorId,
+					proofreaderId: table.gameTranslation.proofreaderId
+				})
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.gameId, gameId));
 
 			const translationIds = linkedTranslations.map((t) => t.id);
 			deletedTranslationIds = translationIds;
+			deletedContributorIds = linkedTranslations.flatMap((t) => [t.translatorId, t.proofreaderId]);
 			const rejectionNote = `Rejet automatique: jeu supprimé (raison: ${reason}).`;
 
 			// Les soumissions en attente liées à ce jeu/traductions deviennent refusées.
@@ -581,6 +588,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] delete game rows failed:', err);
 			});
 		}
+		voidSyncTranslatorActivityCountsToGoogleSheet(...deletedContributorIds);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {

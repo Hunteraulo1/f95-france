@@ -20,7 +20,7 @@ import {
 import {
 	deleteTranslationFromGoogleSheet,
 	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import {
@@ -318,16 +318,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		void syncTranslationToGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] update translation failed:', err);
 		});
-		if (translatorId) {
-			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
-				console.warn('[google-sheets-sync] update translator failed:', err);
-			});
-		}
-		if (proofreaderId) {
-			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
-				console.warn('[google-sheets-sync] update proofreader failed:', err);
-			});
-		}
+		voidSyncTranslatorActivityCountsToGoogleSheet(
+			before.translatorId,
+			before.proofreaderId,
+			resolvedTranslatorId,
+			resolvedProofreaderId
+		);
 		if (!isSilentMode) {
 			await recordTranslationChangeInUpdateHistory(gameId, {
 				userId: currentUser.id,
@@ -461,6 +457,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			console.warn('[google-sheets-sync] delete translation row failed:', err);
 		});
+		voidSyncTranslatorActivityCountsToGoogleSheet(tr.translatorId, tr.proofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {

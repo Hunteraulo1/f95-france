@@ -18,7 +18,7 @@ import {
 } from '$lib/server/game-updates';
 import {
 	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -226,16 +226,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				console.warn('[google-sheets-sync] add translation failed:', err);
 			});
 		}
-		if (translatorId) {
-			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
-				console.warn('[google-sheets-sync] add translator failed:', err);
-			});
-		}
-		if (proofreaderId) {
-			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
-				console.warn('[google-sheets-sync] add proofreader failed:', err);
-			});
-		}
+		voidSyncTranslatorActivityCountsToGoogleSheet(translatorId, proofreaderId);
 		if (created?.id) {
 			await recordTranslationChangeInUpdateHistory(gameId, {
 				userId: currentUser.id,
