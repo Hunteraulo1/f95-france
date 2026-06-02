@@ -267,16 +267,20 @@ export async function runAutoCheckVersions(
 	const impactedTranslations = rows.filter((r) => changedGameIds.includes(r.gameId));
 	const bumpTranslations = await db
 		.select({
+			translationId: table.gameTranslation.id,
 			gameId: table.gameTranslation.gameId,
 			translationName: table.gameTranslation.translationName,
 			version: table.gameTranslation.version,
 			tversion: table.gameTranslation.tversion,
 			tname: table.gameTranslation.tname,
+			ac: table.gameTranslation.ac,
 			translatorId: table.gameTranslation.translatorId,
 			proofreaderId: table.gameTranslation.proofreaderId
 		})
 		.from(table.gameTranslation)
-		.where(inArray(table.gameTranslation.gameId, changedGameIds));
+		.where(
+			and(inArray(table.gameTranslation.gameId, changedGameIds), eq(table.gameTranslation.ac, true))
+		);
 	const staffIds = Array.from(
 		new Set(
 			bumpTranslations.flatMap((r) =>
@@ -362,6 +366,8 @@ export async function runAutoCheckVersions(
 		}
 
 		for (const t of bumpTranslations.filter((r) => r.gameId === game.gameId)) {
+			// Sécurité : ne jamais notifier une traduction dont l'auto-check n'est plus actif.
+			if (!t.ac) continue;
 			if (tradVerIndicatesIntegrated(t.tversion, t.tname)) continue;
 			translatorWebhookLines.push({
 				gameId: game.gameId,
