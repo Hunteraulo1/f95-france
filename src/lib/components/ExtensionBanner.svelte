@@ -51,7 +51,7 @@
 			<div
 				class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,color-mix(in_oklab,var(--color-secondary)_22%,transparent),transparent_65%)] bg-base-300"
 			></div>
-			<div class="relative shrink-0 origin-center max-lg:scale-60">
+			<div class="relative shrink-0 origin-center max-lg:scale-60 -translate-y-4">
 				<ExtensionMockup {games} />
 			</div>
 		</figure>
