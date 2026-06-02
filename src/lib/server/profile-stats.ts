@@ -1,4 +1,4 @@
-import { isTranslationOutdated } from '$lib/server/api/translation-public';
+import { isTranslationOutdatedForLinkedTranslator } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { isSubmissionInProgress } from '$lib/utils/submissions';
@@ -124,6 +124,7 @@ export async function loadProfileStats(userId: string): Promise<ProfileStats> {
 					tversion: table.gameTranslation.tversion,
 					tname: table.gameTranslation.tname,
 					translatorId: table.gameTranslation.translatorId,
+					translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled,
 					proofreaderId: table.gameTranslation.proofreaderId,
 					gameVersion: table.game.gameVersion
 				})
@@ -151,9 +152,18 @@ export async function loadProfileStats(userId: string): Promise<ProfileStats> {
 			if (row.translatorId === translatorId) asTranslator += 1;
 			if (row.proofreaderId === translatorId) asProofreader += 1;
 			if (
-				isTranslationOutdated(
-					{ version: row.version, tversion: row.tversion, tname: row.tname },
-					row.gameVersion
+				isTranslationOutdatedForLinkedTranslator(
+					{
+						status: row.status,
+						version: row.version,
+						tversion: row.tversion,
+						tname: row.tname,
+						translatorId: row.translatorId,
+						translatorAlertsEnabled: row.translatorAlertsEnabled,
+						proofreaderId: row.proofreaderId
+					},
+					row.gameVersion,
+					translatorId
 				)
 			) {
 				outdated += 1;

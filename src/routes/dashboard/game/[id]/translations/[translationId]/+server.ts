@@ -31,6 +31,7 @@ import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
@@ -246,6 +247,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: (typeof before)['tname'];
 			translatorId: string | null;
 			proofreaderId: string | null;
+			translatorAlertsEnabled: boolean;
 			ac: boolean;
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
@@ -261,6 +263,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: effectiveTname,
 			translatorId: resolvedTranslatorId,
 			proofreaderId: resolvedProofreaderId,
+			translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+				beforeTranslatorId: before.translatorId,
+				afterTranslatorId: resolvedTranslatorId,
+				currentTranslatorAlertsEnabled: before.translatorAlertsEnabled
+			}),
 			ac: acValue,
 			updatedAt: new Date()
 		};

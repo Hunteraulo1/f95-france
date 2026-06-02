@@ -1,4 +1,4 @@
-import { isTranslationOutdated } from '$lib/server/api/translation-public';
+import { isTranslationOutdatedForLinkedTranslator } from '$lib/server/api/translation-public';
 import {
 	countGlobalSubmissionStats,
 	countRecentWithinDays,
@@ -55,9 +55,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		if (linkedTranslator) {
 			const myTranslations = await db
 				.select({
+					status: table.gameTranslation.status,
 					version: table.gameTranslation.version,
 					tversion: table.gameTranslation.tversion,
 					tname: table.gameTranslation.tname,
+					translatorId: table.gameTranslation.translatorId,
+					translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled,
+					proofreaderId: table.gameTranslation.proofreaderId,
 					gameVersion: table.game.gameVersion
 				})
 				.from(table.gameTranslation)
@@ -70,13 +74,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 			let outdated = 0;
 			for (const tr of myTranslations) {
 				if (
-					isTranslationOutdated(
+					isTranslationOutdatedForLinkedTranslator(
 						{
+							status: tr.status,
 							version: tr.version,
 							tversion: tr.tversion,
-							tname: tr.tname
+							tname: tr.tname,
+							translatorId: tr.translatorId,
+							translatorAlertsEnabled: tr.translatorAlertsEnabled,
+							proofreaderId: tr.proofreaderId
 						},
-						tr.gameVersion
+						tr.gameVersion,
+						linkedTranslator.id
 					)
 				) {
 					outdated += 1;

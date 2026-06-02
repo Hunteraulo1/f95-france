@@ -11,7 +11,10 @@ import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
-import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import {
+	shouldNotifyTranslatorOnAutoCheckVersionBump,
+	tradVerIndicatesIntegrated
+} from '$lib/server/translation-notify-rules';
 import {
 	hasF95CheckerGameVersionChange,
 	isF95CheckerVersionAligned,
@@ -274,6 +277,8 @@ export async function runAutoCheckVersions(
 			version: table.gameTranslation.version,
 			tversion: table.gameTranslation.tversion,
 			tname: table.gameTranslation.tname,
+			status: table.gameTranslation.status,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled,
 			ac: table.gameTranslation.ac,
 			translatorId: table.gameTranslation.translatorId,
 			proofreaderId: table.gameTranslation.proofreaderId
@@ -375,6 +380,20 @@ export async function runAutoCheckVersions(
 			// Sécurité : ne jamais notifier une traduction dont l'auto-check n'est plus actif.
 			if (!t.ac) continue;
 			if (tradVerIndicatesIntegrated(t.tversion, t.tname)) continue;
+			if (
+				!shouldNotifyTranslatorOnAutoCheckVersionBump(
+					{
+						status: t.status,
+						translatorAlertsEnabled: t.translatorAlertsEnabled,
+						version: newVersion,
+						tversion: t.tversion,
+						tname: t.tname
+					},
+					newVersion
+				)
+			) {
+				continue;
+			}
 			if (!isActualVersionBump) continue;
 			translatorWebhookLines.push({
 				gameId: game.gameId,
@@ -385,7 +404,7 @@ export async function runAutoCheckVersions(
 				newVersion,
 				discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined
 			});
-			if (t.proofreaderId) {
+			if (t.proofreaderId && t.status !== 'abandoned') {
 				proofreaderWebhookLines.push({
 					gameId: game.gameId,
 					gameName: game.gameName,

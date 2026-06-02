@@ -27,6 +27,7 @@ import {
 	syncTranslatorToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
 import {
 	translationRowToHistorySnapshot,
@@ -716,6 +717,7 @@ export async function applySubmission(submissionId: string) {
 					tname: (typeof originalTranslation)['tname'];
 					translatorId: string | null;
 					proofreaderId: string | null;
+					translatorAlertsEnabled: boolean;
 					ac: boolean;
 					updatedAt: Date;
 					gameType?: (typeof table.gameTranslation.$inferSelect)['gameType'];
@@ -740,6 +742,12 @@ export async function applySubmission(submissionId: string) {
 						resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
 					proofreaderId:
 						resolvedContributors.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+						beforeTranslatorId: originalTranslation.translatorId,
+						afterTranslatorId:
+							resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
+						currentTranslatorAlertsEnabled: originalTranslation.translatorAlertsEnabled
+					}),
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),
 					updatedAt: new Date()
 				};
@@ -1328,9 +1336,24 @@ export async function revertSubmission(submissionId: string) {
 			) {
 				revertTrPatch.gameType = coerceGameEngineType(originalTranslation.gameType);
 			}
+			const [currentTranslation] = await db
+				.select({
+					translatorId: table.gameTranslation.translatorId,
+					translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled
+				})
+				.from(table.gameTranslation)
+				.where(eq(table.gameTranslation.id, sub.translationId))
+				.limit(1);
 			await db
 				.update(table.gameTranslation)
-				.set(revertTrPatch)
+				.set({
+					...revertTrPatch,
+					translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+						beforeTranslatorId: currentTranslation?.translatorId,
+						afterTranslatorId: revertTrPatch.translatorId,
+						currentTranslatorAlertsEnabled: currentTranslation?.translatorAlertsEnabled ?? true
+					})
+				})
 				.where(eq(table.gameTranslation.id, sub.translationId));
 		} else {
 			// Supprimer la traduction créée (nouvelle traduction ou traduction sans données originales)
