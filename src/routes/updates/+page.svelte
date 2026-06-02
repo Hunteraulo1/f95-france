@@ -385,8 +385,10 @@
 				bind:filterGroups
 				translatorIds={data.translatorIds}
 				basePath="/updates"
+				isAuthenticated={data.isAuthenticated}
+				initialSavedFilters={data.savedFilters}
 				savedFiltersKey={SAVED_UPDATES_FILTERS_KEY}
-				savedFiltersApiPath={null}
+				savedFiltersApiPath="/api/updates/saved-filters"
 				buildSearchParams={buildPublicUpdatesListSearchParams}
 				createDefaultFilterGroups={createDefaultUpdatesFilterGroups}
 				cloneGroups={cloneUpdatesFilterGroups}
