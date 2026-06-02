@@ -12,6 +12,8 @@
 	let warningsOnly = $state(false);
 	let redirectsOnly = $state(false);
 	let limit = $state('50');
+	let fromDate = $state('');
+	let toDate = $state('');
 	let showPayloadModal = $state(false);
 	let formattedPayload = $state<string | null>(null);
 	let payloadFormat = $state<'json' | 'texte'>('texte');
@@ -28,6 +30,8 @@
 		warningsOnly = data.filters.warningsOnly ?? false;
 		redirectsOnly = data.filters.redirectsOnly ?? false;
 		limit = String(data.filters.limit);
+		fromDate = data.filters.from ?? '';
+		toDate = data.filters.to ?? '';
 		filtersInitialized = true;
 	});
 
@@ -91,6 +95,21 @@
 		showErrorModal = false;
 		errorMessage = null;
 	};
+
+	const buildPageHref = (targetPage: number) => {
+		const params = new URLSearchParams();
+		if (data.filters.method) params.set('method', data.filters.method);
+		if (data.filters.search) params.set('q', data.filters.search);
+		if (data.filters.user) params.set('user', data.filters.user);
+		if (data.filters.errorsOnly) params.set('errors', 'true');
+		if (data.filters.warningsOnly) params.set('warnings', 'true');
+		if (data.filters.redirectsOnly) params.set('redirects', 'true');
+		if (data.filters.from) params.set('from', data.filters.from);
+		if (data.filters.to) params.set('to', data.filters.to);
+		params.set('limit', String(data.pagination.limit));
+		params.set('page', String(targetPage));
+		return `/dashboard/logs?${params.toString()}`;
+	};
 </script>
 
 <svelte:head>
@@ -108,9 +127,37 @@
 		</div>
 	</div>
 
+	<div
+		class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
+	>
+		<div class="stat">
+			<div class="stat-title">Total</div>
+			<div class="stat-value text-base-content">{data.pagination.totalCount}</div>
+			<div class="stat-desc">
+				Page {data.pagination.page} / {data.pagination.totalPages}
+			</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">2xx</div>
+			<div class="stat-value text-success">{data.statusCounts.s2xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">3xx</div>
+			<div class="stat-value text-info">{data.statusCounts.s3xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">4xx</div>
+			<div class="stat-value text-warning">{data.statusCounts.s4xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">5xx</div>
+			<div class="stat-value text-error">{data.statusCounts.s5xx}</div>
+		</div>
+	</div>
+
 	<form method="GET" class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
-			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<label class="form-control flex flex-col">
 					<span class="label-text">Méthode</span>
 					<select class="select-bordered select" name="method" bind:value={methodFilter}>
@@ -143,8 +190,27 @@
 					/>
 				</label>
 				<label class="form-control flex flex-col">
-					<span class="label-text">Filtres de statut</span>
-					<div class="m-2 mb-0 flex flex-col space-y-2">
+					<span class="label-text">Du</span>
+					<input type="date" name="from" class="input-bordered input" bind:value={fromDate} />
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Au</span>
+					<input type="date" name="to" class="input-bordered input" bind:value={toDate} />
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Limite</span>
+					<select class="select-bordered select" name="limit" bind:value={limit}>
+						{#each [25, 50, 100, 200, 500] as option (option)}
+							<option value={option}>{option} lignes</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+
+			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+				<label class="form-control flex flex-col">
+					<span class="label-text mb-2">Filtres de statut</span>
+					<div class="flex flex-wrap gap-3">
 						<label class="label cursor-pointer">
 							<input
 								type="checkbox"
@@ -202,17 +268,15 @@
 					{/if}
 				</label>
 			</div>
-			<label class="form-control flex flex-col">
-				<span class="label-text">Limite</span>
-				<select class="select-bordered select" name="limit" bind:value={limit}>
-					{#each [25, 50, 100, 200, 500] as option (option)}
-						<option value={option}>{option} lignes</option>
-					{/each}
-				</select>
-			</label>
-			<div class="flex justify-end gap-2 md:col-span-6">
-				<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
-				<button type="submit" class="btn btn-primary">Actualiser</button>
+
+			<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-4">
+				<p class="text-sm text-base-content/70">
+					Affichage : {data.logs.length} / {data.pagination.totalCount} logs
+				</p>
+				<div class="flex gap-2">
+					<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
+					<button type="submit" class="btn btn-primary">Actualiser</button>
+				</div>
 			</div>
 		</div>
 	</form>
@@ -305,6 +369,24 @@
 					</tbody>
 				</table>
 			</div>
+		</div>
+	</div>
+
+	<div class="flex items-center justify-center">
+		<div class="join">
+			{#if data.pagination.page > 1}
+				<a class="join-item btn" href={buildPageHref(data.pagination.page - 1)}>Précédent</a>
+			{:else}
+				<button class="join-item btn btn-disabled" type="button">Précédent</button>
+			{/if}
+			<button class="join-item btn btn-active" type="button">
+				Page {data.pagination.page} / {data.pagination.totalPages}
+			</button>
+			{#if data.pagination.page < data.pagination.totalPages}
+				<a class="join-item btn" href={buildPageHref(data.pagination.page + 1)}>Suivant</a>
+			{:else}
+				<button class="join-item btn btn-disabled" type="button">Suivant</button>
+			{/if}
 		</div>
 	</div>
 </div>
