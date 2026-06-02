@@ -42,6 +42,16 @@
 		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
 
 	const hrefForPage = (p: number) => buildHref({ page: p });
+
+	const formatDateTime = (value: Date | string) =>
+		new Intl.DateTimeFormat('fr-FR', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		}).format(value instanceof Date ? value : new Date(value));
 </script>
 
 <section class="flex flex-col gap-4">
@@ -63,6 +73,7 @@
 						<th>Rôle</th>
 						<th>Profil traducteur</th>
 						<th>Date de création</th>
+						<th>Dernière connexion</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
@@ -114,6 +125,13 @@
 									month: 'long',
 									day: 'numeric'
 								})}
+							</td>
+							<td class="text-sm">
+								{#if user.lastConnectionAt}
+									{formatDateTime(user.lastConnectionAt)}
+								{:else}
+									<span class="text-base-content/60">Jamais</span>
+								{/if}
 							</td>
 							<td>
 								<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>

@@ -78,6 +78,11 @@
 		flash = { type: 'error', text };
 	};
 
+	const formatDateTime = (value: Date | string) =>
+		new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(
+			value instanceof Date ? value : new Date(value)
+		);
+
 	const formEnhance = (options?: { locked?: boolean; onRedirect?: () => void }) =>
 		createFormEnhance({
 			locked: options?.locked,
@@ -201,6 +206,13 @@
 											>{member.username}</span
 										>
 										<span class="text-xs opacity-60">{member.roleLabel}</span>
+										<span class="text-xs opacity-60">
+											{#if member.lastConnectionAt}
+												Dernière connexion le {formatDateTime(member.lastConnectionAt)}
+											{:else}
+												Dernière connexion inconnue
+											{/if}
+										</span>
 									</span>
 								</a>
 							</li>
