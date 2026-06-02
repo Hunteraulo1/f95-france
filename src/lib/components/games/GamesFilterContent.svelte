@@ -379,7 +379,7 @@
 	{/if}
 
 	{#if showSort}
-		<label class="form-control w-full max-w-xs">
+		<label class="form-control w-full">
 			<span class="label py-1">
 				<span class="label-text text-xs font-medium">Tri</span>
 			</span>
