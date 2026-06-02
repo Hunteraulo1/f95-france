@@ -4,6 +4,7 @@
 	import ExtensionBanner from '$lib/components/ExtensionBanner.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
+	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -260,6 +261,9 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 select-none">
 				{#each data.updates as update (update.updateId)}
+					{@const homeUpdateImageSrc = resolveGameImageSrc(update.game.gameImage, {
+						website: update.game.gameWebsite
+					})}
 					<article
 						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex"
 					>
@@ -272,7 +276,7 @@
 						</a>
 						<div
 							class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
-							style={`background-image: url(${update.game.gameImage});`}
+							style={homeUpdateImageSrc ? `background-image: url(${homeUpdateImageSrc});` : ''}
 						>
 							<div class="flex flex-col items-start justify-between gap-3">
 								<span
