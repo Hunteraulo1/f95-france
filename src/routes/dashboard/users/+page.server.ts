@@ -43,12 +43,26 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			email: table.user.email,
 			role: table.user.role,
 			avatar: table.user.avatar,
-			createdAt: table.user.createdAt
+			createdAt: table.user.createdAt,
+			lastConnectionAt:
+				sql<Date | null>`(select max(${table.apiLog.createdAt}) from ${table.apiLog} where ${table.apiLog.userId} = ${table.user.id})`.as(
+					'last_connection_at'
+				)
 		})
 		.from(table.user)
 		.orderBy(table.user.createdAt)
 		.limit(PAGE_SIZE)
 		.offset((page - 1) * PAGE_SIZE);
+
+	const now = new Date();
+	const usersWithLiveLastConnection = users.map((u) =>
+		u.id === locals.user?.id
+			? {
+					...u,
+					lastConnectionAt: now
+				}
+			: u
+	);
 
 	const appRoles = await listAppRoles();
 	const roles = await listRolesAssignableToUsers(
@@ -61,7 +75,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	);
 
 	return {
-		users,
+		users: usersWithLiveLastConnection,
 		translators: translatorsList,
 		roles,
 		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),

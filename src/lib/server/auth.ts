@@ -173,6 +173,7 @@ export async function createUser(username: string, email: string, password: stri
 		profileMusicUrl: null,
 		profileCursorUrl: null,
 		savedGamesFilters: '[]',
+		savedUpdatesFilters: '[]',
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};

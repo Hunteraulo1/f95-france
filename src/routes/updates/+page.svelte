@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { type GamesListViewMode } from '$lib/games/games-filter-config';
 	import {
 		formatTranslationVersionDisplay,
 		translationVersionSyncBadgeClass,
@@ -11,7 +12,8 @@
 	import { groupUpdatesByDayAndType } from '$lib/updates/group-updates-by-day';
 	import {
 		createDefaultUpdatesFilterGroups,
-		SAVED_UPDATES_FILTERS_KEY
+		SAVED_UPDATES_FILTERS_KEY,
+		SAVED_UPDATES_VIEW_MODE_KEY
 	} from '$lib/updates/updates-filter-config';
 	import {
 		buildPublicUpdatesListSearchParams,
@@ -22,6 +24,7 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
@@ -36,7 +39,38 @@
 	let searchQuery = $derived(data.query);
 	let filterGroups = $derived(structuredClone(data.filterGroups));
 	let tagsExpanded = $state(false);
+	let viewMode = $state<GamesListViewMode>('list');
+	let isMobileViewport = $state(false);
 	let expandedTagRowIds = new SvelteSet<string>();
+	const displayViewMode = $derived(isMobileViewport ? 'grid' : viewMode);
+
+	onMount(() => {
+		const mobileQuery = window.matchMedia('(max-width: 767px)');
+		const syncMobileViewport = () => {
+			isMobileViewport = mobileQuery.matches;
+		};
+
+		try {
+			const stored = localStorage.getItem(SAVED_UPDATES_VIEW_MODE_KEY);
+			if (stored === 'grid' || stored === 'list') viewMode = stored;
+		} catch {
+			// ignore
+		}
+
+		syncMobileViewport();
+		mobileQuery.addEventListener('change', syncMobileViewport);
+		return () => {
+			mobileQuery.removeEventListener('change', syncMobileViewport);
+		};
+	});
+
+	$effect(() => {
+		try {
+			localStorage.setItem(SAVED_UPDATES_VIEW_MODE_KEY, viewMode);
+		} catch {
+			// ignore
+		}
+	});
 
 	$effect(() => {
 		if (tagsExpanded) expandedTagRowIds.clear();
@@ -61,6 +95,11 @@
 			default:
 				return 'Autre';
 		}
+	};
+
+	const websiteBadgeClass = (website: string, size: 'xs' | 'sm') => {
+		const sizeClass = size === 'xs' ? 'badge-xs' : 'badge-sm';
+		return `badge ${sizeClass} badge-secondary`;
 	};
 
 	const formatTime = (value: Date) =>
@@ -120,7 +159,9 @@
 					Pas d’aperçu
 				</div>
 			{/if}
-			<span class="badge pointer-events-none absolute top-1 left-1 badge-xs badge-neutral">
+			<span
+				class={`pointer-events-none absolute top-1 left-1 ${websiteBadgeClass(game.website, 'xs')}`}
+			>
 				{websiteLabel(game.website)}
 			</span>
 		</div>
@@ -237,6 +278,104 @@
 	</li>
 {/snippet}
 
+{#snippet updateGridCard(update: PublicUpdateRow)}
+	{@const imageSrc = resolveGameImageSrc(update.game.image, {
+		website: update.game.website
+	})}
+	{@const game = update.game}
+	<article class="card card-border bg-base-100 shadow-sm transition hover:shadow-md">
+		<figure class="relative aspect-video overflow-hidden bg-base-300">
+			<a
+				href={resolve(`/games/${game.id}`)}
+				class="block h-full w-full"
+				aria-label={`Voir la fiche de ${game.name}`}
+			>
+				{#if imageSrc}
+					<img
+						src={imageSrc}
+						alt=""
+						class="h-full w-full object-cover"
+						loading="lazy"
+						referrerpolicy="no-referrer"
+					/>
+				{:else}
+					<div class="flex h-full w-full items-center justify-center text-sm text-base-content/50">
+						Pas d’aperçu
+					</div>
+				{/if}
+			</a>
+			<span
+				class={`pointer-events-none absolute top-2 left-2 ${websiteBadgeClass(game.website, 'sm')}`}
+			>
+				{websiteLabel(game.website)}
+			</span>
+		</figure>
+		<div class="card-body gap-2 p-4">
+			<div class="flex items-start gap-2">
+				<h2 class="card-title text-base leading-snug line-clamp-2">
+					<a href={resolve(`/games/${game.id}`)} class="link link-hover line-clamp-2">
+						{game.name}
+					</a>
+				</h2>
+				<time class="ml-auto shrink-0 text-xs opacity-60" datetime={update.createdAt.toISOString()}>
+					{formatTime(update.createdAt)}
+				</time>
+			</div>
+			{#if game.engineType}
+				<div class="flex flex-wrap gap-1">
+					<span
+						class="badge badge-xs badge-outline"
+						style={`border-color: ${getGameEngineHexColor(game.engineType)}; color: ${getGameEngineHexColor(game.engineType)}`}
+					>
+						{getGameEngineLabel(game.engineType)}
+					</span>
+				</div>
+			{/if}
+			{#if game.hasTranslation}
+				<span
+					class={translationVersionSyncBadgeClass(game.isOutdated, game.isIntegrated) + ' badge-xs'}
+				>
+					{translationVersionSyncLabel(game.isOutdated, game.isIntegrated)}
+				</span>
+				<p class="text-sm font-medium">
+					{formatTranslationVersionDisplay({
+						tversion: game.tversion,
+						referenceVersion: game.referenceVersion,
+						isOutdated: game.isOutdated,
+						isIntegrated: game.isIntegrated
+					})}
+				</p>
+			{:else}
+				<p class="text-sm text-base-content/60">Aucune traduction enregistrée</p>
+			{/if}
+			<div class="flex flex-wrap items-center gap-1">
+				{#each game.tags.slice(0, TAGS_PREVIEW_LIMIT) as tag (tag)}
+					<span class="badge badge-xs badge-ghost">{tag}</span>
+				{/each}
+				{#if game.tags.length > TAGS_PREVIEW_LIMIT}
+					<span class="text-xs text-base-content/60">+{game.tags.length - TAGS_PREVIEW_LIMIT}</span>
+				{/if}
+			</div>
+			<div class="card-actions mt-1 justify-end">
+				<a href={resolve(`/games/${game.id}`)} class="btn btn-sm btn-ghost">Voir la fiche</a>
+				{#if game.link?.trim()}
+					<a
+						href={game.link}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="btn btn-sm btn-outline"
+						aria-label={`Thread de ${game.name}`}
+						title="Ouvrir le thread"
+					>
+						Thread
+						<ExternalLink class="size-4" />
+					</a>
+				{/if}
+			</div>
+		</div>
+	</article>
+{/snippet}
+
 <svelte:head>
 	<title>Mises à jour — F95 France</title>
 	<meta
@@ -255,14 +394,18 @@
 				bind:filterGroups
 				translatorIds={data.translatorIds}
 				basePath="/updates"
+				isAuthenticated={data.isAuthenticated}
+				initialSavedFilters={data.savedFilters}
 				savedFiltersKey={SAVED_UPDATES_FILTERS_KEY}
-				savedFiltersApiPath={null}
+				savedFiltersApiPath="/api/updates/saved-filters"
 				buildSearchParams={buildPublicUpdatesListSearchParams}
 				createDefaultFilterGroups={createDefaultUpdatesFilterGroups}
 				cloneGroups={cloneUpdatesFilterGroups}
 				showSort={false}
 				showTagsExpandToggle
 				bind:tagsExpanded
+				showViewModeToggle
+				bind:viewMode
 				disabled={Boolean(data.error)}
 			/>
 		</div>
@@ -302,22 +445,49 @@
 					</div>
 				</div>
 			{:else}
-				<ul class="list rounded-box bg-base-100 shadow-md">
-					{#each groupedUpdates as day (day.dayKey)}
-						<li class="p-4 pb-2 text-sm font-semibold tracking-wide">{day.dayLabel}</li>
-						{#each day.sections as section (`${day.dayKey}-${section.status}`)}
-							<li class="px-4 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">
-								{section.label}
-								<span class="font-normal normal-case opacity-80">
-									({section.items.length})
-								</span>
-							</li>
-							{#each section.items as update (update.id)}
-								{@render updateRow(update)}
+				{#if displayViewMode === 'list'}
+					<ul class="list rounded-box bg-base-100 shadow-md">
+						{#each groupedUpdates as day (day.dayKey)}
+							<li class="p-4 pb-2 text-sm font-semibold tracking-wide">{day.dayLabel}</li>
+							{#each day.sections as section (`${day.dayKey}-${section.status}`)}
+								<li class="px-4 pb-1 text-xs font-semibold tracking-wide uppercase opacity-60">
+									{section.label}
+									<span class="font-normal normal-case opacity-80">
+										({section.items.length})
+									</span>
+								</li>
+								{#each section.items as update (update.id)}
+									{@render updateRow(update)}
+								{/each}
 							{/each}
 						{/each}
-					{/each}
-				</ul>
+					</ul>
+				{:else}
+					<div class="flex flex-col gap-5">
+						{#each groupedUpdates as day (day.dayKey)}
+							<section class="flex flex-col gap-3">
+								<h2 class="text-sm font-semibold tracking-wide">{day.dayLabel}</h2>
+								{#each day.sections as section (`grid-${day.dayKey}-${section.status}`)}
+									<div class="flex flex-col gap-2">
+										<p class="text-xs font-semibold tracking-wide uppercase opacity-60">
+											{section.label}
+											<span class="font-normal normal-case opacity-80">
+												({section.items.length})
+											</span>
+										</p>
+										<div
+											class="grid grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+										>
+											{#each section.items as update (update.id)}
+												{@render updateGridCard(update)}
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</section>
+						{/each}
+					</div>
+				{/if}
 
 				<Pagination
 					currentPage={data.page}

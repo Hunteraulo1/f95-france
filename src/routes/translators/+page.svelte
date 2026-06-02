@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
@@ -31,6 +33,11 @@
 				invalidateAll: true
 			});
 		}, 300);
+	};
+
+	const translatorPagesMenuLabel = (pages: TranslatorPageLink[]) => {
+		if (pages.length === 1) return pages[0].label;
+		return `Pages (${pages.length})`;
 	};
 
 	const resultSummary = $derived.by(() => {
@@ -95,11 +102,11 @@
 			<li class="p-4 pb-2 text-xs tracking-wide opacity-60 uppercase">{resultSummary}</li>
 
 			{#each data.translators as translator (translator.id)}
-				<li class="list-row hover:bg-base-200">
-					<div>
+				<li class="list-row items-center hover:bg-base-200">
+					<div class="shrink-0">
 						{#if translator.avatar}
 							<img
-								class="rounded-full size-8 object-cover"
+								class="size-8 rounded-full object-cover"
 								src={translator.avatar}
 								alt=""
 								loading="lazy"
@@ -113,7 +120,7 @@
 						{/if}
 					</div>
 
-					<div class="min-w-0">
+					<div class="min-w-0 list-col-grow">
 						{#if translator.profileHref}
 							<a href={resolve(translator.profileHref)} class="link link-hover font-medium">
 								{translator.name}
@@ -122,20 +129,66 @@
 							<div class="font-medium">{translator.name}</div>
 						{/if}
 						<div class="text-xs font-semibold uppercase opacity-60">{translator.subtitle}</div>
+
+						{#if translator.pages.length > 0}
+							<div class="mt-2 sm:hidden">
+								{#if translator.pages.length === 1}
+									<a
+										href={translator.pages[0].url}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="btn btn-sm btn-outline w-full truncate font-normal"
+									>
+										{translator.pages[0].label}
+									</a>
+								{:else}
+									<div class="dropdown dropdown-end w-full">
+										<div
+											tabindex="0"
+											role="button"
+											class="btn btn-sm btn-outline w-full justify-between font-normal"
+										>
+											<span class="truncate">{translatorPagesMenuLabel(translator.pages)}</span>
+											<ChevronDown class="size-4 shrink-0 opacity-60" />
+										</div>
+										<ul
+											tabindex="-1"
+											class="dropdown-content menu z-50 mt-1 w-full rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+										>
+											{#each translator.pages as page (`${translator.id}-${page.url}`)}
+												<li>
+													<a
+														href={page.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="truncate"
+													>
+														{page.label}
+													</a>
+												</li>
+											{/each}
+										</ul>
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
-					{#each translator.pages as page, index (`${translator.id}-${index}-${page.url}`)}
-						<a
-							href={page.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="btn btn-link p-0"
-							aria-label={page.label}
-							title={page.label}
-						>
-							{page.label}
-						</a>
-					{/each}
+					{#if translator.pages.length > 0}
+						<div class="hidden shrink-0 flex-wrap items-center justify-end gap-1 sm:flex">
+							{#each translator.pages as page (`${translator.id}-desktop-${page.url}`)}
+								<a
+									href={page.url}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="btn btn-sm btn-ghost max-w-40 truncate font-normal"
+									title={page.label}
+								>
+									{page.label}
+								</a>
+							{/each}
+						</div>
+					{/if}
 				</li>
 			{/each}
 		</ul>

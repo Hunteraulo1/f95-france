@@ -33,6 +33,8 @@ export const user = pgTable('user', {
 	profileCursorUrl: varchar('profile_cursor_url', { length: 2048 }),
 	/** Presets de filtres de la page jeux (JSON sérialisé). */
 	savedGamesFilters: text('saved_games_filters').notNull().default('[]'),
+	/** Presets de filtres de la page mises à jour (JSON sérialisé). */
+	savedUpdatesFilters: text('saved_updates_filters').notNull().default('[]'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });

@@ -17,7 +17,7 @@
 	let { videoId }: Props = $props();
 
 	const VOLUME_STORAGE_KEY = 'f95-profile-yt-volume';
-	const DEFAULT_VOLUME = 70;
+	const DEFAULT_VOLUME = 50;
 
 	let iframeEl = $state<HTMLIFrameElement | null>(null);
 	let embedSrc = $state('');
