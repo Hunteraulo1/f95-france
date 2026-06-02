@@ -1,11 +1,11 @@
 import { config } from 'dotenv';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
 import { getPostgresConfig } from './connection';
+import { migrationFileHash } from './migration-hash';
 
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
@@ -22,13 +22,8 @@ const clientConfig = getPostgresConfig();
 const client = postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
 const db = drizzle(client);
 
-function migrationHash(tag: string): string {
-	const sqlPath = resolve(process.cwd(), `drizzle/${tag}.sql`);
-	const query = readFileSync(sqlPath, 'utf8');
-	return createHash('sha256').update(query).digest('hex');
-}
-
 async function stampMigrationsFromJournal() {
+	const migrationsFolder = resolve(process.cwd(), 'drizzle');
 	const journalPath = resolve(process.cwd(), 'drizzle/meta/_journal.json');
 	const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as Journal;
 
@@ -52,7 +47,7 @@ async function stampMigrationsFromJournal() {
 	);
 
 	for (const entry of journal.entries) {
-		const hash = migrationHash(entry.tag);
+		const hash = migrationFileHash(migrationsFolder, entry.tag);
 		await db.execute(sql`
 			INSERT INTO ${sql.identifier(MIGRATIONS_SCHEMA)}.${sql.identifier(MIGRATIONS_TABLE)} ("hash", "created_at")
 			VALUES (${hash}, ${entry.when})
