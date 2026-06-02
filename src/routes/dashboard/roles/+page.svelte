@@ -347,7 +347,7 @@
 										max={data.rolePriorityMax}
 										step="1"
 										value={selectedRole.priority}
-										disabled={!canManageSelected && !isSelectedSuperadmin}
+										disabled={roleFieldsLocked}
 									/>
 									<p class="label text-xs">
 										Plus la valeur est élevée, plus le rôle apparaît en premier (staff, liste des
