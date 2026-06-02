@@ -56,6 +56,12 @@
 	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
 	let translatorPagesError = $state<string | null>(null);
 	let translatorPagesInfo = $state<string | null>(null);
+	let initialTranslatorPagesSignature = $state('[]');
+
+	const normalizeTranslatorPages = (pages: Array<{ name: string; link: string }>) =>
+		pages
+			.map((page) => ({ name: page.name.trim(), link: page.link.trim() }))
+			.filter((page) => page.name !== '' || page.link !== '');
 
 	$effect(() => {
 		profileUsername = username;
@@ -77,7 +83,20 @@
 		} else if (linkedTranslator) {
 			translatorPages = [{ name: '', link: '' }];
 		}
+
+		if (linkedTranslator) {
+			initialTranslatorPagesSignature = JSON.stringify(
+				normalizeTranslatorPages(linkedTranslator.pages ?? [])
+			);
+		}
 	});
+
+	const currentTranslatorPagesSignature = $derived(
+		JSON.stringify(normalizeTranslatorPages(translatorPages))
+	);
+	const hasTranslatorPagesChanges = $derived(
+		currentTranslatorPagesSignature !== initialTranslatorPagesSignature
+	);
 
 	const addTranslatorPage = () => {
 		translatorPages = [...translatorPages, { name: '', link: '' }];
@@ -253,15 +272,17 @@
 							+ Ajouter une page
 						</button>
 					</div>
-					<input
-						type="hidden"
-						name="pages"
-						value={JSON.stringify(
-							translatorPages.filter((p) => p.name.trim() !== '' || p.link.trim() !== '')
-						)}
-					/>
+					<input type="hidden" name="pages" value={currentTranslatorPagesSignature} />
 					<div class="mt-4 flex justify-end">
-						<button type="submit" class="btn btn-primary">Soumettre pour validation</button>
+						<button type="submit" class="btn btn-primary" disabled={!hasTranslatorPagesChanges}>
+							{translatorPagesWriteMode === 'direct'
+								? hasTranslatorPagesChanges
+									? 'Enregistrer les modifications'
+									: 'Aucun changement'
+								: hasTranslatorPagesChanges
+									? 'Soumettre pour validation'
+									: 'Aucun changement'}
+						</button>
 					</div>
 				</form>
 			</div>
