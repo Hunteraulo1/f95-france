@@ -84,7 +84,6 @@
 			<table class="table">
 				<thead>
 					<tr>
-						<th></th>
 						<th>Nom d'utilisateur</th>
 						<th>Email</th>
 						<th>Rôle</th>
@@ -95,9 +94,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.users as user, index (user.id)}
+					{#each data.users as user (user.id)}
 						<tr>
-							<td class="font-bold">{(data.page - 1) * data.pageSize + index + 1}</td>
 							<td>
 								<div class="flex items-center gap-3">
 									<div class="avatar">
