@@ -97,18 +97,21 @@
 	};
 
 	const buildPageHref = (targetPage: number) => {
-		const params = new URLSearchParams();
-		if (data.filters.method) params.set('method', data.filters.method);
-		if (data.filters.search) params.set('q', data.filters.search);
-		if (data.filters.user) params.set('user', data.filters.user);
-		if (data.filters.errorsOnly) params.set('errors', 'true');
-		if (data.filters.warningsOnly) params.set('warnings', 'true');
-		if (data.filters.redirectsOnly) params.set('redirects', 'true');
-		if (data.filters.from) params.set('from', data.filters.from);
-		if (data.filters.to) params.set('to', data.filters.to);
-		params.set('limit', String(data.pagination.limit));
-		params.set('page', String(targetPage));
-		return `/dashboard/logs?${params.toString()}`;
+		const pairs: Array<[string, string]> = [];
+		if (data.filters.method) pairs.push(['method', data.filters.method]);
+		if (data.filters.search) pairs.push(['q', data.filters.search]);
+		if (data.filters.user) pairs.push(['user', data.filters.user]);
+		if (data.filters.errorsOnly) pairs.push(['errors', 'true']);
+		if (data.filters.warningsOnly) pairs.push(['warnings', 'true']);
+		if (data.filters.redirectsOnly) pairs.push(['redirects', 'true']);
+		if (data.filters.from) pairs.push(['from', data.filters.from]);
+		if (data.filters.to) pairs.push(['to', data.filters.to]);
+		pairs.push(['limit', String(data.pagination.limit)]);
+		pairs.push(['page', String(targetPage)]);
+		const query = pairs
+			.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+			.join('&');
+		return `/dashboard/logs?${query}`;
 	};
 </script>
 
