@@ -41,10 +41,14 @@
 			case 'update':
 				return 'badge badge-info badge-soft';
 			case 'adding':
-				return 'badge badge-primary badge-soft';
+				return 'badge badge-primary text-primary-content';
 			default:
-				return 'badge badge-neutral badge-soft';
+				return 'badge badge-neutral text-neutral-content';
 		}
+	};
+
+	const websiteBadgeClass = () => {
+		return 'badge badge-secondary';
 	};
 
 	const backLink = $derived(typeof history !== 'undefined' && history.length > 1);
@@ -100,7 +104,7 @@
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								<span class="badge badge-neutral badge-soft">{game.websiteLabel}</span>
+								<span class={websiteBadgeClass()}>{game.websiteLabel}</span>
 								{#if game.gameVersion?.trim()}
 									<span class="badge badge-outline">{game.gameVersion.trim()}</span>
 								{/if}
@@ -204,7 +208,7 @@
 											{engineDisplayLabel(tr.gameType)}
 										</span>
 										{#if tr.ac}
-											<span class="badge badge-primary badge-soft badge-sm">Auto-check</span>
+											<span class="badge badge-primary badge-sm">Auto-check</span>
 										{/if}
 									</div>
 

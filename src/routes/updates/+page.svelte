@@ -97,6 +97,11 @@
 		}
 	};
 
+	const websiteBadgeClass = (website: string, size: 'xs' | 'sm') => {
+		const sizeClass = size === 'xs' ? 'badge-xs' : 'badge-sm';
+		return `badge ${sizeClass} badge-secondary`;
+	};
+
 	const formatTime = (value: Date) =>
 		new Date(value).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
@@ -154,7 +159,9 @@
 					Pas d’aperçu
 				</div>
 			{/if}
-			<span class="badge pointer-events-none absolute top-1 left-1 badge-xs badge-neutral">
+			<span
+				class={`pointer-events-none absolute top-1 left-1 ${websiteBadgeClass(game.website, 'xs')}`}
+			>
 				{websiteLabel(game.website)}
 			</span>
 		</div>
@@ -297,7 +304,9 @@
 					</div>
 				{/if}
 			</a>
-			<span class="badge pointer-events-none absolute top-2 left-2 badge-sm badge-neutral">
+			<span
+				class={`pointer-events-none absolute top-2 left-2 ${websiteBadgeClass(game.website, 'sm')}`}
+			>
 				{websiteLabel(game.website)}
 			</span>
 		</figure>
