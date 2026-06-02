@@ -299,7 +299,7 @@
 	</div>
 
 	{#if showViewModeToggle}
-		<div class="flex flex-col gap-2 rounded-box border border-base-300 px-3 py-2">
+		<div class="flex-col gap-2 rounded-box border border-base-300 px-3 py-2 hidden md:flex">
 			<span class="text-sm font-medium">Affichage</span>
 			<div class="join w-full">
 				<button

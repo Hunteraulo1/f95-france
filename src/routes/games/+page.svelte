@@ -30,15 +30,30 @@
 	let filterGroups = $state<PageData['filterGroups']>([]);
 	let tagsExpanded = $state(false);
 	let viewMode = $state<GamesListViewMode>('grid');
+	/** Préférence utilisateur ; sur mobile l’affichage force la grille sans l’écraser. */
+	let isMobileViewport = $state(false);
 	let expandedTagRowIds = new SvelteSet<string>();
 
+	const displayViewMode = $derived(isMobileViewport ? 'grid' : viewMode);
+
 	onMount(() => {
+		const mobileQuery = window.matchMedia('(max-width: 767px)');
+		const syncMobileViewport = () => {
+			isMobileViewport = mobileQuery.matches;
+		};
+
 		try {
 			const stored = localStorage.getItem(GAMES_VIEW_MODE_KEY);
 			if (stored === 'grid' || stored === 'list') viewMode = stored;
 		} catch {
 			// ignore
 		}
+
+		syncMobileViewport();
+		mobileQuery.addEventListener('change', syncMobileViewport);
+		return () => {
+			mobileQuery.removeEventListener('change', syncMobileViewport);
+		};
 	});
 
 	$effect(() => {
@@ -380,7 +395,7 @@
 					</div>
 				</div>
 			{:else}
-				{#if viewMode === 'list'}
+				{#if displayViewMode === 'list'}
 					<ul class="list rounded-box bg-base-100 shadow-md">
 						{#each data.games as game (game.id)}
 							{@render gameListRow(game)}
