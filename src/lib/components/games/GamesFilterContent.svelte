@@ -17,6 +17,7 @@
 	} from '$lib/games/games-filter-url';
 	import { PUBLIC_GAMES_SORT_OPTIONS } from '$lib/games/public-games-query';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
 	import { onMount } from 'svelte';
@@ -82,6 +83,7 @@
 
 	let savedFilters = $state<SavedGamesFilterPreset[]>([]);
 	let filterRemoveIndex = $state<number | null>(null);
+	let savedFiltersHelpOpen = $state(false);
 
 	onMount(() => {
 		if (isAuthenticated) {
@@ -212,9 +214,49 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<div class="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
-		<span class="text-sm font-medium">Filtrages sauvegardés :</span>
-		<div class="flex flex-wrap gap-2">
+	<div class="flex flex-col gap-2">
+		<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+			<span class="text-sm font-medium">Filtrages sauvegardés</span>
+			<button
+				type="button"
+				class="btn btn-circle btn-ghost btn-xs h-6 w-6 min-h-0"
+				aria-label="Aide — filtrages sauvegardés"
+				aria-expanded={savedFiltersHelpOpen}
+				onclick={() => (savedFiltersHelpOpen = !savedFiltersHelpOpen)}
+			>
+				<CircleHelp class="h-3.5 w-3.5 opacity-70" />
+			</button>
+		</div>
+		{#if savedFiltersHelpOpen}
+			<div
+				class="w-full rounded-box border border-base-300 bg-base-200/50 p-3 text-sm"
+				role="region"
+				aria-label="Aide filtrages sauvegardés"
+			>
+				<p class="mb-2 font-medium">Comment ça marche</p>
+				<ul class="list-disc space-y-1.5 pl-4 text-base-content/80">
+					<li>
+						<span class="font-medium text-base-content">+</span> enregistre la recherche, le tri et
+						les filtres actuels (max. {maxSavedFilters})
+					</li>
+					<li>
+						<span class="font-medium text-base-content">1, 2, 3…</span> applique ce filtre
+					</li>
+					<li>
+						<span class="font-medium text-base-content">Supprimer</span> double-clic sur le numéro,
+						puis clic sur <span class="font-medium">✕</span> (sous 2 s)
+					</li>
+				</ul>
+				<p class="mt-2 border-t border-base-300 pt-2 text-xs text-base-content/60">
+					{#if isAuthenticated}
+						Synchronisés avec votre compte F95 France.
+					{:else}
+						Stockés uniquement dans ce navigateur (connexion requise pour la synchro).
+					{/if}
+				</p>
+			</div>
+		{/if}
+		<div class="flex flex-wrap gap-2 lg:items-center">
 			{#each savedFilters as preset, index (index)}
 				<button
 					type="button"
