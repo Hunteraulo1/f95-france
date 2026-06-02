@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["nodejs_24", "bun"]
+# Client PostgreSQL pour sync prod → PTB au démarrage (pg_dump / psql).
+nixPkgs = ["nodejs_24", "bun", "postgresql"]
 
 [phases.install]
 cmds = [

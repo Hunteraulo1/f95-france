@@ -77,7 +77,15 @@ La source de vérité est `src/lib/server/db/schema.ts`. **Ne pas** écrire de f
 
 Première install sur une base vide : `bun run db:migrate` applique tout le journal.
 
-Après sync prod → dev (`bun run db:sync:prod-to-dev`), les migrations Drizzle sont appliquées automatiquement.
+Après sync prod → dev (`bun run db:sync:prod-to-dev`), le schéma `public` est copié puis stamp + migrate.
+
+**PTB (Coolify)** : pour repartir de la prod à chaque déploiement (données + journal `drizzle`) :
+
+1. Variables Coolify (ressource PTB uniquement) : `POSTGRES_PROD_*`, `POSTGRES_*` ou `POSTGRES_PTB_*`, `SYNC_PROD_TO_PTB_ON_DEPLOY=true`
+2. Laisser la commande de démarrage Coolify sur `bun run start` (déjà le cas avec Nixpacks)
+3. Sync manuelle : `bun run db:sync:prod-to-ptb`
+
+Le clone PTB inclut `public` et `drizzle` ; seules les migrations plus récentes que la prod sont ensuite appliquées.
 
 **Production :** après chaque déploiement qui modifie le schéma :
 

@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
 import { getPostgresConfig } from './connection';
+import { applyPlainPostgresRlsBypassIfNeeded } from './plain-postgres-rls-bypass';
 
 // Charger les variables d'environnement depuis .env
 config({ path: resolve(process.cwd(), '.env') });
@@ -27,6 +28,7 @@ async function runMigrations() {
 		// Sur une base déjà peuplée, ADD CONSTRAINT (FK) valide toute la table et peut dépasser
 		// le statement_timeout du fournisseur (ex. Neon ~2 min) → erreur 57014.
 		await client.unsafe('SET statement_timeout = 0');
+		await applyPlainPostgresRlsBypassIfNeeded(client, migrationsFolder);
 		await migrate(db, {
 			migrationsFolder,
 			migrationsSchema: 'drizzle',

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Copie la base Postgres prod vers la base Postgres dev (écrase le contenu dev).
+# Copie la base Postgres prod vers une cible (dev local ou PTB).
+# Usage:
+#   ./scripts/sync-prod-to-dev-db.sh [--target dev|ptb] [--yes] [--include-drizzle|--no-include-drizzle]
+#
+# dev (défaut) : POSTGRES_DEV_* ou POSTGRES_* — schéma public, puis stamp + migrate.
+# ptb          : POSTGRES_PTB_* ou POSTGRES_* — public + drizzle (défaut), puis migrate seul.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,8 +19,49 @@ if [[ -f "${ENV_FILE}" ]]; then
 	set +a
 fi
 
+TARGET="dev"
+YES_MODE=false
+INCLUDE_DRIZZLE=""
+
+while [[ $# -gt 0 ]]; do
+	case "${1}" in
+	--target)
+		TARGET="${2:?--target requiert dev ou ptb}"
+		shift 2
+		;;
+	--yes | -y)
+		YES_MODE=true
+		shift
+		;;
+	--include-drizzle)
+		INCLUDE_DRIZZLE=true
+		shift
+		;;
+	--no-include-drizzle)
+		INCLUDE_DRIZZLE=false
+		shift
+		;;
+	*)
+		echo "Option inconnue: ${1}"
+		exit 1
+		;;
+	esac
+done
+
+if [[ "${TARGET}" != "dev" && "${TARGET}" != "ptb" ]]; then
+	echo "Erreur: --target doit être dev ou ptb (reçu: ${TARGET})"
+	exit 1
+fi
+
+if [[ -z "${INCLUDE_DRIZZLE}" ]]; then
+	if [[ "${TARGET}" == "ptb" ]]; then
+		INCLUDE_DRIZZLE=true
+	else
+		INCLUDE_DRIZZLE=false
+	fi
+fi
+
 # Charge POSTGRES_{PREFIX}_* dans PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD, PG_SSLMODE.
-# PREFIX vide → POSTGRES_* / PG* (dev local par défaut).
 load_pg_config() {
 	local prefix="${1:-}"
 	local host_var port_var db_var user_var pass_var ssl_var
@@ -69,8 +115,7 @@ export_pg_env() {
 	export PGSSLMODE="${PG_SSLMODE}"
 }
 
-# Vide schémas applicatifs + reliques Supabase (publications, abonnements) avant import.
-wipe_dev_database() {
+wipe_target_database() {
 	export_pg_env
 	psql -v ON_ERROR_STOP=1 <<'SQL'
 SELECT pg_terminate_backend(pid)
@@ -115,8 +160,25 @@ $wipe$;
 SQL
 }
 
+filter_dump_for_plain_postgres() {
+	if [[ "${TARGET}" != "ptb" ]]; then
+		cat
+		return
+	fi
+	sed -E \
+		-e '/^(CREATE|ALTER|DROP) PUBLICATION /d' \
+		-e '/^(CREATE|ALTER|DROP) SUBSCRIPTION /d' \
+		-e '/^CREATE EVENT TRIGGER /d' \
+		-e '/^ALTER EVENT TRIGGER /d' \
+		-e '/^CREATE POLICY /d' \
+		-e '/^ALTER POLICY /d' \
+		-e '/^DROP POLICY /d' \
+		-e '/^REVOKE .* FROM (anon|authenticated)/d' \
+		-e '/^GRANT .* TO (anon|authenticated)/d'
+}
+
 if ! command -v pg_dump >/dev/null 2>&1; then
-	echo "Erreur: pg_dump introuvable. Installe le client PostgreSQL."
+	echo "Erreur: pg_dump introuvable. Installe le client PostgreSQL (nixpacks: postgresql)."
 	exit 1
 fi
 
@@ -127,7 +189,7 @@ fi
 
 if ! load_pg_config "PROD"; then
 	echo "Erreur: configuration prod incomplète."
-	echo "Définir dans .env : POSTGRES_PROD_HOST, POSTGRES_PROD_PASSWORD"
+	echo "Définir dans .env / Coolify : POSTGRES_PROD_HOST, POSTGRES_PROD_PASSWORD"
 	echo "Optionnel : POSTGRES_PROD_PORT, POSTGRES_PROD_DB, POSTGRES_PROD_USER, POSTGRES_PROD_SSL_MODE"
 	exit 1
 fi
@@ -139,32 +201,38 @@ PROD_USER="${PG_USER}"
 PROD_PASSWORD="${PG_PASSWORD}"
 PROD_SSLMODE="${PG_SSLMODE}"
 
-if load_pg_config "DEV"; then
+TARGET_PREFIX=""
+if [[ "${TARGET}" == "ptb" ]]; then
+	TARGET_PREFIX="PTB"
+fi
+
+if load_pg_config "${TARGET_PREFIX}"; then
 	:
-elif load_pg_config ""; then
+elif [[ "${TARGET}" == "dev" ]] && load_pg_config ""; then
 	:
 else
-	echo "Erreur: configuration dev incomplète."
-	echo "Définir POSTGRES_DEV_* ou POSTGRES_HOST + POSTGRES_PASSWORD (Docker local)."
+	echo "Erreur: configuration cible (${TARGET}) incomplète."
+	if [[ "${TARGET}" == "ptb" ]]; then
+		echo "Définir POSTGRES_PTB_* ou POSTGRES_* (base de l’app PTB sur Coolify)."
+	else
+		echo "Définir POSTGRES_DEV_* ou POSTGRES_HOST + POSTGRES_PASSWORD."
+	fi
 	exit 1
 fi
-DEV_LABEL="$(pg_connection_label)"
-DEV_HOST="${PG_HOST}"
-DEV_PORT="${PG_PORT}"
-DEV_DB="${PG_DB}"
-DEV_USER="${PG_USER}"
-DEV_PASSWORD="${PG_PASSWORD}"
-DEV_SSLMODE="${PG_SSLMODE}"
-
-YES_MODE=false
-if [[ "${1:-}" == "--yes" || "${1:-}" == "-y" ]]; then
-	YES_MODE=true
-fi
+TARGET_LABEL="$(pg_connection_label)"
+TARGET_HOST="${PG_HOST}"
+TARGET_PORT="${PG_PORT}"
+TARGET_DB="${PG_DB}"
+TARGET_USER="${PG_USER}"
+TARGET_PASSWORD="${PG_PASSWORD}"
+TARGET_SSLMODE="${PG_SSLMODE}"
 
 if [[ "${YES_MODE}" != "true" ]]; then
-	echo "Cette action va ECRASER la base dev avec la base prod."
+	echo "Cette action va ECRASER la base cible avec la base prod."
+	echo "Cible: ${TARGET}"
 	echo "Source (prod): ${PROD_LABEL} (ssl=${PROD_SSLMODE})"
-	echo "Cible (dev):   ${DEV_LABEL} (ssl=${DEV_SSLMODE})"
+	echo "Destination:   ${TARGET_LABEL} (ssl=${TARGET_SSLMODE})"
+	echo "Schémas: public$([[ "${INCLUDE_DRIZZLE}" == "true" ]] && echo ', drizzle')"
 	read -r -p "Continuer ? (yes/no) " confirm
 	if [[ "${confirm}" != "yes" ]]; then
 		echo "Annulé."
@@ -172,16 +240,21 @@ if [[ "${YES_MODE}" != "true" ]]; then
 	fi
 fi
 
-echo "Vidage des schémas applicatifs sur la base dev..."
-PG_HOST="${DEV_HOST}"
-PG_PORT="${DEV_PORT}"
-PG_DB="${DEV_DB}"
-PG_USER="${DEV_USER}"
-PG_PASSWORD="${DEV_PASSWORD}"
-PG_SSLMODE="${DEV_SSLMODE}"
-wipe_dev_database
+echo "Vidage des schémas applicatifs sur la base cible (${TARGET})..."
+PG_HOST="${TARGET_HOST}"
+PG_PORT="${TARGET_PORT}"
+PG_DB="${TARGET_DB}"
+PG_USER="${TARGET_USER}"
+PG_PASSWORD="${TARGET_PASSWORD}"
+PG_SSLMODE="${TARGET_SSLMODE}"
+wipe_target_database
 
-echo "Import depuis prod (schéma public uniquement — sans auth/storage/realtime Supabase)..."
+DUMP_SCHEMA_ARGS=(--schema=public)
+if [[ "${INCLUDE_DRIZZLE}" == "true" ]]; then
+	DUMP_SCHEMA_ARGS+=(--schema=drizzle)
+fi
+
+echo "Import depuis prod (${DUMP_SCHEMA_ARGS[*]})..."
 PG_HOST="${PROD_HOST}"
 PG_PORT="${PROD_PORT}"
 PG_DB="${PROD_DB}"
@@ -189,29 +262,28 @@ PG_USER="${PROD_USER}"
 PG_PASSWORD="${PROD_PASSWORD}"
 PG_SSLMODE="${PROD_SSLMODE}"
 export_pg_env
-# Sans --clean : le schéma dev est déjà vide, l’ordre CREATE évite les conflits FK.
-# --schema=public : données applicatives seulement (plus de dump Supabase complet).
-pg_dump --no-owner --no-privileges --no-tablespaces --schema=public |
-	sed -E \
-		-e '/^(CREATE|ALTER|DROP) PUBLICATION /d' \
-		-e '/^(CREATE|ALTER|DROP) SUBSCRIPTION /d' \
-		-e '/^CREATE EVENT TRIGGER /d' \
-		-e '/^ALTER EVENT TRIGGER /d' |
+
+pg_dump --no-owner --no-privileges --no-tablespaces "${DUMP_SCHEMA_ARGS[@]}" |
+	filter_dump_for_plain_postgres |
 	{
-		PG_HOST="${DEV_HOST}"
-		PG_PORT="${DEV_PORT}"
-		PG_DB="${DEV_DB}"
-		PG_USER="${DEV_USER}"
-		PG_PASSWORD="${DEV_PASSWORD}"
-		PG_SSLMODE="${DEV_SSLMODE}"
+		PG_HOST="${TARGET_HOST}"
+		PG_PORT="${TARGET_PORT}"
+		PG_DB="${TARGET_DB}"
+		PG_USER="${TARGET_USER}"
+		PG_PASSWORD="${TARGET_PASSWORD}"
+		PG_SSLMODE="${TARGET_SSLMODE}"
 		export_pg_env
 		psql -v ON_ERROR_STOP=1 -q
 	}
 
-echo "Terminé: base dev synchronisée depuis prod."
+echo "Terminé: base ${TARGET} synchronisée depuis prod."
 
-echo "Marquage des migrations Drizzle (schéma déjà présent dans le dump prod)..."
-(cd "${ROOT_DIR}" && bun run db:stamp-migrations)
-
-echo "Application des migrations Drizzle en attente (code plus récent que prod)..."
-(cd "${ROOT_DIR}" && bun run db:migrate)
+if [[ "${INCLUDE_DRIZZLE}" == "true" ]]; then
+	echo "Journal Drizzle copié depuis prod — application des migrations en attente (code PTB)…"
+	(cd "${ROOT_DIR}" && bun run db:migrate)
+else
+	echo "Marquage des migrations Drizzle (schéma public aligné prod)…"
+	(cd "${ROOT_DIR}" && bun run db:stamp-migrations)
+	echo "Application des migrations en attente…"
+	(cd "${ROOT_DIR}" && bun run db:migrate)
+fi

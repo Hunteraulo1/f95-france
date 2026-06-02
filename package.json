@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.4.9",
+	"version": "4.4.10",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -10,7 +10,7 @@
 		"dev": "vite dev",
 		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && vite dev --force",
 		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
-		"start": "bun run db:migrate && ORIGIN=\"${ORIGIN:-${PUBLIC_APP_ORIGIN:-http://localhost:${PORT:-3000}}}\" bun build/index.js",
+		"start": "bash scripts/coolify-start.sh",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -26,7 +26,8 @@
 		"db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
 		"db:dev:down": "docker compose -f docker-compose.dev.yml down",
 		"db:dev:logs": "docker compose -f docker-compose.dev.yml logs -f postgres-dev",
-		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh",
+		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh --target dev",
+		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
 		"cron:check-version": "node cron/check-version.mjs",
 		"sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
 	},
