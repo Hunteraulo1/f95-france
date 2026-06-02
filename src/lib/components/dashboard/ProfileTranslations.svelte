@@ -122,7 +122,7 @@
 										</div>
 									</td>
 									<td>
-										<span class={`badge badge-sm ${statusBadge(t.status)}`}
+										<span class={`badge badge-sm text-nowrap ${statusBadge(t.status)}`}
 											>{labelStatus(t.status)}</span
 										>
 									</td>

@@ -938,6 +938,7 @@
 		const storedImage = normalizeGameImageForStorage(game.website, editingGame.image, {
 			gameAutoCheck: editGameAutoCheck
 		});
+		const { descriptionFr, ...editingGamePayload } = editingGame;
 		const gameLinkError = validateGameLinkFields({
 			link: editingGame.link,
 			image: storedImage,
@@ -956,8 +957,8 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					...editingGame,
-					description_fr: editingGame.descriptionFr,
+					...editingGamePayload,
+					description_fr: descriptionFr,
 					website: game.website,
 					image: storedImage,
 					gameAutoCheck: Boolean(editGameAutoCheck)

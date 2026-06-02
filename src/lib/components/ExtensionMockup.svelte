@@ -43,7 +43,7 @@
 	></div>
 
 	<div
-		class="relative flex h-135 w-76 flex-col overflow-hidden rounded-lg border border-ext-border bg-ext-background text-ext-secondary-foreground shadow-[0_28px_56px_-14px_color-mix(in_oklab,var(--color-neutral)_55%,transparent)] animate-float-sheet"
+		class="relative flex h-135 w-76 flex-col overflow-hidden rounded-lg border border-ext-border bg-ext-background text-ext-secondary-foreground shadow-[0_28px_56px_-14px_color-mix(in_oklab,var(--color-neutral)_55%,transparent)] animate-float-sheet-reverse"
 	>
 		<div class="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 pt-0">
 			<div

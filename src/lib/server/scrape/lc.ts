@@ -9,6 +9,30 @@ import {
 } from './xenforo';
 
 const THREAD_URL = 'https://lewdcorner.com/threads';
+const LC_BLOCKED_LINK_PATTERNS = [
+	/you must be registered to see links/i,
+	/vous devez (?:être|etre) inscrit pour voir les liens/i
+];
+const LC_SECTION_STOP_MARKERS = [
+	'THREAD UPDATED',
+	'RELEASE DATE',
+	'ALIAS',
+	'DEVELOPER',
+	'CENSORED',
+	'VERSION',
+	'OS',
+	'LANGUAGE',
+	'GENRE',
+	'INSTALLATION',
+	'CHANGELOG',
+	"DEVELOPER'S NOTES",
+	'NOTES DU DÉVELOPPEUR',
+	'NOTES DU DEVELOPPEUR',
+	'DOWNLOAD',
+	'TÉLÉCHARGER',
+	'PATCHES',
+	'EXTRAS'
+];
 
 interface LcJsonLdMainEntity {
 	headline?: string;
@@ -72,6 +96,57 @@ const parseDescriptionFromLdText = (text: string | undefined): string | null => 
 	}
 	desc = desc.trim();
 	return desc || null;
+};
+
+const normalizeDescription = (input: string): string =>
+	input
+		.replace(/\r/g, '')
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+
+const stripOverviewPrefix = (input: string): string =>
+	input.replace(/^\s*(?:\*+\s*)?overview\s*:\s*/i, '');
+
+const scrubLcDescriptionNoise = (input: string): string | null => {
+	if (!input.trim()) return null;
+	const lines = input
+		.split('\n')
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.filter((line) => !LC_BLOCKED_LINK_PATTERNS.some((pattern) => pattern.test(line)));
+
+	const stopRegex = new RegExp(
+		`^(?:${LC_SECTION_STOP_MARKERS.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:\\b|\\s*:|\\s+-|$)`,
+		'i'
+	);
+	const firstMetaLineIdx = lines.findIndex((line) => stopRegex.test(line));
+	const keptLines = firstMetaLineIdx >= 0 ? lines.slice(0, firstMetaLineIdx) : lines;
+
+	const cleaned = normalizeDescription(keptLines.join('\n'));
+	return cleaned || null;
+};
+
+const extractLcDescriptionFromHtml = (document: Document): string | null => {
+	const wrapper = document.querySelector('.message-body .bbWrapper');
+	if (!wrapper) return null;
+
+	const root = wrapper.cloneNode(true) as HTMLElement;
+	root
+		.querySelectorAll(
+			[
+				'.bbCodeSpoiler',
+				'.bbCodeSpoilerContainer',
+				'[data-xf-click="spoiler"]',
+				'.bbCodeBlock-title',
+				'style',
+				'script'
+			].join(', ')
+		)
+		.forEach((el) => el.remove());
+
+	const raw = normalizeDescription(stripOverviewPrefix(root.textContent ?? ''));
+	return scrubLcDescriptionNoise(raw);
 };
 
 const pickThreadImage = (document: Document): string | null => {
@@ -141,11 +216,8 @@ export const scrapeLcThread = async (threadId: number): Promise<ScrapedThreadGam
 	const version = parseVersionFromCustomField(document) ?? parseVersionFromTitle(rawPageTitle);
 	const tags = jsonLd?.keywords?.trim() || null;
 	const description =
-		parseDescriptionFromLdText(jsonLd?.text) ??
-		document
-			.querySelector('.message-body .bbWrapper')
-			?.textContent?.replace(/^Overview:\s*/i, '')
-			.trim() ??
+		scrubLcDescriptionNoise(parseDescriptionFromLdText(jsonLd?.text) ?? '') ??
+		extractLcDescriptionFromHtml(document) ??
 		null;
 
 	const image = pickThreadImage(document);

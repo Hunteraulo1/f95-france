@@ -10,6 +10,7 @@ const UPDATE_TYPE_OPTIONS = [
 ] as const;
 
 export const SAVED_UPDATES_FILTERS_KEY = 'f95-france-saved-updates-filters';
+export const SAVED_UPDATES_VIEW_MODE_KEY = 'f95-france-updates-view-mode';
 
 /** Groupes de filtres mises à jour : type d’événement + filtres jeux (extension f95list). */
 export function createDefaultUpdatesFilterGroups(

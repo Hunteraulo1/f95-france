@@ -26,7 +26,7 @@
 	<title>{data.user.username} — Profil — F95 France</title>
 </svelte:head>
 
-<main class="mx-auto w-full flex-1 px-4 py-8 sm:px-16">
+<main class="mx-auto w-full flex-1 px-4 py-8 lg:px-16">
 	<ProfileView
 		user={data.user}
 		profileStats={data.profileStats}

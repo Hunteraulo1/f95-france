@@ -11,6 +11,7 @@
 	--animate-text: text 5s ease infinite;
 	--animate-drift: drift 6s ease-in-out infinite;
 	--animate-float-sheet: floatSheet 8s ease-in-out infinite;
+	--animate-float-sheet-reverse: floatSheetReverse 8s ease-in-out infinite;
 	--animate-neon-glow: neon-glow 2s ease-in-out infinite alternate;
 
 	@keyframes text {
@@ -42,6 +43,16 @@
 		}
 		50% {
 			transform: rotateX(12deg) rotateY(-12deg) rotateZ(2deg) translateY(-8px);
+		}
+	}
+
+	@keyframes floatSheetReverse {
+		0%,
+		100% {
+			transform: rotateX(14deg) rotateY(16deg) rotateZ(-3deg) translateY(0);
+		}
+		50% {
+			transform: rotateX(12deg) rotateY(12deg) rotateZ(-2deg) translateY(8px);
 		}
 	}
 

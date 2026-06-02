@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
 	import {
 		mapDbSheetSyncResult,
 		type DbSheetSyncResult
 	} from '$lib/components/dashboard/dev/dev-page-mappers';
+	import { createDevActionEnhance } from '$lib/forms/dev-action';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';
@@ -15,7 +15,7 @@
 
 <div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 	<div class="card-body gap-6 sm:p-8">
-		<h2 class="mb-4 card-title text-2xl">Synchronisation API legacy</h2>
+		<h2 class="mb-4 card-title text-2xl">Synchronisation des données</h2>
 		<p class="mb-4 text-base-content/70">
 			Exporte les traductions et traducteurs de la base vers le Google Spreadsheet configuré.
 		</p>
