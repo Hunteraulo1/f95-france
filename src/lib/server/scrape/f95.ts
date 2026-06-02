@@ -13,6 +13,89 @@ interface F95CheckerResponse {
 const THREAD_URL = 'https://f95zone.to/threads';
 const CHECKER_URL = 'https://f95zone.to/sam/checker.php?threads=';
 
+const SPOILER_LOCKED_TEXT_PATTERNS = [
+	/you don't have permission to view the spoiler content/i,
+	/log in or register now/i,
+	/you must be registered to see links/i,
+	/vous devez (?:être|etre) inscrit pour voir les liens/i
+];
+
+const F95_SECTION_STOP_MARKERS = [
+	'THREAD UPDATED',
+	'RELEASE DATE',
+	'ALIAS',
+	'DEVELOPER',
+	'CENSORED',
+	'VERSION',
+	'OS',
+	'LANGUAGE',
+	'GENRE',
+	'INSTALLATION',
+	'CHANGELOG',
+	"DEVELOPER'S NOTES",
+	'NOTES DU DÉVELOPPEUR',
+	'NOTES DU DEVELOPPEUR',
+	'DOWNLOAD',
+	'TÉLÉCHARGER',
+	'PATCHES',
+	'EXTRAS'
+];
+
+const normalizeDescription = (input: string): string =>
+	input
+		.replace(/\r/g, '')
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+
+const stripOverviewPrefix = (input: string): string =>
+	input.replace(/^\s*(?:\*+\s*)?overview\s*:\s*/i, '');
+
+const scrubF95DescriptionNoise = (input: string): string | null => {
+	if (!input.trim()) return null;
+	const lines = input
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0)
+		.filter((line) => !SPOILER_LOCKED_TEXT_PATTERNS.some((pattern) => pattern.test(line)));
+
+	const stopRegex = new RegExp(
+		`^(?:${F95_SECTION_STOP_MARKERS.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:\\b|\\s*:|\\s+-|$)`,
+		'i'
+	);
+	const firstMetaLineIdx = lines.findIndex((line) => stopRegex.test(line));
+	const keptLines = firstMetaLineIdx >= 0 ? lines.slice(0, firstMetaLineIdx) : lines;
+
+	const cleaned = normalizeDescription(keptLines.join('\n'));
+	return cleaned || null;
+};
+
+const extractThreadDescription = (document: Document): string | null => {
+	const wrapper = document.querySelector('.message-body > .bbWrapper');
+	if (!wrapper) return null;
+
+	const root = wrapper.cloneNode(true) as HTMLElement;
+
+	// XenForo spoiler widgets and extra noisy blocks should never be persisted.
+	root
+		.querySelectorAll(
+			[
+				'.bbCodeSpoiler',
+				'.bbCodeSpoilerContainer',
+				'[data-xf-click="spoiler"]',
+				'.js-unfurl-favicon',
+				'style',
+				'script'
+			].join(', ')
+		)
+		.forEach((el) => el.remove());
+
+	const text = normalizeDescription(stripOverviewPrefix(root.textContent ?? ''));
+	if (!text) return null;
+
+	return scrubF95DescriptionNoise(text);
+};
+
 const fetchF95Version = async (threadId: string): Promise<string | null> => {
 	const response = await fetch(`${CHECKER_URL}${threadId}`, {
 		headers: {
@@ -61,11 +144,7 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedThreadGa
 		? parseTitleTokens(titleMatch)
 		: { status: null, gameType: null };
 
-	const description =
-		document
-			.querySelector('.message-body > .bbWrapper > div')
-			?.textContent?.replace('Overview:', '')
-			.trim() ?? null;
+	const description = extractThreadDescription(document);
 
 	const titleNode = document.querySelector('.p-title-value')?.cloneNode(true) as HTMLElement | null;
 
