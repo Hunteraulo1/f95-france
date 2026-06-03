@@ -11,6 +11,7 @@ import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
+import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
 	shouldNotifyTranslatorOnAutoCheckVersionBump,
 	tradVerIndicatesIntegrated
@@ -327,12 +328,7 @@ export async function runAutoCheckVersions(
 			})
 			.where(eq(table.game.id, game.gameId));
 
-		await db
-			.update(table.gameTranslation)
-			.set({ version: newVersion, updatedAt: new Date() })
-			.where(
-				and(eq(table.gameTranslation.gameId, game.gameId), eq(table.gameTranslation.ac, true))
-			);
+		await syncAcTranslationsToCheckerVersion(game.gameId, newVersion);
 
 		try {
 			const scraped = await scrapeF95Thread(game.threadId);

@@ -21,6 +21,7 @@ import {
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
+import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import {
@@ -370,10 +371,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				acTranslationsForRefresh
 			)
 		) {
-			await db
-				.update(table.gameTranslation)
-				.set({ version: normalizedCheckerVersion, updatedAt: new Date() })
-				.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
+			await syncAcTranslationsToCheckerVersion(gameId, normalizedCheckerVersion);
 		}
 		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
 			console.warn('[google-sheets-sync] game update rows failed:', err);
