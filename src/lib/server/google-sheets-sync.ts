@@ -1549,7 +1549,7 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 	const headers = rows[0] ?? [];
 	const dateIdx = findHeaderIndex(headers, 'DATE');
 	const statusIdx = findHeaderIndex(headers, 'TYPE');
-	const namesIdx = findHeaderIndex(headers, 'JEU');
+	const namesIdx = findHeaderIndex(headers, 'JEUX');
 
 	const lastCol = toColA1(headers.length - 1);
 	const toDeleteRowStarts: number[] = [];
