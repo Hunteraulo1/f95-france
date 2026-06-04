@@ -3,9 +3,11 @@
 #
 # Prérequis repo GitHub :
 # - Branches `dev` et `ptb`
-# - « Allow auto-merge » activé (Settings → General)
-# - Pour approbation auto : « Allow GitHub Actions to create and approve pull requests »
-#   (Settings → Actions → General → Workflow permissions)
+# - Settings → Actions → General → Workflow permissions :
+#   1. « Read and write permissions » (GITHUB_TOKEN)
+#   2. Cocher « Allow GitHub Actions to create and approve pull requests » (obligatoire pour gh pr create)
+# - Settings → General → cocher « Allow auto-merge »
+# - Organisation : la politique Actions ne doit pas bloquer la création de PR par le GITHUB_TOKEN
 
 name: Release promote dev → ptb
 
@@ -136,11 +138,22 @@ jobs:
             gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
             echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
           else
-            gh pr create \
+            set +e
+            CREATE_OUT="$(gh pr create \
               --base "$TARGET_BRANCH" \
               --head "$SOURCE_BRANCH" \
               --title "$TITLE" \
-              --body "$BODY"
+              --body "$BODY" 2>&1)"
+            CREATE_STATUS=$?
+            set -e
+            if [ "$CREATE_STATUS" -ne 0 ]; then
+              printf '%s\n' "$CREATE_OUT" >&2
+              if printf '%s' "$CREATE_OUT" | grep -q 'not permitted to create or approve pull requests'; then
+                echo "::error::GitHub refuse les PR creees par Actions. Activez Settings → Actions → General → Workflow permissions : Read and write + Allow GitHub Actions to create and approve pull requests (et politique org si applicable)."
+              fi
+              exit "$CREATE_STATUS"
+            fi
+            printf '%s\n' "$CREATE_OUT"
             NUMBER="$(pr_number)"
             if [ -z "$NUMBER" ]; then
               echo "::error::PR créée mais numéro introuvable (dev → ${TARGET_BRANCH})"
