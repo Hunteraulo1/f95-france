@@ -17,7 +17,14 @@ ALTER TABLE "app_log" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 DROP POLICY IF EXISTS "deny_all_app_log" ON "app_log";
 --> statement-breakpoint
-CREATE POLICY "deny_all_app_log" ON "app_log" FOR ALL TO anon,
-authenticated USING (false)
-WITH
-	CHECK (false);
+DO $$
+BEGIN
+	IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+		AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+		EXECUTE $policy$
+			CREATE POLICY "deny_all_app_log" ON "app_log" FOR ALL TO anon, authenticated
+			USING (false)
+			WITH CHECK (false)
+		$policy$;
+	END IF;
+END $$;
