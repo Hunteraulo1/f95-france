@@ -5,10 +5,10 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-    getTranslatorActivityCounts,
-    getTranslatorActivityCountsForId,
-    loadTranslatorActivityCountsById,
-    type TranslatorActivityCounts
+	getTranslatorActivityCounts,
+	getTranslatorActivityCountsForId,
+	loadTranslatorActivityCountsById,
+	type TranslatorActivityCounts
 } from '$lib/server/translator-activity-counts';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 

@@ -1,8 +1,4 @@
-import {
-    APP_LOG_SOURCES,
-    parseAppLogLevelsParam,
-    type AppLogLevel
-} from '$lib/logs/app-log';
+import { APP_LOG_SOURCES, parseAppLogLevelsParam, type AppLogLevel } from '$lib/logs/app-log';
 import { db } from '$lib/server/db';
 import { appLog } from '$lib/server/db/schema';
 import { assertPermission } from '$lib/server/permissions';
@@ -32,9 +28,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 		if (search) {
 			const pattern = `%${search}%`;
-			conditions.push(
-				or(like(appLog.message, pattern), like(appLog.source, pattern), like(appLog.meta, pattern))
+			const searchOr = or(
+				like(appLog.message, pattern),
+				like(appLog.source, pattern),
+				like(appLog.meta, pattern)
 			);
+			if (searchOr) conditions.push(searchOr);
 		}
 		if (fromDate) {
 			const from = new Date(`${fromDate}T00:00:00.000Z`);

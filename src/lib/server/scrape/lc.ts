@@ -3,10 +3,10 @@ import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import type { ScrapedThreadGame } from './types';
 import {
-    parseTitleTokens,
-    parseVersionFromTitle,
-    SCRAPE_USER_AGENT,
-    unescapeHtml
+	parseTitleTokens,
+	parseVersionFromTitle,
+	SCRAPE_USER_AGENT,
+	unescapeHtml
 } from './xenforo';
 
 const THREAD_URL = 'https://lewdcorner.com/threads';

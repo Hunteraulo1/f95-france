@@ -18,5 +18,5 @@ export default defineConfig({
 			'Cache-Control': 'no-store'
 		}
 	},
-  logLevel: 'info'
+	logLevel: 'info'
 });

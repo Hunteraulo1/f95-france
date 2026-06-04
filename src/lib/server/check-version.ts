@@ -4,10 +4,10 @@ import { logApp } from '$lib/server/app-logger';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookProofreadersVersionBumps,
-    sendDiscordWebhookTranslatorsVersionBumps,
-    sendDiscordWebhookUpdatesAutoCheckVersionBump,
-    type TranslatorVersionBumpLine
+	sendDiscordWebhookProofreadersVersionBumps,
+	sendDiscordWebhookTranslatorsVersionBumps,
+	sendDiscordWebhookUpdatesAutoCheckVersionBump,
+	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
@@ -16,14 +16,14 @@ import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
-    shouldNotifyTranslatorOnAutoCheckVersionBump,
-    tradVerIndicatesIntegrated
+	shouldNotifyTranslatorOnAutoCheckVersionBump,
+	tradVerIndicatesIntegrated
 } from '$lib/server/translation-notify-rules';
 import {
-    hasF95CheckerGameVersionChange,
-    isF95CheckerVersionAligned,
-    needsF95VersionBump,
-    normalizeCheckerVersion
+	hasF95CheckerGameVersionChange,
+	isF95CheckerVersionAligned,
+	needsF95VersionBump,
+	normalizeCheckerVersion
 } from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
@@ -55,7 +55,8 @@ const USER_AGENT =
 
 async function fetchF95Versions(
 	threadIds: number[],
-	issues: AutoCheckIssue[]
+	issues: AutoCheckIssue[],
+	logSource: AppLogSource | string
 ): Promise<Map<number, string>> {
 	const versions = new Map<number, string>();
 	if (threadIds.length === 0) return versions;
@@ -229,7 +230,8 @@ export async function runAutoCheckVersions(
 
 	const versions = await fetchF95Versions(
 		Array.from(uniqueByGame.values()).map((g) => g.threadId),
-		issues
+		issues,
+		logSource
 	);
 
 	type UniqueGameRow = {

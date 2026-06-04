@@ -49,7 +49,7 @@ export async function createNotification(params: CreateNotificationParams) {
 			'code' in error.cause &&
 			error.cause.code === 'ER_NO_SUCH_TABLE'
 		) {
-			appLogWarn('db', "Table notification absente (migration requise)");
+			appLogWarn('db', 'Table notification absente (migration requise)');
 			return;
 		}
 		// Propager les autres erreurs

@@ -4,10 +4,10 @@ import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    hashPassword,
-    hashSessionSecret,
-    verifySessionSecret,
-    type PasswordVerifyResult
+	hashPassword,
+	hashSessionSecret,
+	verifySessionSecret,
+	type PasswordVerifyResult
 } from '$lib/server/password-hash';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -17,7 +17,9 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 export const sessionCookieName = 'auth-session';
 
 export {
-    INVALID_CREDENTIALS_MESSAGE, hashPassword, verifyPassword
+	INVALID_CREDENTIALS_MESSAGE,
+	hashPassword,
+	verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
 

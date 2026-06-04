@@ -1,12 +1,12 @@
 import { appLogError } from '$lib/server/app-log-bridge';
 import {
-    assertDirectGameWriteAllowed,
-    loadCurrentUserOrThrow
+	assertDirectGameWriteAllowed,
+	loadCurrentUserOrThrow
 } from '$lib/server/game-manage-guard';
 import { assertPermission } from '$lib/server/permissions';
 import {
-    UpdateHistoryRevertError,
-    revertUpdateHistoryEntry
+	UpdateHistoryRevertError,
+	revertUpdateHistoryEntry
 } from '$lib/server/revert-update-history';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';

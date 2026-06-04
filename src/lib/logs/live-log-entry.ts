@@ -15,6 +15,4 @@ export type LiveLogEntry = {
 	} | null;
 };
 
-export type LogsLiveServerMessage =
-	| { type: 'connected' }
-	| { type: 'log'; entry: LiveLogEntry };
+export type LogsLiveServerMessage = { type: 'connected' } | { type: 'log'; entry: LiveLogEntry };

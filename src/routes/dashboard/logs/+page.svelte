@@ -126,14 +126,16 @@
 		if (warningsOnly && (entry.status < 400 || entry.status >= 500)) return false;
 		if (redirectsOnly && (entry.status < 300 || entry.status >= 400)) return false;
 		if (fromDate) {
-			const from = new Date(`${fromDate}T00:00:00.000Z`);
-			if (!Number.isNaN(from.getTime()) && new Date(entry.createdAt) < from) return false;
+			const fromMs = Date.parse(`${fromDate}T00:00:00.000Z`);
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(fromMs) && !Number.isNaN(createdMs) && createdMs < fromMs) return false;
 		}
 		if (toDate) {
-			const toExclusive = new Date(`${toDate}T00:00:00.000Z`);
-			if (!Number.isNaN(toExclusive.getTime())) {
-				toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
-				if (new Date(entry.createdAt) >= toExclusive) return false;
+			const toStartMs = Date.parse(`${toDate}T00:00:00.000Z`);
+			const toExclusiveMs = toStartMs + 86_400_000;
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(toStartMs) && !Number.isNaN(createdMs) && createdMs >= toExclusiveMs) {
+				return false;
 			}
 		}
 		return true;
@@ -243,9 +245,7 @@
 			{:else if liveEnabled && liveStatus === 'connecting'}
 				<p class="mt-1 text-sm text-base-content/60">Connexion au flux live…</p>
 			{:else if liveEnabled && liveStatus === 'error'}
-				<p class="mt-1 text-sm text-warning">
-					Flux interrompu — reconnexion automatique en cours…
-				</p>
+				<p class="mt-1 text-sm text-warning">Flux interrompu — reconnexion automatique en cours…</p>
 			{/if}
 		</div>
 		<button

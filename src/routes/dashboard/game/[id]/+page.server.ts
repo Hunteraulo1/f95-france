@@ -6,9 +6,9 @@ import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
 import { hasPermission } from '$lib/server/permissions';
 import {
-    assertRoleEditMode,
-    getRoleEditMode,
-    resolveShouldCreateSubmissionForUser
+	assertRoleEditMode,
+	getRoleEditMode,
+	resolveShouldCreateSubmissionForUser
 } from '$lib/server/role-edit-mode';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';

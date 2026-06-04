@@ -2,15 +2,15 @@ import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    syncMajToGoogleSheet,
-    voidSyncGameTranslationsToGoogleSheet
+	syncMajToGoogleSheet,
+	voidSyncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasUpdateStatusColumn } from '$lib/server/schema-column-compat';
 import {
-    buildTranslationHistoryContext,
-    recordUpdateHistoryEntry,
-    type TranslationHistorySnapshot,
-    type UpdateHistoryContext
+	buildTranslationHistoryContext,
+	recordUpdateHistoryEntry,
+	type TranslationHistorySnapshot,
+	type UpdateHistoryContext
 } from '$lib/server/update-history';
 import { eq, sql } from 'drizzle-orm';
 

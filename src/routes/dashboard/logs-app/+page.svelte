@@ -2,11 +2,7 @@
 	import { browser } from '$app/environment';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
-	import {
-		APP_LOG_LEVELS,
-		appLogLevelsToParam,
-		type AppLogLevel
-	} from '$lib/logs/app-log';
+	import { APP_LOG_LEVELS, appLogLevelsToParam, type AppLogLevel } from '$lib/logs/app-log';
 	import type { LiveAppLogEntry } from '$lib/logs/live-app-log-entry';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { onMount } from 'svelte';
@@ -121,14 +117,16 @@
 			if (!haystack.includes(q)) return false;
 		}
 		if (fromDate) {
-			const from = new Date(`${fromDate}T00:00:00.000Z`);
-			if (!Number.isNaN(from.getTime()) && new Date(entry.createdAt) < from) return false;
+			const fromMs = Date.parse(`${fromDate}T00:00:00.000Z`);
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(fromMs) && !Number.isNaN(createdMs) && createdMs < fromMs) return false;
 		}
 		if (toDate) {
-			const toExclusive = new Date(`${toDate}T00:00:00.000Z`);
-			if (!Number.isNaN(toExclusive.getTime())) {
-				toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
-				if (new Date(entry.createdAt) >= toExclusive) return false;
+			const toStartMs = Date.parse(`${toDate}T00:00:00.000Z`);
+			const toExclusiveMs = toStartMs + 86_400_000;
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(toStartMs) && !Number.isNaN(createdMs) && createdMs >= toExclusiveMs) {
+				return false;
 			}
 		}
 		return true;
@@ -243,9 +241,7 @@
 			{:else if liveEnabled && liveStatus === 'connecting'}
 				<p class="mt-1 text-sm text-base-content/60">Connexion au flux live…</p>
 			{:else if liveEnabled && liveStatus === 'error'}
-				<p class="mt-1 text-sm text-warning">
-					Flux interrompu — reconnexion automatique en cours…
-				</p>
+				<p class="mt-1 text-sm text-warning">Flux interrompu — reconnexion automatique en cours…</p>
 			{/if}
 		</div>
 		<button
@@ -399,9 +395,8 @@
 										<span class={`badge ${levelBadge(log.level)}`}>{log.level}</span>
 									</td>
 									<td class="max-w-xs">
-										<span
-											class="badge badge-outline font-mono text-xs"
-											title={log.source}>{log.source}</span
+										<span class="badge badge-outline font-mono text-xs" title={log.source}
+											>{log.source}</span
 										>
 									</td>
 									<td class="max-w-sm">
@@ -415,9 +410,8 @@
 												{log.message}
 											</button>
 										{:else}
-											<span
-												class="block truncate font-mono text-sm"
-												title={log.message}>{log.message}</span
+											<span class="block truncate font-mono text-sm" title={log.message}
+												>{log.message}</span
 											>
 										{/if}
 									</td>

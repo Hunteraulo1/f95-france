@@ -2,35 +2,35 @@ import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookAdminNewSubmission,
-    sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
-    assertDirectGameWriteAllowed,
-    assertGameManageAccess,
-    loadCurrentUserOrThrow,
-    parseRequestDirectMode,
-    resolveGameWriteMode
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import {
-    recordTranslationChangeInUpdateHistory,
-    touchGameUpdatedToday
+	recordTranslationChangeInUpdateHistory,
+	touchGameUpdatedToday
 } from '$lib/server/game-updates';
 import {
-    deleteTranslationFromGoogleSheet,
-    voidSyncTranslationToGoogleSheet,
-    voidSyncTranslatorActivityCountsToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import {
-    hasGameTranslationGameTypeColumn,
-    publicErrorFromUnknown
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-    createTranslationDeleteSubmission,
-    createTranslationUpdateSubmission
+	createTranslationDeleteSubmission,
+	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { translationRowToHistorySnapshot } from '$lib/server/update-history';

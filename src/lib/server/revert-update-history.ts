@@ -5,19 +5,19 @@ import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/serv
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import {
-    deleteTranslationFromGoogleSheet,
-    voidSyncTranslationToGoogleSheet,
-    voidSyncTranslatorActivityCountsToGoogleSheet
+	deleteTranslationFromGoogleSheet,
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import {
-    applyHistorySnapshotToTranslationSnapshot,
-    parseTranslationUpdateHistoryChanges,
-    snapshotFromHistoryDeltas,
-    translationRowToHistorySnapshot,
-    type TranslationHistorySnapshot,
-    type UpdateHistoryAction
+	applyHistorySnapshotToTranslationSnapshot,
+	parseTranslationUpdateHistoryChanges,
+	snapshotFromHistoryDeltas,
+	translationRowToHistorySnapshot,
+	type TranslationHistorySnapshot,
+	type UpdateHistoryAction
 } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';

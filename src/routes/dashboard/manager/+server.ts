@@ -3,35 +3,35 @@ import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookAdminNewSubmission,
-    sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import {
-    clampTranslationAc,
-    gameAutoCheckEnabledForWebsite,
-    resolveGameAutoCheckForWebsite
+	clampTranslationAc,
+	gameAutoCheckEnabledForWebsite,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
-    assertDirectGameWriteAllowed,
-    assertGameManageAccess,
-    loadCurrentUserOrThrow,
-    parseRequestDirectMode,
-    resolveGameWriteMode
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-    voidSyncTranslationToGoogleSheet,
-    voidSyncTranslatorActivityCountsToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
-    gameImageRequiredForWebsite,
-    normalizeGameImageForStorage,
-    normalizeTranslationTversion
+	gameImageRequiredForWebsite,
+	normalizeGameImageForStorage,
+	normalizeTranslationTversion
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
@@ -480,7 +480,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			translationId: createdTranslationId ?? null
 		});
 	} catch (error) {
-		appLogError('system', "Ajout jeu manager échoué", error);
+		appLogError('system', 'Ajout jeu manager échoué', error);
 		if (error instanceof Error && error.message === 'GAME_INSERT_FAILED') {
 			return json({ error: 'Impossible de créer le jeu' }, { status: 500 });
 		}

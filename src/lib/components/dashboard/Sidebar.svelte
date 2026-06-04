@@ -71,7 +71,7 @@
 				isDrawerOpen = false;
 			}, 0);
 		}
-	}
+	};
 
 	type NavAccess = 'all' | PermissionKey;
 
