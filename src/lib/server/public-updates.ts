@@ -6,7 +6,7 @@ import {
 	isTranslationOutdated
 } from '$lib/server/api/translation-public';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
-import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
+import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
 import {
@@ -86,9 +86,8 @@ async function buildWhereClause(params: PublicUpdatesListParams) {
 
 	applyUpdateTypeFilter(parts, params.filters.update_type);
 
-	parts.unshift(await featuredUpdatesScopeWhere());
-
-	return combineSqlParts(parts);
+	const catalogWhere = combineSqlParts(parts);
+	return buildUpdatesListWhere('featured', catalogWhere);
 }
 
 const updateTypeOrder = sql`case ${updateTable.status} when 'adding' then 0 else 1 end`;

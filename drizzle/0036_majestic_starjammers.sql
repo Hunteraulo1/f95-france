@@ -1,0 +1,1 @@
+ALTER TABLE "game_translation" ADD COLUMN "translator_alerts_enabled" boolean DEFAULT true NOT NULL;

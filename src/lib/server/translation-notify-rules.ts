@@ -22,12 +22,16 @@ export function tradVerIndicatesIntegrated(tversion: unknown, tname: unknown): b
  */
 export function shouldNotifyTranslatorOnAutoCheckVersionBump(
 	row: {
+		status?: string | null;
+		translatorAlertsEnabled?: boolean;
 		version: string | null;
 		tversion: string;
 		tname: string;
 	},
 	checkerVersion: string
 ): boolean {
+	if (row.translatorAlertsEnabled === false) return false;
+	if (row.status === 'abandoned') return false;
 	if (tradVerIndicatesIntegrated(row.tversion, row.tname)) return false;
 	const v = strTrim(row.version);
 	const tv = strTrim(row.tversion);

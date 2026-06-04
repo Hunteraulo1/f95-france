@@ -1,15 +1,15 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.4.10",
+	"version": "4.5.4",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
 	},
 	"scripts": {
-		"dev": "vite dev",
-		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && vite dev --force",
-		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
+		"dev": "NODE_OPTIONS=--disable-warning=DEP0205 vite dev",
+		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && NODE_OPTIONS=--disable-warning=DEP0205 vite dev --force",
+		"build": "NODE_ENV=production NODE_OPTIONS=--disable-warning=DEP0205 vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
 		"start": "bash scripts/coolify-start.sh",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
@@ -20,8 +20,8 @@
 		"db:push": "drizzle-kit push",
 		"db:pull": "drizzle-kit pull",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "tsx src/lib/server/db/migrate.ts",
-		"db:stamp-migrations": "tsx src/lib/server/db/stamp-migrations-from-journal.ts",
+		"db:migrate": "bun src/lib/server/db/migrate.ts",
+		"db:stamp-migrations": "bun src/lib/server/db/stamp-migrations-from-journal.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:dev:up": "docker compose -f docker-compose.dev.yml up -d",
 		"db:dev:down": "docker compose -f docker-compose.dev.yml down",
@@ -29,7 +29,7 @@
 		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh --target dev",
 		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
 		"cron:check-version": "node cron/check-version.mjs",
-		"sheet:diff-jeux": "tsx scripts/compare-jeux-csv.ts"
+		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -46,7 +46,7 @@
 		"prettier-plugin-svelte": "4.1.0",
 		"prettier-plugin-tailwindcss": "0.8.0",
 		"svelte": "5.56.1",
-		"svelte-check": "4.5.0",
+		"svelte-check": "4.6.0",
 		"tailwindcss": "4.3.0",
 		"typescript": "6.0.3",
 		"typescript-eslint": "8.60.1"
@@ -58,7 +58,7 @@
 		"@simplewebauthn/browser": "13.3.0",
 		"@simplewebauthn/server": "13.3.1",
 		"@sveltejs/adapter-node": "5.5.4",
-		"@sveltejs/kit": "2.61.1",
+		"@sveltejs/kit": "2.63.0",
 		"@tailwindcss/forms": "0.5.11",
 		"@tailwindcss/vite": "4.3.0",
 		"daisyui": "5.5.20",
@@ -72,7 +72,6 @@
 		"qrcode": "1.5.4",
 		"redoc": "2.5.3",
 		"theme-change": "2.5.0",
-		"tsx": "4.22.4",
 		"valibot": "1.4.1",
 		"vite": "8.0.16"
 	},

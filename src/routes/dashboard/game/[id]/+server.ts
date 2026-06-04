@@ -1,3 +1,4 @@
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -15,11 +16,13 @@ import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet
+	voidSyncGameTranslationsToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
+import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import {
@@ -97,7 +100,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			translations
 		});
 	} catch (error) {
-		console.error('Erreur lors de la récupération du jeu:', error);
+		appLogError('system', 'Récupération jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
@@ -369,14 +372,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				acTranslationsForRefresh
 			)
 		) {
-			await db
-				.update(table.gameTranslation)
-				.set({ version: normalizedCheckerVersion, updatedAt: new Date() })
-				.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
+			await syncAcTranslationsToCheckerVersion(gameId, normalizedCheckerVersion);
 		}
-		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
-			console.warn('[google-sheets-sync] game update rows failed:', err);
-		});
+		voidSyncGameTranslationsToGoogleSheet(gameId, 'dashboard/update-game');
 		if (!isSilentMode) {
 			await touchGameUpdatedToday(gameId);
 		}
@@ -386,7 +384,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			message: 'Jeu modifié avec succès'
 		});
 	} catch (error) {
-		console.error('Erreur lors de la modification du jeu:', error);
+		appLogError('system', 'Modification jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
@@ -517,15 +515,21 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		let deletedTranslationIds: string[] = [];
+		let deletedContributorIds: Array<string | null> = [];
 		await db.transaction(async (tx) => {
 			// Détacher les FK de submission avant suppression physique.
 			const linkedTranslations = await tx
-				.select({ id: table.gameTranslation.id })
+				.select({
+					id: table.gameTranslation.id,
+					translatorId: table.gameTranslation.translatorId,
+					proofreaderId: table.gameTranslation.proofreaderId
+				})
 				.from(table.gameTranslation)
 				.where(eq(table.gameTranslation.gameId, gameId));
 
 			const translationIds = linkedTranslations.map((t) => t.id);
 			deletedTranslationIds = translationIds;
+			deletedContributorIds = linkedTranslations.flatMap((t) => [t.translatorId, t.proofreaderId]);
 			const rejectionNote = `Rejet automatique: jeu supprimé (raison: ${reason}).`;
 
 			// Les soumissions en attente liées à ce jeu/traductions deviennent refusées.
@@ -578,13 +582,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 		if (deletedTranslationIds.length > 0) {
 			void deleteGameTranslationsFromGoogleSheet(deletedTranslationIds).catch((err) => {
-				console.warn('[google-sheets-sync] delete game rows failed:', err);
+				appLogWarn('sheets-sync', 'delete game rows failed', err);
 			});
 		}
+		voidSyncTranslatorActivityCountsToGoogleSheet(...deletedContributorIds);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la suppression du jeu:', error);
+		appLogError('system', 'Suppression jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };

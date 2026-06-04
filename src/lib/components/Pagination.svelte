@@ -9,8 +9,10 @@
 		totalCount: number;
 		/** Construit l’URL (idéalement via `resolve()` côté parent) pour un numéro de page */
 		hrefForPage: (page: number) => string;
-		/** Mot utilisé après le total, ex. « résultat » → « 3 résultats » */
+		/** Mot au singulier après le total, ex. « jeu » */
 		countLabel?: string;
+		/** Pluriel si différent de « {countLabel}s » (ex. jeu → jeux, mise à jour → mises à jour) */
+		countLabelPlural?: string;
 	};
 
 	let {
@@ -18,23 +20,41 @@
 		totalPages,
 		totalCount,
 		hrefForPage,
-		countLabel = 'résultat'
+		countLabel = 'résultat',
+		countLabelPlural
 	}: Props = $props();
 
-	const visiblePages = $derived.by(() => {
-		const pages: (number | 'ellipsis')[] = [];
+	const displayCountLabel = $derived(
+		totalCount > 1 ? (countLabelPlural ?? `${countLabel}s`) : countLabel
+	);
+
+	type PageItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; page: number };
+
+	/** Page au milieu de la plage masquée (entre 1 et la fenêtre courante, ou entre fenêtre et la fin). */
+	const ellipsisJumpPage = (position: 'start' | 'end', cur: number, total: number) => {
+		if (position === 'start') {
+			return Math.max(2, Math.round((1 + (cur - 1)) / 2));
+		}
+		return Math.min(total - 1, Math.round((cur + 1 + total) / 2));
+	};
+
+	const visiblePages = $derived.by((): PageItem[] => {
+		const items: PageItem[] = [];
 		const total = totalPages;
 		const cur = currentPage;
 		if (total <= 7) {
-			for (let i = 1; i <= total; i++) pages.push(i);
-			return pages;
+			for (let i = 1; i <= total; i++) items.push({ kind: 'page', page: i });
+			return items;
 		}
-		pages.push(1);
-		if (cur > 3) pages.push('ellipsis');
-		for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.push(i);
-		if (cur < total - 2) pages.push('ellipsis');
-		pages.push(total);
-		return pages;
+		items.push({ kind: 'page', page: 1 });
+		if (cur > 3) items.push({ kind: 'ellipsis', page: ellipsisJumpPage('start', cur, total) });
+		for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) {
+			items.push({ kind: 'page', page: i });
+		}
+		if (cur < total - 2)
+			items.push({ kind: 'ellipsis', page: ellipsisJumpPage('end', cur, total) });
+		items.push({ kind: 'page', page: total });
+		return items;
 	});
 </script>
 
@@ -43,7 +63,7 @@
 		<p class="text-sm text-base-content/70">
 			Page <strong>{currentPage}</strong> sur <strong>{totalPages}</strong>
 			· {totalCount}
-			{countLabel}{totalCount > 1 ? 's' : ''}
+			{displayCountLabel}
 		</p>
 		<div class="join">
 			<a
@@ -54,17 +74,24 @@
 			>
 				<ChevronLeft size={16} />
 			</a>
-			{#each visiblePages as p, i (i)}
-				{#if p === 'ellipsis'}
-					<span class="btn btn-disabled join-item btn-sm">…</span>
+			{#each visiblePages as item, i (`${item.kind}-${item.page}-${i}`)}
+				{#if item.kind === 'ellipsis'}
+					<a
+						class="btn btn-ghost join-item btn-sm"
+						href={hrefForPage(item.page)}
+						aria-label={`Aller à la page ${item.page}`}
+						title={`Page ${item.page}`}
+					>
+						…
+					</a>
 				{:else}
 					<a
-						class="btn join-item btn-sm {p === currentPage
+						class="btn join-item btn-sm {item.page === currentPage
 							? 'btn-outline btn-primary'
 							: 'btn-ghost'}"
-						href={hrefForPage(p)}
+						href={hrefForPage(item.page)}
 					>
-						{p}
+						{item.page}
 					</a>
 				{/if}
 			{/each}

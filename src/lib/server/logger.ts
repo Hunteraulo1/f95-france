@@ -1,5 +1,9 @@
+import type { LiveLogEntry } from '$lib/logs/live-log-entry';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
-import { apiLog } from '$lib/server/db/schema';
+import { apiLog, user } from '$lib/server/db/schema';
+import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
+import { eq } from 'drizzle-orm';
 
 type LogPayload = {
 	method: string;
@@ -30,20 +34,60 @@ export const logApiAction = async ({
 	errorMessage
 }: LogPayload) => {
 	try {
-		await db.insert(apiLog).values({
-			method,
-			route,
-			status,
-			userId: userId ?? null,
-			ipAddress: ipAddress ?? null,
-			payload: payload ?? null,
-			errorMessage: errorMessage ?? null
-		});
+		const [inserted] = await db
+			.insert(apiLog)
+			.values({
+				method,
+				route,
+				status,
+				userId: userId ?? null,
+				ipAddress: ipAddress ?? null,
+				payload: payload ?? null,
+				errorMessage: errorMessage ?? null
+			})
+			.returning({
+				id: apiLog.id,
+				createdAt: apiLog.createdAt
+			});
+
+		if (inserted && !route.startsWith('/api/extension-api')) {
+			let logUser: LiveLogEntry['user'] = null;
+			if (userId) {
+				const [row] = await db
+					.select({
+						id: user.id,
+						username: user.username,
+						role: user.role
+					})
+					.from(user)
+					.where(eq(user.id, userId))
+					.limit(1);
+				if (row?.username) {
+					logUser = {
+						id: row.id,
+						username: row.username,
+						role: row.role
+					};
+				}
+			}
+
+			broadcastLiveLogEntry({
+				id: inserted.id,
+				method,
+				route,
+				status,
+				ipAddress: ipAddress ?? null,
+				payload: payload ?? null,
+				errorMessage: errorMessage ?? null,
+				createdAt: inserted.createdAt.toISOString(),
+				user: logUser
+			});
+		}
 	} catch (error) {
 		if (isDbTimeoutError(error)) {
 			// Avoid flooding logs when DB is temporarily unreachable.
 			return;
 		}
-		console.error('Erreur lors de la création du log API:', error);
+		appLogError('db', 'Création log API échouée', error, { route, method, status });
 	}
 };

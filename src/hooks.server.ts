@@ -8,6 +8,7 @@ import {
 	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
+import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
 import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
@@ -66,7 +67,10 @@ function getRequestLoggingDecision(
 ): { shouldLog: boolean; shouldCaptureBody: boolean; shouldCaptureQuery: boolean } {
 	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
 	const isHighFrequencyPollRoute =
-		pathname.startsWith('/api/notifications') || pathname === '/api/health';
+		pathname.startsWith('/api/notifications') ||
+		pathname === '/api/health' ||
+		pathname === '/api/logs/live' ||
+		pathname === '/api/logs-app/live';
 	const isDashboardRoute = pathname.startsWith('/dashboard');
 	const isMaintenanceRoute = pathname === '/maintenance' || pathname.startsWith('/maintenance/');
 	const isSensitiveSettingsAction =
@@ -83,7 +87,9 @@ function getRequestLoggingDecision(
 		pathname === '/dashboard/settings' ||
 		pathname.startsWith('/dashboard/api-keys') ||
 		pathname === '/dashboard/users' ||
-		pathname.startsWith('/dashboard/logs');
+		pathname.startsWith('/dashboard/logs') ||
+		pathname.startsWith('/dashboard/logs-app') ||
+		pathname === '/logs-app';
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
@@ -103,6 +109,7 @@ function getRequestLoggingDecision(
 }
 
 let permissionsCatalogSeedPromise: Promise<void> | null = null;
+let appLogProcessReady = false;
 
 function ensurePermissionsCatalogSeededOnce(): Promise<void> {
 	if (building) return Promise.resolve();
@@ -116,6 +123,16 @@ function ensurePermissionsCatalogSeededOnce(): Promise<void> {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
+	if (!building && !appLogProcessReady) {
+		appLogProcessReady = true;
+		logApp({
+			level: 'info',
+			source: 'system',
+			message: 'Processus serveur prêt',
+			meta: { node: process.version }
+		});
+	}
+
 	await ensurePermissionsCatalogSeededOnce();
 
 	const sessionToken = event.cookies.get(auth.sessionCookieName);

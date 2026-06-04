@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { logApp } from '$lib/server/app-logger';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
 import { db } from '$lib/server/db';
@@ -17,7 +18,12 @@ function parseCronMaxWaitMs(raw: string | undefined): number {
 async function handleCheckVersion(request: Request): Promise<Response> {
 	const auth = verifyCronAuth(request);
 	if (!auth.ok) {
-		console.warn('[cron/check-version] auth refusée:', auth.reason);
+		logApp({
+			level: 'warn',
+			source: 'cron',
+			message: 'check-version : authentification refusée',
+			meta: { reason: auth.reason }
+		});
 		return json(
 			{
 				error: 'Unauthorized',
@@ -28,13 +34,11 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 		);
 	}
 
-	console.info('[cron/check-version] déclenché à', new Date().toISOString());
-
 	const startedAt = Date.now();
 
 	try {
 		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
-		const runPromise = runAutoCheckVersions();
+		const runPromise = runAutoCheckVersions({ logSource: 'cron' });
 		const timeoutResult = await Promise.race([
 			runPromise
 				.then((result) => ({ kind: 'done' as const, result }))
@@ -58,7 +62,14 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 						.where(eq(table.config.id, 'main'));
 				})
 				.catch((error) => {
-					console.error('[cron/check-version] échec async après timeout:', error);
+					logApp({
+						level: 'error',
+						source: 'cron',
+						message: 'check-version : échec async après timeout',
+						meta: {
+							detail: error instanceof Error ? error.message : String(error)
+						}
+					});
 				});
 
 			return json(
@@ -73,8 +84,17 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 		}
 
 		if (timeoutResult.kind === 'error') {
-			// On évite de faire échouer le cron provider (500) sur une dépendance externe instable.
-			console.error('[cron/check-version] runAutoCheckVersions a échoué:', timeoutResult.error);
+			logApp({
+				level: 'error',
+				source: 'cron',
+				message: 'check-version : runAutoCheckVersions a échoué',
+				meta: {
+					detail:
+						timeoutResult.error instanceof Error
+							? timeoutResult.error.message
+							: String(timeoutResult.error)
+				}
+			});
 			return json(
 				{
 					ok: false,
@@ -100,14 +120,21 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 			.set({ autoCheckLastRunAt: finishedAt, updatedAt: finishedAt })
 			.where(eq(table.config.id, 'main'));
 
+		const durationMs = finishedAt.getTime() - startedAt;
+
 		return json({
 			ok: true,
 			...timeoutResult.result,
 			errorCount: timeoutResult.result.issues.length,
-			durationMs: finishedAt.getTime() - startedAt
+			durationMs
 		});
 	} catch (error) {
-		console.error('[cron/check-version] erreur:', error);
+		logApp({
+			level: 'error',
+			source: 'cron',
+			message: 'check-version : erreur inattendue',
+			meta: { detail: error instanceof Error ? error.message : String(error) }
+		});
 		return json({ ok: false, error: 'Auto-check failed' }, { status: 500 });
 	}
 }

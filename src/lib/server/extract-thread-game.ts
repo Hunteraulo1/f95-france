@@ -1,6 +1,7 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import type { PermissionKey } from '$lib/permissions/catalog';
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { ManagerExtractDraft } from '$lib/server/extract-draft';
@@ -272,10 +273,7 @@ async function resolveExtractPayload(
 	try {
 		scraped = await scrapeThread(website, threadId);
 	} catch (error) {
-		console.warn(
-			`[extract] scrape ${website}/${threadId} indisponible, repli payload:`,
-			error instanceof Error ? error.message : error
-		);
+		appLogWarn('scrape', `extract ${website}/${threadId} indisponible, repli payload`, error);
 	}
 
 	const dataSource: ExtractDataSource = canUseScrapedData(scraped) ? 'scrape' : 'payload';

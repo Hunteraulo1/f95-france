@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import type { ScrapedThreadGame } from './types';
@@ -170,7 +171,7 @@ export const scrapeF95Thread = async (threadId: number): Promise<ScrapedThreadGa
 	try {
 		version = await fetchF95Version(String(threadId));
 	} catch (error) {
-		console.warn('Impossible de récupérer la version du jeu', error);
+		appLogWarn('scrape', 'Impossible de récupérer la version F95', error, { threadId });
 	}
 
 	return {

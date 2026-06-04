@@ -40,9 +40,10 @@ export function effectiveTranslationVersion(
 	return gv || null;
 }
 
-/** Traduction « pas à jour » : hors intégrée et Trad. Ver. différente de la version de référence. */
+/** Traduction « pas à jour » : hors intégrée, non abandonnée, Trad. Ver. ≠ version de référence. */
 export function isTranslationOutdated(
 	row: {
+		status?: string | null;
 		version: string | null;
 		tversion: string;
 		tname: string;
@@ -64,6 +65,26 @@ export function countUpToDateTranslations(
 ): number {
 	return translations.filter((translation) => !isTranslationOutdated(translation, gameVersion))
 		.length;
+}
+
+/** « Pas à jour » pour un traducteur lié : ignore les lignes où ses alertes sont coupées. */
+export function isTranslationOutdatedForLinkedTranslator(
+	row: {
+		status?: string | null;
+		version: string | null;
+		tversion: string;
+		tname: string;
+		translatorId?: string | null;
+		translatorAlertsEnabled?: boolean;
+		proofreaderId?: string | null;
+	},
+	gameVersion: string | null | undefined,
+	linkedTranslatorId: string
+): boolean {
+	if (row.translatorId === linkedTranslatorId && row.translatorAlertsEnabled === false) {
+		return false;
+	}
+	return isTranslationOutdated(row, gameVersion);
 }
 
 async function loadGameVersionsByGameIds(gameIds: string[]): Promise<Map<string, string | null>> {

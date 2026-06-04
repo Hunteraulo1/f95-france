@@ -494,6 +494,7 @@
 					totalPages={data.totalPages}
 					totalCount={data.total}
 					countLabel="mise à jour"
+					countLabelPlural="mises à jour"
 					hrefForPage={updatesHref}
 				/>
 			{/if}

@@ -1,4 +1,5 @@
 import { getEffectiveConfigFromRow, oauthTokenFieldsForDb } from '$lib/server/app-config';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { eq } from 'drizzle-orm';
 import { db } from './db';
 import * as table from './db/schema';
@@ -145,7 +146,7 @@ export const getValidAccessToken = async (): Promise<string | null> => {
 
 			return tokenResponse.access_token;
 		} catch (error) {
-			console.error('Erreur lors du rafraîchissement du token:', error);
+			appLogError('auth', 'Rafraîchissement token Google OAuth échoué', error);
 			return null;
 		}
 	}

@@ -23,7 +23,7 @@
 		</ul>
 		<aside class="max-w-prose px-2 text-center">
 			<p class="text-xs text-base-content/80">
-				Copyright © {new Date().getFullYear()} - All right reserved by F95 France
+				© {new Date().getFullYear()} F95 France — Tous droits réservés
 			</p>
 		</aside>
 	</nav>

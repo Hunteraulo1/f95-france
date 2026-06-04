@@ -31,6 +31,16 @@ export function isF95CheckerVersionAligned(
 	return true;
 }
 
+/** True si la version checker diffère de la version enregistrée sur la fiche jeu (nouvelle version F95). */
+export function hasF95CheckerGameVersionChange(
+	checkerVersion: string | null | undefined,
+	gameVersion: string | null | undefined
+): boolean {
+	const next = normalizeCheckerVersion(checkerVersion);
+	if (!next) return false;
+	return (gameVersion ?? '').trim() !== next;
+}
+
 /** True si le checker signale une version différente (bump nécessaire). */
 export function needsF95VersionBump(
 	checkerVersion: string | null | undefined,

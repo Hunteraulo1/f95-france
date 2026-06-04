@@ -1,3 +1,4 @@
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -19,8 +20,8 @@ import {
 } from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import {
@@ -31,6 +32,7 @@ import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
@@ -246,6 +248,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: (typeof before)['tname'];
 			translatorId: string | null;
 			proofreaderId: string | null;
+			translatorAlertsEnabled: boolean;
 			ac: boolean;
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
@@ -261,6 +264,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: effectiveTname,
 			translatorId: resolvedTranslatorId,
 			proofreaderId: resolvedProofreaderId,
+			translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+				beforeTranslatorId: before.translatorId,
+				afterTranslatorId: resolvedTranslatorId,
+				currentTranslatorAlertsEnabled: before.translatorAlertsEnabled
+			}),
 			ac: acValue,
 			updatedAt: new Date()
 		};
@@ -315,19 +323,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				adminNotes: null
 			});
 		}
-		void syncTranslationToGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] update translation failed:', err);
-		});
-		if (translatorId) {
-			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
-				console.warn('[google-sheets-sync] update translator failed:', err);
-			});
-		}
-		if (proofreaderId) {
-			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
-				console.warn('[google-sheets-sync] update proofreader failed:', err);
-			});
-		}
+		voidSyncTranslationToGoogleSheet(translationId, 'dashboard/update-translation');
+		voidSyncTranslatorActivityCountsToGoogleSheet(
+			before.translatorId,
+			before.proofreaderId,
+			resolvedTranslatorId,
+			resolvedProofreaderId
+		);
 		if (!isSilentMode) {
 			await recordTranslationChangeInUpdateHistory(gameId, {
 				userId: currentUser.id,
@@ -353,7 +355,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la modification de la traduction:', error);
+		appLogError('system', 'Modification traduction dashboard échouée', error);
 		return json(
 			{ error: publicErrorFromUnknown(error, 'Erreur lors de la modification de la traduction') },
 			{ status: 500 }
@@ -459,12 +461,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			updateKind: 'update'
 		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] delete translation row failed:', err);
+			appLogWarn('sheets-sync', 'delete translation row failed', err);
 		});
+		voidSyncTranslatorActivityCountsToGoogleSheet(tr.translatorId, tr.proofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la suppression de la traduction:', error);
+		appLogError('system', 'Suppression traduction dashboard échouée', error);
 		return json(
 			{ error: publicErrorFromUnknown(error, 'Erreur lors de la suppression de la traduction') },
 			{ status: 500 }

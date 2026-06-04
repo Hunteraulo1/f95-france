@@ -179,15 +179,22 @@
 						<h4 class="card-title text-base">Pages traducteur</h4>
 						<ul class="flex flex-col gap-2">
 							{#each translatorLinks as link, i (`${i}-${link.url}`)}
-								<li>
+								<li
+									class={i === 0
+										? 'rounded-lg border border-primary/40 bg-primary/5 px-3 py-2'
+										: ''}
+								>
 									<a
 										href={link.url}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="link link-primary inline-flex items-center gap-1"
+										class="link link-primary inline-flex flex-wrap items-center gap-2"
 									>
-										{link.label}
-										<ExternalLink class="h-4 w-4" />
+										{#if i === 0}
+											<span class="badge badge-primary badge-sm">Lien principal</span>
+										{/if}
+										<span>{link.label}</span>
+										<ExternalLink class="h-4 w-4 shrink-0" />
 									</a>
 								</li>
 							{/each}
