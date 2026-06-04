@@ -13,6 +13,13 @@ on:
   push:
     branches:
       - dev
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Forcer la promotion (même si le dernier commit n'est pas un release)
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: release-promote-dev-to-ptb
@@ -29,27 +36,64 @@ env:
 
 jobs:
   promote:
-    # Commit release cz-emoji : « 🔖 v4.4.9 » (première ligne du message)
-    if: contains(github.event.head_commit.message, '🔖 v')
     runs-on: ubuntu-latest
     steps:
-      - name: Extraire la version
-        id: meta
-        run: |
-          MSG="${{ github.event.head_commit.message }}"
-          VERSION="$(printf '%s' "$MSG" | head -n1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
-          if [ -z "$VERSION" ]; then
-            echo "::error::Message de commit release invalide (attendu: 🔖 vX.Y.Z). Reçu: $MSG"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Release détectée: $VERSION"
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Détecter commit release
+        id: gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log -1 --format=%s)"
+          echo "Sujet du commit (${GITHUB_SHA}): $SUBJECT"
+
+          if [ "$FORCE" = "true" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            VERSION="$(printf '%s' "$SUBJECT" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+            if [ -z "$VERSION" ]; then
+              VERSION="v$(node -p "require('./package.json').version")"
+            fi
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Promotion forcée (workflow_dispatch)."
+            exit 0
+          fi
+
+          # Pas un merge / commit conventionnel ; sujet court type cz-emoji « 🔖 vX.Y.Z »
+          if printf '%s' "$SUBJECT" | grep -qE '^Merge '; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Commit de merge — promotion ignorée."
+            exit 0
+          fi
+          if printf '%s' "$SUBJECT" | grep -qE '^(fix|feat|chore|docs|refactor|test|style|perf|ci|build)(\(|:)|^\[)'; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Commit conventionnel — promotion ignorée."
+            exit 0
+          fi
+
+          VERSION="$(printf '%s' "$SUBJECT" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+          if [ -z "$VERSION" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Pas de version semver dans le sujet — promotion ignorée."
+            exit 0
+          fi
+
+          # 🔖 v4.5.0 : jusqu'à ~8 caractères (emoji) puis « vX.Y.Z »
+          if ! printf '%s' "$SUBJECT" | grep -qE '^.{0,8}v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Sujet ne ressemble pas à un release cz-emoji — promotion ignorée."
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release détectée: $VERSION"
+
       - name: Créer ou réutiliser la PR
+        if: steps.gate.outputs.release == 'true'
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,10 +106,10 @@ jobs:
             --json number \
             --jq '.[0].number // empty')"
 
-          TITLE="Release ${{ steps.meta.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          TITLE="Release ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
           BODY="Promotion automatique après le commit release sur \`${SOURCE_BRANCH}\`.
 
-          - **Version** : \`${{ steps.meta.outputs.version }}\`
+          - **Version** : \`${{ steps.gate.outputs.version }}\`
           - **Commit** : \`${{ github.sha }}\`
           - **Auteur** : @${{ github.actor }}
 
@@ -88,6 +132,7 @@ jobs:
           fi
 
       - name: Approuver la PR (si autorisé)
+        if: steps.gate.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -95,6 +140,7 @@ jobs:
             echo "::warning::Approbation automatique refusée (règles du dépôt). La fusion peut quand même passer via auto-merge/admin."
 
       - name: Fusionner quand les checks sont OK
+        if: steps.gate.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
