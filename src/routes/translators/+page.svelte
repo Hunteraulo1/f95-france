@@ -155,7 +155,7 @@
 											tabindex="-1"
 											class="dropdown-content menu z-50 mt-1 w-full rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 										>
-											{#each translator.pages as page (`${translator.id}-${page.url}`)}
+											{#each translator.pages as page, pageIndex (`${translator.id}-${page.url}`)}
 												<li>
 													<a
 														href={page.url}
@@ -163,6 +163,9 @@
 														rel="noopener noreferrer"
 														class="truncate"
 													>
+														{#if pageIndex === 0}
+															<span class="badge badge-primary badge-xs mr-1">Principal</span>
+														{/if}
 														{page.label}
 													</a>
 												</li>
@@ -176,13 +179,15 @@
 
 					{#if translator.pages.length > 0}
 						<div class="hidden shrink-0 flex-wrap items-center justify-end gap-1 sm:flex">
-							{#each translator.pages as page (`${translator.id}-desktop-${page.url}`)}
+							{#each translator.pages as page, pageIndex (`${translator.id}-desktop-${page.url}`)}
 								<a
 									href={page.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="btn btn-sm btn-ghost max-w-40 truncate font-normal"
-									title={page.label}
+									class="btn btn-sm max-w-40 truncate font-normal {pageIndex === 0
+										? 'btn-primary'
+										: 'btn-ghost'}"
+									title={pageIndex === 0 ? `${page.label} (lien principal)` : page.label}
 								>
 									{page.label}
 								</a>

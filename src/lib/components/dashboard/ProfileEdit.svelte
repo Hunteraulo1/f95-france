@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import type { RoleEditMode } from '$lib/permissions/edit-mode';
 	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
@@ -98,13 +99,6 @@
 		currentTranslatorPagesSignature !== initialTranslatorPagesSignature
 	);
 
-	const addTranslatorPage = () => {
-		translatorPages = [...translatorPages, { name: '', link: '' }];
-	};
-
-	const removeTranslatorPage = (index: number) => {
-		translatorPages = translatorPages.filter((_, i) => i !== index);
-	};
 </script>
 
 <section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -238,40 +232,7 @@
 					{#if roleEditMode === 'user_direct_mode'}
 						<input type="hidden" name="directMode" value={directMode ? 'true' : 'false'} />
 					{/if}
-					<div class="space-y-2">
-						{#each translatorPages as pageEntry, index (index)}
-							<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-								<input
-									type="text"
-									placeholder="Nom de la page"
-									class="input-bordered input flex-1"
-									bind:value={pageEntry.name}
-								/>
-								<input
-									type="url"
-									placeholder="https://…"
-									class="input-bordered input flex-1"
-									bind:value={pageEntry.link}
-								/>
-								<button
-									type="button"
-									class="btn btn-sm btn-error shrink-0"
-									onclick={() => removeTranslatorPage(index)}
-									aria-label="Supprimer cette page"
-								>
-									✕
-								</button>
-							</div>
-						{/each}
-						{#if translatorPages.length === 0}
-							<p class="text-sm text-base-content/70">
-								Aucune page (la liste sera vide après validation).
-							</p>
-						{/if}
-						<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPage}>
-							+ Ajouter une page
-						</button>
-					</div>
+					<TranslatorPagesEditor bind:pages={translatorPages} minRows={0} />
 					<input type="hidden" name="pages" value={currentTranslatorPagesSignature} />
 					<div class="mt-4 flex justify-end">
 						<button type="submit" class="btn btn-primary" disabled={!hasTranslatorPagesChanges}>
