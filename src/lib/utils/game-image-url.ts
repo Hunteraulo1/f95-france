@@ -17,6 +17,9 @@ const GALLERY_PAGE_HOSTS = new Set([
 	'www.imgur.com'
 ]);
 
+const F95_ATTACHMENTS_HOST = 'attachments.f95zone.to';
+const F95_PREVIEW_HOST = 'preview.f95zone.to';
+
 function parseHttpUrl(raw: string): URL | null {
 	const u = raw.trim();
 	if (!u) return null;
@@ -25,6 +28,22 @@ function parseHttpUrl(raw: string): URL | null {
 	} catch {
 		return null;
 	}
+}
+
+/** `attachments` renvoie souvent 402 en hotlink ; `preview` sert les vignettes publiques. */
+function rewriteF95AttachmentsToPreview(url: string): string {
+	const parsed = parseHttpUrl(url);
+	if (!parsed) return url;
+	if (parsed.hostname.toLowerCase() !== F95_ATTACHMENTS_HOST) return url;
+	parsed.hostname = F95_PREVIEW_HOST;
+	parsed.protocol = 'https:';
+	return parsed.toString();
+}
+
+function finalizeGameImageSrc(candidate: string): string {
+	if (!candidate) return '';
+	if (isGameImageGalleryPageUrl(candidate)) return '';
+	return rewriteF95AttachmentsToPreview(candidate);
 }
 
 /**
@@ -50,34 +69,30 @@ export function resolveGameImageSrc(
 	if (!u) return '';
 
 	if (u.startsWith('//')) {
-		const resolved = `https:${u}`;
-		return isGameImageGalleryPageUrl(resolved) ? '' : resolved;
+		return finalizeGameImageSrc(`https:${u}`);
 	}
 
 	if (u.startsWith('/') && !u.startsWith('//')) {
 		const site = opts?.website ?? 'f95z';
 		if (site === 'f95z') {
-			return `https://f95zone.to${u}`;
+			return finalizeGameImageSrc(`https://f95zone.to${u}`);
 		}
 		if (site === 'lc') {
-			return `https://lewdcorner.com${u}`;
+			return finalizeGameImageSrc(`https://lewdcorner.com${u}`);
 		}
-		return u;
+		return finalizeGameImageSrc(u);
 	}
 
 	if (u.startsWith('http://')) {
 		try {
 			const { hostname } = new URL(u);
 			if (isF95Host(hostname) || isLcHost(hostname)) {
-				const resolved = `https://${u.slice('http://'.length)}`;
-				return isGameImageGalleryPageUrl(resolved) ? '' : resolved;
+				return finalizeGameImageSrc(`https://${u.slice('http://'.length)}`);
 			}
 		} catch {
 			/* ignore */
 		}
 	}
 
-	if (isGameImageGalleryPageUrl(u)) return '';
-
-	return u;
+	return finalizeGameImageSrc(u);
 }

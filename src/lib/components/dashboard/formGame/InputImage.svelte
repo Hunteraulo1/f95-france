@@ -31,14 +31,7 @@
 	const previewSrc = $derived(resolveGameImageSrc(game.image, { website: game.website }));
 
 	const handleImageError = (e: Event): void => {
-		const target = e.currentTarget as HTMLImageElement;
-		const base = previewSrc;
-
-		if (base.startsWith('https://attachments.f95zone.to/')) {
-			target.src = base.replace('attachments', 'preview');
-		} else {
-			target.classList.add('hidden');
-		}
+		(e.currentTarget as HTMLImageElement).classList.add('hidden');
 	};
 
 	const inputAttributes = $derived.by(
