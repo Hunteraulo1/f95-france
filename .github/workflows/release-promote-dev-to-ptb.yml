@@ -124,7 +124,7 @@ jobs:
 
           EXISTING="$(pr_number)"
 
-          TITLE="Release ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          TITLE=":bookmark: ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
           BODY="Promotion automatique après le commit release sur \`${SOURCE_BRANCH}\`.
 
           - **Version** : \`${{ steps.gate.outputs.version }}\`
