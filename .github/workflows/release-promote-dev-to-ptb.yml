@@ -1,4 +1,4 @@
-# Après un commit release sur `dev` (ex. « 🔖 v4.4.9 »), ouvre une PR vers `ptb`
+# Après un commit release sur `dev` (cz-emoji : « :bookmark: v4.4.9 » en git, 🔖 sur GitHub), ouvre une PR vers `ptb`
 # et la fusionne lorsque les checks CI sont verts.
 #
 # Prérequis repo GitHub :
@@ -62,7 +62,7 @@ jobs:
             exit 0
           fi
 
-          # Pas un merge / commit conventionnel ; sujet court type cz-emoji « 🔖 vX.Y.Z »
+          # Pas un merge / commit conventionnel ; release cz-emoji « :bookmark: vX.Y.Z » (sujet git)
           if printf '%s' "$SUBJECT" | grep -qE '^Merge '; then
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "Commit de merge — promotion ignorée."
@@ -81,8 +81,12 @@ jobs:
             exit 0
           fi
 
-          # 🔖 v4.5.0 : jusqu'à ~8 caractères (emoji) puis « vX.Y.Z »
-          if ! printf '%s' "$SUBJECT" | grep -qE '^.{0,8}v[0-9]+\.[0-9]+\.[0-9]+'; then
+          # cz-emoji enregistre :bookmark: dans git ; l’UI GitHub affiche 🔖
+          if printf '%s' "$SUBJECT" | grep -qE '^:bookmark: v[0-9]+\.[0-9]+\.[0-9]+'; then
+            :
+          elif printf '%s' "$SUBJECT" | grep -qE '^.{0,8}v[0-9]+\.[0-9]+\.[0-9]+'; then
+            :
+          else
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "Sujet ne ressemble pas à un release cz-emoji — promotion ignorée."
             exit 0
