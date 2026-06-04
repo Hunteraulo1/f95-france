@@ -4,10 +4,10 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-    getTranslatorActivityCounts,
-    getTranslatorActivityCountsForId,
-    loadTranslatorActivityCountsById,
-    type TranslatorActivityCounts
+	getTranslatorActivityCounts,
+	getTranslatorActivityCountsForId,
+	loadTranslatorActivityCountsById,
+	type TranslatorActivityCounts
 } from '$lib/server/translator-activity-counts';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
@@ -1016,11 +1016,7 @@ export async function syncTranslationToGoogleSheet(
 			return false;
 		}
 
-		const [game] = await db
-			.select()
-			.from(table.game)
-			.where(eq(table.game.id, tr.gameId))
-			.limit(1);
+		const [game] = await db.select().from(table.game).where(eq(table.game.id, tr.gameId)).limit(1);
 		if (!game) {
 			logJeuxSyncAlert('Sync Jeux impossible : jeu introuvable en base.', {
 				...meta,
@@ -1030,120 +1026,124 @@ export async function syncTranslationToGoogleSheet(
 		}
 
 		const translatorId = tr.translatorId ?? null;
-	const proofreaderId = tr.proofreaderId ?? null;
+		const proofreaderId = tr.proofreaderId ?? null;
 
-	const [translatorById] = translatorId
-		? await db.select().from(table.translator).where(eq(table.translator.id, translatorId)).limit(1)
-		: [];
-	const [translatorByName] =
-		translatorId && !translatorById
+		const [translatorById] = translatorId
 			? await db
 					.select()
 					.from(table.translator)
-					.where(eq(table.translator.name, translatorId))
+					.where(eq(table.translator.id, translatorId))
 					.limit(1)
 			: [];
-	const translator = translatorById ?? translatorByName ?? null;
+		const [translatorByName] =
+			translatorId && !translatorById
+				? await db
+						.select()
+						.from(table.translator)
+						.where(eq(table.translator.name, translatorId))
+						.limit(1)
+				: [];
+		const translator = translatorById ?? translatorByName ?? null;
 
-	const [proofreaderById] = proofreaderId
-		? await db
-				.select()
-				.from(table.translator)
-				.where(eq(table.translator.id, proofreaderId))
-				.limit(1)
-		: [];
-	const [proofreaderByName] =
-		proofreaderId && !proofreaderById
+		const [proofreaderById] = proofreaderId
 			? await db
 					.select()
 					.from(table.translator)
-					.where(eq(table.translator.name, proofreaderId))
+					.where(eq(table.translator.id, proofreaderId))
 					.limit(1)
 			: [];
-	const proofreader = proofreaderById ?? proofreaderByName ?? null;
+		const [proofreaderByName] =
+			proofreaderId && !proofreaderById
+				? await db
+						.select()
+						.from(table.translator)
+						.where(eq(table.translator.name, proofreaderId))
+						.limit(1)
+				: [];
+		const proofreader = proofreaderById ?? proofreaderByName ?? null;
 
-	const tab = encodeURIComponent(SHEET_TAB_JEUX);
-	const getAllRes = await sheetsFetch(
-		auth.spreadsheetId,
-		auth.headers,
-		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
-		auth.apiKey
-	);
-	if (!getAllRes.ok) {
-		const err = await getAllRes.text().catch(() => '');
-		throw new Error(`Sheets read error (${getAllRes.status}): ${err.slice(0, 500)}`);
-	}
-
-	const body = (await getAllRes.json()) as SheetsApiResponse;
-	const rows = body.values ?? [];
-	if (rows.length === 0)
-		throw new Error(`La feuille "${SHEET_TAB_JEUX}" est vide (en-têtes manquants).`);
-
-	const headersRow = rows[0] ?? [];
-	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
-
-	if (idDbIdx === -1) {
-		throw new Error(`Colonne "ID DB" introuvable dans la feuille "${SHEET_TAB_JEUX}".`);
-	}
-
-	const lastCol = toColA1(headersRow.length - 1);
-	const dataRows = rows.slice(1);
-	let rowNumber = -1;
-	for (let i = 0; i < dataRows.length; i++) {
-		if ((dataRows[i]?.[idDbIdx] ?? '').trim() === tr.id) {
-			rowNumber = i + 2;
-			break;
-		}
-	}
-
-	const rowValues = new Array(headersRow.length).fill('');
-	populateJeuxRowValues(headersRow, rowValues, { tr, game, translator, proofreader });
-
-	if (rowNumber !== -1) {
-		const range = `${tab}!A${rowNumber}:${lastCol}${rowNumber}`;
-		const res = await sheetsFetch(
+		const tab = encodeURIComponent(SHEET_TAB_JEUX);
+		const getAllRes = await sheetsFetch(
 			auth.spreadsheetId,
 			auth.headers,
-			`/values/${range}?valueInputOption=USER_ENTERED`,
+			`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+			auth.apiKey
+		);
+		if (!getAllRes.ok) {
+			const err = await getAllRes.text().catch(() => '');
+			throw new Error(`Sheets read error (${getAllRes.status}): ${err.slice(0, 500)}`);
+		}
+
+		const body = (await getAllRes.json()) as SheetsApiResponse;
+		const rows = body.values ?? [];
+		if (rows.length === 0)
+			throw new Error(`La feuille "${SHEET_TAB_JEUX}" est vide (en-têtes manquants).`);
+
+		const headersRow = rows[0] ?? [];
+		const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+
+		if (idDbIdx === -1) {
+			throw new Error(`Colonne "ID DB" introuvable dans la feuille "${SHEET_TAB_JEUX}".`);
+		}
+
+		const lastCol = toColA1(headersRow.length - 1);
+		const dataRows = rows.slice(1);
+		let rowNumber = -1;
+		for (let i = 0; i < dataRows.length; i++) {
+			if ((dataRows[i]?.[idDbIdx] ?? '').trim() === tr.id) {
+				rowNumber = i + 2;
+				break;
+			}
+		}
+
+		const rowValues = new Array(headersRow.length).fill('');
+		populateJeuxRowValues(headersRow, rowValues, { tr, game, translator, proofreader });
+
+		if (rowNumber !== -1) {
+			const range = `${tab}!A${rowNumber}:${lastCol}${rowNumber}`;
+			const res = await sheetsFetch(
+				auth.spreadsheetId,
+				auth.headers,
+				`/values/${range}?valueInputOption=USER_ENTERED`,
+				auth.apiKey,
+				{
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ values: [rowValues] })
+				}
+			);
+			if (!res.ok) {
+				const err = await res.text().catch(() => '');
+				throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
+			}
+			if (!options?.deferJeuxLayoutFinalize) {
+				await finalizeJeuxSheetLayout(auth);
+				await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+			}
+			return true;
+		}
+
+		const appendRange = `${tab}!A:A`;
+		const appendRes = await sheetsFetch(
+			auth.spreadsheetId,
+			auth.headers,
+			`/values/${appendRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
 			auth.apiKey,
 			{
-				method: 'PUT',
+				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ values: [rowValues] })
 			}
 		);
-		if (!res.ok) {
-			const err = await res.text().catch(() => '');
-			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
+		if (!appendRes.ok) {
+			const err = await appendRes.text().catch(() => '');
+			throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 		}
 		if (!options?.deferJeuxLayoutFinalize) {
 			await finalizeJeuxSheetLayout(auth);
 			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		}
 		return true;
-	}
-
-	const appendRange = `${tab}!A:A`;
-	const appendRes = await sheetsFetch(
-		auth.spreadsheetId,
-		auth.headers,
-		`/values/${appendRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-		auth.apiKey,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ values: [rowValues] })
-		}
-	);
-	if (!appendRes.ok) {
-		const err = await appendRes.text().catch(() => '');
-		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
-	}
-	if (!options?.deferJeuxLayoutFinalize) {
-		await finalizeJeuxSheetLayout(auth);
-		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
-	}
-	return true;
 	} catch (cause) {
 		const [tr] = await db
 			.select({ gameId: table.gameTranslation.gameId })
@@ -1222,9 +1222,7 @@ export async function syncGameTranslationsToGoogleSheet(
 	let ok = 0;
 	const failedIds: string[] = [];
 	for (const row of rows) {
-		if (
-			await syncTranslationToGoogleSheet(row.id, context, { deferJeuxLayoutFinalize: true })
-		) {
+		if (await syncTranslationToGoogleSheet(row.id, context, { deferJeuxLayoutFinalize: true })) {
 			ok += 1;
 		} else {
 			failedIds.push(row.id);
@@ -1699,9 +1697,7 @@ export async function syncDbToSpreadsheetBulk(
 				try {
 					await deleteTranslatorsFromGoogleSheet(trIdsWithoutActivity);
 				} catch (err) {
-					errors.push(
-						`bulk TR prune: ${err instanceof Error ? err.message : 'erreur inconnue'}`
-					);
+					errors.push(`bulk TR prune: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 				}
 			}
 			onProgress?.(`Sheets TR : ${updates.length} mise(s) à jour, ${appends.length} ajout(s)…`);

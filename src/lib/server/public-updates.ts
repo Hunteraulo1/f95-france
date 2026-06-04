@@ -2,17 +2,17 @@ import type { FilterSelection } from '$lib/games/games-filter-url';
 import { splitGameTags } from '$lib/games/public-game-display';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import {
-    effectiveTranslationVersion,
-    isTranslationOutdated
+	effectiveTranslationVersion,
+	isTranslationOutdated
 } from '$lib/server/api/translation-public';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
 import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
 import { db } from '$lib/server/db';
 import { game, update as updateTable } from '$lib/server/db/schema';
 import {
-    buildGameCatalogFilterParts,
-    combineSqlParts,
-    type GameCatalogFilters
+	buildGameCatalogFilterParts,
+	combineSqlParts,
+	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { pickTranslationForUpdate } from '$lib/updates/pick-update-translation';
@@ -22,9 +22,9 @@ import { asc, count, desc, eq, not, or, sql, type SQL } from 'drizzle-orm';
 export const PUBLIC_UPDATES_PAGE_SIZE = 24;
 
 export {
-    buildPublicUpdatesListSearchParams,
-    hasActivePublicUpdatesListFilters,
-    parsePublicUpdatesListParams
+	buildPublicUpdatesListSearchParams,
+	hasActivePublicUpdatesListFilters,
+	parsePublicUpdatesListParams
 } from '$lib/updates/updates-filter-url';
 
 export type { PublicUpdatesListParams };

@@ -315,7 +315,9 @@
 										<span class={`badge ${methodBadge(log.method)}`}>{log.method}</span>
 									</td>
 									<td class="max-w-sm">
-										<span class="block truncate font-mono text-sm" title={log.route}>{log.route}</span>
+										<span class="block truncate font-mono text-sm" title={log.route}
+											>{log.route}</span
+										>
 									</td>
 									<td>
 										<span class={`badge ${statusBadge(log.status)}`}>{log.status}</span>

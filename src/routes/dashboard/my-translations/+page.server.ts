@@ -1,6 +1,6 @@
 import {
-    effectiveTranslationVersion,
-    isTranslationOutdatedForLinkedTranslator
+	effectiveTranslationVersion,
+	isTranslationOutdatedForLinkedTranslator
 } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';

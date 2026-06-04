@@ -51,7 +51,8 @@
 		for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) {
 			items.push({ kind: 'page', page: i });
 		}
-		if (cur < total - 2) items.push({ kind: 'ellipsis', page: ellipsisJumpPage('end', cur, total) });
+		if (cur < total - 2)
+			items.push({ kind: 'ellipsis', page: ellipsisJumpPage('end', cur, total) });
 		items.push({ kind: 'page', page: total });
 		return items;
 	});

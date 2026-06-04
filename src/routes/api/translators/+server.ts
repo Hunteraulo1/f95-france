@@ -3,8 +3,8 @@ import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
 import { pruneInactiveTranslatorsFromGoogleSheet } from '$lib/server/google-sheets-sync';
 import {
-    translatorReadCountExpr,
-    translatorTradCountExpr
+	translatorReadCountExpr,
+	translatorTradCountExpr
 } from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';

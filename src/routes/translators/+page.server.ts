@@ -1,6 +1,6 @@
 import {
-    listPublicTranslators,
-    PUBLIC_TRANSLATORS_PAGE_SIZE
+	listPublicTranslators,
+	PUBLIC_TRANSLATORS_PAGE_SIZE
 } from '$lib/server/public-translators';
 import type { PageServerLoad } from './$types';
 

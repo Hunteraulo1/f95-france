@@ -8,18 +8,18 @@ import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import { game } from '$lib/server/db/schema';
 import {
-    buildGameCatalogFilterParts,
-    combineSqlParts,
-    type GameCatalogFilters
+	buildGameCatalogFilterParts,
+	combineSqlParts,
+	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 import { asc, count, desc, eq } from 'drizzle-orm';
 
 export {
-    buildPublicGamesListSearchParams,
-    hasActivePublicGamesListFilters,
-    parsePublicGamesListParams
+	buildPublicGamesListSearchParams,
+	hasActivePublicGamesListFilters,
+	parsePublicGamesListParams
 } from '$lib/games/games-filter-url';
 
 export const PUBLIC_GAMES_PAGE_SIZE = 24;

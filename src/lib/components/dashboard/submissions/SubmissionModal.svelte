@@ -270,7 +270,6 @@
 		Boolean(!canModerateSubmission && submission?.status === 'opened')
 	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
-
 </script>
 
 {#if submission}

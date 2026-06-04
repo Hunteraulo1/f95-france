@@ -1,8 +1,8 @@
 import type {
-  GameSubmissionJson,
-  SubmissionFieldConfig,
-  SubmissionModalTranslator,
-  SubmissionPrimitive
+	GameSubmissionJson,
+	SubmissionFieldConfig,
+	SubmissionModalTranslator,
+	SubmissionPrimitive
 } from '$lib/components/dashboard/submissions/submission-modal-types';
 import type { GameTranslation } from '$lib/server/db/schema';
 

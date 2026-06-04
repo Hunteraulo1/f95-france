@@ -1,7 +1,7 @@
 import { translator } from '$lib/server/db/schema';
 import {
-    translatorReadCountExpr,
-    translatorTradCountExpr
+	translatorReadCountExpr,
+	translatorTradCountExpr
 } from '$lib/server/translator-activity-counts';
 import type { SQL } from 'drizzle-orm';
 import { and, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
@@ -51,9 +51,7 @@ export function parseTranslatorCountFilters(
 	if (hasDiscord === true) parts.push(isNotNull(translator.discordId));
 	if (hasDiscord === false) parts.push(isNull(translator.discordId));
 	if (activeOnly.value) {
-		parts.push(
-			or(gte(translatorTradCountExpr(), 1), gte(translatorReadCountExpr(), 1))!
-		);
+		parts.push(or(gte(translatorTradCountExpr(), 1), gte(translatorReadCountExpr(), 1))!);
 	}
 
 	if (parts.length === 0) return { ok: true, activeOnly: activeOnly.value };

@@ -47,18 +47,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (errorsOnly) {
 			// Filtrer uniquement les erreurs serveur (5xx), hors bruit opérationnel connu
 			conditions.push(gte(apiLog.status, 500));
-			conditions.push(
-				not(
-					or(
-						and(eq(apiLog.status, 502), eq(apiLog.route, '/dashboard/manager/scrape')),
-						and(
-							eq(apiLog.status, 500),
-							eq(apiLog.method, 'DELETE'),
-							sql`${apiLog.route} like '/dashboard/game/%'`
-						)
-					)
+			const operationalNoise = or(
+				and(eq(apiLog.status, 502), eq(apiLog.route, '/dashboard/manager/scrape')),
+				and(
+					eq(apiLog.status, 500),
+					eq(apiLog.method, 'DELETE'),
+					sql`${apiLog.route} like '/dashboard/game/%'`
 				)
 			);
+			if (operationalNoise) {
+				conditions.push(not(operationalNoise));
+			}
 		}
 		if (warningsOnly) {
 			// Filtrer uniquement les warnings (4xx)

@@ -39,8 +39,8 @@
 
 {#if showHelper}
 	<p class="text-sm text-base-content/70 mb-2">
-		Le <span class="font-medium text-primary">premier lien</span> est le lien principal du traducteur (fiches
-		jeu, API, Google Sheet). Utilisez les flèches pour changer l’ordre.
+		Le <span class="font-medium text-primary">premier lien</span> est le lien principal du traducteur
+		(fiches jeu, API, Google Sheet). Utilisez les flèches pour changer l’ordre.
 	</p>
 {/if}
 
@@ -103,8 +103,12 @@
 			</div>
 		</div>
 	{:else}
-		<p class="text-sm text-base-content/60">Aucune page (la liste sera vide après enregistrement).</p>
+		<p class="text-sm text-base-content/60">
+			Aucune page (la liste sera vide après enregistrement).
+		</p>
 	{/each}
 </div>
 
-<button type="button" class="btn btn-outline btn-sm mt-2" onclick={addPage}>+ Ajouter une page</button>
+<button type="button" class="btn btn-outline btn-sm mt-2" onclick={addPage}
+	>+ Ajouter une page</button
+>

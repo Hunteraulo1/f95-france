@@ -2,8 +2,8 @@ import { parseTranslatorPages } from '$lib/profile/custom-profile';
 import { db } from '$lib/server/db';
 import { translator, user } from '$lib/server/db/schema';
 import {
-    translatorReadCountExpr,
-    translatorTradCountExpr
+	translatorReadCountExpr,
+	translatorTradCountExpr
 } from '$lib/server/translator-activity-counts';
 import { profilePublicHref } from '$lib/utils/profile-url';
 import { count, desc, eq, ilike, or, sql } from 'drizzle-orm';

@@ -70,7 +70,8 @@
 		translatorId: null,
 		proofreaderId: null,
 		ttype: 'auto',
-		ac: false
+		ac: false,
+		translatorAlertsEnabled: true
 	});
 
 	let scraping = $state(false);

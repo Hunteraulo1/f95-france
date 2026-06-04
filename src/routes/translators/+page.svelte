@@ -14,37 +14,37 @@
 
 	let { data }: Props = $props();
 
-	let searchQuery = $state('');
+	let searchQuery = $derived(data.q);
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	$effect(() => {
-		searchQuery = data.q;
-	});
-
-	const buildHref = (overrides: { q?: string; page?: number } = {}) => {
+	const buildQuery = (overrides: { q?: string; page?: number } = {}) => {
 		const qVal = overrides.q !== undefined ? overrides.q : data.q;
 		const page = overrides.page ?? data.page;
 		const params: string[] = [];
 		const trimmed = qVal.trim();
 		if (trimmed) params.push(`q=${encodeURIComponent(trimmed)}`);
 		if (page > 1) params.push(`page=${page}`);
-		const search = params.toString();
-		return search ? `${resolve('/translators')}?${search}` : resolve('/translators');
+		return params.length ? `?${params.join('&')}` : '';
 	};
 
+	const buildHref = (overrides: { q?: string; page?: number } = {}) =>
+		resolve(`/translators${buildQuery(overrides)}` as '/translators');
+
 	const translatorsHref = (page: number) => buildHref({ page });
+
+	const navigateSearch = (value: string) => {
+		void goto(buildHref({ q: value, page: 1 }), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
+	};
 
 	const onSearchInput = (value: string) => {
 		searchQuery = value;
 		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => {
-			void goto(buildHref({ q: value, page: 1 }), {
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
-				invalidateAll: true
-			});
-		}, 300);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
 	};
 
 	const translatorPagesMenuLabel = (pages: TranslatorPageLink[]) => {
@@ -197,7 +197,7 @@
 									target="_blank"
 									rel="noopener noreferrer"
 									class="btn btn-sm max-w-40 truncate font-normal btn-ghost"
-                  class:text-primary={pageIndex === 0}
+									class:text-primary={pageIndex === 0}
 									title={pageIndex === 0 ? `${page.label} (lien principal)` : page.label}
 								>
 									{page.label}

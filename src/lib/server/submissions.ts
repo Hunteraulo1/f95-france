@@ -1,37 +1,37 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    createPendingTranslators,
-    normalizePendingNewTranslatorNames,
-    resolveTranslatorFieldForStorage
+	createPendingTranslators,
+	normalizePendingNewTranslatorNames,
+	resolveTranslatorFieldForStorage
 } from '$lib/server/ensure-translator';
 import {
-    clampTranslationAc,
-    clearAllTranslationAutoCheckForGame,
-    getGameAllowsTranslationAutoCheck,
-    resolveGameAutoCheckForWebsite
+	clampTranslationAc,
+	clearAllTranslationAutoCheckForGame,
+	getGameAllowsTranslationAutoCheck,
+	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    createGameUpdateRow,
-    recordTranslationChangeInUpdateHistory,
-    touchGameUpdatedToday
+	createGameUpdateRow,
+	recordTranslationChangeInUpdateHistory,
+	touchGameUpdatedToday
 } from '$lib/server/game-updates';
 import {
-    deleteGameTranslationsFromGoogleSheet,
-    deleteTranslationFromGoogleSheet,
-    syncTranslatorLinksInJeuxSheet,
-    syncTranslatorToGoogleSheet,
-    voidSyncGameTranslationsToGoogleSheet,
-    voidSyncTranslationToGoogleSheet,
-    voidSyncTranslatorActivityCountsToGoogleSheet
+	deleteGameTranslationsFromGoogleSheet,
+	deleteTranslationFromGoogleSheet,
+	syncTranslatorLinksInJeuxSheet,
+	syncTranslatorToGoogleSheet,
+	voidSyncGameTranslationsToGoogleSheet,
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
 import {
-    translationRowToHistorySnapshot,
-    type TranslationHistorySnapshot
+	translationRowToHistorySnapshot,
+	type TranslationHistorySnapshot
 } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
