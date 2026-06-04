@@ -33,7 +33,6 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
-		"@rollup/rollup-win32-x64-msvc": "^4.61.1",
 		"@sveltejs/vite-plugin-svelte": "7.1.2",
 		"@types/node": "25.9.1",
 		"@types/qrcode": "1.5.6",
