@@ -1,13 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
-	boolean,
-	integer,
-	pgEnum,
-	pgTable,
-	primaryKey,
-	text,
-	timestamp,
-	varchar
+    boolean,
+    integer,
+    pgEnum,
+    pgTable,
+    primaryKey,
+    text,
+    timestamp,
+    varchar
 } from 'drizzle-orm/pg-core';
 
 export const themeEnum = pgEnum('theme_enum', ['system', 'light', 'dark']);
@@ -241,6 +241,18 @@ export const apiLog = pgTable('api_log', {
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+/** Logs applicatifs (cron, workers, files, etc.) — distinct de `api_log`. */
+export const appLog = pgTable('app_log', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	level: varchar('level', { length: 16 }).notNull(),
+	source: varchar('source', { length: 64 }).notNull(),
+	message: text('message').notNull(),
+	meta: text('meta'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
 export const notification = pgTable('notification', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()
@@ -329,6 +341,7 @@ export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;
+export type AppLog = typeof appLog.$inferSelect;
 export type Notification = typeof notification.$inferSelect;
 export type ApiKey = typeof apiKey.$inferSelect;
 export type ApiKeyRate = typeof apiKeyRate.$inferSelect;

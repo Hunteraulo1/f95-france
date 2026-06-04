@@ -1,22 +1,23 @@
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import {
-	clearAllTranslationAutoCheckForGame,
-	disableGameAndTranslationAutoCheck,
-	resolveGameAutoCheckForWebsite
+    clearAllTranslationAutoCheckForGame,
+    disableGameAndTranslationAutoCheck,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	voidSyncGameTranslationsToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    deleteGameTranslationsFromGoogleSheet,
+    voidSyncGameTranslationsToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
@@ -25,8 +26,8 @@ import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-s
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import {
-	gameImageRequiredForEdit,
-	normalizeGameImageForStorage
+    gameImageRequiredForEdit,
+    normalizeGameImageForStorage
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
@@ -99,7 +100,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			translations
 		});
 	} catch (error) {
-		console.error('Erreur lors de la récupération du jeu:', error);
+		appLogError('system', 'Récupération jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
@@ -383,7 +384,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			message: 'Jeu modifié avec succès'
 		});
 	} catch (error) {
-		console.error('Erreur lors de la modification du jeu:', error);
+		appLogError('system', 'Modification jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
@@ -581,14 +582,14 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 		if (deletedTranslationIds.length > 0) {
 			void deleteGameTranslationsFromGoogleSheet(deletedTranslationIds).catch((err) => {
-				console.warn('[google-sheets-sync] delete game rows failed:', err);
+				appLogWarn('sheets-sync', 'delete game rows failed', err);
 			});
 		}
 		voidSyncTranslatorActivityCountsToGoogleSheet(...deletedContributorIds);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Jeu supprimé avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la suppression du jeu:', error);
+		appLogError('system', 'Suppression jeu dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };

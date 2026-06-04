@@ -1,4 +1,5 @@
 import { getEffectiveConfig } from '$lib/server/app-config';
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
@@ -316,10 +317,13 @@ export async function executeDiscordWebhook(
 		});
 		if (!res.ok) {
 			const txt = await res.text().catch(() => '');
-			console.warn('[discord-webhook] HTTP', res.status, txt.slice(0, 500));
+			appLogWarn('notification', 'Discord webhook HTTP error', undefined, {
+				status: res.status,
+				body: txt.slice(0, 500)
+			});
 		}
 	} catch (e) {
-		console.warn('[discord-webhook] envoi échoué:', e);
+		appLogWarn('notification', 'Discord webhook envoi échoué', e);
 	}
 }
 
@@ -675,7 +679,7 @@ export async function sendDiscordWebhookAdminNewSubmission(args: {
 	// On force le refresh ici pour éviter un cache stale après changement de config.
 	const { admin } = await getWebhookUrls(true);
 	if (!admin) {
-		console.warn('[discord-webhook] webhook admin non configuré (soumission non envoyée)');
+		appLogWarn('notification', 'Webhook admin Discord non configuré (soumission non envoyée)');
 		return;
 	}
 

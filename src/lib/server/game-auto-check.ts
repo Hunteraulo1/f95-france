@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { hasGameAutoCheckColumn } from '$lib/server/schema-column-compat';
@@ -47,7 +48,7 @@ export async function getGameAllowsTranslationAutoCheck(gameId: string): Promise
 		if (!gameAutoCheckEnabledForWebsite(r.website)) return false;
 		return r.gameAutoCheck !== false;
 	} catch (error) {
-		console.warn('[game-auto-check] getGameAllowsTranslationAutoCheck fallback:', error);
+		appLogWarn('worker', 'getGameAllowsTranslationAutoCheck fallback', error, { gameId });
 		return false;
 	}
 }

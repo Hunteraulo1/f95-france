@@ -1,13 +1,14 @@
 import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
 import { hasPermission } from '$lib/server/permissions';
 import {
-	assertRoleEditMode,
-	getRoleEditMode,
-	resolveShouldCreateSubmissionForUser
+    assertRoleEditMode,
+    getRoleEditMode,
+    resolveShouldCreateSubmissionForUser
 } from '$lib/server/role-edit-mode';
 import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
 import { submissionOpenedByUser } from '$lib/server/submission-users';
@@ -183,7 +184,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		if (isHttpError(err)) {
 			throw err;
 		}
-		console.error('Erreur lors de la récupération du jeu:', err);
+		appLogError('system', 'Récupération jeu page dashboard échouée', err);
 		throw error(500, 'Erreur serveur');
 	}
 };

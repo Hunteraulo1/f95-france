@@ -1,13 +1,14 @@
 import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
 import { getEffectiveConfig } from '$lib/server/app-config';
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	getTranslatorActivityCounts,
-	getTranslatorActivityCountsForId,
-	loadTranslatorActivityCountsById,
-	type TranslatorActivityCounts
+    getTranslatorActivityCounts,
+    getTranslatorActivityCountsForId,
+    loadTranslatorActivityCountsById,
+    type TranslatorActivityCounts
 } from '$lib/server/translator-activity-counts';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
@@ -37,11 +38,7 @@ function logJeuxSyncAlert(message: string, meta: JeuxSyncAlertMeta = {}, cause?:
 		.filter(Boolean)
 		.join(' ');
 
-	if (cause !== undefined) {
-		console.error(line, cause);
-	} else {
-		console.error(line);
-	}
+	appLogError('sheets-sync', line, cause, meta);
 }
 
 type SheetsApiResponse = {
@@ -1243,7 +1240,7 @@ export async function syncGameTranslationsToGoogleSheet(
 				await finalizeJeuxSheetLayout(auth);
 				await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 			} catch (err) {
-				console.warn('[google-sheets-sync] finalize Jeux layout after game sync failed:', err);
+				appLogWarn('sheets-sync', 'finalize Jeux layout after game sync failed', err);
 			}
 		}
 	}
@@ -1267,7 +1264,7 @@ export function voidSyncTranslatorActivityCountsToGoogleSheet(
 		if (!id || seen.has(id)) continue;
 		seen.add(id);
 		void syncTranslatorToGoogleSheet(id).catch((err) => {
-			console.warn(`[google-sheets-sync] translator activity sync failed (${id}):`, err);
+			appLogWarn('sheets-sync', 'translator activity sync failed', err, { translatorId: id });
 		});
 	}
 }
@@ -1390,7 +1387,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 					rows: [{ rowNumber, pagesRaw: tr.pages }]
 				});
 			} catch (err) {
-				console.warn('[google-sheets-sync] rich text pages update failed:', err);
+				appLogWarn('sheets-sync', 'rich text pages update failed', err);
 			}
 		}
 		await sortTranslatorSheetByActivityDesc(auth);
@@ -1439,7 +1436,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 					rows: [{ rowNumber: appendedRowNumber, pagesRaw: tr.pages }]
 				});
 			} catch (err) {
-				console.warn('[google-sheets-sync] rich text pages append failed:', err);
+				appLogWarn('sheets-sync', 'rich text pages append failed', err);
 			}
 		}
 	}

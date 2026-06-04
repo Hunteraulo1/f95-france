@@ -1,3 +1,4 @@
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { defaultGameTypeForGame, type GameEngineColumn } from '$lib/server/game-engine-type';
@@ -240,7 +241,7 @@ export async function enrichSubmissionListRows(
 				translatorIds.add(String(parsed.translatorId));
 			}
 		} catch (e) {
-			console.error('Erreur lors du parsing des données de soumission:', e);
+			appLogError('system', 'Parsing données de soumission échoué', e);
 			parsedById.set(sub.id, null);
 		}
 	}

@@ -1,11 +1,12 @@
+import { appLogError } from '$lib/server/app-log-bridge';
 import {
-	assertDirectGameWriteAllowed,
-	loadCurrentUserOrThrow
+    assertDirectGameWriteAllowed,
+    loadCurrentUserOrThrow
 } from '$lib/server/game-manage-guard';
 import { assertPermission } from '$lib/server/permissions';
 import {
-	revertUpdateHistoryEntry,
-	UpdateHistoryRevertError
+    UpdateHistoryRevertError,
+    revertUpdateHistoryEntry
 } from '$lib/server/revert-update-history';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -39,7 +40,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		if (err instanceof UpdateHistoryRevertError) {
 			return json({ error: err.message }, { status: err.status });
 		}
-		console.error('[update-history] revert failed:', err);
+		appLogError('system', 'update-history revert failed', err);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };

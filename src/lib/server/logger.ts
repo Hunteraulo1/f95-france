@@ -1,4 +1,5 @@
 import type { LiveLogEntry } from '$lib/logs/live-log-entry';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
 import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
@@ -87,6 +88,6 @@ export const logApiAction = async ({
 			// Avoid flooding logs when DB is temporarily unreachable.
 			return;
 		}
-		console.error('Erreur lors de la création du log API:', error);
+		appLogError('db', 'Création log API échouée', error, { route, method, status });
 	}
 };

@@ -2,9 +2,12 @@
 	import { browser } from '$app/environment';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
-	import type { LiveLogEntry } from '$lib/logs/live-log-entry';
-	import { roleBadgeStyles } from '$lib/stores';
-	import { roleUsernameClass } from '$lib/utils/role-display';
+	import {
+		APP_LOG_LEVELS,
+		appLogLevelsToParam,
+		type AppLogLevel
+	} from '$lib/logs/app-log';
+	import type { LiveAppLogEntry } from '$lib/logs/live-app-log-entry';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
@@ -15,39 +18,49 @@
 
 	let liveEnabled = $state(false);
 	let liveStatus = $state<'off' | 'connecting' | 'on' | 'error'>('off');
-	let liveLogs = $state<LiveLogEntry[]>([]);
+	let liveLogs = $state<LiveAppLogEntry[]>([]);
 	let liveSource: EventSource | null = null;
-	let methodFilter = $state('');
 	let search = $state('');
-	let userSearch = $state('');
-	let errorsOnly = $state(false);
-	let warningsOnly = $state(false);
-	let redirectsOnly = $state(false);
+	let sourceFilter = $state('');
 	let limit = $state('50');
 	let fromDate = $state('');
 	let toDate = $state('');
-	let showPayloadModal = $state(false);
-	let formattedPayload = $state<string | null>(null);
-	let payloadFormat = $state<'json' | 'texte'>('texte');
-	let showErrorModal = $state(false);
-	let errorMessage = $state<string | null>(null);
+	let levelDebug = $state(false);
+	let levelInfo = $state(false);
+	let levelWarn = $state(false);
+	let levelError = $state(false);
+	let showMetaModal = $state(false);
+	let formattedMeta = $state<string | null>(null);
+	let metaFormat = $state<'json' | 'texte'>('texte');
+	let showMessageModal = $state(false);
+	let messageDetail = $state<string | null>(null);
 	let filtersInitialized = $state(false);
 
 	$effect(() => {
 		if (filtersInitialized) return;
-		methodFilter = data.filters.method ?? '';
 		search = data.filters.search ?? '';
-		userSearch = data.filters.user ?? '';
-		errorsOnly = data.filters.errorsOnly ?? false;
-		warningsOnly = data.filters.warningsOnly ?? false;
-		redirectsOnly = data.filters.redirectsOnly ?? false;
+		sourceFilter = data.filters.source ?? '';
 		limit = String(data.filters.limit);
 		fromDate = data.filters.from ?? '';
 		toDate = data.filters.to ?? '';
+		const levels = new Set(data.filters.activeLevels);
+		levelDebug = levels.has('debug');
+		levelInfo = levels.has('info');
+		levelWarn = levels.has('warn');
+		levelError = levels.has('error');
 		filtersInitialized = true;
 	});
 
-	const methodOptions = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+	const selectedLevels = $derived.by((): AppLogLevel[] => {
+		const picked: AppLogLevel[] = [];
+		if (levelDebug) picked.push('debug');
+		if (levelInfo) picked.push('info');
+		if (levelWarn) picked.push('warn');
+		if (levelError) picked.push('error');
+		return picked.length > 0 ? picked : [...APP_LOG_LEVELS];
+	});
+
+	const levelsHiddenValue = $derived(appLogLevelsToParam(selectedLevels));
 
 	const formatDate = (value: string | Date) => {
 		const date = value instanceof Date ? value : new Date(value);
@@ -57,74 +70,56 @@
 		}).format(date);
 	};
 
-	const methodBadge = (method: string) => {
-		switch (method) {
-			case 'GET':
-				return 'badge-success';
-			case 'POST':
-				return 'badge-primary';
-			case 'PUT':
-				return 'badge-warning';
-			case 'DELETE':
-				return 'badge-error';
-			case 'PATCH':
+	const levelBadge = (level: string) => {
+		switch (level) {
+			case 'debug':
+				return 'badge-accent';
+			case 'info':
 				return 'badge-info';
+			case 'warn':
+				return 'badge-warning';
+			case 'error':
+				return 'badge-error';
 			default:
 				return 'badge-neutral';
 		}
 	};
 
-	const statusBadge = (status: number) => {
-		if (status >= 500) return 'badge-error';
-		if (status >= 400) return 'badge-warning';
-		if (status >= 200) return 'badge-success';
-		return 'badge-neutral';
-	};
-
-	const openPayloadModal = (payload: string) => {
+	const openMetaModal = (meta: string) => {
 		try {
-			const parsed = JSON.parse(payload);
-			formattedPayload = JSON.stringify(parsed, null, 2);
-			payloadFormat = 'json';
+			const parsed = JSON.parse(meta);
+			formattedMeta = JSON.stringify(parsed, null, 2);
+			metaFormat = 'json';
 		} catch {
-			formattedPayload = payload;
-			payloadFormat = 'texte';
+			formattedMeta = meta;
+			metaFormat = 'texte';
 		}
-		showPayloadModal = true;
+		showMetaModal = true;
 	};
 
-	const closePayloadModal = () => {
-		showPayloadModal = false;
-		formattedPayload = null;
+	const closeMetaModal = () => {
+		showMetaModal = false;
+		formattedMeta = null;
 	};
 
-	const openErrorModal = (errorMsg: string) => {
-		errorMessage = errorMsg;
-		showErrorModal = true;
+	const openMessageModal = (message: string) => {
+		messageDetail = message;
+		showMessageModal = true;
 	};
 
-	const closeErrorModal = () => {
-		showErrorModal = false;
-		errorMessage = null;
+	const closeMessageModal = () => {
+		showMessageModal = false;
+		messageDetail = null;
 	};
 
-	const matchesLiveFilters = (entry: LiveLogEntry) => {
-		if (methodFilter && entry.method !== methodFilter) return false;
+	const matchesLiveFilters = (entry: LiveAppLogEntry) => {
+		if (!selectedLevels.includes(entry.level as AppLogLevel)) return false;
+		if (sourceFilter && entry.source !== sourceFilter) return false;
 		const q = search.trim().toLowerCase();
 		if (q) {
-			const haystack = [entry.route, entry.payload ?? '', entry.ipAddress ?? '']
-				.join(' ')
-				.toLowerCase();
+			const haystack = [entry.message, entry.source, entry.meta ?? ''].join(' ').toLowerCase();
 			if (!haystack.includes(q)) return false;
 		}
-		const u = userSearch.trim().toLowerCase();
-		if (u) {
-			const name = entry.user?.username?.toLowerCase() ?? '';
-			if (!name.includes(u)) return false;
-		}
-		if (errorsOnly && entry.status < 500) return false;
-		if (warningsOnly && (entry.status < 400 || entry.status >= 500)) return false;
-		if (redirectsOnly && (entry.status < 300 || entry.status >= 400)) return false;
 		if (fromDate) {
 			const from = new Date(`${fromDate}T00:00:00.000Z`);
 			if (!Number.isNaN(from.getTime()) && new Date(entry.createdAt) < from) return false;
@@ -160,7 +155,7 @@
 		if (!browser || liveSource) return;
 		liveStatus = 'connecting';
 
-		const source = new EventSource('/api/logs/live');
+		const source = new EventSource('/api/logs-app/live');
 		liveSource = source;
 
 		source.addEventListener('connected', () => {
@@ -169,7 +164,7 @@
 
 		source.addEventListener('log', (event) => {
 			try {
-				const payload = JSON.parse(event.data) as { entry: LiveLogEntry };
+				const payload = JSON.parse(event.data) as { entry: LiveAppLogEntry };
 				liveStatus = 'on';
 				liveLogs = [payload.entry, ...liveLogs.filter((e) => e.id !== payload.entry.id)].slice(
 					0,
@@ -207,12 +202,9 @@
 
 	const buildPageHref = (targetPage: number) => {
 		const pairs: Array<[string, string]> = [];
-		if (data.filters.method) pairs.push(['method', data.filters.method]);
 		if (data.filters.search) pairs.push(['q', data.filters.search]);
-		if (data.filters.user) pairs.push(['user', data.filters.user]);
-		if (data.filters.errorsOnly) pairs.push(['errors', 'true']);
-		if (data.filters.warningsOnly) pairs.push(['warnings', 'true']);
-		if (data.filters.redirectsOnly) pairs.push(['redirects', 'true']);
+		if (data.filters.source) pairs.push(['source', data.filters.source]);
+		pairs.push(['levels', appLogLevelsToParam(data.filters.activeLevels)]);
 		if (data.filters.from) pairs.push(['from', data.filters.from]);
 		if (data.filters.to) pairs.push(['to', data.filters.to]);
 		pairs.push(['limit', String(data.pagination.limit)]);
@@ -220,23 +212,31 @@
 		const query = pairs
 			.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
 			.join('&');
-		return `/dashboard/logs?${query}`;
+		return `/dashboard/logs-app?${query}`;
 	};
 </script>
 
 <svelte:head>
-	<title>Logs des requêtes - Tableau de bord</title>
+	<title>Logs applicatif - Tableau de bord</title>
 </svelte:head>
 
 <div class="space-y-6">
-	<LogsModeNav mode="http" />
+	<LogsModeNav
+		mode="app"
+		activeLevels={data.filters.activeLevels}
+		preserve={{
+			search: data.filters.search,
+			source: data.filters.source,
+			limit: data.pagination.limit,
+			page: data.pagination.page
+		}}
+	/>
 
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<div>
-			<h1 class="text-3xl font-bold text-base-content">Logs des requêtes</h1>
+			<h1 class="text-3xl font-bold text-base-content">Logs applicatif</h1>
 			<p class="text-base-content/70">
-				Historique des routes API, du tableau de bord et de la maintenance (hors polling
-				notifications et appels extension-api).
+				Cron, workers, files d’attente et événements serveur (hors journal HTTP).
 			</p>
 			{#if liveEnabled && liveStatus === 'on'}
 				<p class="mt-1 text-sm text-success">Mode Live — nouveaux logs en temps réel</p>
@@ -271,20 +271,20 @@
 			</div>
 		</div>
 		<div class="stat">
-			<div class="stat-title">2xx</div>
-			<div class="stat-value text-success">{data.statusCounts.s2xx}</div>
+			<div class="stat-title">Debug</div>
+			<div class="stat-value text-accent">{data.levelCounts.debug}</div>
 		</div>
 		<div class="stat">
-			<div class="stat-title">3xx</div>
-			<div class="stat-value text-info">{data.statusCounts.s3xx}</div>
+			<div class="stat-title">Info</div>
+			<div class="stat-value text-info">{data.levelCounts.info}</div>
 		</div>
 		<div class="stat">
-			<div class="stat-title">4xx</div>
-			<div class="stat-value text-warning">{data.statusCounts.s4xx}</div>
+			<div class="stat-title">Warn</div>
+			<div class="stat-value text-warning">{data.levelCounts.warn}</div>
 		</div>
 		<div class="stat">
-			<div class="stat-title">5xx</div>
-			<div class="stat-value text-error">{data.statusCounts.s5xx}</div>
+			<div class="stat-title">Error</div>
+			<div class="stat-value text-error">{data.levelCounts.error}</div>
 		</div>
 	</div>
 
@@ -292,34 +292,24 @@
 		<div class="card-body gap-6 sm:p-8">
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<label class="form-control flex flex-col">
-					<span class="label-text">Méthode</span>
-					<select class="select-bordered select" name="method" bind:value={methodFilter}>
+					<span class="label-text">Source</span>
+					<select class="select-bordered select" name="source" bind:value={sourceFilter}>
 						<option value="">Toutes</option>
-						{#each methodOptions as option (option)}
+						{#each data.sourceOptions as option (option)}
 							<option value={option}>{option}</option>
 						{/each}
 					</select>
 				</label>
 				<label class="form-control flex flex-col">
 					<span class="label-text"
-						>Recherche <span class="text-sm">(route, IP ou payload)</span></span
+						>Recherche <span class="text-sm">(message, source ou meta)</span></span
 					>
 					<input
 						type="text"
 						name="q"
 						class="input-bordered input"
-						placeholder="/api/..."
+						placeholder="cron, worker, queue…"
 						bind:value={search}
-					/>
-				</label>
-				<label class="form-control flex flex-col">
-					<span class="label-text">Utilisateur</span>
-					<input
-						type="text"
-						name="user"
-						class="input-bordered input"
-						placeholder="Nom d'utilisateur..."
-						bind:value={userSearch}
 					/>
 				</label>
 				<label class="form-control flex flex-col">
@@ -342,63 +332,26 @@
 
 			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
 				<label class="form-control flex flex-col">
-					<span class="label-text mb-2">Filtres de statut</span>
+					<span class="label-text mb-2">Filtres de niveau</span>
 					<div class="flex flex-wrap gap-3">
 						<label class="label cursor-pointer">
-							<input
-								type="checkbox"
-								class="checkbox checkbox-info"
-								checked={redirectsOnly}
-								onchange={(e) => {
-									redirectsOnly = e.currentTarget.checked;
-									if (redirectsOnly) {
-										errorsOnly = false;
-										warningsOnly = false;
-									}
-								}}
-							/>
-							<span class="label-text">Redirections (3xx)</span>
+							<input type="checkbox" class="checkbox checkbox-accent" bind:checked={levelDebug} />
+							<span class="label-text">Debug</span>
 						</label>
 						<label class="label cursor-pointer">
-							<input
-								type="checkbox"
-								class="checkbox checkbox-warning"
-								checked={warningsOnly}
-								onchange={(e) => {
-									warningsOnly = e.currentTarget.checked;
-									if (warningsOnly) {
-										errorsOnly = false;
-										redirectsOnly = false;
-									}
-								}}
-							/>
-							<span class="label-text">Warnings (4xx)</span>
+							<input type="checkbox" class="checkbox checkbox-info" bind:checked={levelInfo} />
+							<span class="label-text">Info</span>
 						</label>
 						<label class="label cursor-pointer">
-							<input
-								type="checkbox"
-								class="checkbox checkbox-error"
-								checked={errorsOnly}
-								onchange={(e) => {
-									errorsOnly = e.currentTarget.checked;
-									if (errorsOnly) {
-										warningsOnly = false;
-										redirectsOnly = false;
-									}
-								}}
-							/>
-							<span class="label-text">Erreurs (5xx)</span>
+							<input type="checkbox" class="checkbox checkbox-warning" bind:checked={levelWarn} />
+							<span class="label-text">Warn</span>
+						</label>
+						<label class="label cursor-pointer">
+							<input type="checkbox" class="checkbox checkbox-error" bind:checked={levelError} />
+							<span class="label-text">Error</span>
 						</label>
 					</div>
-					{#if redirectsOnly}
-						<input type="hidden" name="redirects" value="true" />
-					{/if}
-					{#if warningsOnly}
-						<input type="hidden" name="warnings" value="true" />
-					{/if}
-					{#if errorsOnly}
-						<input type="hidden" name="errors" value="true" />
-					{/if}
+					<input type="hidden" name="levels" value={levelsHiddenValue} />
 				</label>
 			</div>
 
@@ -411,7 +364,7 @@
 					· {data.pagination.totalCount} au total
 				</p>
 				<div class="flex gap-2">
-					<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
+					<a href="/dashboard/logs-app" class="btn btn-ghost">Réinitialiser</a>
 					<button type="submit" class="btn btn-primary">Actualiser</button>
 				</div>
 			</div>
@@ -425,19 +378,16 @@
 					<thead>
 						<tr>
 							<th>Date</th>
-							<th>Méthode</th>
-							<th class="max-w-sm">Route</th>
-							<th>Statut</th>
-							<th>Utilisateur</th>
-							<th>IP</th>
-							<th>Payload</th>
-							<th>Erreur</th>
+							<th>Niveau</th>
+							<th>Source</th>
+							<th class="max-w-sm">Message</th>
+							<th>Meta</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#if displayedLogs.length === 0}
 							<tr>
-								<td colspan="8" class="py-10 text-center text-base-content/60">
+								<td colspan="5" class="py-10 text-center text-base-content/60">
 									Aucun log disponible pour ces critères.
 								</td>
 							</tr>
@@ -446,57 +396,37 @@
 								<tr>
 									<td class="whitespace-nowrap">{formatDate(log.createdAt)}</td>
 									<td>
-										<span class={`badge ${methodBadge(log.method)}`}>{log.method}</span>
+										<span class={`badge ${levelBadge(log.level)}`}>{log.level}</span>
 									</td>
-									<td class="max-w-sm">
-										<span class="block truncate font-mono text-sm" title={log.route}
-											>{log.route}</span
+									<td class="max-w-xs">
+										<span
+											class="badge badge-outline font-mono text-xs"
+											title={log.source}>{log.source}</span
 										>
 									</td>
-									<td>
-										<span class={`badge ${statusBadge(log.status)}`}>{log.status}</span>
-									</td>
-									<td>
-										{#if log.user?.username}
-											<span
-												class="font-semibold {roleUsernameClass(
-													log.user.role,
-													$roleBadgeStyles[log.user.role]
-												)}">{log.user.username}</span
+									<td class="max-w-sm">
+										{#if log.message.length > 120}
+											<button
+												type="button"
+												class="block max-w-sm truncate text-left font-mono text-sm hover:text-primary"
+												title={log.message}
+												onclick={() => openMessageModal(log.message)}
 											>
+												{log.message}
+											</button>
 										{:else}
-											<span class="text-base-content/60">Anonyme</span>
-										{/if}
-									</td>
-									<td class="font-mono text-xs whitespace-nowrap">
-										{#if log.ipAddress}
-											{log.ipAddress}
-										{:else}
-											<span class="text-base-content/60">—</span>
+											<span
+												class="block truncate font-mono text-sm"
+												title={log.message}>{log.message}</span
+											>
 										{/if}
 									</td>
 									<td class="max-w-xs">
-										{#if log.payload}
+										{#if log.meta}
 											<button
 												type="button"
 												class="btn text-primary btn-ghost btn-xs"
-												onclick={() => openPayloadModal(log.payload ?? '')}
-											>
-												Voir
-											</button>
-										{:else}
-											<span class="text-base-content/60">—</span>
-										{/if}
-									</td>
-									<td class="max-w-xs">
-										{#if 'errorMessage' in log && log.errorMessage}
-											<button
-												type="button"
-												class="btn text-error btn-ghost btn-xs"
-												onclick={() =>
-													openErrorModal(
-														typeof log.errorMessage === 'string' ? log.errorMessage : ''
-													)}
+												onclick={() => openMetaModal(log.meta ?? '')}
 											>
 												Voir
 											</button>
@@ -533,42 +463,41 @@
 </div>
 
 <DaisyDashboardModal
-	open={showPayloadModal && formattedPayload !== null}
-	title="Payload de la requête"
-	description="Aperçu brut limité à 4000 caractères."
+	open={showMetaModal && formattedMeta !== null}
+	title="Meta de l’événement"
+	description="Contexte JSON ou texte associé au log."
 	maxWidthClass="max-w-4xl"
 	scrollBody={true}
-	onClose={closePayloadModal}
+	onClose={closeMetaModal}
 >
-	{#if formattedPayload}
-		<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
-			{payloadFormat === 'json' ? 'JSON' : 'Texte'}
+	{#if formattedMeta}
+		<span class={`badge ${metaFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
+			{metaFormat === 'json' ? 'JSON' : 'Texte'}
 		</span>
 		<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
-{formattedPayload}
+{formattedMeta}
 </pre>
 	{/if}
 	{#snippet footer()}
-		<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
+		<button type="button" class="btn btn-primary" onclick={closeMetaModal}>Fermer</button>
 	{/snippet}
 </DaisyDashboardModal>
 
 <DaisyDashboardModal
-	open={showErrorModal && errorMessage !== null}
-	title="Détails de l'erreur"
-	description="Message d'erreur et stack trace."
+	open={showMessageModal && messageDetail !== null}
+	title="Message complet"
+	description="Contenu intégral du log applicatif."
 	maxWidthClass="max-w-4xl"
 	scrollBody={true}
-	onClose={closeErrorModal}
+	onClose={closeMessageModal}
 >
-	{#if errorMessage}
-		<span class="badge badge-error">Erreur</span>
+	{#if messageDetail}
 		<pre
-			class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
-{errorMessage}
+			class="max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap font-mono">
+{messageDetail}
 </pre>
 	{/if}
 	{#snippet footer()}
-		<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
+		<button type="button" class="btn btn-primary" onclick={closeMessageModal}>Fermer</button>
 	{/snippet}
 </DaisyDashboardModal>

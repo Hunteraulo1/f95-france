@@ -1,36 +1,37 @@
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import {
-	clampTranslationAc,
-	gameAutoCheckEnabledForWebsite,
-	resolveGameAutoCheckForWebsite
+    clampTranslationAc,
+    gameAutoCheckEnabledForWebsite,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
-	assertDirectGameWriteAllowed,
-	assertGameManageAccess,
-	loadCurrentUserOrThrow,
-	parseRequestDirectMode,
-	resolveGameWriteMode
+    assertDirectGameWriteAllowed,
+    assertGameManageAccess,
+    loadCurrentUserOrThrow,
+    parseRequestDirectMode,
+    resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
-	voidSyncTranslationToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    voidSyncTranslationToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createGameSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
-	gameImageRequiredForWebsite,
-	normalizeGameImageForStorage,
-	normalizeTranslationTversion
+    gameImageRequiredForWebsite,
+    normalizeGameImageForStorage,
+    normalizeTranslationTversion
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
@@ -86,7 +87,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				pendingSubmission: pendingGameSubmission.length > 0
 			});
 		} catch (error) {
-			console.error('Erreur lors de la vérification du thread:', error);
+			appLogError('scrape', 'Vérification thread manager échouée', error);
 			return json({ error: 'Erreur serveur' }, { status: 500 });
 		}
 	}
@@ -131,7 +132,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		return json({ games });
 	} catch (error) {
-		console.error('Erreur lors de la recherche des jeux:', error);
+		appLogError('system', 'Recherche jeux manager échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };
@@ -457,7 +458,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			shouldCreateTranslation && createdTranslationId ? 2 : 1
 		);
 		if (shouldCreateTranslation && !createdTranslationId) {
-			console.error('[manager/add] Traduction attendue mais non créée', {
+			appLogError('system', 'manager/add : traduction attendue mais non créée', undefined, {
 				translationTname,
 				hasTranslationPayload: Boolean(translation)
 			});
@@ -479,7 +480,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			translationId: createdTranslationId ?? null
 		});
 	} catch (error) {
-		console.error("Erreur lors de l'ajout du jeu:", error);
+		appLogError('system', "Ajout jeu manager échoué", error);
 		if (error instanceof Error && error.message === 'GAME_INSERT_FAILED') {
 			return json({ error: 'Impossible de créer le jeu' }, { status: 500 });
 		}

@@ -1,3 +1,4 @@
+import { logApp } from '$lib/server/app-logger';
 import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -24,7 +25,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		const result = await runAutoCheckVersions();
+		const result = await runAutoCheckVersions({ logSource: 'worker' });
 		const now = new Date();
 		await db
 			.update(table.config)
@@ -33,7 +34,12 @@ export const POST: RequestHandler = async ({ locals }) => {
 
 		return json({ ok: true, ...result });
 	} catch (err) {
-		console.error('[api/private/auto-check] erreur:', err);
+		logApp({
+			level: 'error',
+			source: 'worker',
+			message: 'auto-check API : échec',
+			meta: { detail: err instanceof Error ? err.message : String(err) }
+		});
 		return json({ ok: false, error: "Échec de l'auto-check." }, { status: 500 });
 	}
 };

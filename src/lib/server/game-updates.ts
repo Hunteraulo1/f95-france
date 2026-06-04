@@ -1,15 +1,16 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	syncMajToGoogleSheet,
-	voidSyncGameTranslationsToGoogleSheet
+    syncMajToGoogleSheet,
+    voidSyncGameTranslationsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasUpdateStatusColumn } from '$lib/server/schema-column-compat';
 import {
-	buildTranslationHistoryContext,
-	recordUpdateHistoryEntry,
-	type TranslationHistorySnapshot,
-	type UpdateHistoryContext
+    buildTranslationHistoryContext,
+    recordUpdateHistoryEntry,
+    type TranslationHistorySnapshot,
+    type UpdateHistoryContext
 } from '$lib/server/update-history';
 import { eq, sql } from 'drizzle-orm';
 
@@ -54,7 +55,7 @@ export async function createGameUpdateRow(
 	}
 
 	void syncMajToGoogleSheet().catch((err) => {
-		console.warn('[google-sheets-sync] MAJ sync failed:', err);
+		appLogWarn('sheets-sync', 'MAJ sync failed', err);
 	});
 
 	if (status === 'adding') {
@@ -94,14 +95,14 @@ export async function touchGameUpdatedToday(
 				await recordUpdateHistoryEntry(todayUpdateRow[0].id, history);
 			}
 			void syncMajToGoogleSheet().catch((err) => {
-				console.warn('[google-sheets-sync] MAJ sync failed:', err);
+				appLogWarn('sheets-sync', 'MAJ sync failed', err);
 			});
 			return;
 		}
 
 		await createGameUpdateRow(gameId, 'update', history);
 	} catch (error) {
-		console.warn('[game-updates] touchGameUpdatedToday skipped:', error);
+		appLogWarn('system', 'touchGameUpdatedToday skipped', error);
 	}
 }
 
@@ -138,6 +139,6 @@ export async function recordTranslationChangeInUpdateHistory(
 export async function deleteGameUpdate(gameId: string): Promise<void> {
 	await db.delete(table.update).where(eq(table.update.gameId, gameId));
 	void syncMajToGoogleSheet().catch((err) => {
-		console.warn('[google-sheets-sync] MAJ sync failed:', err);
+		appLogWarn('sheets-sync', 'MAJ sync failed', err);
 	});
 }

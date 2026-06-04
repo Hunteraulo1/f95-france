@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { canUseExtract } from '$lib/server/extract-thread-game';
 import { scrapeThread, type ScrapeWebsite } from '$lib/server/scrape';
 import { json } from '@sveltejs/kit';
@@ -14,6 +15,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{ status: 403 }
 		);
 	}
+
+	let scrapeContext: { website?: string; threadId?: number | string } = {};
 
 	try {
 		const body = await request.json();
@@ -35,6 +38,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		scrapeContext = { website, threadId };
+
 		const numericThreadId = Number(threadId);
 
 		if (!Number.isFinite(numericThreadId) || numericThreadId <= 0) {
@@ -45,7 +50,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return json({ success: true, data: scrapedData });
 	} catch (error) {
-		console.warn('Erreur lors du scraping:', error);
+		appLogWarn('scrape', 'Erreur lors du scraping dashboard', error, scrapeContext);
 		const detail = error instanceof Error ? error.message : '';
 		const notFound = /\b404\b/.test(detail) || /introuvable/i.test(detail);
 		return json(

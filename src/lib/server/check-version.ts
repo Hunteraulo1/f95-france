@@ -1,10 +1,13 @@
+import type { AppLogSource } from '$lib/logs/app-log';
+import { appLogWarn } from '$lib/server/app-log-bridge';
+import { logApp } from '$lib/server/app-logger';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+    sendDiscordWebhookProofreadersVersionBumps,
+    sendDiscordWebhookTranslatorsVersionBumps,
+    sendDiscordWebhookUpdatesAutoCheckVersionBump,
+    type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
@@ -13,14 +16,14 @@ import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
-	shouldNotifyTranslatorOnAutoCheckVersionBump,
-	tradVerIndicatesIntegrated
+    shouldNotifyTranslatorOnAutoCheckVersionBump,
+    tradVerIndicatesIntegrated
 } from '$lib/server/translation-notify-rules';
 import {
-	hasF95CheckerGameVersionChange,
-	isF95CheckerVersionAligned,
-	needsF95VersionBump,
-	normalizeCheckerVersion
+    hasF95CheckerGameVersionChange,
+    isF95CheckerVersionAligned,
+    needsF95VersionBump,
+    normalizeCheckerVersion
 } from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
@@ -90,7 +93,7 @@ async function fetchF95Versions(
 			}
 		} catch (error) {
 			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout l'auto-check.
-			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
+			appLogWarn(logSource, 'auto-check : fetch checker échoué', error);
 			issues.push({
 				stage: 'checker_fetch',
 				message: 'Erreur réseau/JSON checker',
@@ -116,6 +119,8 @@ export type AutoCheckResult = {
 export type RunAutoCheckVersionsOptions = {
 	/** Recharge les URL webhook depuis l’env (utile après changement de config / exécution manuelle). */
 	refreshWebhookUrls?: boolean;
+	/** Source affichée dans les logs applicatifs. */
+	logSource?: AppLogSource;
 };
 
 /**
@@ -135,7 +140,16 @@ export async function runAutoCheckVersions(
 	options?: RunAutoCheckVersionsOptions
 ): Promise<AutoCheckResult> {
 	const refreshWebhookUrls = options?.refreshWebhookUrls ?? false;
+	const logSource = options?.logSource ?? 'worker';
 	const issues: AutoCheckIssue[] = [];
+
+	logApp({
+		level: 'info',
+		source: logSource,
+		message: 'auto-check versions : démarrage',
+		meta: { refreshWebhookUrls }
+	});
+
 	const rows = await db
 		.select({
 			gameId: table.game.id,
@@ -166,7 +180,7 @@ export async function runAutoCheckVersions(
 		);
 
 	if (rows.length === 0) {
-		return {
+		const emptyResult = {
 			scannedGames: 0,
 			updatedGames: 0,
 			updatedTranslations: 0,
@@ -175,6 +189,13 @@ export async function runAutoCheckVersions(
 			proofreaderWebhooksSent: 0,
 			issues
 		};
+		logApp({
+			level: 'info',
+			source: logSource,
+			message: 'auto-check versions : aucune traduction à scanner',
+			meta: emptyResult
+		});
+		return emptyResult;
 	}
 
 	const uniqueByGame = new Map<
@@ -361,7 +382,10 @@ export async function runAutoCheckVersions(
 					.where(eq(table.gameTranslation.gameId, game.gameId));
 			}
 		} catch (error) {
-			console.warn('[auto-check] scrape non bloquant échoué:', error);
+			appLogWarn(logSource, 'auto-check : scrape non bloquant échoué', error, {
+				gameId: game.gameId,
+				threadId: game.threadId
+			});
 			issues.push({
 				stage: 'scrape',
 				message: 'Scrape F95 non bloquant échoué',
@@ -485,7 +509,7 @@ export async function runAutoCheckVersions(
 	try {
 		await syncDbToSpreadsheetBulk();
 	} catch (err) {
-		console.warn('[google-sheets-sync] auto-check bulk sync failed:', err);
+		appLogWarn('sheets-sync', 'auto-check bulk sync failed', err);
 		issues.push({
 			stage: 'google_sheets',
 			message: 'Sync Google Sheets bulk échouée',
@@ -493,7 +517,7 @@ export async function runAutoCheckVersions(
 		});
 	}
 
-	return {
+	const result = {
 		scannedGames: uniqueByGame.size,
 		updatedGames: changedGames.length,
 		updatedTranslations: impactedTranslations.length,
@@ -502,4 +526,16 @@ export async function runAutoCheckVersions(
 		proofreaderWebhooksSent,
 		issues
 	};
+
+	logApp({
+		level: result.issues.length > 0 ? 'warn' : 'info',
+		source: logSource,
+		message: 'auto-check versions : terminé',
+		meta: {
+			...result,
+			issueCount: result.issues.length
+		}
+	});
+
+	return result;
 }

@@ -1,4 +1,5 @@
 import { isRoutineApiError } from '$lib/server/api-log-noise';
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getUserIdsWithPermission } from '$lib/server/permissions';
@@ -48,9 +49,7 @@ export async function createNotification(params: CreateNotificationParams) {
 			'code' in error.cause &&
 			error.cause.code === 'ER_NO_SUCH_TABLE'
 		) {
-			console.warn(
-				"Table notification n'existe pas encore. Créez la migration avec: npm run db:generate"
-			);
+			appLogWarn('db', "Table notification absente (migration requise)");
 			return;
 		}
 		// Propager les autres erreurs
@@ -198,11 +197,11 @@ export async function notifyApiError(
 					username: finalUsername
 				}
 			}).catch((error) => {
-				console.warn('Erreur lors de la création de la notification API:', error);
+				appLogWarn('notification', 'Création notification erreur API échouée', error);
 			});
 		}
 	} catch (error) {
-		console.warn("Erreur lors de la notification d'erreur API:", error);
+		appLogWarn('notification', "Notification d'erreur API échouée", error);
 	}
 }
 

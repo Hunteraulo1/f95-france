@@ -1,35 +1,36 @@
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
-	assertDirectGameWriteAllowed,
-	assertGameManageAccess,
-	loadCurrentUserOrThrow,
-	parseRequestDirectMode,
-	resolveGameWriteMode
+    assertDirectGameWriteAllowed,
+    assertGameManageAccess,
+    loadCurrentUserOrThrow,
+    parseRequestDirectMode,
+    resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import {
-	recordTranslationChangeInUpdateHistory,
-	touchGameUpdatedToday
+    recordTranslationChangeInUpdateHistory,
+    touchGameUpdatedToday
 } from '$lib/server/game-updates';
 import {
-	deleteTranslationFromGoogleSheet,
-	voidSyncTranslationToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    deleteTranslationFromGoogleSheet,
+    voidSyncTranslationToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import {
-	hasGameTranslationGameTypeColumn,
-	publicErrorFromUnknown
+    hasGameTranslationGameTypeColumn,
+    publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-	createTranslationDeleteSubmission,
-	createTranslationUpdateSubmission
+    createTranslationDeleteSubmission,
+    createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { translationRowToHistorySnapshot } from '$lib/server/update-history';
@@ -354,7 +355,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la modification de la traduction:', error);
+		appLogError('system', 'Modification traduction dashboard échouée', error);
 		return json(
 			{ error: publicErrorFromUnknown(error, 'Erreur lors de la modification de la traduction') },
 			{ status: 500 }
@@ -460,13 +461,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			updateKind: 'update'
 		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] delete translation row failed:', err);
+			appLogWarn('sheets-sync', 'delete translation row failed', err);
 		});
 		voidSyncTranslatorActivityCountsToGoogleSheet(tr.translatorId, tr.proofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la suppression de la traduction:', error);
+		appLogError('system', 'Suppression traduction dashboard échouée', error);
 		return json(
 			{ error: publicErrorFromUnknown(error, 'Erreur lors de la suppression de la traduction') },
 			{ status: 500 }
