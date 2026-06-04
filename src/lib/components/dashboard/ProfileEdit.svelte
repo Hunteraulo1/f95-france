@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import type { RoleEditMode } from '$lib/permissions/edit-mode';
@@ -28,6 +29,10 @@
 		translatorPagesWriteMode?: 'direct' | 'submission' | null;
 		roleEditMode?: RoleEditMode | null;
 		directMode?: boolean;
+	}
+
+	function translatorListHref(name: string) {
+		return resolve(`/translators?q=${encodeURIComponent(name)}` as '/translators');
 	}
 
 	let {
@@ -101,7 +106,7 @@
 
 </script>
 
-<section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
+<section class="mx-auto flex w-full max-w-7xl flex-col gap-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight">Modifier mon profil</h1>
@@ -188,7 +193,9 @@
 				<p class="text-sm text-base-content/70">
 					Liens affichés sur votre
 					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
-					<span class="font-medium">{linkedTranslator.name}</span>.
+					<a href={translatorListHref(linkedTranslator.name)} class="link link-hover font-medium">
+						{linkedTranslator.name}
+					</a>.
 					{#if translatorPagesWriteMode === 'direct'}
 						Les modifications sont appliquées immédiatement.
 					{:else}

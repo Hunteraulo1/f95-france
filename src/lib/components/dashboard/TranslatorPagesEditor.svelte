@@ -38,7 +38,7 @@
 </script>
 
 {#if showHelper}
-	<p class="text-sm text-base-content/70">
+	<p class="text-sm text-base-content/70 mb-2">
 		Le <span class="font-medium text-primary">premier lien</span> est le lien principal du traducteur (fiches
 		jeu, API, Google Sheet). Utilisez les flèches pour changer l’ordre.
 	</p>
