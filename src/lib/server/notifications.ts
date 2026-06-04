@@ -1,3 +1,4 @@
+import { isRoutineApiError } from '$lib/server/api-log-noise';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getUserIdsWithPermission } from '$lib/server/permissions';
@@ -155,6 +156,10 @@ export async function notifyApiError(
 ) {
 	// Ne pas notifier si c'est une erreur 404 (ressource non trouvée) pour éviter le spam
 	if (status === 404) {
+		return;
+	}
+
+	if (isRoutineApiError(method, route, status)) {
 		return;
 	}
 

@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
 import { assertPermission } from '$lib/server/permissions';
 import { error } from '@sveltejs/kit';
-import { and, count, desc, eq, gte, like, lt, notLike, or } from 'drizzle-orm';
+import { and, count, desc, eq, gte, like, lt, not, notLike, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -45,8 +45,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			conditions.push(like(user.username, userPattern));
 		}
 		if (errorsOnly) {
-			// Filtrer uniquement les erreurs serveur (5xx)
+			// Filtrer uniquement les erreurs serveur (5xx), hors bruit opérationnel connu
 			conditions.push(gte(apiLog.status, 500));
+			conditions.push(
+				not(
+					or(
+						and(eq(apiLog.status, 502), eq(apiLog.route, '/dashboard/manager/scrape')),
+						and(
+							eq(apiLog.status, 500),
+							eq(apiLog.method, 'DELETE'),
+							sql`${apiLog.route} like '/dashboard/game/%'`
+						)
+					)
+				)
+			);
 		}
 		if (warningsOnly) {
 			// Filtrer uniquement les warnings (4xx)
