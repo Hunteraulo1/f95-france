@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+    EXTENSION_ONLY_API_ROUTE,
+    consumeSessionApiKeyRateForUser,
+    extractApiKeyFromRequest,
+    getUserForApiKeyOwner,
+    jsonApiKeyGuardResponse,
+    validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import * as auth from '$lib/server/auth';
@@ -66,7 +66,9 @@ function getRequestLoggingDecision(
 ): { shouldLog: boolean; shouldCaptureBody: boolean; shouldCaptureQuery: boolean } {
 	const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
 	const isHighFrequencyPollRoute =
-		pathname.startsWith('/api/notifications') || pathname === '/api/health';
+		pathname.startsWith('/api/notifications') ||
+		pathname === '/api/health' ||
+		pathname === '/api/logs/live';
 	const isDashboardRoute = pathname.startsWith('/dashboard');
 	const isMaintenanceRoute = pathname === '/maintenance' || pathname.startsWith('/maintenance/');
 	const isSensitiveSettingsAction =

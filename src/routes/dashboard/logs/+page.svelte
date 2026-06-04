@@ -1,10 +1,21 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import type { LiveLogEntry } from '$lib/logs/live-log-entry';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleUsernameClass } from '$lib/utils/role-display';
+	import Radio from '@lucide/svelte/icons/radio';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const LIVE_BUFFER = 80;
+
+	let liveEnabled = $state(false);
+	let liveStatus = $state<'off' | 'connecting' | 'on' | 'error'>('off');
+	let liveLogs = $state<LiveLogEntry[]>([]);
+	let liveSource: EventSource | null = null;
 	let methodFilter = $state('');
 	let search = $state('');
 	let userSearch = $state('');
@@ -96,6 +107,103 @@
 		errorMessage = null;
 	};
 
+	const matchesLiveFilters = (entry: LiveLogEntry) => {
+		if (methodFilter && entry.method !== methodFilter) return false;
+		const q = search.trim().toLowerCase();
+		if (q) {
+			const haystack = [entry.route, entry.payload ?? '', entry.ipAddress ?? '']
+				.join(' ')
+				.toLowerCase();
+			if (!haystack.includes(q)) return false;
+		}
+		const u = userSearch.trim().toLowerCase();
+		if (u) {
+			const name = entry.user?.username?.toLowerCase() ?? '';
+			if (!name.includes(u)) return false;
+		}
+		if (errorsOnly && entry.status < 500) return false;
+		if (warningsOnly && (entry.status < 400 || entry.status >= 500)) return false;
+		if (redirectsOnly && (entry.status < 300 || entry.status >= 400)) return false;
+		if (fromDate) {
+			const from = new Date(`${fromDate}T00:00:00.000Z`);
+			if (!Number.isNaN(from.getTime()) && new Date(entry.createdAt) < from) return false;
+		}
+		if (toDate) {
+			const toExclusive = new Date(`${toDate}T00:00:00.000Z`);
+			if (!Number.isNaN(toExclusive.getTime())) {
+				toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+				if (new Date(entry.createdAt) >= toExclusive) return false;
+			}
+		}
+		return true;
+	};
+
+	const displayedLogs = $derived.by(() => {
+		if (!liveEnabled) return data.logs;
+		const liveIds = new Set(liveLogs.map((entry) => entry.id));
+		return [
+			...liveLogs.filter(matchesLiveFilters),
+			...data.logs.filter((log) => !liveIds.has(log.id))
+		];
+	});
+
+	const disconnectLive = () => {
+		if (liveSource) {
+			liveSource.close();
+			liveSource = null;
+		}
+		if (!liveEnabled) liveStatus = 'off';
+	};
+
+	const connectLive = () => {
+		if (!browser || liveSource) return;
+		liveStatus = 'connecting';
+
+		const source = new EventSource('/api/logs/live');
+		liveSource = source;
+
+		source.addEventListener('connected', () => {
+			liveStatus = 'on';
+		});
+
+		source.addEventListener('log', (event) => {
+			try {
+				const payload = JSON.parse(event.data) as { entry: LiveLogEntry };
+				liveStatus = 'on';
+				liveLogs = [payload.entry, ...liveLogs.filter((e) => e.id !== payload.entry.id)].slice(
+					0,
+					LIVE_BUFFER
+				);
+			} catch {
+				// ignore
+			}
+		});
+
+		source.onerror = () => {
+			if (!liveEnabled) {
+				liveStatus = 'off';
+				return;
+			}
+			liveStatus = source.readyState === EventSource.CONNECTING ? 'connecting' : 'error';
+		};
+	};
+
+	const toggleLive = () => {
+		liveEnabled = !liveEnabled;
+		if (liveEnabled) {
+			connectLive();
+		} else {
+			disconnectLive();
+			liveStatus = 'off';
+			liveLogs = [];
+		}
+	};
+
+	onMount(() => () => {
+		liveEnabled = false;
+		disconnectLive();
+	});
+
 	const buildPageHref = (targetPage: number) => {
 		const pairs: Array<[string, string]> = [];
 		if (data.filters.method) pairs.push(['method', data.filters.method]);
@@ -127,7 +235,26 @@
 				Historique des routes API, du tableau de bord et de la maintenance (hors polling
 				notifications et appels extension-api).
 			</p>
+			{#if liveEnabled && liveStatus === 'on'}
+				<p class="mt-1 text-sm text-success">Mode Live — nouveaux logs en temps réel</p>
+			{:else if liveEnabled && liveStatus === 'connecting'}
+				<p class="mt-1 text-sm text-base-content/60">Connexion au flux live…</p>
+			{:else if liveEnabled && liveStatus === 'error'}
+				<p class="mt-1 text-sm text-warning">
+					Flux interrompu — reconnexion automatique en cours…
+				</p>
+			{/if}
 		</div>
+		<button
+			type="button"
+			class="btn btn-sm gap-2 {liveEnabled ? 'btn-success' : 'btn-outline'}"
+			aria-pressed={liveEnabled}
+			title="Afficher les nouveaux logs en temps réel"
+			onclick={toggleLive}
+		>
+			<Radio class="size-4 {liveEnabled && liveStatus === 'on' ? 'animate-pulse' : ''}" />
+			Live
+		</button>
 	</div>
 
 	<div
@@ -274,7 +401,11 @@
 
 			<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-4">
 				<p class="text-sm text-base-content/70">
-					Affichage : {data.logs.length} / {data.pagination.totalCount} logs
+					Affichage : {displayedLogs.length} ligne{displayedLogs.length > 1 ? 's' : ''}
+					{#if liveEnabled && liveLogs.length > 0}
+						· {liveLogs.length} en direct
+					{/if}
+					· {data.pagination.totalCount} au total
 				</p>
 				<div class="flex gap-2">
 					<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
@@ -301,14 +432,14 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#if data.logs.length === 0}
+						{#if displayedLogs.length === 0}
 							<tr>
 								<td colspan="8" class="py-10 text-center text-base-content/60">
 									Aucun log disponible pour ces critères.
 								</td>
 							</tr>
 						{:else}
-							{#each data.logs as log (log.id)}
+							{#each displayedLogs as log (log.id)}
 								<tr>
 									<td class="whitespace-nowrap">{formatDate(log.createdAt)}</td>
 									<td>

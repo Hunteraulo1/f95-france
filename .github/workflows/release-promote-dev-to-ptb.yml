@@ -1,0 +1,112 @@
+# Après un commit release sur `dev` (ex. « 🔖 v4.4.9 »), ouvre une PR vers `ptb`
+# et la fusionne lorsque les checks CI sont verts.
+#
+# Prérequis repo GitHub :
+# - Branches `dev` et `ptb`
+# - « Allow auto-merge » activé (Settings → General)
+# - Pour approbation auto : « Allow GitHub Actions to create and approve pull requests »
+#   (Settings → Actions → General → Workflow permissions)
+
+name: Release promote dev → ptb
+
+on:
+  push:
+    branches:
+      - dev
+
+concurrency:
+  group: release-promote-dev-to-ptb
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+env:
+  SOURCE_BRANCH: dev
+  TARGET_BRANCH: ptb
+
+jobs:
+  promote:
+    # Commit release cz-emoji : « 🔖 v4.4.9 » (première ligne du message)
+    if: contains(github.event.head_commit.message, '🔖 v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extraire la version
+        id: meta
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          VERSION="$(printf '%s' "$MSG" | head -n1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Message de commit release invalide (attendu: 🔖 vX.Y.Z). Reçu: $MSG"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release détectée: $VERSION"
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Créer ou réutiliser la PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          EXISTING="$(gh pr list \
+            --base "$TARGET_BRANCH" \
+            --head "$SOURCE_BRANCH" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          TITLE="Release ${{ steps.meta.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          BODY="Promotion automatique après le commit release sur \`${SOURCE_BRANCH}\`.
+
+          - **Version** : \`${{ steps.meta.outputs.version }}\`
+          - **Commit** : \`${{ github.sha }}\`
+          - **Auteur** : @${{ github.actor }}
+
+          Fusion automatique lorsque les checks requis sont verts."
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR existante #$EXISTING — mise à jour du titre"
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
+            echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
+          else
+            NUMBER="$(gh pr create \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY" \
+              --json number \
+              --jq .number)"
+            echo "PR créée #$NUMBER"
+            echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Approuver la PR (si autorisé)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr review "${{ steps.pr.outputs.number }}" --approve || \
+            echo "::warning::Approbation automatique refusée (règles du dépôt). La fusion peut quand même passer via auto-merge/admin."
+
+      - name: Fusionner quand les checks sont OK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR="${{ steps.pr.outputs.number }}"
+
+          if gh pr merge "$PR" --auto --merge 2>/dev/null; then
+            echo "Auto-merge activé sur PR #$PR — fusion dès que les checks requis passent."
+            exit 0
+          fi
+
+          echo "Auto-merge indisponible — attente des checks puis fusion directe."
+          gh pr checks "$PR" --watch --fail-fast
+          gh pr merge "$PR" --merge
+          echo "PR #$PR fusionnée."
