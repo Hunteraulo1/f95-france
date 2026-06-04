@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
@@ -13,20 +14,31 @@
 
 	let { data }: Props = $props();
 
-	let searchQuery = $derived(data.q);
+	let searchQuery = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	const buildHref = (q: string) => {
-		const trimmed = q.trim();
-		if (!trimmed) return resolve('/translators');
-		return resolve(`/translators?q=${encodeURIComponent(trimmed)}`);
+	$effect(() => {
+		searchQuery = data.q;
+	});
+
+	const buildHref = (overrides: { q?: string; page?: number } = {}) => {
+		const qVal = overrides.q !== undefined ? overrides.q : data.q;
+		const page = overrides.page ?? data.page;
+		const params: string[] = [];
+		const trimmed = qVal.trim();
+		if (trimmed) params.push(`q=${encodeURIComponent(trimmed)}`);
+		if (page > 1) params.push(`page=${page}`);
+		const search = params.toString();
+		return search ? `${resolve('/translators')}?${search}` : resolve('/translators');
 	};
+
+	const translatorsHref = (page: number) => buildHref({ page });
 
 	const onSearchInput = (value: string) => {
 		searchQuery = value;
 		if (searchTimer) clearTimeout(searchTimer);
 		searchTimer = setTimeout(() => {
-			void goto(buildHref(value), {
+			void goto(buildHref({ q: value, page: 1 }), {
 				replaceState: true,
 				keepFocus: true,
 				noScroll: true,
@@ -184,9 +196,8 @@
 									href={page.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="btn btn-sm max-w-40 truncate font-normal {pageIndex === 0
-										? 'btn-primary'
-										: 'btn-ghost'}"
+									class="btn btn-sm max-w-40 truncate font-normal btn-ghost"
+                  class:text-primary={pageIndex === 0}
 									title={pageIndex === 0 ? `${page.label} (lien principal)` : page.label}
 								>
 									{page.label}
@@ -197,5 +208,13 @@
 				</li>
 			{/each}
 		</ul>
+
+		<Pagination
+			currentPage={data.page}
+			totalPages={data.totalPages}
+			totalCount={data.total}
+			countLabel="traducteur"
+			hrefForPage={translatorsHref}
+		/>
 	{/if}
 </main>

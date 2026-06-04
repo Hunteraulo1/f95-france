@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import { GAMES_VIEW_MODE_KEY, type GamesListViewMode } from '$lib/games/games-filter-config';
 	import {
 		buildPublicGamesListSearchParams,
@@ -11,8 +12,6 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -455,28 +454,14 @@
 						{/each}
 					</div>
 				{/if}
-				{#if data.totalPages > 1}
-					<nav
-						class="flex flex-wrap items-center justify-center gap-2"
-						aria-label="Pagination des jeux"
-					>
-						{#if data.page > 1}
-							<a href={gamesHref(data.page - 1)} class="btn btn-sm btn-ghost gap-1">
-								<ChevronLeft class="h-4 w-4" />
-								Précédent
-							</a>
-						{/if}
-						<span class="px-2 text-sm text-base-content/70">
-							Page {data.page} / {data.totalPages}
-						</span>
-						{#if data.page < data.totalPages}
-							<a href={gamesHref(data.page + 1)} class="btn btn-sm btn-ghost gap-1">
-								Suivant
-								<ChevronRight class="h-4 w-4" />
-							</a>
-						{/if}
-					</nav>
-				{/if}
+				<Pagination
+					currentPage={data.page}
+					totalPages={data.totalPages}
+					totalCount={data.total}
+					countLabel="jeu"
+					countLabelPlural="jeux"
+					hrefForPage={gamesHref}
+				/>
 			{/if}
 		{/if}
 	</section>
