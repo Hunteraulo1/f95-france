@@ -292,7 +292,7 @@
 						<tr>
 							<th>Date</th>
 							<th>Méthode</th>
-							<th>Route</th>
+							<th class="max-w-sm">Route</th>
 							<th>Statut</th>
 							<th>Utilisateur</th>
 							<th>IP</th>
@@ -314,7 +314,9 @@
 									<td>
 										<span class={`badge ${methodBadge(log.method)}`}>{log.method}</span>
 									</td>
-									<td class="font-mono text-sm">{log.route}</td>
+									<td class="max-w-sm">
+										<span class="block truncate font-mono text-sm" title={log.route}>{log.route}</span>
+									</td>
 									<td>
 										<span class={`badge ${statusBadge(log.status)}`}>{log.status}</span>
 									</td>
