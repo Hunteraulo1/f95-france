@@ -1,24 +1,24 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	assertDirectGameWriteAllowed,
-	assertGameManageAccess,
-	loadCurrentUserOrThrow,
-	parseRequestDirectMode,
-	resolveGameWriteMode
+    assertDirectGameWriteAllowed,
+    assertGameManageAccess,
+    loadCurrentUserOrThrow,
+    parseRequestDirectMode,
+    resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import {
-	createGameUpdateRow,
-	recordTranslationChangeInUpdateHistory
+    createGameUpdateRow,
+    recordTranslationChangeInUpdateHistory
 } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    voidSyncTranslationToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -222,9 +222,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		if (created?.id) {
-			void syncTranslationToGoogleSheet(created.id).catch((err) => {
-				console.warn('[google-sheets-sync] add translation failed:', err);
-			});
+			voidSyncTranslationToGoogleSheet(created.id, 'dashboard/add-translation');
 		}
 		voidSyncTranslatorActivityCountsToGoogleSheet(translatorId, proofreaderId);
 		if (created?.id) {

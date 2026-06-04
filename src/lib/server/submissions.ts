@@ -1,37 +1,37 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	createPendingTranslators,
-	normalizePendingNewTranslatorNames,
-	resolveTranslatorFieldForStorage
+    createPendingTranslators,
+    normalizePendingNewTranslatorNames,
+    resolveTranslatorFieldForStorage
 } from '$lib/server/ensure-translator';
 import {
-	clampTranslationAc,
-	clearAllTranslationAutoCheckForGame,
-	getGameAllowsTranslationAutoCheck,
-	resolveGameAutoCheckForWebsite
+    clampTranslationAc,
+    clearAllTranslationAutoCheckForGame,
+    getGameAllowsTranslationAutoCheck,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-	createGameUpdateRow,
-	recordTranslationChangeInUpdateHistory,
-	touchGameUpdatedToday
+    createGameUpdateRow,
+    recordTranslationChangeInUpdateHistory,
+    touchGameUpdatedToday
 } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	deleteTranslationFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorLinksInJeuxSheet,
-	syncTranslatorToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    deleteGameTranslationsFromGoogleSheet,
+    deleteTranslationFromGoogleSheet,
+    syncTranslatorLinksInJeuxSheet,
+    syncTranslatorToGoogleSheet,
+    voidSyncGameTranslationsToGoogleSheet,
+    voidSyncTranslationToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
 import {
-	translationRowToHistorySnapshot,
-	type TranslationHistorySnapshot
+    translationRowToHistorySnapshot,
+    type TranslationHistorySnapshot
 } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
@@ -458,6 +458,8 @@ export async function applySubmission(submissionId: string) {
 				? parsedData.translation.tname.trim()
 				: 'translation';
 
+		let newGameTranslationId: string | undefined;
+
 		// Créer la traduction si elle est fournie (nom optionnel)
 		if (parsedData.translation && !isNoTranslation(translationTname)) {
 			const translationData = parsedData.translation;
@@ -508,19 +510,21 @@ export async function applySubmission(submissionId: string) {
 				.returning({ id: table.gameTranslation.id });
 
 			if (createdTranslation?.id) {
-				void syncTranslationToGoogleSheet(createdTranslation.id).catch((err) => {
-					console.warn('[google-sheets-sync] submission game translation failed:', err);
-				});
+				newGameTranslationId = createdTranslation.id;
+				voidSyncTranslationToGoogleSheet(createdTranslation.id, 'submission/apply-game');
 			}
 			voidSyncTranslatorActivityCountsToGoogleSheet(resolvedTranslatorId, resolvedProofreaderId);
 			addCount += 1;
 		}
 
-		// Mettre à jour la soumission avec le gameId
+		// Mettre à jour la soumission avec le gameId (et translationId si créée)
 		if (gameId) {
 			await db
 				.update(table.submission)
-				.set({ gameId })
+				.set({
+					gameId,
+					...(newGameTranslationId ? { translationId: newGameTranslationId } : {})
+				})
 				.where(eq(table.submission.id, submissionId));
 			await createGameUpdateRow(gameId, 'adding');
 		}
@@ -640,9 +644,7 @@ export async function applySubmission(submissionId: string) {
 		if (!nextGameAutoCheck) {
 			await clearAllTranslationAutoCheckForGame(sub.gameId);
 		}
-		void syncGameTranslationsToGoogleSheet(sub.gameId).catch((err) => {
-			console.warn('[google-sheets-sync] submission game update rows failed:', err);
-		});
+		voidSyncGameTranslationsToGoogleSheet(sub.gameId, 'submission/apply-update');
 		await touchGameUpdatedToday(sub.gameId);
 		editCount += 1;
 	} else if (sub.type === 'translation') {
@@ -890,9 +892,7 @@ export async function applySubmission(submissionId: string) {
 				});
 			}
 
-			void syncTranslationToGoogleSheet(syncedTranslationId).catch((err) => {
-				console.warn('[google-sheets-sync] submission apply failed:', err);
-			});
+			voidSyncTranslationToGoogleSheet(syncedTranslationId, 'submission/apply-translation');
 			voidSyncTranslatorActivityCountsToGoogleSheet(
 				translationHistoryBefore?.translatorId,
 				translationHistoryBefore?.proofreaderId,
@@ -1410,8 +1410,9 @@ export async function revertSubmission(submissionId: string) {
 			const originalTranslation = parsedData.originalTranslation;
 
 			// Restaurer la traduction avec l'ancien ID si disponible
+			const restoredTranslationId = sub.translationId;
 			await db.insert(table.gameTranslation).values({
-				...(sub.translationId ? { id: sub.translationId } : {}),
+				...(restoredTranslationId ? { id: restoredTranslationId } : {}),
 				gameId: sub.gameId!,
 				translationName: originalTranslation.translationName || null,
 				version:
@@ -1443,6 +1444,11 @@ export async function revertSubmission(submissionId: string) {
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
+			if (restoredTranslationId) {
+				voidSyncTranslationToGoogleSheet(restoredTranslationId, 'submission/revert-translation');
+			} else {
+				voidSyncGameTranslationsToGoogleSheet(sub.gameId!, 'submission/revert-game-translations');
+			}
 		} else if (sub.gameId) {
 			// Restaurer le jeu supprimé et ses traductions
 			if (!parsedData.originalGame) {
@@ -1517,6 +1523,7 @@ export async function revertSubmission(submissionId: string) {
 						updatedAt: new Date()
 					});
 				}
+				voidSyncGameTranslationsToGoogleSheet(sub.gameId!, 'submission/revert-game');
 			}
 		} else {
 			throw new Error("ID de jeu ou de traduction manquant pour l'annulation");

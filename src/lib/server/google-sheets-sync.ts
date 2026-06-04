@@ -4,16 +4,45 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
-	getTranslatorActivityCounts,
-	getTranslatorActivityCountsForId,
-	loadTranslatorActivityCountsById,
-	type TranslatorActivityCounts
+    getTranslatorActivityCounts,
+    getTranslatorActivityCountsForId,
+    loadTranslatorActivityCountsById,
+    type TranslatorActivityCounts
 } from '$lib/server/translator-activity-counts';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
 const SHEET_TAB_TR = 'Traducteurs/Relecteurs';
 const SHEET_TAB_MAJ = 'MAJ';
+
+/** Préfixe fixe pour filtrer les alertes (monitoring / grep logs). */
+export const JEUX_SYNC_ALERT_PREFIX = '[google-sheets-sync:ALERT]';
+
+type JeuxSyncAlertMeta = {
+	gameId?: string;
+	translationId?: string;
+	gameName?: string;
+	context?: string;
+};
+
+function logJeuxSyncAlert(message: string, meta: JeuxSyncAlertMeta = {}, cause?: unknown): void {
+	const line = [
+		JEUX_SYNC_ALERT_PREFIX,
+		message,
+		meta.context && `context=${meta.context}`,
+		meta.gameId && `gameId=${meta.gameId}`,
+		meta.translationId && `translationId=${meta.translationId}`,
+		meta.gameName && `jeu="${meta.gameName}"`
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	if (cause !== undefined) {
+		console.error(line, cause);
+	} else {
+		console.error(line);
+	}
+}
 
 type SheetsApiResponse = {
 	values?: string[][];
@@ -32,14 +61,17 @@ function normalizeHeader(raw: string): string {
 		.trim();
 }
 
-function findHeaderIndex(headersRow: string[], header: string): number {
+function optionalHeaderIndex(headersRow: string[], header: string): number {
 	const normalizedHeaders = headersRow.map((h) => normalizeHeader(h ?? ''));
 	const normalizedHeader = normalizeHeader(header);
+	return normalizedHeaders.findIndex((h) => h === normalizedHeader);
+}
 
-	const i = normalizedHeaders.findIndex((h) => h === normalizedHeader);
+function findHeaderIndex(headersRow: string[], header: string): number {
+	const i = optionalHeaderIndex(headersRow, header);
 	if (i !== -1) return i;
 
-	throw new Error(`Colonne "${header}" introuvable dans la feuille "${headersRow}".`);
+	throw new Error(`Colonne "${header}" introuvable dans les en-têtes de la feuille.`);
 }
 
 function toColA1(colIndex: number): string {
@@ -182,7 +214,7 @@ function populateJeuxRowValues(
 ): void {
 	const { tr, game, translator, proofreader } = input;
 	const set = (header: string, value: string) => {
-		const i = findHeaderIndex(headersRow, header);
+		const i = optionalHeaderIndex(headersRow, header);
 		if (i !== -1) rowValues[i] = value;
 	};
 
@@ -208,7 +240,12 @@ function populateJeuxRowValues(
 		proofreaderLabel ? asHyperlink(firstPageLink(proofreader?.pages), proofreaderLabel) : ''
 	);
 	set('TYPE DE TRADUCTION', formatTranslationType(tr.ttype));
-	set('ID DB', tr.id);
+
+	const idDbIdx = optionalHeaderIndex(headersRow, 'ID DB');
+	if (idDbIdx === -1) {
+		throw new Error('Colonne "ID DB" introuvable dans la feuille "Jeux".');
+	}
+	rowValues[idDbIdx] = tr.id;
 }
 
 function formatTranslationType(v: string | null | undefined): string {
@@ -864,21 +901,50 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 	await sortJeuxSheetByGameName(auth);
 }
 
-export async function syncTranslationToGoogleSheet(translationId: string): Promise<void> {
-	const auth = await getSheetsAuth();
-	if (!auth) return;
+/**
+ * Synchronise une traduction vers l’onglet Jeux.
+ * @returns `true` si la ligne a été écrite/mise à jour, `false` sinon (alerte loguée).
+ */
+export async function syncTranslationToGoogleSheet(
+	translationId: string,
+	context = 'unspecified'
+): Promise<boolean> {
+	const meta = { translationId, context };
 
-	const [tr] = await db
-		.select()
-		.from(table.gameTranslation)
-		.where(eq(table.gameTranslation.id, translationId))
-		.limit(1);
-	if (!tr) return;
+	try {
+		const auth = await getSheetsAuth();
+		if (!auth) {
+			logJeuxSyncAlert(
+				'Sync Jeux ignorée : Google Sheets non configuré (OAuth ou clé API + ID spreadsheet).',
+				meta
+			);
+			return false;
+		}
 
-	const [game] = await db.select().from(table.game).where(eq(table.game.id, tr.gameId)).limit(1);
-	if (!game) return;
+		const [tr] = await db
+			.select()
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId))
+			.limit(1);
+		if (!tr) {
+			logJeuxSyncAlert('Sync Jeux impossible : traduction introuvable en base.', meta);
+			return false;
+		}
 
-	const translatorId = tr.translatorId ?? null;
+		const [game] = await db
+			.select()
+			.from(table.game)
+			.where(eq(table.game.id, tr.gameId))
+			.limit(1);
+		if (!game) {
+			logJeuxSyncAlert('Sync Jeux impossible : jeu introuvable en base.', {
+				...meta,
+				gameId: tr.gameId
+			});
+			return false;
+		}
+
+		const translatorId = tr.translatorId ?? null;
 	const proofreaderId = tr.proofreaderId ?? null;
 
 	const [translatorById] = translatorId
@@ -967,7 +1033,7 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 		}
 		await sortJeuxSheetByGameName(auth);
 		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
-		return;
+		return true;
 	}
 
 	const appendRange = `${tab}!A:A`;
@@ -988,6 +1054,37 @@ export async function syncTranslationToGoogleSheet(translationId: string): Promi
 	}
 	await sortJeuxSheetByGameName(auth);
 	await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+	return true;
+	} catch (cause) {
+		const [tr] = await db
+			.select({ gameId: table.gameTranslation.gameId })
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId))
+			.limit(1);
+		const [game] = tr
+			? await db
+					.select({ id: table.game.id, name: table.game.name })
+					.from(table.game)
+					.where(eq(table.game.id, tr.gameId))
+					.limit(1)
+			: [];
+		logJeuxSyncAlert(
+			'Échec sync Jeux (traduction non présente sur le spreadsheet).',
+			{
+				translationId,
+				context,
+				gameId: game?.id,
+				gameName: game?.name ?? undefined
+			},
+			cause
+		);
+		return false;
+	}
+}
+
+/** Lance `syncTranslationToGoogleSheet` en arrière-plan (alertes déjà loguées). */
+export function voidSyncTranslationToGoogleSheet(translationId: string, context: string): void {
+	void syncTranslationToGoogleSheet(translationId, context);
 }
 
 export async function deleteTranslationFromGoogleSheet(translationId: string): Promise<void> {
@@ -1000,14 +1097,62 @@ export async function deleteGameTranslationsFromGoogleSheet(
 	await deleteRowsByTranslationIds(translationIds);
 }
 
-export async function syncGameTranslationsToGoogleSheet(gameId: string): Promise<void> {
+/**
+ * Synchronise toutes les traductions d’un jeu vers l’onglet Jeux.
+ * @returns nombre de traductions synchronisées avec succès
+ */
+export async function syncGameTranslationsToGoogleSheet(
+	gameId: string,
+	context = 'unspecified'
+): Promise<number> {
+	const [game] = await db
+		.select({ id: table.game.id, name: table.game.name })
+		.from(table.game)
+		.where(eq(table.game.id, gameId))
+		.limit(1);
+
 	const rows = await db
 		.select({ id: table.gameTranslation.id })
 		.from(table.gameTranslation)
 		.where(eq(table.gameTranslation.gameId, gameId));
-	for (const row of rows) {
-		await syncTranslationToGoogleSheet(row.id);
+
+	const alertMeta = {
+		gameId,
+		gameName: game?.name ?? undefined,
+		context
+	};
+
+	if (rows.length === 0) {
+		logJeuxSyncAlert(
+			'Sync Jeux ignorée : le jeu n’a aucune traduction en base (aucune ligne sur l’onglet Jeux).',
+			alertMeta
+		);
+		return 0;
 	}
+
+	let ok = 0;
+	const failedIds: string[] = [];
+	for (const row of rows) {
+		if (await syncTranslationToGoogleSheet(row.id, context)) {
+			ok += 1;
+		} else {
+			failedIds.push(row.id);
+		}
+	}
+
+	if (failedIds.length > 0) {
+		logJeuxSyncAlert(
+			`Sync Jeux partielle : ${failedIds.length}/${rows.length} traduction(s) non synchronisée(s).`,
+			{ ...alertMeta, translationId: failedIds.join(',') }
+		);
+	}
+
+	return ok;
+}
+
+/** Lance `syncGameTranslationsToGoogleSheet` en arrière-plan (alertes déjà loguées). */
+export function voidSyncGameTranslationsToGoogleSheet(gameId: string, context: string): void {
+	void syncGameTranslationsToGoogleSheet(gameId, context);
 }
 
 /** Recalcule Traduction/Relecture sur l’onglet TR (non bloquant, dédoublonne les ID). */
@@ -1192,7 +1337,7 @@ export async function syncTranslatorLinksInJeuxSheet(translatorId: string): Prom
 		);
 
 	for (const row of refs) {
-		await syncTranslationToGoogleSheet(row.id);
+		await syncTranslationToGoogleSheet(row.id, 'translator-links-resync');
 	}
 }
 

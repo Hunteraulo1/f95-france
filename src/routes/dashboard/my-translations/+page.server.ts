@@ -1,10 +1,10 @@
 import {
-	effectiveTranslationVersion,
-	isTranslationOutdatedForLinkedTranslator
+    effectiveTranslationVersion,
+    isTranslationOutdatedForLinkedTranslator
 } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { syncTranslationToGoogleSheet } from '$lib/server/google-sheets-sync';
+import { voidSyncTranslationToGoogleSheet } from '$lib/server/google-sheets-sync';
 import { fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -258,9 +258,7 @@ export const actions: Actions = {
 			})
 			.where(eq(table.gameTranslation.id, ctx.translationId));
 
-		void syncTranslationToGoogleSheet(ctx.translationId).catch((err) => {
-			console.warn('[google-sheets-sync] abandon translation follow-up failed:', err);
-		});
+		voidSyncTranslationToGoogleSheet(ctx.translationId, 'my-translations/abandon');
 
 		return {
 			success: true,
@@ -290,9 +288,7 @@ export const actions: Actions = {
 			})
 			.where(eq(table.gameTranslation.id, ctx.translationId));
 
-		void syncTranslationToGoogleSheet(ctx.translationId).catch((err) => {
-			console.warn('[google-sheets-sync] resume translation follow-up failed:', err);
-		});
+		voidSyncTranslationToGoogleSheet(ctx.translationId, 'my-translations/resume');
 
 		return {
 			success: true,

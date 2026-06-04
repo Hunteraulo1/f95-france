@@ -351,12 +351,21 @@ paths:
           in: query
           description: |
             Portée des résultats. Par défaut (`featured`) : uniquement les ajouts de jeu/traduction
-            (`updateStatus=adding`) ou les mises à jour avec changement de version (`version` ou `tversion`
+            (statut `adding`) ou les mises à jour avec changement de version (`version` ou `tversion`
             dans l’historique). `all` : toutes les entrées de la table `update`.
+            Alias accepté : paramètre `updateStatus` avec les mêmes valeurs `featured` ou `all`.
           schema:
             type: string
             enum: [featured, all]
             default: featured
+        - name: updateStatus
+          in: query
+          description: |
+            Alias de `scope` (`featured` ou `all`). Ne pas confondre avec le champ JSON `updateStatus`
+            (`adding` / `update`) renvoyé dans chaque entrée.
+          schema:
+            type: string
+            enum: [featured, all]
       responses:
         '200':
           description: |

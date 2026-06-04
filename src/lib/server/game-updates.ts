@@ -1,12 +1,12 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { syncMajToGoogleSheet } from '$lib/server/google-sheets-sync';
+import { syncMajToGoogleSheet, voidSyncGameTranslationsToGoogleSheet } from '$lib/server/google-sheets-sync';
 import { hasUpdateStatusColumn } from '$lib/server/schema-column-compat';
 import {
-	buildTranslationHistoryContext,
-	recordUpdateHistoryEntry,
-	type TranslationHistorySnapshot,
-	type UpdateHistoryContext
+    buildTranslationHistoryContext,
+    recordUpdateHistoryEntry,
+    type TranslationHistorySnapshot,
+    type UpdateHistoryContext
 } from '$lib/server/update-history';
 import { eq, sql } from 'drizzle-orm';
 
@@ -53,6 +53,10 @@ export async function createGameUpdateRow(
 	void syncMajToGoogleSheet().catch((err) => {
 		console.warn('[google-sheets-sync] MAJ sync failed:', err);
 	});
+
+	if (status === 'adding') {
+		voidSyncGameTranslationsToGoogleSheet(gameId, 'update/adding');
+	}
 
 	return updateId;
 }

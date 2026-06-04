@@ -2,21 +2,21 @@ import { getUserById } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import {
-	clearAllTranslationAutoCheckForGame,
-	disableGameAndTranslationAutoCheck,
-	resolveGameAutoCheckForWebsite
+    clearAllTranslationAutoCheckForGame,
+    disableGameAndTranslationAutoCheck,
+    resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
-	deleteGameTranslationsFromGoogleSheet,
-	syncGameTranslationsToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    deleteGameTranslationsFromGoogleSheet,
+    voidSyncGameTranslationsToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
@@ -25,8 +25,8 @@ import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-s
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
 import {
-	gameImageRequiredForEdit,
-	normalizeGameImageForStorage
+    gameImageRequiredForEdit,
+    normalizeGameImageForStorage
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
@@ -373,9 +373,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		) {
 			await syncAcTranslationsToCheckerVersion(gameId, normalizedCheckerVersion);
 		}
-		void syncGameTranslationsToGoogleSheet(gameId).catch((err) => {
-			console.warn('[google-sheets-sync] game update rows failed:', err);
-		});
+		voidSyncGameTranslationsToGoogleSheet(gameId, 'dashboard/update-game');
 		if (!isSilentMode) {
 			await touchGameUpdatedToday(gameId);
 		}
