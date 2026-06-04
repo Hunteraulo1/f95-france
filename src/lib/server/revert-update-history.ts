@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
@@ -5,9 +6,11 @@ import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
-	syncTranslationToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import {
 	applyHistorySnapshotToTranslationSnapshot,
 	parseTranslationUpdateHistoryChanges,
@@ -206,7 +209,8 @@ async function applyInverseHistoryEntry(
 		throw new UpdateHistoryRevertError('Traduction introuvable.');
 	}
 
-	const before = translationRowToHistorySnapshot(existing[0]);
+	const beforeRow = existing[0];
+	const before = translationRowToHistorySnapshot(beforeRow);
 	const revertPatch = snapshotFromHistoryDeltas(changes.deltas, 'old');
 	const afterSnapshot = applyHistorySnapshotToTranslationSnapshot(before, revertPatch);
 	const patch = translationPatchFromSnapshot(afterSnapshot);
@@ -214,7 +218,14 @@ async function applyInverseHistoryEntry(
 
 	await db
 		.update(table.gameTranslation)
-		.set(patch)
+		.set({
+			...patch,
+			translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+				beforeTranslatorId: beforeRow.translatorId,
+				afterTranslatorId: patch.translatorId,
+				currentTranslatorAlertsEnabled: beforeRow.translatorAlertsEnabled
+			})
+		})
 		.where(eq(table.gameTranslation.id, translationId));
 }
 
@@ -258,13 +269,17 @@ export async function revertUpdateHistoryEntry(
 
 	if (afterSnapshot === null) {
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] revert delete translation failed:', err);
+			appLogWarn('sheets-sync', 'revert delete translation failed', err);
 		});
 	} else {
-		void syncTranslationToGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] revert translation failed:', err);
-		});
+		voidSyncTranslationToGoogleSheet(translationId, 'history/revert-translation');
 	}
+	voidSyncTranslatorActivityCountsToGoogleSheet(
+		beforeSnapshot?.translatorId,
+		beforeSnapshot?.proofreaderId,
+		afterSnapshot?.translatorId,
+		afterSnapshot?.proofreaderId
+	);
 
 	await incrementUserGameCounter(userId, 'edit', 1);
 

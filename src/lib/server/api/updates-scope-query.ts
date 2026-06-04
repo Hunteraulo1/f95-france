@@ -10,8 +10,15 @@ export type UpdatesApiScope = 'featured' | 'all';
  * - `all` : toutes les entrées `update`
  */
 export function parseUpdatesApiScope(searchParams: URLSearchParams): UpdatesApiScope {
-	const raw = searchParams.get('scope')?.trim().toLowerCase();
-	if (raw === 'all') return 'all';
+	const scopeRaw = searchParams.get('scope')?.trim().toLowerCase();
+	if (scopeRaw === 'all') return 'all';
+	if (scopeRaw === 'featured') return 'featured';
+
+	/** Alias documenté côté consommateurs : `?updateStatus=featured` ≡ `?scope=featured`. */
+	const updateStatusRaw = searchParams.get('updateStatus')?.trim().toLowerCase();
+	if (updateStatusRaw === 'all') return 'all';
+	if (updateStatusRaw === 'featured') return 'featured';
+
 	return 'featured';
 }
 

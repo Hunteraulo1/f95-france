@@ -1,4 +1,5 @@
 import { ensureSessionApiKey } from '$lib/server/api-keys';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -16,8 +17,8 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 export const sessionCookieName = 'auth-session';
 
 export {
-	hashPassword,
 	INVALID_CREDENTIALS_MESSAGE,
+	hashPassword,
 	verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
@@ -121,7 +122,7 @@ export async function validateSessionTokenWithRetry(
 			}
 		}
 	}
-	console.error('validateSessionToken: échec après réessais', lastError);
+	appLogError('auth', 'validateSessionToken : échec après réessais', lastError);
 	throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 

@@ -1,9 +1,4 @@
 <script lang="ts">
-	import type {
-		SubmissionModalItem,
-		SubmissionModalTranslator,
-		SubmissionPrimitive
-	} from '$lib/components/dashboard/submissions/submission-modal-types';
 	import {
 		formatFieldValue,
 		GAME_FIELDS,
@@ -12,6 +7,11 @@
 		TRANSLATION_FIELDS,
 		valuesAreEqual
 	} from '$lib/components/dashboard/submissions/submission-modal-field-utils';
+	import type {
+		SubmissionModalItem,
+		SubmissionModalTranslator,
+		SubmissionPrimitive
+	} from '$lib/components/dashboard/submissions/submission-modal-types';
 
 	interface Props {
 		submission: SubmissionModalItem;
@@ -94,6 +94,9 @@
 							<th class="w-[45%]">Pages actuelles</th>
 							<th class="w-[45%]">Pages proposées</th>
 						</tr>
+						<tr class="text-xs font-normal text-base-content/60">
+							<td colspan="3">La ligne 1 correspond au lien principal du traducteur.</td>
+						</tr>
 					</thead>
 					<tbody>
 						{#each Array.from({ length: maxRows }, (_unused, i) => i) as index (index)}
@@ -101,8 +104,13 @@
 							{@const newEntry = proposedPages[index] ?? { name: '', link: '' }}
 							{@const isChanged =
 								oldEntry.name !== newEntry.name || oldEntry.link !== newEntry.link}
-							<tr class={isChanged ? 'bg-warning/10' : ''}>
-								<td class="font-mono text-xs opacity-70">{index + 1}</td>
+							<tr class={isChanged ? 'bg-warning/10' : index === 0 ? 'bg-primary/5' : ''}>
+								<td class="font-mono text-xs opacity-70">
+									{index + 1}
+									{#if index === 0}
+										<span class="badge badge-primary badge-xs mt-1 block">Principal</span>
+									{/if}
+								</td>
 								<td>
 									<div class="space-y-1">
 										<div class="font-medium">{oldEntry.name || '(vide)'}</div>

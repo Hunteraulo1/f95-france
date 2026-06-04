@@ -14,6 +14,7 @@ import {
 } from '$lib/server/google-sheets-sync';
 // import type { Config } from '@sveltejs/adapter-vercel';
 import { assertPermission } from '$lib/server/permissions';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -574,15 +575,25 @@ const upsertLegacyGames = async (
 			id: table.gameTranslation.id,
 			gameId: table.gameTranslation.gameId,
 			tversion: table.gameTranslation.tversion,
-			tlink: table.gameTranslation.tlink
+			tlink: table.gameTranslation.tlink,
+			translatorId: table.gameTranslation.translatorId,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled
 		})
 		.from(table.gameTranslation);
 	const translationByStrictKey = new Map<string, string>();
+	const translationMetaById = new Map<
+		string,
+		{ translatorId: string | null; translatorAlertsEnabled: boolean }
+	>();
 	for (const row of existingTranslations) {
 		translationByStrictKey.set(
 			translationStrictKeyFromLegacy(row.gameId, row.tversion, row.tlink),
 			row.id
 		);
+		translationMetaById.set(row.id, {
+			translatorId: row.translatorId,
+			translatorAlertsEnabled: row.translatorAlertsEnabled
+		});
 	}
 	const gameAcStats = new Map<string, { total: number; hasAcTrue: boolean }>();
 	/** Clés strictes présentes dans le payload legacy (aligné sur upsert : tversion + tlink). */
@@ -828,6 +839,16 @@ const upsertLegacyGames = async (
 		} else {
 			if (!dryRun) {
 				await flushBeforeTranslationWrite();
+				const previousMeta = translationMetaById.get(existingTranslationId);
+				const translatorAlertsEnabled = resolveTranslatorAlertsEnabledOnWrite({
+					beforeTranslatorId: previousMeta?.translatorId,
+					afterTranslatorId: translatorId,
+					currentTranslatorAlertsEnabled: previousMeta?.translatorAlertsEnabled ?? true
+				});
+				translationMetaById.set(existingTranslationId, {
+					translatorId,
+					translatorAlertsEnabled
+				});
 				pendingTransUpdates.push(
 					db
 						.update(table.gameTranslation)
@@ -845,7 +866,8 @@ const upsertLegacyGames = async (
 							proofreaderId,
 							ttype: mappedTType ?? sql`${table.gameTranslation.ttype}`,
 							gameType: rowGameType,
-							ac: acValue
+							ac: acValue,
+							translatorAlertsEnabled
 						})
 						.where(eq(table.gameTranslation.id, existingTranslationId))
 				);
@@ -1031,7 +1053,10 @@ export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
 		await assertPermission(locals, 'dev.panel');
 		try {
-			const result = await runAutoCheckVersions({ refreshWebhookUrls: true });
+			const result = await runAutoCheckVersions({
+				refreshWebhookUrls: true,
+				logSource: 'worker'
+			});
 			await db
 				.update(table.config)
 				.set({

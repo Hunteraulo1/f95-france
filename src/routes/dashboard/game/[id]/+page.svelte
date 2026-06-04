@@ -1421,6 +1421,7 @@
 <EditTranslationModal
 	open={showEditTranslationModal}
 	game={{
+		gameVersion: game.gameVersion,
 		website: game.website,
 		gameAutoCheck: game.gameAutoCheck
 	}}

@@ -156,6 +156,8 @@ export const gameTranslation = pgTable('game_translation', {
 	tlink: text('tlink').notNull(),
 	tname: varchar('tname', { length: 64 }).notNull().default('no_translation'),
 	translatorId: varchar('traductor_id', { length: 255 }),
+	/** Si false, le traducteur assigné ne reçoit plus d’alertes (auto-check, stats « pas à jour »). */
+	translatorAlertsEnabled: boolean('translator_alerts_enabled').notNull().default(true),
 	proofreaderId: varchar('proofreader_id', { length: 255 }),
 	ttype: varchar('ttype', { length: 32 }).notNull(),
 	/** Moteur / technologie du jeu (RenPy, Unity, HTML, etc.) — par traduction. */
@@ -236,6 +238,18 @@ export const apiLog = pgTable('api_log', {
 	ipAddress: varchar('ip_address', { length: 64 }),
 	payload: text('payload'),
 	errorMessage: text('error_message'),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+/** Logs applicatifs (cron, workers, files, etc.) — distinct de `api_log`. */
+export const appLog = pgTable('app_log', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	level: varchar('level', { length: 16 }).notNull(),
+	source: varchar('source', { length: 64 }).notNull(),
+	message: text('message').notNull(),
+	meta: text('meta'),
 	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -327,6 +341,7 @@ export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;
+export type AppLog = typeof appLog.$inferSelect;
 export type Notification = typeof notification.$inferSelect;
 export type ApiKey = typeof apiKey.$inferSelect;
 export type ApiKeyRate = typeof apiKeyRate.$inferSelect;

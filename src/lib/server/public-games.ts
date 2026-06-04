@@ -12,6 +12,7 @@ import {
 	combineSqlParts,
 	type GameCatalogFilters
 } from '$lib/server/game-catalog-filter-sql';
+import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 import { asc, count, desc, eq } from 'drizzle-orm';
 
@@ -88,6 +89,7 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			name: game.name,
 			image: game.image,
 			link: game.link,
+			threadId: game.threadId,
 			website: game.website,
 			gameVersion: game.gameVersion,
 			updatedAt: game.updatedAt,
@@ -111,7 +113,12 @@ export async function listPublicGames(params: PublicGamesListParams) {
 			id: row.id,
 			name: row.name,
 			image: row.image,
-			link: row.link,
+			link:
+				resolveGameThreadLink({
+					link: row.link,
+					threadId: row.threadId,
+					website: row.website
+				}) ?? '',
 			website: row.website,
 			gameVersion: row.gameVersion,
 			engineTypes: Array.isArray(row.engineTypes) ? row.engineTypes.map(String) : [],

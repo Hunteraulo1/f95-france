@@ -208,7 +208,9 @@
 						<div class="line-clamp-1">STATUS</div>
 					</div>
 					{#each sheetRows as row, rowIndex (rowIndex)}
-						<div class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5">
+						<div
+							class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5 hover:bg-base-200/80"
+						>
 							{#each row as line, lineIndex (lineIndex)}
 								<div class="{sheetLineClass} {line.widthClass} {line.delayClass}"></div>
 							{/each}

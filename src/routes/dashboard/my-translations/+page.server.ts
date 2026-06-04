@@ -1,12 +1,13 @@
 import {
 	effectiveTranslationVersion,
-	isTranslationOutdated
+	isTranslationOutdatedForLinkedTranslator
 } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { redirect } from '@sveltejs/kit';
+import { voidSyncTranslationToGoogleSheet } from '$lib/server/google-sheets-sync';
+import { fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const FILTER_COOKIE_PATH = '/dashboard/my-translations';
 const FILTER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
@@ -99,6 +100,7 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 			ac: table.gameTranslation.ac,
 			updatedAt: table.gameTranslation.updatedAt,
 			translatorId: table.gameTranslation.translatorId,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled,
 			proofreaderId: table.gameTranslation.proofreaderId,
 			game: {
 				id: table.game.id,
@@ -118,21 +120,35 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 	const translationsWithFlags = translations
 		.map((t) => {
 			const referenceVersion = effectiveTranslationVersion(t.version, t.game.gameVersion) ?? '';
-			const isOutdated = isTranslationOutdated(
+			const isOutdated = isTranslationOutdatedForLinkedTranslator(
 				{
+					status: t.status,
 					version: t.version,
 					tversion: t.tversion,
-					tname: t.tname
+					tname: t.tname,
+					translatorId: t.translatorId,
+					translatorAlertsEnabled: t.translatorAlertsEnabled,
+					proofreaderId: t.proofreaderId
 				},
-				t.game.gameVersion
+				t.game.gameVersion,
+				linkedTranslator.id
 			);
+			const isFollowAbandoned =
+				t.translatorId === linkedTranslator.id && !t.translatorAlertsEnabled;
+			const canMuteTranslatorAlerts =
+				t.translatorId === linkedTranslator.id && t.translatorAlertsEnabled;
+			const canResumeTranslatorAlerts = isFollowAbandoned;
 			return {
 				...t,
 				referenceVersion,
-				isOutdated
+				isOutdated,
+				isFollowAbandoned,
+				canMuteTranslatorAlerts,
+				canResumeTranslatorAlerts
 			};
 		})
 		.sort((a, b) => {
+			if (a.isFollowAbandoned !== b.isFollowAbandoned) return a.isFollowAbandoned ? 1 : -1;
 			if (a.isOutdated !== b.isOutdated) return a.isOutdated ? -1 : 1;
 			return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
 		});
@@ -177,4 +193,107 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 		outdatedCount: translationsWithFlags.filter((t) => t.isOutdated).length,
 		translations: pageItems
 	};
+};
+
+async function loadLinkedTranslatorForUser(userId: string) {
+	const [row] = await db
+		.select({ id: table.translator.id })
+		.from(table.translator)
+		.where(eq(table.translator.userId, userId))
+		.limit(1);
+	return row ?? null;
+}
+
+async function loadTranslationForTranslatorFollow(userId: string, translationId: string) {
+	const linkedTranslator = await loadLinkedTranslatorForUser(userId);
+	if (!linkedTranslator) {
+		return fail(403, { message: 'Aucun traducteur lié à ce compte.' });
+	}
+	if (!translationId) {
+		return fail(400, { message: 'Traduction introuvable.' });
+	}
+
+	const [translation] = await db
+		.select({
+			id: table.gameTranslation.id,
+			translatorId: table.gameTranslation.translatorId,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled
+		})
+		.from(table.gameTranslation)
+		.where(eq(table.gameTranslation.id, translationId))
+		.limit(1);
+
+	if (!translation) {
+		return fail(404, { message: 'Traduction introuvable.' });
+	}
+
+	if (translation.translatorId !== linkedTranslator.id) {
+		return fail(403, {
+			message: 'Seul le traducteur assigné peut gérer le suivi sur cette ligne.'
+		});
+	}
+
+	return { translationId, translation };
+}
+
+export const actions: Actions = {
+	abandonTranslation: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const translationId = String((await request.formData()).get('translationId') ?? '').trim();
+		const ctx = await loadTranslationForTranslatorFollow(locals.user.id, translationId);
+		if ('status' in ctx) return ctx;
+
+		if (!ctx.translation.translatorAlertsEnabled) {
+			return { success: true, message: 'Vous avez déjà abandonné le suivi de cette traduction.' };
+		}
+
+		await db
+			.update(table.gameTranslation)
+			.set({
+				translatorAlertsEnabled: false,
+				updatedAt: new Date()
+			})
+			.where(eq(table.gameTranslation.id, ctx.translationId));
+
+		voidSyncTranslationToGoogleSheet(ctx.translationId, 'my-translations/abandon');
+
+		return {
+			success: true,
+			message:
+				'Traduction abandonnée pour vous : plus d’alertes. Le statut sur la fiche jeu est inchangé.'
+		};
+	},
+
+	resumeTranslation: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const translationId = String((await request.formData()).get('translationId') ?? '').trim();
+		const ctx = await loadTranslationForTranslatorFollow(locals.user.id, translationId);
+		if ('status' in ctx) return ctx;
+
+		if (ctx.translation.translatorAlertsEnabled) {
+			return { success: true, message: 'Vous suivez déjà cette traduction.' };
+		}
+
+		await db
+			.update(table.gameTranslation)
+			.set({
+				translatorAlertsEnabled: true,
+				updatedAt: new Date()
+			})
+			.where(eq(table.gameTranslation.id, ctx.translationId));
+
+		voidSyncTranslationToGoogleSheet(ctx.translationId, 'my-translations/resume');
+
+		return {
+			success: true,
+			message:
+				'Suivi repris : vous serez de nouveau alerté des mises à jour. Le statut sur la fiche jeu est inchangé.'
+		};
+	}
 };

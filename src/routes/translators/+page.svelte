@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
@@ -16,23 +17,34 @@
 	let searchQuery = $derived(data.q);
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	const buildHref = (q: string) => {
-		const trimmed = q.trim();
-		if (!trimmed) return resolve('/translators');
-		return resolve(`/translators?q=${encodeURIComponent(trimmed)}`);
+	const buildQuery = (overrides: { q?: string; page?: number } = {}) => {
+		const qVal = overrides.q !== undefined ? overrides.q : data.q;
+		const page = overrides.page ?? data.page;
+		const params: string[] = [];
+		const trimmed = qVal.trim();
+		if (trimmed) params.push(`q=${encodeURIComponent(trimmed)}`);
+		if (page > 1) params.push(`page=${page}`);
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { q?: string; page?: number } = {}) =>
+		resolve(`/translators${buildQuery(overrides)}` as '/translators');
+
+	const translatorsHref = (page: number) => buildHref({ page });
+
+	const navigateSearch = (value: string) => {
+		void goto(buildHref({ q: value, page: 1 }), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const onSearchInput = (value: string) => {
 		searchQuery = value;
 		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => {
-			void goto(buildHref(value), {
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
-				invalidateAll: true
-			});
-		}, 300);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
 	};
 
 	const translatorPagesMenuLabel = (pages: TranslatorPageLink[]) => {
@@ -155,7 +167,7 @@
 											tabindex="-1"
 											class="dropdown-content menu z-50 mt-1 w-full rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 										>
-											{#each translator.pages as page (`${translator.id}-${page.url}`)}
+											{#each translator.pages as page, pageIndex (`${translator.id}-${page.url}`)}
 												<li>
 													<a
 														href={page.url}
@@ -163,6 +175,9 @@
 														rel="noopener noreferrer"
 														class="truncate"
 													>
+														{#if pageIndex === 0}
+															<span class="badge badge-primary badge-xs mr-1">Principal</span>
+														{/if}
 														{page.label}
 													</a>
 												</li>
@@ -176,13 +191,14 @@
 
 					{#if translator.pages.length > 0}
 						<div class="hidden shrink-0 flex-wrap items-center justify-end gap-1 sm:flex">
-							{#each translator.pages as page (`${translator.id}-desktop-${page.url}`)}
+							{#each translator.pages as page, pageIndex (`${translator.id}-desktop-${page.url}`)}
 								<a
 									href={page.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="btn btn-sm btn-ghost max-w-40 truncate font-normal"
-									title={page.label}
+									class="btn btn-sm max-w-40 truncate font-normal btn-ghost"
+									class:text-primary={pageIndex === 0}
+									title={pageIndex === 0 ? `${page.label} (lien principal)` : page.label}
 								>
 									{page.label}
 								</a>
@@ -192,5 +208,13 @@
 				</li>
 			{/each}
 		</ul>
+
+		<Pagination
+			currentPage={data.page}
+			totalPages={data.totalPages}
+			totalCount={data.total}
+			countLabel="traducteur"
+			hrefForPage={translatorsHref}
+		/>
 	{/if}
 </main>

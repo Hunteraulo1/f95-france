@@ -1,3 +1,4 @@
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -17,8 +18,8 @@ import {
 	recordTranslationChangeInUpdateHistory
 } from '$lib/server/game-updates';
 import {
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createTranslationSubmission } from '$lib/server/submissions';
@@ -222,20 +223,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		if (created?.id) {
-			void syncTranslationToGoogleSheet(created.id).catch((err) => {
-				console.warn('[google-sheets-sync] add translation failed:', err);
-			});
+			voidSyncTranslationToGoogleSheet(created.id, 'dashboard/add-translation');
 		}
-		if (translatorId) {
-			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
-				console.warn('[google-sheets-sync] add translator failed:', err);
-			});
-		}
-		if (proofreaderId) {
-			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
-				console.warn('[google-sheets-sync] add proofreader failed:', err);
-			});
-		}
+		voidSyncTranslatorActivityCountsToGoogleSheet(translatorId, proofreaderId);
 		if (created?.id) {
 			await recordTranslationChangeInUpdateHistory(gameId, {
 				userId: currentUser.id,
@@ -263,7 +253,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });
 	} catch (error) {
-		console.error('Erreur lors de la création de la traduction:', error);
+		appLogError('system', 'Création traduction dashboard échouée', error);
 		return json({ error: 'Erreur serveur' }, { status: 500 });
 	}
 };

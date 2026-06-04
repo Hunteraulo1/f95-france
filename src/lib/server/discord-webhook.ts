@@ -1,4 +1,5 @@
 import { getEffectiveConfig } from '$lib/server/app-config';
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { privateEnv } from '$lib/server/private-env';
@@ -6,7 +7,7 @@ import { strTrim } from '$lib/server/translation-notify-rules';
 import { absoluteUrl, siteOrigin } from '$lib/site';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 
 /**
  * Envoi vers les webhooks Discord dont les URL viennent des variables d’environnement
@@ -102,15 +103,26 @@ function formatGameEmbedName(gameName: string, translationName?: string | null):
 
 async function fetchTranslatorDisplayName(
 	translatorId: string | null | undefined
-): Promise<string> {
-	const id = translatorId?.trim();
-	if (!id) return '—';
-	const rows = await db
+): Promise<string | null> {
+	const key = translatorId?.trim();
+	if (!key) return null;
+
+	const [byId] = await db
 		.select({ name: table.translator.name })
 		.from(table.translator)
-		.where(eq(table.translator.id, id))
+		.where(eq(table.translator.id, key))
 		.limit(1);
-	return rows[0]?.name?.trim() || '—';
+	if (byId?.name?.trim()) return byId.name.trim();
+
+	const [byName] = await db
+		.select({ name: table.translator.name })
+		.from(table.translator)
+		.where(eq(table.translator.name, key))
+		.limit(1);
+	if (byName?.name?.trim()) return byName.name.trim();
+
+	// Nom libre stocké tel quel (ex. avant résolution UUID à l’acceptation)
+	return key;
 }
 
 type GameRow = {
@@ -175,6 +187,15 @@ function translatorEmbedField(translatorName: string) {
 	};
 }
 
+/** N’ajoute le champ que si un traducteur est encore assigné (pas de repli sur l’ancien état). */
+async function appendTranslatorEmbedFieldIfPresent(
+	fields: { name: string; value: string; inline?: boolean }[],
+	translatorId: string | null | undefined
+): Promise<void> {
+	const name = await fetchTranslatorDisplayName(translatorId);
+	if (name) fields.push(translatorEmbedField(name));
+}
+
 async function fetchSubmissionMetaForWebhook(
 	submissionId: string,
 	data: Record<string, unknown>
@@ -233,7 +254,7 @@ function mergeTranslationForWebhook(
 			pickString(translation?.translationName) ?? pickString(dbRow?.translationName) ?? null,
 		version: pickString(translation?.version) ?? pickString(dbRow?.version) ?? null,
 		tversion: pickString(translation?.tversion) ?? pickString(dbRow?.tversion) ?? '—',
-		translatorId: pickString(translation?.translatorId) ?? pickString(dbRow?.translatorId) ?? null
+		translatorId: pickString(dbRow?.translatorId) ?? pickString(translation?.translatorId) ?? null
 	};
 	const original: TrRow | undefined = originalTranslation
 		? {
@@ -296,10 +317,13 @@ export async function executeDiscordWebhook(
 		});
 		if (!res.ok) {
 			const txt = await res.text().catch(() => '');
-			console.warn('[discord-webhook] HTTP', res.status, txt.slice(0, 500));
+			appLogWarn('notification', 'Discord webhook HTTP error', undefined, {
+				status: res.status,
+				body: txt.slice(0, 500)
+			});
 		}
 	} catch (e) {
-		console.warn('[discord-webhook] envoi échoué:', e);
+		appLogWarn('notification', 'Discord webhook envoi échoué', e);
 	}
 }
 
@@ -340,7 +364,18 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 
 	const meta = await fetchSubmissionMetaForWebhook(args.submissionId, data);
 	const gameId = meta.gameId;
-	const translationId = meta.translationId;
+	let translationId = meta.translationId;
+
+	// Soumission « game » : translationId peut manquer dans le JSON d’origine
+	if (!translationId && gameId && args.submissionType === 'game') {
+		const [firstTr] = await db
+			.select({ id: table.gameTranslation.id })
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.gameId, gameId))
+			.orderBy(asc(table.gameTranslation.createdAt))
+			.limit(1);
+		translationId = firstTr?.id;
+	}
 
 	const game = data.game as GameRow | undefined;
 	const originalGame = data.originalGame as GameRow | undefined;
@@ -397,8 +432,8 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 		color = 0x2ecc71;
 		if (hasTr && translation) {
 			fields = replaceGameEmbedFields(fields, gameName, gameLink, translation.translationName);
-			const translatorName = await fetchTranslatorDisplayName(translation.translatorId);
-			fields.push(translatorEmbedField(translatorName), {
+			await appendTranslatorEmbedFieldIfPresent(fields, translation.translatorId);
+			fields.push({
 				name: 'Version de la traduction',
 				value: trimFieldValue(translation.tversion ?? '—', 120),
 				inline: true
@@ -416,10 +451,7 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 			gameLink,
 			translation?.translationName ?? originalTranslation?.translationName
 		);
-		const translatorName = await fetchTranslatorDisplayName(
-			translation?.translatorId ?? originalTranslation?.translatorId
-		);
-		fields.push(translatorEmbedField(translatorName));
+		await appendTranslatorEmbedFieldIfPresent(fields, translation?.translatorId);
 
 		if (isEdit && originalTranslation && translation) {
 			if (strTrim(translation.tversion) !== strTrim(originalTranslation.tversion)) {
@@ -461,8 +493,8 @@ export async function sendDiscordWebhookUpdatesSubmissionApplied(args: {
 				const u = embedImageUrl(g.image);
 				if (u) embed.image = { url: u };
 			}
-			const translatorName = await fetchTranslatorDisplayName(originalTranslation.translatorId);
-			fields.push(translatorEmbedField(translatorName), {
+			await appendTranslatorEmbedFieldIfPresent(fields, originalTranslation.translatorId);
+			fields.push({
 				name: 'Version de traduction',
 				value: trimFieldValue(originalTranslation.tversion ?? '—', 300),
 				inline: false
@@ -606,24 +638,24 @@ export async function sendDiscordWebhookUpdatesAutoCheckVersionBump(args: {
 	if (!updates) return;
 
 	const linkField = gameLinkEmbedField(args.gameLink);
-	const translatorName = await fetchTranslatorDisplayName(args.translatorId);
+	const autoCheckFields: { name: string; value: string; inline?: boolean }[] = [
+		{
+			name: 'Nom du jeu',
+			value: formatGameEmbedName(args.gameName, args.translationName),
+			inline: false
+		},
+		...(linkField ? [linkField] : [])
+	];
+	await appendTranslatorEmbedFieldIfPresent(autoCheckFields, args.translatorId);
+	autoCheckFields.push({
+		name: 'Version',
+		value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
+		inline: false
+	});
 	const embed: DiscordEmbed = {
 		title: 'Traduction mise à jour',
 		color: 0x58b9ff,
-		fields: [
-			{
-				name: 'Nom du jeu',
-				value: formatGameEmbedName(args.gameName, args.translationName),
-				inline: false
-			},
-			...(linkField ? [linkField] : []),
-			translatorEmbedField(translatorName),
-			{
-				name: 'Version',
-				value: `${args.oldVersion ?? '—'} -> ${args.newVersion}`,
-				inline: false
-			}
-		],
+		fields: autoCheckFields,
 		footer: { text: 'Auto-Check · F95 France' }
 	};
 	const coverUrl = embedImageUrl(args.gameImage);
@@ -647,7 +679,7 @@ export async function sendDiscordWebhookAdminNewSubmission(args: {
 	// On force le refresh ici pour éviter un cache stale après changement de config.
 	const { admin } = await getWebhookUrls(true);
 	if (!admin) {
-		console.warn('[discord-webhook] webhook admin non configuré (soumission non envoyée)');
+		appLogWarn('notification', 'Webhook admin Discord non configuré (soumission non envoyée)');
 		return;
 	}
 

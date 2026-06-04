@@ -31,3 +31,5 @@ DROP POLICY IF EXISTS "deny_all_submission" ON "submission";
 DROP POLICY IF EXISTS "deny_all_translator" ON "translator";
 DROP POLICY IF EXISTS "deny_all_update" ON "update";
 DROP POLICY IF EXISTS "deny_all_user" ON "user";
+ALTER TABLE IF EXISTS "app_log" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "deny_all_app_log" ON "app_log";

@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { untrack } from 'svelte';
@@ -74,16 +75,6 @@
 
 	let addError = $state<string | null>(null);
 	let editError = $state<string | null>(null);
-
-	const addPage = () => {
-		pages = [...pages, { name: '', link: '' }];
-	};
-
-	const removePage = (index: number) => {
-		if (pages.length > 1) {
-			pages = pages.filter((_, i) => i !== index);
-		}
-	};
 
 	const initializePagesForEdit = (traductor: (typeof data.translator)[number]) => {
 		if (traductor.pages && Array.isArray(traductor.pages)) {
@@ -274,40 +265,9 @@
 			</div>
 			<div class="form-control w-full">
 				<label class="label" for="pages">
-					<span class="label-text">Pages</span>
+					<span class="label-text">Pages traducteur</span>
 				</label>
-				<div class="space-y-2">
-					{#each pages as page, index (index)}
-						<div class="flex items-center gap-2">
-							<input
-								type="text"
-								placeholder="Nom de la page"
-								class="input-bordered input flex-1"
-								bind:value={page.name}
-							/>
-							<input
-								type="url"
-								placeholder="Lien"
-								class="input-bordered input flex-1"
-								bind:value={page.link}
-							/>
-							{#if pages.length > 1}
-								<button
-									type="button"
-									class="btn btn-sm btn-error"
-									onclick={() => removePage(index)}
-								>
-									✕
-								</button>
-							{/if}
-						</div>
-					{:else}
-						<p class="text-gray-500">N/A</p>
-					{/each}
-					<button type="button" class="btn btn-outline btn-sm" onclick={addPage}>
-						+ Ajouter une page
-					</button>
-				</div>
+				<TranslatorPagesEditor bind:pages />
 				<input
 					type="hidden"
 					name="pages"
@@ -406,38 +366,9 @@
 				{/if}
 				<div class="form-control w-full">
 					<label class="label" for="pages">
-						<span class="label-text">Pages</span>
+						<span class="label-text">Pages traducteur</span>
 					</label>
-					<div class="space-y-2">
-						{#each pages as page, index (index)}
-							<div class="flex items-center gap-2">
-								<input
-									type="text"
-									placeholder="Nom de la page"
-									class="input-bordered input flex-1"
-									bind:value={page.name}
-								/>
-								<input
-									type="url"
-									placeholder="Lien"
-									class="input-bordered input flex-1"
-									bind:value={page.link}
-								/>
-								{#if pages.length > 1}
-									<button
-										type="button"
-										class="btn btn-sm btn-error"
-										onclick={() => removePage(index)}
-									>
-										✕
-									</button>
-								{/if}
-							</div>
-						{/each}
-						<button type="button" class="btn btn-outline btn-sm" onclick={addPage}>
-							+ Ajouter une page
-						</button>
-					</div>
+					<TranslatorPagesEditor bind:pages />
 					<input
 						type="hidden"
 						name="pages"

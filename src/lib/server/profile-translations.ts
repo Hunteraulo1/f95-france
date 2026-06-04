@@ -112,7 +112,12 @@ export async function loadProfileTranslationsForUser(
 		profileRole:
 			t.translatorId === linkedTranslator.id ? ('translator' as const) : ('proofreader' as const),
 		isOutdated: isTranslationOutdated(
-			{ version: t.version, tversion: t.tversion, tname: t.tname },
+			{
+				status: t.status,
+				version: t.version,
+				tversion: t.tversion,
+				tname: t.tname
+			},
 			t.game.gameVersion
 		),
 		referenceVersion: effectiveTranslationVersion(t.version, t.game.gameVersion) ?? '',

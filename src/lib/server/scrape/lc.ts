@@ -1,3 +1,4 @@
+import { appLogOperational } from '$lib/server/app-log-bridge';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import type { ScrapedThreadGame } from './types';
@@ -202,9 +203,12 @@ export const scrapeLcThread = async (threadId: number): Promise<ScrapedThreadGam
 
 	const urlThreadId = parseThreadIdFromLcUrl(jsonLd?.url ?? finalUrl);
 	if (urlThreadId !== null && urlThreadId !== threadId) {
-		console.warn(
-			`[scrape-lc] threadId demandé ${threadId} ≠ id dans l’URL ${urlThreadId}, on conserve ${threadId}`
-		);
+		appLogOperational({
+			level: 'debug',
+			source: 'scrape',
+			message: `LC threadId demandé ${threadId} ≠ id URL ${urlThreadId}`,
+			meta: { threadId, urlThreadId }
+		});
 	}
 
 	const { status, gameType } = parseStatusAndTypeFromTitle(document);

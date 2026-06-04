@@ -5,6 +5,7 @@ import { isTranslationOutdated } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
 import { game } from '$lib/server/db/schema';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 
 export type { HomeExtensionMockupGame };
@@ -19,9 +20,7 @@ function pickPrimaryTranslation(translations: GameTranslationRow[]): GameTransla
 }
 
 function extensionPreviewImageUrl(image: string | null): string {
-	const raw = image?.trim();
-	if (!raw) return '';
-	return raw.replace('attachments.f95zone.to', 'preview.f95zone.to');
+	return resolveGameImageSrc(image, { website: 'f95z' });
 }
 
 /** Jeux F95zone aléatoires pour le mockup extension sur la page d’accueil. */

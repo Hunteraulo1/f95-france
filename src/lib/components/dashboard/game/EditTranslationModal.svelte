@@ -21,6 +21,7 @@
 	};
 
 	type GameContext = {
+		gameVersion?: string | null;
 		website: string;
 		gameAutoCheck?: boolean | null;
 	};
@@ -203,16 +204,31 @@
 									<label class="label" for="edit-version">
 										<span class="label-text">Version de référence</span>
 									</label>
-									<input
-										id="edit-version"
-										type="text"
-										placeholder="Ex: 1.2"
-										class="input-bordered input w-full"
-										bind:value={editingTranslation.version}
-										disabled={editTranslationReferenceVersionLockedByAc}
-									/>
+									<div class="join join-horizontal w-full">
+										<input
+											id="edit-version"
+											type="text"
+											placeholder="Ex: 1.2"
+											class="input-bordered input join-item min-w-0 flex-1"
+											bind:value={editingTranslation.version}
+											disabled={editTranslationReferenceVersionLockedByAc}
+										/>
+										<button
+											type="button"
+											class="btn join-item shrink-0 btn-outline"
+											disabled={editTranslationReferenceVersionLockedByAc ||
+												!(game.gameVersion ?? '').trim()}
+											onclick={() => {
+												const latest = (game.gameVersion ?? '').trim();
+												if (!latest) return;
+												editingTranslation.version = latest;
+											}}
+										>
+											Copier
+										</button>
+									</div>
 									<p class="mt-1 text-xs text-base-content/60">
-										Doit correspondre à la version source du jeu.
+										Dernière version de la Saison/Épisode/Chapitre/... sortie.
 									</p>
 									{#if editTranslationReferenceVersionLockedByAc}
 										<p class="mt-1 text-xs text-base-content/60">
@@ -225,17 +241,34 @@
 									<label class="label" for="edit-tversion">
 										<span class="label-text">Version de traduction</span>
 									</label>
-									<input
-										id="edit-tversion"
-										type="text"
-										placeholder="Ex: 1.0"
-										class="input-bordered input w-full"
-										bind:value={editingTranslation.tversion}
-										disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
-										required
-									/>
+									<div class="join join-horizontal w-full">
+										<input
+											id="edit-tversion"
+											type="text"
+											placeholder="Ex: 1.0"
+											class="input-bordered input join-item min-w-0 flex-1"
+											bind:value={editingTranslation.tversion}
+											disabled={editTranslationLinkNotRequired || editTranslationVersionsLockedByAc}
+											required
+										/>
+										<button
+											type="button"
+											class="btn join-item shrink-0 btn-outline"
+											disabled={editTranslationLinkNotRequired ||
+												editTranslationVersionsLockedByAc ||
+												!(editingTranslation.version ?? '').trim()}
+											onclick={() => {
+												const ref = (editingTranslation.version ?? '').trim();
+												if (!ref) return;
+												editingTranslation.tversion = ref;
+											}}
+										>
+											Copier
+										</button>
+									</div>
 									<p class="mt-1 text-xs text-base-content/60">
-										Indiquez la version réellement publiée de la traduction.
+										Indiquez la version réellement publiée de la traduction. Doit être identique à
+										la version de référence pour être à jour.
 									</p>
 									{#if editTranslationVersionsLockedByAc}
 										<p class="mt-1 text-xs text-base-content/60">

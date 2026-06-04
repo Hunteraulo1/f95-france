@@ -1,0 +1,190 @@
+# Après un commit release sur `dev` (cz-emoji : « :bookmark: v4.4.9 » en git, 🔖 sur GitHub), ouvre une PR vers `ptb`
+# et la fusionne lorsque les checks CI sont verts.
+#
+# Prérequis repo GitHub :
+# - Branches `dev` et `ptb`
+# - Settings → Actions → General → Workflow permissions :
+#   1. « Read and write permissions » (GITHUB_TOKEN)
+#   2. Cocher « Allow GitHub Actions to create and approve pull requests » (obligatoire pour gh pr create)
+# - Settings → General → cocher « Allow auto-merge »
+# - Organisation : la politique Actions ne doit pas bloquer la création de PR par le GITHUB_TOKEN
+
+name: Release promote dev → ptb
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Forcer la promotion (même si le dernier commit n'est pas un release)
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-promote-dev-to-ptb
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+env:
+  SOURCE_BRANCH: dev
+  TARGET_BRANCH: ptb
+
+jobs:
+  promote:
+    # Filtre rapide : cz-emoji écrit « :bookmark: » (ASCII) dans le message git — évite un run à chaque push sur dev
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.head_commit != null &&
+        contains(github.event.head_commit.message, ':bookmark: v')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Détecter commit release
+        id: gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log -1 --format=%s)"
+          echo "Sujet du commit (${GITHUB_SHA}): $SUBJECT"
+
+          if [ "$FORCE" = "true" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            VERSION="$(printf '%s' "$SUBJECT" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+            if [ -z "$VERSION" ]; then
+              VERSION="v$(node -p "require('./package.json').version")"
+            fi
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Promotion forcée (workflow_dispatch)."
+            exit 0
+          fi
+
+          # Pas un merge / commit conventionnel ; release cz-emoji « :bookmark: vX.Y.Z » (sujet git)
+          if printf '%s' "$SUBJECT" | grep -qE '^Merge '; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Commit de merge — promotion ignorée."
+            exit 0
+          fi
+          if printf '%s' "$SUBJECT" | grep -qE '^(fix|feat|chore|docs|refactor|test|style|perf|ci|build)(\(|:)|^\[)'; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Commit conventionnel — promotion ignorée."
+            exit 0
+          fi
+
+          VERSION="$(printf '%s' "$SUBJECT" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+          if [ -z "$VERSION" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Pas de version semver dans le sujet — promotion ignorée."
+            exit 0
+          fi
+
+          # cz-emoji enregistre :bookmark: dans git ; l’UI GitHub affiche 🔖
+          if printf '%s' "$SUBJECT" | grep -qE '^:bookmark: v[0-9]+\.[0-9]+\.[0-9]+'; then
+            :
+          elif printf '%s' "$SUBJECT" | grep -qE '^.{0,8}v[0-9]+\.[0-9]+\.[0-9]+'; then
+            :
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Sujet ne ressemble pas à un release cz-emoji — promotion ignorée."
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release détectée: $VERSION"
+
+      - name: Créer ou réutiliser la PR
+        if: steps.gate.outputs.release == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          pr_number() {
+            gh pr list \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          }
+
+          EXISTING="$(pr_number)"
+
+          TITLE=":bookmark: ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          BODY="Promotion automatique après le commit release sur \`${SOURCE_BRANCH}\`.
+
+          - **Version** : \`${{ steps.gate.outputs.version }}\`
+          - **Commit** : \`${{ github.sha }}\`
+          - **Auteur** : @${{ github.actor }}
+
+          Fusion automatique lorsque les checks requis sont verts."
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR existante #$EXISTING — mise à jour du titre"
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
+            echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
+          else
+            set +e
+            CREATE_OUT="$(gh pr create \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY" 2>&1)"
+            CREATE_STATUS=$?
+            set -e
+            if [ "$CREATE_STATUS" -ne 0 ]; then
+              printf '%s\n' "$CREATE_OUT" >&2
+              if printf '%s' "$CREATE_OUT" | grep -q 'not permitted to create or approve pull requests'; then
+                echo "::error::GitHub refuse les PR creees par Actions. Activez Settings → Actions → General → Workflow permissions : Read and write + Allow GitHub Actions to create and approve pull requests (et politique org si applicable)."
+              fi
+              exit "$CREATE_STATUS"
+            fi
+            printf '%s\n' "$CREATE_OUT"
+            NUMBER="$(pr_number)"
+            if [ -z "$NUMBER" ]; then
+              echo "::error::PR créée mais numéro introuvable (dev → ${TARGET_BRANCH})"
+              exit 1
+            fi
+            echo "PR créée #$NUMBER"
+            echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Approuver la PR (si autorisé)
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr review "${{ steps.pr.outputs.number }}" --approve || \
+            echo "::warning::Approbation automatique refusée (règles du dépôt). La fusion peut quand même passer via auto-merge/admin."
+
+      - name: Fusionner quand les checks sont OK
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          PR="${{ steps.pr.outputs.number }}"
+
+          if gh pr merge "$PR" --auto --merge 2>/dev/null; then
+            echo "Auto-merge activé sur PR #$PR — fusion dès que les checks requis passent."
+            exit 0
+          fi
+
+          echo "Auto-merge indisponible — attente des checks puis fusion directe."
+          gh pr checks "$PR" --watch --fail-fast
+          gh pr merge "$PR" --merge
+          echo "PR #$PR fusionnée."

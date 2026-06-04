@@ -1,8 +1,8 @@
 import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
 import { getEffectiveConfig } from '$lib/server/app-config';
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { gameAutoCheckEnabledForWebsite } from '$lib/server/game-auto-check';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
 	getTranslatorActivityCounts,
@@ -10,11 +10,36 @@ import {
 	loadTranslatorActivityCountsById,
 	type TranslatorActivityCounts
 } from '$lib/server/translator-activity-counts';
-import { and, count, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';
 const SHEET_TAB_TR = 'Traducteurs/Relecteurs';
 const SHEET_TAB_MAJ = 'MAJ';
+
+/** Préfixe fixe pour filtrer les alertes (monitoring / grep logs). */
+export const JEUX_SYNC_ALERT_PREFIX = '[google-sheets-sync:ALERT]';
+
+type JeuxSyncAlertMeta = {
+	gameId?: string;
+	translationId?: string;
+	gameName?: string;
+	context?: string;
+};
+
+function logJeuxSyncAlert(message: string, meta: JeuxSyncAlertMeta = {}, cause?: unknown): void {
+	const line = [
+		JEUX_SYNC_ALERT_PREFIX,
+		message,
+		meta.context && `context=${meta.context}`,
+		meta.gameId && `gameId=${meta.gameId}`,
+		meta.translationId && `translationId=${meta.translationId}`,
+		meta.gameName && `jeu="${meta.gameName}"`
+	]
+		.filter(Boolean)
+		.join(' ');
+
+	appLogError('sheets-sync', line, cause, meta);
+}
 
 type SheetsApiResponse = {
 	values?: string[][];
@@ -33,47 +58,17 @@ function normalizeHeader(raw: string): string {
 		.trim();
 }
 
-function findHeaderIndex(headersRow: string[], candidates: string[]): number {
+function optionalHeaderIndex(headersRow: string[], header: string): number {
 	const normalizedHeaders = headersRow.map((h) => normalizeHeader(h ?? ''));
-	const normalizedCandidates = candidates.map((c) => normalizeHeader(c));
-
-	// 1) Match exact (le plus fiable)
-	for (const cand of normalizedCandidates) {
-		const i = normalizedHeaders.findIndex((h) => h === cand);
-		if (i !== -1) return i;
-	}
-
-	// 2) Match inclusif (tolérant aux variantes: parenthèses, suffixes, etc.)
-	for (const cand of normalizedCandidates) {
-		const i = normalizedHeaders.findIndex((h) => h.includes(cand) || cand.includes(h));
-		if (i !== -1) return i;
-	}
-
-	return -1;
+	const normalizedHeader = normalizeHeader(header);
+	return normalizedHeaders.findIndex((h) => h === normalizedHeader);
 }
 
-function findHeaderIndexByTokens(
-	headersRow: string[],
-	requiredTokens: string[],
-	optionalTokens: string[] = []
-): number {
-	const normalizedHeaders = headersRow.map((h) => normalizeHeader(h ?? ''));
-	const req = requiredTokens.map((t) => normalizeHeader(t));
-	const opt = optionalTokens.map((t) => normalizeHeader(t));
+function findHeaderIndex(headersRow: string[], header: string): number {
+	const i = optionalHeaderIndex(headersRow, header);
+	if (i !== -1) return i;
 
-	let bestIdx = -1;
-	let bestScore = -1;
-	for (let i = 0; i < normalizedHeaders.length; i++) {
-		const h = normalizedHeaders[i];
-		const hasAllRequired = req.every((t) => h.includes(t));
-		if (!hasAllRequired) continue;
-		const optionalScore = opt.reduce((acc, t) => acc + (h.includes(t) ? 1 : 0), 0);
-		if (optionalScore > bestScore) {
-			bestScore = optionalScore;
-			bestIdx = i;
-		}
-	}
-	return bestIdx;
+	throw new Error(`Colonne "${header}" introuvable dans les en-têtes de la feuille.`);
 }
 
 function toColA1(colIndex: number): string {
@@ -215,78 +210,39 @@ function populateJeuxRowValues(
 	input: JeuxRowInput
 ): void {
 	const { tr, game, translator, proofreader } = input;
-	const set = (headers: string | string[], value: string) => {
-		const i = findHeaderIndex(headersRow, Array.isArray(headers) ? headers : [headers]);
+	const set = (header: string, value: string) => {
+		const i = optionalHeaderIndex(headersRow, header);
 		if (i !== -1) rowValues[i] = value;
 	};
 
 	const nomAffiche = formatJeuxNomAffiche(game.name ?? '', tr.translationName);
 	const lienLabel = lienTradDisplayLabel(game, tr);
 
-	set('Site', formatWebsite(game.website));
-	set(['Nom du jeu', 'Jeu'], asHyperlink(gameSpreadsheetLink(game), nomAffiche));
-	set('Version', sheetLiteralVersionText(getJeuxGameVersionValue(tr, game)));
-	set(
-		['Trad. Ver.', 'Trad Ver', 'Trad. Ver', 'TRAD. VER.', 'Version trad', 'Version traduction'],
-		sheetLiteralVersionText(getTradVerValue(tr, game))
-	);
-	set(['Lien Trad', 'Lien traduction'], asHyperlink(tr.tlink, lienLabel));
-	set(['Status', 'Statut'], formatStatus(tr.status));
-	set('Tags', game.tags ?? '');
-	set('Type', formatGameType(tr.gameType));
+	set('SITE', formatWebsite(game.website));
+	set('NOM DU JEU', asHyperlink(gameSpreadsheetLink(game), nomAffiche));
+	set('VERSION', sheetLiteralVersionText(getJeuxGameVersionValue(tr, game)));
+	set('TRAD. VER.', sheetLiteralVersionText(getTradVerValue(tr, game)));
+	set('LIEN TRAD', asHyperlink(tr.tlink, lienLabel));
+	set('STATUT', formatStatus(tr.status));
+	set('TAGS', game.tags ?? '');
+	set('TYPE', formatGameType(tr.gameType));
 	const translatorLabel = translator?.name ?? '';
 	set(
-		['Traducteur', 'Traducteurs', 'TRADUCTEUR', 'TRADUCTEURS'],
+		'TRADUCTEUR',
 		translatorLabel ? asHyperlink(firstPageLink(translator?.pages), translatorLabel) : ''
 	);
 	const proofreaderLabel = proofreader?.name ?? '';
 	set(
-		['Relecteur', 'Relecteurs', 'RELECTEUR', 'RELECTEURS'],
+		'RELECTEUR',
 		proofreaderLabel ? asHyperlink(firstPageLink(proofreader?.pages), proofreaderLabel) : ''
 	);
-	set(['Type de traduction', 'Type traduction'], formatTranslationType(tr.ttype));
-	set(['AC', 'Auto-Check', 'Auto check', 'AUTO CHECK'], tr.ac ? 'Oui' : 'Non');
-	set(['IMAGE', 'Image', 'Image URL', 'Image url'], game.image ?? '');
-	const tid = game.threadId;
-	set(
-		[
-			'THREAD',
-			'THREAD ID',
-			'Thread ID',
-			'ID THREAD',
-			'FIL',
-			'Id fil',
-			'ID fil',
-			'N° fil',
-			'ID FIL'
-		],
-		tid != null && tid !== 0 ? String(tid) : ''
-	);
-	set(['ID DB', 'Id Db'], tr.id);
+	set('TYPE DE TRADUCTION', formatTranslationType(tr.ttype));
 
-	const tradVerIdx =
-		findHeaderIndex(headersRow, [
-			'Trad. Ver.',
-			'TRAD. VER.',
-			'Trad Ver',
-			'Version trad',
-			'Version traduction'
-		]) !== -1
-			? findHeaderIndex(headersRow, [
-					'Trad. Ver.',
-					'TRAD. VER.',
-					'Trad Ver',
-					'Version trad',
-					'Version traduction'
-				])
-			: findHeaderIndexByTokens(headersRow, ['trad'], ['ver', 'version']);
-	if (tradVerIdx !== -1) rowValues[tradVerIdx] = sheetLiteralVersionText(getTradVerValue(tr, game));
-
-	const idDbIdx =
-		findHeaderIndex(headersRow, ['ID DB', 'Id Db']) !== -1
-			? findHeaderIndex(headersRow, ['ID DB', 'Id Db'])
-			: findHeaderIndexByTokens(headersRow, ['id'], ['db']);
-	if (idDbIdx !== -1) rowValues[idDbIdx] = tr.id;
+	const idDbIdx = optionalHeaderIndex(headersRow, 'ID DB');
+	if (idDbIdx === -1) {
+		throw new Error('Colonne "ID DB" introuvable dans la feuille "Jeux".');
+	}
+	rowValues[idDbIdx] = tr.id;
 }
 
 function formatTranslationType(v: string | null | undefined): string {
@@ -567,128 +523,6 @@ type SheetSnapshot = {
 	dataRows?: string[][];
 };
 
-const TRANSLATION_ID_DB_RE =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-/** Interprète la cellule AC exportée / saisie (Oui/Non, bool Sheets, etc.). `null` = laisser la base inchangée. */
-function parseJeuxSheetAcCell(raw: unknown): boolean | null {
-	if (raw === true || raw === 1) return true;
-	if (raw === false || raw === 0) return false;
-	if (raw == null) return null;
-	const s = String(raw).trim();
-	if (!s) return null;
-	const lower = s.toLowerCase();
-	if (['oui', 'yes', 'true', '1', 'vrai', 'o', 'y'].includes(lower)) return true;
-	if (['non', 'no', 'false', '0', 'faux', 'n'].includes(lower)) return false;
-	return null;
-}
-
-/**
- * Applique la colonne AC de l’onglet Jeux vers la base (avant l’écriture DB→Sheets).
- * Met à jour `game_translation.ac` et recalcule `game.game_auto_check` pour les jeux concernés.
- */
-async function applyAcColumnFromJeuxSheetToDb(
-	headersRow: string[],
-	dataRows: string[][],
-	onProgress?: (message: string) => void
-): Promise<void> {
-	const idDbIdx =
-		findHeaderIndex(headersRow, ['ID DB', 'Id Db']) !== -1
-			? findHeaderIndex(headersRow, ['ID DB', 'Id Db'])
-			: findHeaderIndexByTokens(headersRow, ['id'], ['db']);
-	if (idDbIdx === -1) return;
-
-	const acIdx = findHeaderIndex(headersRow, ['AC', 'Auto-Check', 'Auto check', 'AUTO CHECK']);
-	if (acIdx === -1) {
-		onProgress?.('Sheets Jeux : colonne AC introuvable — pas de synchro feuille→base pour AC');
-		return;
-	}
-
-	const acByTranslationId = new Map<string, boolean>();
-	for (let i = 1; i < dataRows.length; i++) {
-		const row = dataRows[i] ?? [];
-		const idVal = String(row[idDbIdx] ?? '').trim();
-		if (!idVal || !TRANSLATION_ID_DB_RE.test(idVal)) continue;
-		const acParsed = parseJeuxSheetAcCell(row[acIdx]);
-		if (acParsed === null) continue;
-		acByTranslationId.set(idVal, acParsed);
-	}
-	if (acByTranslationId.size === 0) return;
-
-	const ids = [...acByTranslationId.keys()];
-	const existing = await db
-		.select({
-			id: table.gameTranslation.id,
-			gameId: table.gameTranslation.gameId,
-			ac: table.gameTranslation.ac
-		})
-		.from(table.gameTranslation)
-		.where(inArray(table.gameTranslation.id, ids));
-
-	const existingById = new Map(existing.map((e) => [e.id, e]));
-	const gameIdsToReconcile = new Set<string>();
-	for (const id of acByTranslationId.keys()) {
-		const row = existingById.get(id);
-		if (row) gameIdsToReconcile.add(row.gameId);
-	}
-	if (gameIdsToReconcile.size === 0) return;
-
-	const finalUpdates: Array<{ id: string; ac: boolean; gameId: string }> = [];
-	for (const [id, ac] of acByTranslationId) {
-		const row = existingById.get(id);
-		if (!row || row.ac === ac) continue;
-		finalUpdates.push({ id, ac, gameId: row.gameId });
-	}
-
-	if (finalUpdates.length > 0) {
-		onProgress?.(`Sheets Jeux : AC feuille→base (${finalUpdates.length} traduction(s))…`);
-		const UPD_CONCURRENCY = 40;
-		for (let i = 0; i < finalUpdates.length; i += UPD_CONCURRENCY) {
-			const chunk = finalUpdates.slice(i, i + UPD_CONCURRENCY);
-			await Promise.all(
-				chunk.map((u) =>
-					db
-						.update(table.gameTranslation)
-						.set({ ac: u.ac, updatedAt: new Date() })
-						.where(eq(table.gameTranslation.id, u.id))
-				)
-			);
-		}
-	} else {
-		onProgress?.(
-			'Sheets Jeux : traductions AC déjà alignées — recalcul gameAutoCheck pour les jeux concernés…'
-		);
-	}
-
-	const UPD_CONCURRENCY = 40;
-	const gameIds = [...gameIdsToReconcile];
-	for (let i = 0; i < gameIds.length; i += UPD_CONCURRENCY) {
-		const chunk = gameIds.slice(i, i + UPD_CONCURRENCY);
-		await Promise.all(
-			chunk.map(async (gameId) => {
-				const [g] = await db
-					.select({ website: table.game.website })
-					.from(table.game)
-					.where(eq(table.game.id, gameId))
-					.limit(1);
-				if (!g) return;
-				const [row] = await db
-					.select({ n: count() })
-					.from(table.gameTranslation)
-					.where(and(eq(table.gameTranslation.gameId, gameId), eq(table.gameTranslation.ac, true)));
-				const hasAc = (row?.n ?? 0) > 0;
-				// Ne désactive le jeu que s’il n’y a plus aucune traduction en AC (ne force pas true sans AC).
-				if (!hasAc && gameAutoCheckEnabledForWebsite(g.website ?? '')) {
-					await db
-						.update(table.game)
-						.set({ gameAutoCheck: false, updatedAt: new Date() })
-						.where(eq(table.game.id, gameId));
-				}
-			})
-		);
-	}
-}
-
 async function getSheetSnapshot(
 	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
 	tabName: string,
@@ -710,12 +544,9 @@ async function getSheetSnapshot(
 	if (rows.length === 0) throw new Error(`La feuille "${tabName}" est vide (en-têtes manquants).`);
 
 	const headersRow = rows[0] ?? [];
-	const idDbIdx =
-		findHeaderIndex(headersRow, ['ID DB', 'Id Db']) !== -1
-			? findHeaderIndex(headersRow, ['ID DB', 'Id Db'])
-			: findHeaderIndexByTokens(headersRow, ['id'], ['db']);
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
 	if (idDbIdx === -1) {
-		throw new Error(`Colonne "ID DB/Id Db" introuvable dans la feuille "${tabName}".`);
+		throw new Error(`Colonne "ID DB" introuvable dans la feuille "${tabName}".`);
 	}
 
 	const rowNumberById = new Map<string, number>();
@@ -752,7 +583,8 @@ async function getSheetIdByTitle(
 	return typeof id === 'number' ? id : null;
 }
 
-async function sortJeuxSheetByGameName(auth: {
+/** Tri alphabétique (fr) sur « NOM DU JEU » + filtre auto sur toutes les lignes de données. */
+async function finalizeJeuxSheetLayout(auth: {
 	spreadsheetId: string;
 	headers: HeadersInit;
 	apiKey?: string;
@@ -767,39 +599,63 @@ async function sortJeuxSheetByGameName(auth: {
 	if (!valuesRes.ok) return;
 	const body = (await valuesRes.json()) as SheetsApiResponse;
 	const rows = body.values ?? [];
-	if (rows.length <= 2) return; // en-tête + au plus 1 ligne
+	if (rows.length === 0) return;
 
 	const headersRow = rows[0] ?? [];
-	const gameNameIdx = findHeaderIndex(headersRow, ['Nom du jeu', 'Jeu']);
-	if (gameNameIdx === -1) return;
-
+	const colCount = Math.max(headersRow.length, 1);
 	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_JEUX);
 	if (sheetId == null) return;
 
-	const sortRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			requests: [
-				{
-					sortRange: {
-						range: {
-							sheetId,
-							startRowIndex: 1,
-							endRowIndex: rows.length,
-							startColumnIndex: 0,
-							endColumnIndex: headersRow.length
-						},
-						sortSpecs: [{ dimensionIndex: gameNameIdx, sortOrder: 'ASCENDING' }]
+	const gameNameIdx = findHeaderIndex(headersRow, 'NOM DU JEU');
+	if (rows.length > 1 && gameNameIdx !== -1) {
+		const sortRes = await sheetsFetch(
+			auth.spreadsheetId,
+			auth.headers,
+			`:batchUpdate`,
+			auth.apiKey,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					requests: [
+						{
+							sortRange: {
+								range: {
+									sheetId,
+									startRowIndex: 1,
+									endRowIndex: rows.length,
+									startColumnIndex: 0,
+									endColumnIndex: colCount
+								},
+								sortSpecs: [{ dimensionIndex: gameNameIdx, sortOrder: 'ASCENDING' }]
+							}
+						}
+					]
+				})
+			}
+		);
+		if (!sortRes.ok) {
+			const err = await sortRes.text().catch(() => '');
+			throw new Error(`Sheets sort Jeux error (${sortRes.status}): ${err.slice(0, 500)}`);
+		}
+	}
+
+	await sheetsSpreadsheetBatchUpdate(auth, [
+		{ clearBasicFilter: { sheetId } },
+		{
+			setBasicFilter: {
+				filter: {
+					range: {
+						sheetId,
+						startRowIndex: 0,
+						endRowIndex: rows.length,
+						startColumnIndex: 0,
+						endColumnIndex: colCount
 					}
 				}
-			]
-		})
-	});
-	if (!sortRes.ok) {
-		const err = await sortRes.text().catch(() => '');
-		throw new Error(`Sheets sort Jeux error (${sortRes.status}): ${err.slice(0, 500)}`);
-	}
+			}
+		}
+	]);
 }
 
 function parseCountCell(value: string | undefined): number {
@@ -827,9 +683,9 @@ async function sortTranslatorSheetByActivityDesc(auth: {
 	if (rows.length <= 2) return;
 
 	const headersRow = rows[0] ?? [];
-	const tradIdx = findHeaderIndex(headersRow, ['Traduction']);
-	const readIdx = findHeaderIndex(headersRow, ['Relecture']);
-	const nameIdx = findHeaderIndex(headersRow, ['Nom']);
+	const tradIdx = findHeaderIndex(headersRow, 'TRADUCTION');
+	const readIdx = findHeaderIndex(headersRow, 'RELECTURE');
+	const nameIdx = findHeaderIndex(headersRow, 'NOM');
 	if (tradIdx === -1 || readIdx === -1) return;
 
 	const dataRows = rows.slice(1);
@@ -858,13 +714,10 @@ async function reapplyTranslatorPagesRichText(auth: {
 	apiKey?: string;
 }): Promise<void> {
 	const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
-	const pagesColIdx = findHeaderIndex(trSnap.headersRow, ['Pages']);
+	const pagesColIdx = findHeaderIndex(trSnap.headersRow, 'PAGES');
 	if (pagesColIdx === -1) return;
 
-	const idDbIdx =
-		findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db']) !== -1
-			? findHeaderIndex(trSnap.headersRow, ['ID DB', 'Id Db'])
-			: findHeaderIndexByTokens(trSnap.headersRow, ['id'], ['db']);
+	const idDbIdx = findHeaderIndex(trSnap.headersRow, 'ID DB');
 	if (idDbIdx === -1) return;
 
 	const valuesRes = await sheetsFetch(
@@ -958,10 +811,7 @@ async function normalizeMajSheetFormats(
 	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_MAJ);
 	if (sheetId == null) return;
 
-	const dateIdx =
-		findHeaderIndex(headersRow, ['Date', 'Jour']) !== -1
-			? findHeaderIndex(headersRow, ['Date', 'Jour'])
-			: 0;
+	const dateIdx = findHeaderIndex(headersRow, 'DATE');
 	const colCount = Math.max(headersRow.length, 1);
 	const safeRowCount = Math.max(rowCount, 1);
 
@@ -1031,8 +881,7 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 	if (rows.length < 2) return;
 
 	const headersRow = rows[0] ?? [];
-	let idDbIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db']);
-	if (idDbIdx === -1) idDbIdx = findHeaderIndexByTokens(headersRow, ['id'], ['db']);
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
 	if (idDbIdx === -1) return;
 
 	const ids = new Set(translationIds);
@@ -1071,135 +920,257 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 		const err = await delRes.text().catch(() => '');
 		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
 	}
-	await sortJeuxSheetByGameName(auth);
+	await finalizeJeuxSheetLayout(auth);
 }
 
-export async function syncTranslationToGoogleSheet(translationId: string): Promise<void> {
+/** Supprime des lignes de l’onglet Traducteurs/Relecteurs par `ID DB` (traducteur). */
+async function deleteTranslatorsFromGoogleSheet(translatorIds: string[]): Promise<void> {
+	if (!translatorIds.length) return;
 	const auth = await getSheetsAuth();
 	if (!auth) return;
 
-	const [tr] = await db
-		.select()
-		.from(table.gameTranslation)
-		.where(eq(table.gameTranslation.id, translationId))
-		.limit(1);
-	if (!tr) return;
-
-	const [game] = await db.select().from(table.game).where(eq(table.game.id, tr.gameId)).limit(1);
-	if (!game) return;
-
-	const translatorId = tr.translatorId ?? null;
-	const proofreaderId = tr.proofreaderId ?? null;
-
-	const [translatorById] = translatorId
-		? await db.select().from(table.translator).where(eq(table.translator.id, translatorId)).limit(1)
-		: [];
-	const [translatorByName] =
-		translatorId && !translatorById
-			? await db
-					.select()
-					.from(table.translator)
-					.where(eq(table.translator.name, translatorId))
-					.limit(1)
-			: [];
-	const translator = translatorById ?? translatorByName ?? null;
-
-	const [proofreaderById] = proofreaderId
-		? await db
-				.select()
-				.from(table.translator)
-				.where(eq(table.translator.id, proofreaderId))
-				.limit(1)
-		: [];
-	const [proofreaderByName] =
-		proofreaderId && !proofreaderById
-			? await db
-					.select()
-					.from(table.translator)
-					.where(eq(table.translator.name, proofreaderId))
-					.limit(1)
-			: [];
-	const proofreader = proofreaderById ?? proofreaderByName ?? null;
-
-	const tab = encodeURIComponent(SHEET_TAB_JEUX);
-	const getAllRes = await sheetsFetch(
+	const tab = encodeURIComponent(SHEET_TAB_TR);
+	const valuesRes = await sheetsFetch(
 		auth.spreadsheetId,
 		auth.headers,
 		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
 		auth.apiKey
 	);
-	if (!getAllRes.ok) {
-		const err = await getAllRes.text().catch(() => '');
-		throw new Error(`Sheets read error (${getAllRes.status}): ${err.slice(0, 500)}`);
-	}
-
-	const body = (await getAllRes.json()) as SheetsApiResponse;
+	if (!valuesRes.ok) return;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
 	const rows = body.values ?? [];
-	if (rows.length === 0)
-		throw new Error(`La feuille "${SHEET_TAB_JEUX}" est vide (en-têtes manquants).`);
+	if (rows.length < 2) return;
 
 	const headersRow = rows[0] ?? [];
-	let idDbIdx = findHeaderIndex(headersRow, ['ID DB', 'Id Db']);
-	if (idDbIdx === -1) {
-		idDbIdx = findHeaderIndexByTokens(headersRow, ['id'], ['db']);
-	}
-	if (idDbIdx === -1) {
-		throw new Error(`Colonne "ID DB" introuvable dans la feuille "${SHEET_TAB_JEUX}".`);
-	}
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+	if (idDbIdx === -1) return;
 
-	const lastCol = toColA1(headersRow.length - 1);
-	const dataRows = rows.slice(1);
-	let rowNumber = -1;
-	for (let i = 0; i < dataRows.length; i++) {
-		if ((dataRows[i]?.[idDbIdx] ?? '').trim() === tr.id) {
-			rowNumber = i + 2;
-			break;
+	const ids = new Set(translatorIds);
+	const startIndices: number[] = [];
+	for (let r = 1; r < rows.length; r++) {
+		const v = (rows[r]?.[idDbIdx] ?? '').trim();
+		if (ids.has(v)) startIndices.push(r);
+	}
+	if (!startIndices.length) return;
+
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
+	if (sheetId == null) return;
+
+	const requests = startIndices
+		.sort((a, b) => b - a)
+		.map((start) => ({
+			deleteDimension: {
+				range: {
+					sheetId,
+					dimension: 'ROWS',
+					startIndex: start,
+					endIndex: start + 1
+				}
+			}
+		}));
+
+	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ requests })
+	});
+	if (!delRes.ok) {
+		const err = await delRes.text().catch(() => '');
+		throw new Error(`Sheets delete TR rows error (${delRes.status}): ${err.slice(0, 500)}`);
+	}
+	await sortTranslatorSheetByActivityDesc(auth);
+	await reapplyTranslatorPagesRichText(auth);
+}
+
+/**
+ * Synchronise une traduction vers l’onglet Jeux.
+ * @returns `true` si la ligne a été écrite/mise à jour, `false` sinon (alerte loguée).
+ */
+export async function syncTranslationToGoogleSheet(
+	translationId: string,
+	context = 'unspecified',
+	options?: { deferJeuxLayoutFinalize?: boolean }
+): Promise<boolean> {
+	const meta = { translationId, context };
+
+	try {
+		const auth = await getSheetsAuth();
+		if (!auth) {
+			logJeuxSyncAlert(
+				'Sync Jeux ignorée : Google Sheets non configuré (OAuth ou clé API + ID spreadsheet).',
+				meta
+			);
+			return false;
 		}
-	}
 
-	const rowValues = new Array(headersRow.length).fill('');
-	populateJeuxRowValues(headersRow, rowValues, { tr, game, translator, proofreader });
+		const [tr] = await db
+			.select()
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId))
+			.limit(1);
+		if (!tr) {
+			logJeuxSyncAlert('Sync Jeux impossible : traduction introuvable en base.', meta);
+			return false;
+		}
 
-	if (rowNumber !== -1) {
-		const range = `${tab}!A${rowNumber}:${lastCol}${rowNumber}`;
-		const res = await sheetsFetch(
+		const [game] = await db.select().from(table.game).where(eq(table.game.id, tr.gameId)).limit(1);
+		if (!game) {
+			logJeuxSyncAlert('Sync Jeux impossible : jeu introuvable en base.', {
+				...meta,
+				gameId: tr.gameId
+			});
+			return false;
+		}
+
+		const translatorId = tr.translatorId ?? null;
+		const proofreaderId = tr.proofreaderId ?? null;
+
+		const [translatorById] = translatorId
+			? await db
+					.select()
+					.from(table.translator)
+					.where(eq(table.translator.id, translatorId))
+					.limit(1)
+			: [];
+		const [translatorByName] =
+			translatorId && !translatorById
+				? await db
+						.select()
+						.from(table.translator)
+						.where(eq(table.translator.name, translatorId))
+						.limit(1)
+				: [];
+		const translator = translatorById ?? translatorByName ?? null;
+
+		const [proofreaderById] = proofreaderId
+			? await db
+					.select()
+					.from(table.translator)
+					.where(eq(table.translator.id, proofreaderId))
+					.limit(1)
+			: [];
+		const [proofreaderByName] =
+			proofreaderId && !proofreaderById
+				? await db
+						.select()
+						.from(table.translator)
+						.where(eq(table.translator.name, proofreaderId))
+						.limit(1)
+				: [];
+		const proofreader = proofreaderById ?? proofreaderByName ?? null;
+
+		const tab = encodeURIComponent(SHEET_TAB_JEUX);
+		const getAllRes = await sheetsFetch(
 			auth.spreadsheetId,
 			auth.headers,
-			`/values/${range}?valueInputOption=USER_ENTERED`,
+			`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+			auth.apiKey
+		);
+		if (!getAllRes.ok) {
+			const err = await getAllRes.text().catch(() => '');
+			throw new Error(`Sheets read error (${getAllRes.status}): ${err.slice(0, 500)}`);
+		}
+
+		const body = (await getAllRes.json()) as SheetsApiResponse;
+		const rows = body.values ?? [];
+		if (rows.length === 0)
+			throw new Error(`La feuille "${SHEET_TAB_JEUX}" est vide (en-têtes manquants).`);
+
+		const headersRow = rows[0] ?? [];
+		const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+
+		if (idDbIdx === -1) {
+			throw new Error(`Colonne "ID DB" introuvable dans la feuille "${SHEET_TAB_JEUX}".`);
+		}
+
+		const lastCol = toColA1(headersRow.length - 1);
+		const dataRows = rows.slice(1);
+		let rowNumber = -1;
+		for (let i = 0; i < dataRows.length; i++) {
+			if ((dataRows[i]?.[idDbIdx] ?? '').trim() === tr.id) {
+				rowNumber = i + 2;
+				break;
+			}
+		}
+
+		const rowValues = new Array(headersRow.length).fill('');
+		populateJeuxRowValues(headersRow, rowValues, { tr, game, translator, proofreader });
+
+		if (rowNumber !== -1) {
+			const range = `${tab}!A${rowNumber}:${lastCol}${rowNumber}`;
+			const res = await sheetsFetch(
+				auth.spreadsheetId,
+				auth.headers,
+				`/values/${range}?valueInputOption=USER_ENTERED`,
+				auth.apiKey,
+				{
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ values: [rowValues] })
+				}
+			);
+			if (!res.ok) {
+				const err = await res.text().catch(() => '');
+				throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
+			}
+			if (!options?.deferJeuxLayoutFinalize) {
+				await finalizeJeuxSheetLayout(auth);
+				await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+			}
+			return true;
+		}
+
+		const appendRange = `${tab}!A:A`;
+		const appendRes = await sheetsFetch(
+			auth.spreadsheetId,
+			auth.headers,
+			`/values/${appendRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
 			auth.apiKey,
 			{
-				method: 'PUT',
+				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ values: [rowValues] })
 			}
 		);
-		if (!res.ok) {
-			const err = await res.text().catch(() => '');
-			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
+		if (!appendRes.ok) {
+			const err = await appendRes.text().catch(() => '');
+			throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 		}
-		await sortJeuxSheetByGameName(auth);
-		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
-		return;
+		if (!options?.deferJeuxLayoutFinalize) {
+			await finalizeJeuxSheetLayout(auth);
+			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+		}
+		return true;
+	} catch (cause) {
+		const [tr] = await db
+			.select({ gameId: table.gameTranslation.gameId })
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId))
+			.limit(1);
+		const [game] = tr
+			? await db
+					.select({ id: table.game.id, name: table.game.name })
+					.from(table.game)
+					.where(eq(table.game.id, tr.gameId))
+					.limit(1)
+			: [];
+		logJeuxSyncAlert(
+			'Échec sync Jeux (traduction non présente sur le spreadsheet).',
+			{
+				translationId,
+				context,
+				gameId: game?.id,
+				gameName: game?.name ?? undefined
+			},
+			cause
+		);
+		return false;
 	}
+}
 
-	const appendRange = `${tab}!A:A`;
-	const appendRes = await sheetsFetch(
-		auth.spreadsheetId,
-		auth.headers,
-		`/values/${appendRange}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-		auth.apiKey,
-		{
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ values: [rowValues] })
-		}
-	);
-	if (!appendRes.ok) {
-		const err = await appendRes.text().catch(() => '');
-		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
-	}
-	await sortJeuxSheetByGameName(auth);
-	await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+/** Lance `syncTranslationToGoogleSheet` en arrière-plan (alertes déjà loguées). */
+export function voidSyncTranslationToGoogleSheet(translationId: string, context: string): void {
+	void syncTranslationToGoogleSheet(translationId, context);
 }
 
 export async function deleteTranslationFromGoogleSheet(translationId: string): Promise<void> {
@@ -1212,14 +1183,111 @@ export async function deleteGameTranslationsFromGoogleSheet(
 	await deleteRowsByTranslationIds(translationIds);
 }
 
-export async function syncGameTranslationsToGoogleSheet(gameId: string): Promise<void> {
+/**
+ * Synchronise toutes les traductions d’un jeu vers l’onglet Jeux.
+ * @returns nombre de traductions synchronisées avec succès
+ */
+export async function syncGameTranslationsToGoogleSheet(
+	gameId: string,
+	context = 'unspecified'
+): Promise<number> {
+	const [game] = await db
+		.select({ id: table.game.id, name: table.game.name })
+		.from(table.game)
+		.where(eq(table.game.id, gameId))
+		.limit(1);
+
 	const rows = await db
 		.select({ id: table.gameTranslation.id })
 		.from(table.gameTranslation)
 		.where(eq(table.gameTranslation.gameId, gameId));
-	for (const row of rows) {
-		await syncTranslationToGoogleSheet(row.id);
+
+	const alertMeta = {
+		gameId,
+		gameName: game?.name ?? undefined,
+		context
+	};
+
+	if (rows.length === 0) {
+		logJeuxSyncAlert(
+			'Sync Jeux ignorée : le jeu n’a aucune traduction en base (aucune ligne sur l’onglet Jeux).',
+			alertMeta
+		);
+		return 0;
 	}
+
+	let ok = 0;
+	const failedIds: string[] = [];
+	for (const row of rows) {
+		if (await syncTranslationToGoogleSheet(row.id, context, { deferJeuxLayoutFinalize: true })) {
+			ok += 1;
+		} else {
+			failedIds.push(row.id);
+		}
+	}
+
+	if (failedIds.length > 0) {
+		logJeuxSyncAlert(
+			`Sync Jeux partielle : ${failedIds.length}/${rows.length} traduction(s) non synchronisée(s).`,
+			{ ...alertMeta, translationId: failedIds.join(',') }
+		);
+	}
+
+	if (ok > 0) {
+		const auth = await getSheetsAuth();
+		if (auth) {
+			try {
+				await finalizeJeuxSheetLayout(auth);
+				await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+			} catch (err) {
+				appLogWarn('sheets-sync', 'finalize Jeux layout after game sync failed', err);
+			}
+		}
+	}
+
+	return ok;
+}
+
+/** Lance `syncGameTranslationsToGoogleSheet` en arrière-plan (alertes déjà loguées). */
+export function voidSyncGameTranslationsToGoogleSheet(gameId: string, context: string): void {
+	void syncGameTranslationsToGoogleSheet(gameId, context);
+}
+
+/** Recalcule Traduction/Relecture sur l’onglet TR (non bloquant, dédoublonne les ID). */
+export function voidSyncTranslatorActivityCountsToGoogleSheet(
+	...translatorIds: Array<string | null | undefined>
+): void {
+	const seen = new Set<string>();
+	for (const raw of translatorIds) {
+		if (raw == null) continue;
+		const id = String(raw).trim();
+		if (!id || seen.has(id)) continue;
+		seen.add(id);
+		void syncTranslatorToGoogleSheet(id).catch((err) => {
+			appLogWarn('sheets-sync', 'translator activity sync failed', err, { translatorId: id });
+		});
+	}
+}
+
+/** Retire de l’onglet TR les traducteurs/relecteurs en base sans traduction ni relecture. */
+export async function pruneInactiveTranslatorsFromGoogleSheet(): Promise<number> {
+	const auth = await getSheetsAuth();
+	if (!auth) return 0;
+
+	const translators = await db.select({ id: table.translator.id }).from(table.translator);
+	if (translators.length === 0) return 0;
+
+	const activityById = await loadTranslatorActivityCountsById();
+	const inactiveIds = translators
+		.filter((tr) => {
+			const activity = getTranslatorActivityCounts(activityById, tr.id);
+			return activity.tradCount === 0 && activity.readCount === 0;
+		})
+		.map((tr) => tr.id);
+
+	if (inactiveIds.length === 0) return 0;
+	await deleteTranslatorsFromGoogleSheet(inactiveIds);
+	return inactiveIds.length;
 }
 
 export async function syncTranslatorToGoogleSheet(translatorId: string): Promise<void> {
@@ -1232,6 +1300,12 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		.where(eq(table.translator.id, translatorId))
 		.limit(1);
 	if (!tr) return;
+
+	const activity = await getTranslatorActivityCountsForId(tr.id);
+	if (activity.tradCount === 0 && activity.readCount === 0) {
+		await deleteTranslatorsFromGoogleSheet([tr.id]);
+		return;
+	}
 
 	const tab = encodeURIComponent(SHEET_TAB_TR);
 	const getAllRes = await sheetsFetch(
@@ -1259,11 +1333,11 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		return v == null ? -1 : v;
 	};
 
-	const idDbIdx = idx('Id Db') !== -1 ? idx('Id Db') : idx('ID DB');
+	const idDbIdx = idx('ID DB');
 	if (idDbIdx === -1) {
-		throw new Error(`Colonne "Id Db" introuvable dans la feuille "${SHEET_TAB_TR}".`);
+		throw new Error(`Colonne "ID DB" introuvable dans la feuille "${SHEET_TAB_TR}".`);
 	}
-	const pagesColIdx = findHeaderIndex(headersRow, ['Pages']);
+	const pagesColIdx = findHeaderIndex(headersRow, 'PAGES');
 	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
 
 	const lastCol = toColA1(headersRow.length - 1);
@@ -1278,17 +1352,14 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 
 	const rowValues = new Array(headersRow.length).fill('');
 	const set = (header: string, value: string) => {
-		const i = idx(header);
-		if (i !== -1) rowValues[i] = value;
+		const i = findHeaderIndex(headersRow, header);
+		rowValues[i] = value;
 	};
 
-	set('Nom', tr.name ?? '');
-	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', '');
-	const activity = await getTranslatorActivityCountsForId(tr.id);
-	set('Traduction', String(activity.tradCount));
-	set('Relecture', String(activity.readCount));
-	set('Id Db', tr.id);
+	set('NOM', tr.name ?? '');
+	set('PAGES', pagesToPlainText(tr.pages));
+	set('TRADUCTION', String(activity.tradCount));
+	set('RELECTURE', String(activity.readCount));
 	set('ID DB', tr.id);
 
 	if (rowNumber !== -1) {
@@ -1316,7 +1387,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 					rows: [{ rowNumber, pagesRaw: tr.pages }]
 				});
 			} catch (err) {
-				console.warn('[google-sheets-sync] rich text pages update failed:', err);
+				appLogWarn('sheets-sync', 'rich text pages update failed', err);
 			}
 		}
 		await sortTranslatorSheetByActivityDesc(auth);
@@ -1365,7 +1436,7 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 					rows: [{ rowNumber: appendedRowNumber, pagesRaw: tr.pages }]
 				});
 			} catch (err) {
-				console.warn('[google-sheets-sync] rich text pages append failed:', err);
+				appLogWarn('sheets-sync', 'rich text pages append failed', err);
 			}
 		}
 	}
@@ -1390,7 +1461,7 @@ export async function syncTranslatorLinksInJeuxSheet(translatorId: string): Prom
 		);
 
 	for (const row of refs) {
-		await syncTranslationToGoogleSheet(row.id);
+		await syncTranslationToGoogleSheet(row.id, 'translator-links-resync');
 	}
 }
 
@@ -1414,16 +1485,15 @@ function buildTranslatorRow(
 	activity: TranslatorActivityCounts
 ): string[] {
 	const rowValues = new Array(headersRow.length).fill('');
-	const set = (headers: string | string[], value: string) => {
-		const i = findHeaderIndex(headersRow, Array.isArray(headers) ? headers : [headers]);
+	const set = (headers: string, value: string) => {
+		const i = findHeaderIndex(headersRow, headers);
 		if (i !== -1) rowValues[i] = value;
 	};
-	set('Nom', tr.name ?? '');
-	set('Pages', pagesToPlainText(tr.pages));
-	set('Id Discord', '');
-	set('Traduction', String(activity.tradCount));
-	set('Relecture', String(activity.readCount));
-	set(['Id Db', 'ID DB'], tr.id);
+	set('NOM', tr.name);
+	set('PAGES', pagesToPlainText(tr.pages));
+	set('TRADUCTION', String(activity.tradCount));
+	set('RELECTURE', String(activity.readCount));
+	set('ID DB', tr.id);
 	return rowValues;
 }
 
@@ -1473,7 +1543,7 @@ export async function syncDbToSpreadsheetBulk(
 		db.select().from(table.gameTranslation),
 		db.select().from(table.translator)
 	]);
-	let translations = translationsInitial;
+	const translations = translationsInitial;
 	const errors: string[] = [];
 	let prunedJeuxRows = 0;
 	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
@@ -1484,12 +1554,8 @@ export async function syncDbToSpreadsheetBulk(
 		const jeuxFilter =
 			onlyJeuxTranslationIds && onlyJeuxTranslationIds.size > 0 ? onlyJeuxTranslationIds : null;
 
-		onProgress?.('Sheets Jeux : lecture feuille (AC feuille→base + index des lignes)…');
-		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX, { includeDataRows: true });
-		if (jeuxSnap.dataRows) {
-			await applyAcColumnFromJeuxSheetToDb(jeuxSnap.headersRow, jeuxSnap.dataRows, onProgress);
-			translations = await db.select().from(table.gameTranslation);
-		}
+		onProgress?.('Sheets Jeux : lecture feuille (index des lignes)…');
+		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 
 		if (skipJeuxRowWrites) {
 			onProgress?.(
@@ -1566,14 +1632,6 @@ export async function syncDbToSpreadsheetBulk(
 					}
 				}
 			}
-			if (appends.length > 0 || !jeuxPartial) {
-				onProgress?.('Sheets Jeux : tri par nom de jeu…');
-				await sortJeuxSheetByGameName(auth);
-			} else {
-				onProgress?.('Sheets Jeux : pas de tri (mises à jour in-place seulement)');
-			}
-			onProgress?.('Sheets Jeux : normalisation du format des cellules…');
-			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
@@ -1588,6 +1646,10 @@ export async function syncDbToSpreadsheetBulk(
 		} else {
 			onProgress?.('Sheets Jeux : aucune ligne orpheline à supprimer');
 		}
+		onProgress?.('Sheets Jeux : tri alphabétique et filtre sur toutes les lignes…');
+		await finalizeJeuxSheetLayout(auth);
+		onProgress?.('Sheets Jeux : normalisation du format des cellules…');
+		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 	} catch (err) {
 		errors.push(`bulk Jeux: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 	}
@@ -1601,9 +1663,14 @@ export async function syncDbToSpreadsheetBulk(
 			const activityCountsById = await loadTranslatorActivityCountsById();
 			const updates: Array<{ range: string; values: string[][] }> = [];
 			const appends: string[][] = [];
+			const trIdsWithoutActivity: string[] = [];
 			for (const tr of translators) {
 				try {
 					const activity = getTranslatorActivityCounts(activityCountsById, tr.id);
+					if (activity.tradCount === 0 && activity.readCount === 0) {
+						trIdsWithoutActivity.push(tr.id);
+						continue;
+					}
 					const row = buildTranslatorRow(trSnap.headersRow, tr, activity);
 					const rowNumber = trSnap.rowNumberById.get(tr.id);
 					if (rowNumber) {
@@ -1618,6 +1685,16 @@ export async function syncDbToSpreadsheetBulk(
 					errors.push(
 						`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
 					);
+				}
+			}
+			if (trIdsWithoutActivity.length > 0) {
+				onProgress?.(
+					`Sheets TR : suppression ${trIdsWithoutActivity.length} traducteur(s)/relecteur(s) sans traduction…`
+				);
+				try {
+					await deleteTranslatorsFromGoogleSheet(trIdsWithoutActivity);
+				} catch (err) {
+					errors.push(`bulk TR prune: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 				}
 			}
 			onProgress?.(`Sheets TR : ${updates.length} mise(s) à jour, ${appends.length} ajout(s)…`);
@@ -1647,7 +1724,7 @@ export async function syncDbToSpreadsheetBulk(
 					}
 				}
 			}
-			const pagesColIdx = findHeaderIndex(trSnap.headersRow, ['Pages']);
+			const pagesColIdx = findHeaderIndex(trSnap.headersRow, 'PAGES');
 			const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
 			if (pagesColIdx !== -1 && sheetId != null) {
 				const trSnapAfter = await getSheetSnapshot(auth, SHEET_TAB_TR);
@@ -1750,18 +1827,9 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 	if (rows.length === 0) return;
 
 	const headers = rows[0] ?? [];
-	const dateIdx =
-		findHeaderIndex(headers, ['Date', 'Jour']) !== -1
-			? findHeaderIndex(headers, ['Date', 'Jour'])
-			: 0;
-	const statusIdx =
-		findHeaderIndex(headers, ['Status', 'Statut']) !== -1
-			? findHeaderIndex(headers, ['Status', 'Statut'])
-			: 1;
-	const namesIdx =
-		findHeaderIndex(headers, ['Nom des jeux', 'Jeux', 'Noms']) !== -1
-			? findHeaderIndex(headers, ['Nom des jeux', 'Jeux', 'Noms'])
-			: 2;
+	const dateIdx = findHeaderIndex(headers, 'DATE');
+	const statusIdx = findHeaderIndex(headers, 'TYPE');
+	const namesIdx = findHeaderIndex(headers, 'JEUX');
 
 	const lastCol = toColA1(headers.length - 1);
 	const toDeleteRowStarts: number[] = [];

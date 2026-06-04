@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
@@ -191,6 +192,6 @@ export async function recordUpdateHistoryEntry(
 			changes: JSON.stringify(context.changes)
 		});
 	} catch (error) {
-		console.warn('[update-history] record skipped:', error);
+		appLogWarn('system', 'update-history record skipped', error);
 	}
 }

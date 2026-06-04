@@ -1,3 +1,6 @@
+import type { AppLogSource } from '$lib/logs/app-log';
+import { appLogWarn } from '$lib/server/app-log-bridge';
+import { logApp } from '$lib/server/app-logger';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -11,8 +14,13 @@ import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
-import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
+	shouldNotifyTranslatorOnAutoCheckVersionBump,
+	tradVerIndicatesIntegrated
+} from '$lib/server/translation-notify-rules';
+import {
+	hasF95CheckerGameVersionChange,
 	isF95CheckerVersionAligned,
 	needsF95VersionBump,
 	normalizeCheckerVersion
@@ -47,7 +55,8 @@ const USER_AGENT =
 
 async function fetchF95Versions(
 	threadIds: number[],
-	issues: AutoCheckIssue[]
+	issues: AutoCheckIssue[],
+	logSource: AppLogSource | string
 ): Promise<Map<number, string>> {
 	const versions = new Map<number, string>();
 	if (threadIds.length === 0) return versions;
@@ -85,7 +94,7 @@ async function fetchF95Versions(
 			}
 		} catch (error) {
 			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout l'auto-check.
-			console.warn('[auto-check] fetch checker non bloquant échoué:', error);
+			appLogWarn(logSource, 'auto-check : fetch checker échoué', error);
 			issues.push({
 				stage: 'checker_fetch',
 				message: 'Erreur réseau/JSON checker',
@@ -111,6 +120,8 @@ export type AutoCheckResult = {
 export type RunAutoCheckVersionsOptions = {
 	/** Recharge les URL webhook depuis l’env (utile après changement de config / exécution manuelle). */
 	refreshWebhookUrls?: boolean;
+	/** Source affichée dans les logs applicatifs. */
+	logSource?: AppLogSource;
 };
 
 /**
@@ -130,7 +141,16 @@ export async function runAutoCheckVersions(
 	options?: RunAutoCheckVersionsOptions
 ): Promise<AutoCheckResult> {
 	const refreshWebhookUrls = options?.refreshWebhookUrls ?? false;
+	const logSource = options?.logSource ?? 'worker';
 	const issues: AutoCheckIssue[] = [];
+
+	logApp({
+		level: 'info',
+		source: logSource,
+		message: 'auto-check versions : démarrage',
+		meta: { refreshWebhookUrls }
+	});
+
 	const rows = await db
 		.select({
 			gameId: table.game.id,
@@ -161,7 +181,7 @@ export async function runAutoCheckVersions(
 		);
 
 	if (rows.length === 0) {
-		return {
+		const emptyResult = {
 			scannedGames: 0,
 			updatedGames: 0,
 			updatedTranslations: 0,
@@ -170,6 +190,13 @@ export async function runAutoCheckVersions(
 			proofreaderWebhooksSent: 0,
 			issues
 		};
+		logApp({
+			level: 'info',
+			source: logSource,
+			message: 'auto-check versions : aucune traduction à scanner',
+			meta: emptyResult
+		});
+		return emptyResult;
 	}
 
 	const uniqueByGame = new Map<
@@ -203,7 +230,8 @@ export async function runAutoCheckVersions(
 
 	const versions = await fetchF95Versions(
 		Array.from(uniqueByGame.values()).map((g) => g.threadId),
-		issues
+		issues,
+		logSource
 	);
 
 	type UniqueGameRow = {
@@ -273,6 +301,8 @@ export async function runAutoCheckVersions(
 			version: table.gameTranslation.version,
 			tversion: table.gameTranslation.tversion,
 			tname: table.gameTranslation.tname,
+			status: table.gameTranslation.status,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled,
 			ac: table.gameTranslation.ac,
 			translatorId: table.gameTranslation.translatorId,
 			proofreaderId: table.gameTranslation.proofreaderId
@@ -308,6 +338,11 @@ export async function runAutoCheckVersions(
 		const newVersion = normalizeCheckerVersion(versions.get(game.threadId));
 		if (!newVersion) continue;
 
+		const isActualVersionBump = hasF95CheckerGameVersionChange(
+			versions.get(game.threadId),
+			game.gameVersion
+		);
+
 		await db
 			.update(table.game)
 			.set({
@@ -316,12 +351,7 @@ export async function runAutoCheckVersions(
 			})
 			.where(eq(table.game.id, game.gameId));
 
-		await db
-			.update(table.gameTranslation)
-			.set({ version: newVersion, updatedAt: new Date() })
-			.where(
-				and(eq(table.gameTranslation.gameId, game.gameId), eq(table.gameTranslation.ac, true))
-			);
+		await syncAcTranslationsToCheckerVersion(game.gameId, newVersion);
 
 		try {
 			const scraped = await scrapeF95Thread(game.threadId);
@@ -354,7 +384,10 @@ export async function runAutoCheckVersions(
 					.where(eq(table.gameTranslation.gameId, game.gameId));
 			}
 		} catch (error) {
-			console.warn('[auto-check] scrape non bloquant échoué:', error);
+			appLogWarn(logSource, 'auto-check : scrape non bloquant échoué', error, {
+				gameId: game.gameId,
+				threadId: game.threadId
+			});
 			issues.push({
 				stage: 'scrape',
 				message: 'Scrape F95 non bloquant échoué',
@@ -369,6 +402,21 @@ export async function runAutoCheckVersions(
 			// Sécurité : ne jamais notifier une traduction dont l'auto-check n'est plus actif.
 			if (!t.ac) continue;
 			if (tradVerIndicatesIntegrated(t.tversion, t.tname)) continue;
+			if (
+				!shouldNotifyTranslatorOnAutoCheckVersionBump(
+					{
+						status: t.status,
+						translatorAlertsEnabled: t.translatorAlertsEnabled,
+						version: newVersion,
+						tversion: t.tversion,
+						tname: t.tname
+					},
+					newVersion
+				)
+			) {
+				continue;
+			}
+			if (!isActualVersionBump) continue;
 			translatorWebhookLines.push({
 				gameId: game.gameId,
 				gameName: game.gameName,
@@ -378,7 +426,7 @@ export async function runAutoCheckVersions(
 				newVersion,
 				discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined
 			});
-			if (t.proofreaderId) {
+			if (t.proofreaderId && t.status !== 'abandoned') {
 				proofreaderWebhookLines.push({
 					gameId: game.gameId,
 					gameName: game.gameName,
@@ -395,6 +443,7 @@ export async function runAutoCheckVersions(
 			(t) => t.gameId === game.gameId && t.tname === 'integrated'
 		);
 		for (const t of integratedRows) {
+			if (!isActualVersionBump) continue;
 			try {
 				await sendDiscordWebhookUpdatesAutoCheckVersionBump({
 					gameName: game.gameName,
@@ -416,12 +465,14 @@ export async function runAutoCheckVersions(
 			}
 		}
 
-		// Table `update` : seulement si une traduction intégrée avec auto-check actif suit cette version
-		const hasIntegratedAc = impactedTranslations.some(
-			(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
-		);
-		if (hasIntegratedAc) {
-			await touchGameUpdatedToday(game.gameId);
+		// Table `update` : nouvelle version F95 + traduction intégrée en auto-check
+		if (isActualVersionBump) {
+			const hasIntegratedAc = impactedTranslations.some(
+				(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
+			);
+			if (hasIntegratedAc) {
+				await touchGameUpdatedToday(game.gameId);
+			}
 		}
 	}
 
@@ -460,7 +511,7 @@ export async function runAutoCheckVersions(
 	try {
 		await syncDbToSpreadsheetBulk();
 	} catch (err) {
-		console.warn('[google-sheets-sync] auto-check bulk sync failed:', err);
+		appLogWarn('sheets-sync', 'auto-check bulk sync failed', err);
 		issues.push({
 			stage: 'google_sheets',
 			message: 'Sync Google Sheets bulk échouée',
@@ -468,7 +519,7 @@ export async function runAutoCheckVersions(
 		});
 	}
 
-	return {
+	const result = {
 		scannedGames: uniqueByGame.size,
 		updatedGames: changedGames.length,
 		updatedTranslations: impactedTranslations.length,
@@ -477,4 +528,16 @@ export async function runAutoCheckVersions(
 		proofreaderWebhooksSent,
 		issues
 	};
+
+	logApp({
+		level: result.issues.length > 0 ? 'warn' : 'info',
+		source: logSource,
+		message: 'auto-check versions : terminé',
+		meta: {
+			...result,
+			issueCount: result.issues.length
+		}
+	});
+
+	return result;
 }

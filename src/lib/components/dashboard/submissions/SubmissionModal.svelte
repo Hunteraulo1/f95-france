@@ -270,14 +270,6 @@
 		Boolean(!canModerateSubmission && submission?.status === 'opened')
 	);
 	const adminNoteDisplay = $derived(submission?.adminNotes?.trim() ?? '');
-
-	const addTranslatorPageRow = () => {
-		editTranslatorPages = [...editTranslatorPages, { name: '', link: '' }];
-	};
-
-	const removeTranslatorPageRow = (index: number) => {
-		editTranslatorPages = editTranslatorPages.filter((_, i) => i !== index);
-	};
 </script>
 
 {#if submission}
@@ -393,11 +385,7 @@
 								{/if}
 								<fieldset disabled={isOpenedReadOnlyForUser}>
 									{#if submission.type === 'translator_pages'}
-										<SubmissionModalTranslatorPagesEdit
-											bind:pages={editTranslatorPages}
-											onAdd={addTranslatorPageRow}
-											onRemove={removeTranslatorPageRow}
-										/>
+										<SubmissionModalTranslatorPagesEdit bind:pages={editTranslatorPages} />
 									{:else if submission.type !== 'translation' && submission.type !== 'translator_pages' && submission.type !== 'delete'}
 										<SubmissionModalGameEditFields
 											bind:editGameName
