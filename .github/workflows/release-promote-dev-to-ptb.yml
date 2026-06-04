@@ -36,9 +36,16 @@ env:
 
 jobs:
   promote:
+    # Filtre rapide : cz-emoji écrit « :bookmark: » (ASCII) dans le message git — évite un run à chaque push sur dev
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.head_commit != null &&
+        contains(github.event.head_commit.message, ':bookmark: v')
+      )
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -103,12 +110,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          EXISTING="$(gh pr list \
-            --base "$TARGET_BRANCH" \
-            --head "$SOURCE_BRANCH" \
-            --state open \
-            --json number \
-            --jq '.[0].number // empty')"
+
+          pr_number() {
+            gh pr list \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          }
+
+          EXISTING="$(pr_number)"
 
           TITLE="Release ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
           BODY="Promotion automatique après le commit release sur \`${SOURCE_BRANCH}\`.
@@ -124,13 +136,16 @@ jobs:
             gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
             echo "number=$EXISTING" >> "$GITHUB_OUTPUT"
           else
-            NUMBER="$(gh pr create \
+            gh pr create \
               --base "$TARGET_BRANCH" \
               --head "$SOURCE_BRANCH" \
               --title "$TITLE" \
-              --body "$BODY" \
-              --json number \
-              --jq .number)"
+              --body "$BODY"
+            NUMBER="$(pr_number)"
+            if [ -z "$NUMBER" ]; then
+              echo "::error::PR créée mais numéro introuvable (dev → ${TARGET_BRANCH})"
+              exit 1
+            fi
             echo "PR créée #$NUMBER"
             echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           fi
