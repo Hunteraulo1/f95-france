@@ -97,7 +97,7 @@ export function createDefaultGamesFilterGroups(
 		{ title: 'Site', name: 'site', values: optionValues(SITE_OPTIONS) },
 		{ title: 'Status de la traduction', name: 'version', values: optionValues(VERSION_OPTIONS) },
 		{ title: 'Type', name: 'type', values: optionValues(TYPE_OPTIONS) },
-		{ title: 'Status', name: 'status', values: optionValues(STATUS_OPTIONS) },
+		{ title: 'Statut', name: 'status', values: optionValues(STATUS_OPTIONS) },
 		{ title: 'Qualité de la traduction', name: 'ttype', values: optionValues(TTYPE_OPTIONS) },
 		{
 			title: 'Traducteur',

@@ -13,6 +13,7 @@
 	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
@@ -238,7 +239,7 @@
 						<dd class="font-medium">{upToDateLabel(game)}</dd>
 					</div>
 					<div class="flex justify-between gap-2 sm:block">
-						<dt class="text-base-content/60">Traduction</dt>
+						<dt class="text-base-content/60">Statut</dt>
 						<dd>
 							<span class={translationStatusClass(game.translationStatus)}>
 								{game.translationStatusLabel ??
@@ -261,8 +262,27 @@
 			{/if}
 		</div>
 
-		<div class="flex shrink-0 flex-col gap-1 my-auto">
-			<a href={resolve(`/games/${game.id}`)} class="btn btn-sm btn-ghost">Fiche du jeu</a>
+		<div class="flex shrink-0 flex-col items-end gap-1 my-auto">
+			<a
+				href={resolve(`/games/${game.id}`)}
+				class="btn btn-sm btn-ghost w-full px-2"
+				aria-label={`Fiche de ${game.name}`}
+			>
+				Fiche du jeu
+			</a>
+			{#if game.link?.trim()}
+				<a
+					href={game.link}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn btn-square btn-ghost btn-sm w-full px-2"
+					aria-label={`Thread de ${game.name}`}
+					title="Ouvrir le thread"
+				>
+					Voir le thread
+					<ExternalLink class="size-4" />
+				</a>
+			{/if}
 		</div>
 	</li>
 {/snippet}
@@ -342,6 +362,22 @@
 			{#if game.translationCount > 1}
 				<p class="text-xs text-base-content/50">{game.translationCount} traductions au total</p>
 			{/if}
+			<div class="card-actions mt-1 justify-end">
+				<a href={resolve(`/games/${game.id}`)} class="btn btn-sm btn-ghost">Fiche du jeu</a>
+				{#if game.link?.trim()}
+					<a
+						href={game.link}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="btn btn-sm btn-outline"
+						aria-label={`Thread de ${game.name}`}
+						title="Ouvrir le thread"
+					>
+						Thread
+						<ExternalLink class="size-4" />
+					</a>
+				{/if}
+			</div>
 		</div>
 	</article>
 {/snippet}
