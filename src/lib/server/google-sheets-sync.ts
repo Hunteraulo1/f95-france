@@ -586,7 +586,8 @@ async function getSheetIdByTitle(
 	return typeof id === 'number' ? id : null;
 }
 
-async function sortJeuxSheetByGameName(auth: {
+/** Tri alphabétique (fr) sur « NOM DU JEU » + filtre auto sur toutes les lignes de données. */
+async function finalizeJeuxSheetLayout(auth: {
 	spreadsheetId: string;
 	headers: HeadersInit;
 	apiKey?: string;
@@ -601,39 +602,63 @@ async function sortJeuxSheetByGameName(auth: {
 	if (!valuesRes.ok) return;
 	const body = (await valuesRes.json()) as SheetsApiResponse;
 	const rows = body.values ?? [];
-	if (rows.length <= 2) return; // en-tête + au plus 1 ligne
+	if (rows.length === 0) return;
 
 	const headersRow = rows[0] ?? [];
-	const gameNameIdx = findHeaderIndex(headersRow, 'NOM DU JEU');
-	if (gameNameIdx === -1) return;
-
+	const colCount = Math.max(headersRow.length, 1);
 	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_JEUX);
 	if (sheetId == null) return;
 
-	const sortRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			requests: [
-				{
-					sortRange: {
-						range: {
-							sheetId,
-							startRowIndex: 1,
-							endRowIndex: rows.length,
-							startColumnIndex: 0,
-							endColumnIndex: headersRow.length
-						},
-						sortSpecs: [{ dimensionIndex: gameNameIdx, sortOrder: 'ASCENDING' }]
+	const gameNameIdx = findHeaderIndex(headersRow, 'NOM DU JEU');
+	if (rows.length > 1 && gameNameIdx !== -1) {
+		const sortRes = await sheetsFetch(
+			auth.spreadsheetId,
+			auth.headers,
+			`:batchUpdate`,
+			auth.apiKey,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					requests: [
+						{
+							sortRange: {
+								range: {
+									sheetId,
+									startRowIndex: 1,
+									endRowIndex: rows.length,
+									startColumnIndex: 0,
+									endColumnIndex: colCount
+								},
+								sortSpecs: [{ dimensionIndex: gameNameIdx, sortOrder: 'ASCENDING' }]
+							}
+						}
+					]
+				})
+			}
+		);
+		if (!sortRes.ok) {
+			const err = await sortRes.text().catch(() => '');
+			throw new Error(`Sheets sort Jeux error (${sortRes.status}): ${err.slice(0, 500)}`);
+		}
+	}
+
+	await sheetsSpreadsheetBatchUpdate(auth, [
+		{ clearBasicFilter: { sheetId } },
+		{
+			setBasicFilter: {
+				filter: {
+					range: {
+						sheetId,
+						startRowIndex: 0,
+						endRowIndex: rows.length,
+						startColumnIndex: 0,
+						endColumnIndex: colCount
 					}
 				}
-			]
-		})
-	});
-	if (!sortRes.ok) {
-		const err = await sortRes.text().catch(() => '');
-		throw new Error(`Sheets sort Jeux error (${sortRes.status}): ${err.slice(0, 500)}`);
-	}
+			}
+		}
+	]);
 }
 
 function parseCountCell(value: string | undefined): number {
@@ -898,7 +923,7 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 		const err = await delRes.text().catch(() => '');
 		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
 	}
-	await sortJeuxSheetByGameName(auth);
+	await finalizeJeuxSheetLayout(auth);
 }
 
 /** Supprime des lignes de l’onglet Traducteurs/Relecteurs par `ID DB` (traducteur). */
@@ -966,7 +991,8 @@ async function deleteTranslatorsFromGoogleSheet(translatorIds: string[]): Promis
  */
 export async function syncTranslationToGoogleSheet(
 	translationId: string,
-	context = 'unspecified'
+	context = 'unspecified',
+	options?: { deferJeuxLayoutFinalize?: boolean }
 ): Promise<boolean> {
 	const meta = { translationId, context };
 
@@ -1090,8 +1116,10 @@ export async function syncTranslationToGoogleSheet(
 			const err = await res.text().catch(() => '');
 			throw new Error(`Sheets update error (${res.status}): ${err.slice(0, 500)}`);
 		}
-		await sortJeuxSheetByGameName(auth);
-		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+		if (!options?.deferJeuxLayoutFinalize) {
+			await finalizeJeuxSheetLayout(auth);
+			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+		}
 		return true;
 	}
 
@@ -1111,8 +1139,10 @@ export async function syncTranslationToGoogleSheet(
 		const err = await appendRes.text().catch(() => '');
 		throw new Error(`Sheets append error (${appendRes.status}): ${err.slice(0, 500)}`);
 	}
-	await sortJeuxSheetByGameName(auth);
-	await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+	if (!options?.deferJeuxLayoutFinalize) {
+		await finalizeJeuxSheetLayout(auth);
+		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+	}
 	return true;
 	} catch (cause) {
 		const [tr] = await db
@@ -1192,7 +1222,9 @@ export async function syncGameTranslationsToGoogleSheet(
 	let ok = 0;
 	const failedIds: string[] = [];
 	for (const row of rows) {
-		if (await syncTranslationToGoogleSheet(row.id, context)) {
+		if (
+			await syncTranslationToGoogleSheet(row.id, context, { deferJeuxLayoutFinalize: true })
+		) {
 			ok += 1;
 		} else {
 			failedIds.push(row.id);
@@ -1204,6 +1236,18 @@ export async function syncGameTranslationsToGoogleSheet(
 			`Sync Jeux partielle : ${failedIds.length}/${rows.length} traduction(s) non synchronisée(s).`,
 			{ ...alertMeta, translationId: failedIds.join(',') }
 		);
+	}
+
+	if (ok > 0) {
+		const auth = await getSheetsAuth();
+		if (auth) {
+			try {
+				await finalizeJeuxSheetLayout(auth);
+				await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
+			} catch (err) {
+				console.warn('[google-sheets-sync] finalize Jeux layout after game sync failed:', err);
+			}
+		}
 	}
 
 	return ok;
@@ -1593,14 +1637,6 @@ export async function syncDbToSpreadsheetBulk(
 					}
 				}
 			}
-			if (appends.length > 0 || !jeuxPartial) {
-				onProgress?.('Sheets Jeux : tri par nom de jeu…');
-				await sortJeuxSheetByGameName(auth);
-			} else {
-				onProgress?.('Sheets Jeux : pas de tri (mises à jour in-place seulement)');
-			}
-			onProgress?.('Sheets Jeux : normalisation du format des cellules…');
-			await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 		}
 
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
@@ -1615,6 +1651,10 @@ export async function syncDbToSpreadsheetBulk(
 		} else {
 			onProgress?.('Sheets Jeux : aucune ligne orpheline à supprimer');
 		}
+		onProgress?.('Sheets Jeux : tri alphabétique et filtre sur toutes les lignes…');
+		await finalizeJeuxSheetLayout(auth);
+		onProgress?.('Sheets Jeux : normalisation du format des cellules…');
+		await normalizeSheetCellFormat(auth, SHEET_TAB_JEUX);
 	} catch (err) {
 		errors.push(`bulk Jeux: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
 	}
