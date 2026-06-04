@@ -901,6 +901,65 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 	await sortJeuxSheetByGameName(auth);
 }
 
+/** Supprime des lignes de l’onglet Traducteurs/Relecteurs par `ID DB` (traducteur). */
+async function deleteTranslatorsFromGoogleSheet(translatorIds: string[]): Promise<void> {
+	if (!translatorIds.length) return;
+	const auth = await getSheetsAuth();
+	if (!auth) return;
+
+	const tab = encodeURIComponent(SHEET_TAB_TR);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tab}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length < 2) return;
+
+	const headersRow = rows[0] ?? [];
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+	if (idDbIdx === -1) return;
+
+	const ids = new Set(translatorIds);
+	const startIndices: number[] = [];
+	for (let r = 1; r < rows.length; r++) {
+		const v = (rows[r]?.[idDbIdx] ?? '').trim();
+		if (ids.has(v)) startIndices.push(r);
+	}
+	if (!startIndices.length) return;
+
+	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
+	if (sheetId == null) return;
+
+	const requests = startIndices
+		.sort((a, b) => b - a)
+		.map((start) => ({
+			deleteDimension: {
+				range: {
+					sheetId,
+					dimension: 'ROWS',
+					startIndex: start,
+					endIndex: start + 1
+				}
+			}
+		}));
+
+	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ requests })
+	});
+	if (!delRes.ok) {
+		const err = await delRes.text().catch(() => '');
+		throw new Error(`Sheets delete TR rows error (${delRes.status}): ${err.slice(0, 500)}`);
+	}
+	await sortTranslatorSheetByActivityDesc(auth);
+	await reapplyTranslatorPagesRichText(auth);
+}
+
 /**
  * Synchronise une traduction vers l’onglet Jeux.
  * @returns `true` si la ligne a été écrite/mise à jour, `false` sinon (alerte loguée).
@@ -1171,6 +1230,27 @@ export function voidSyncTranslatorActivityCountsToGoogleSheet(
 	}
 }
 
+/** Retire de l’onglet TR les traducteurs/relecteurs en base sans traduction ni relecture. */
+export async function pruneInactiveTranslatorsFromGoogleSheet(): Promise<number> {
+	const auth = await getSheetsAuth();
+	if (!auth) return 0;
+
+	const translators = await db.select({ id: table.translator.id }).from(table.translator);
+	if (translators.length === 0) return 0;
+
+	const activityById = await loadTranslatorActivityCountsById();
+	const inactiveIds = translators
+		.filter((tr) => {
+			const activity = getTranslatorActivityCounts(activityById, tr.id);
+			return activity.tradCount === 0 && activity.readCount === 0;
+		})
+		.map((tr) => tr.id);
+
+	if (inactiveIds.length === 0) return 0;
+	await deleteTranslatorsFromGoogleSheet(inactiveIds);
+	return inactiveIds.length;
+}
+
 export async function syncTranslatorToGoogleSheet(translatorId: string): Promise<void> {
 	const auth = await getSheetsAuth();
 	if (!auth) return;
@@ -1181,6 +1261,12 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 		.where(eq(table.translator.id, translatorId))
 		.limit(1);
 	if (!tr) return;
+
+	const activity = await getTranslatorActivityCountsForId(tr.id);
+	if (activity.tradCount === 0 && activity.readCount === 0) {
+		await deleteTranslatorsFromGoogleSheet([tr.id]);
+		return;
+	}
 
 	const tab = encodeURIComponent(SHEET_TAB_TR);
 	const getAllRes = await sheetsFetch(
@@ -1233,7 +1319,6 @@ export async function syncTranslatorToGoogleSheet(translatorId: string): Promise
 
 	set('NOM', tr.name ?? '');
 	set('PAGES', pagesToPlainText(tr.pages));
-	const activity = await getTranslatorActivityCountsForId(tr.id);
 	set('TRADUCTION', String(activity.tradCount));
 	set('RELECTURE', String(activity.readCount));
 	set('ID DB', tr.id);
@@ -1543,9 +1628,14 @@ export async function syncDbToSpreadsheetBulk(
 			const activityCountsById = await loadTranslatorActivityCountsById();
 			const updates: Array<{ range: string; values: string[][] }> = [];
 			const appends: string[][] = [];
+			const trIdsWithoutActivity: string[] = [];
 			for (const tr of translators) {
 				try {
 					const activity = getTranslatorActivityCounts(activityCountsById, tr.id);
+					if (activity.tradCount === 0 && activity.readCount === 0) {
+						trIdsWithoutActivity.push(tr.id);
+						continue;
+					}
 					const row = buildTranslatorRow(trSnap.headersRow, tr, activity);
 					const rowNumber = trSnap.rowNumberById.get(tr.id);
 					if (rowNumber) {
@@ -1559,6 +1649,18 @@ export async function syncDbToSpreadsheetBulk(
 				} catch (err) {
 					errors.push(
 						`translator ${tr.id}: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+					);
+				}
+			}
+			if (trIdsWithoutActivity.length > 0) {
+				onProgress?.(
+					`Sheets TR : suppression ${trIdsWithoutActivity.length} traducteur(s)/relecteur(s) sans traduction…`
+				);
+				try {
+					await deleteTranslatorsFromGoogleSheet(trIdsWithoutActivity);
+				} catch (err) {
+					errors.push(
+						`bulk TR prune: ${err instanceof Error ? err.message : 'erreur inconnue'}`
 					);
 				}
 			}

@@ -1,9 +1,10 @@
 import { parseTranslatorCountFilters } from '$lib/server/api/translator-count-filters';
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
+import { pruneInactiveTranslatorsFromGoogleSheet } from '$lib/server/google-sheets-sync';
 import {
-	translatorReadCountExpr,
-	translatorTradCountExpr
+    translatorReadCountExpr,
+    translatorTradCountExpr
 } from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -25,6 +26,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		const filters = parseTranslatorCountFilters(url.searchParams);
 		if (!filters.ok) {
 			return json({ error: filters.message }, { status: 400, headers: corsHeaders });
+		}
+
+		if (filters.activeOnly) {
+			try {
+				await pruneInactiveTranslatorsFromGoogleSheet();
+			} catch (err) {
+				console.error('Error pruning inactive translators from Google Sheet:', err);
+			}
 		}
 
 		const selectTranslators = () =>

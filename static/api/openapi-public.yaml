@@ -276,8 +276,11 @@ paths:
         Filtres optionnels sur les compteurs : `tradCountMin` / `tradCountMax` / `readCountMin` / `readCountMax` (entiers ≥ 0, bornes inclusives).
         Les compteurs `tradCount` et `readCount` sont calculés à la volée depuis les traductions liées (`game_translation`), pas stockés sur le traducteur.
         `hasDiscord=true` : uniquement les traducteurs avec un `discordId` renseigné ; `hasDiscord=false` : uniquement ceux sans `discordId`. Sans ce paramètre, la liste ne filtre pas sur Discord (tous les traducteurs peuvent apparaître).
+
+        Par défaut, `activeOnly=true` : la réponse n’inclut que les profils avec au moins une traduction ou une relecture (`tradCount` ou `readCount` ≥ 1), et les profils inactifs sont retirés de l’onglet Google Sheet « Traducteurs/Relecteurs ». Passez `activeOnly=false` pour lister tous les profils sans toucher au sheet.
       operationId: listTranslators
       parameters:
+        - $ref: '#/components/parameters/TranslatorActiveOnly'
         - $ref: '#/components/parameters/TranslatorTradCountMin'
         - $ref: '#/components/parameters/TranslatorTradCountMax'
         - $ref: '#/components/parameters/TranslatorReadCountMin'
@@ -712,6 +715,17 @@ components:
       schema:
         type: string
         format: uuid
+    TranslatorActiveOnly:
+      name: activeOnly
+      in: query
+      required: false
+      description: |
+        `true` (défaut si omis) : exclut les traducteurs/relecteurs sans traduction ni relecture de la réponse,
+        et retire leurs lignes de l’onglet Google Sheet TR.
+        `false` : tous les profils en base, sans purge du sheet.
+      schema:
+        type: boolean
+        default: true
     TranslatorTradCountMin:
       name: tradCountMin
       in: query
