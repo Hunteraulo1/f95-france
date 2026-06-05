@@ -16,7 +16,6 @@
 	import Filter from '@lucide/svelte/icons/filter';
 	import Languages from '@lucide/svelte/icons/languages';
 	import Puzzle from '@lucide/svelte/icons/puzzle';
-	import '$lib/styles/extension-mockup.css';
 	import { onMount } from 'svelte';
 
 	interface Props {
