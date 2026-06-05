@@ -25,13 +25,15 @@
 	interface Link {
 		label: string;
 		href: string;
+    target?: string;
 	}
 
 	const links: Link[] = [
 		{ label: 'Accueil', href: resolve('/') },
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
-		{ label: 'Traducteurs', href: '/translators' }
+		{ label: 'Traducteurs', href: '/translators' },
+    { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 
 	let navDrawerOpen = $state(false);
@@ -82,6 +84,7 @@
 								href={link.href}
 								class="btn border-0 text-sm font-semibold shadow-none hover:bg-transparent hover:text-secondary aria-[current=page]:text-primary"
 								draggable="false"
+                target={link.target}
 							>
 								{link.label}
 							</a>

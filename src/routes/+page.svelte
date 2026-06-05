@@ -293,10 +293,10 @@
 			<button
 				transition:fade={{ duration: 250 }}
 				aria-label="Faire défiler vers le bas"
-				class="btn hover:border-primary hover:text-primary btn-circle mt-auto mb-8 btn-outline animate-bounce absolute bottom-0"
+				class="btn hover:border-primary hover:text-primary border-secondary border-2 btn-circle mt-auto mb-8 btn-outline animate-bounce absolute bottom-0 text-secondary"
 				onclick={scrollToNextSection}
 			>
-				<ChevronDown class="h-5 w-5" />
+				<ChevronDown size={24} strokeWidth={4} />
 			</button>
 		{/if}
 	</section>

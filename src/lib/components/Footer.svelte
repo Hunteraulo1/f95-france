@@ -9,13 +9,13 @@
 	<nav>
 		<ul class="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
 			<li>
-				<a href="/legal-notice" class="flex items-center gap-2 text-xs hover:text-primary">
+				<a href="/legal-notice" target="_blank" class="flex items-center gap-2 text-xs hover:text-primary">
 					<Scale size={24} aria-hidden="true" />
 					Mentions légales
 				</a>
 			</li>
 			<li>
-				<a href="/privacy-policy" class="flex items-center gap-2 text-xs hover:text-primary">
+				<a href="/privacy-policy" target="_blank" class="flex items-center gap-2 text-xs hover:text-primary">
 					<HatGlasses size={24} aria-hidden="true" />
 					Politique de confidentialité
 				</a>
