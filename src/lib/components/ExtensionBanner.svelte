@@ -46,7 +46,7 @@
 >
 	<div class="relative block w-full lg:contents">
 		<figure
-			class="pointer-events-none flex items-center justify-center overflow-hidden bg-linear-to-br from-base-200 via-base-300/40 to-base-200 absolute max-lg:inset-0 min-h-full opacity-25 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100"
+			class="pointer-events-none flex items-center justify-center overflow-hidden bg-linear-to-br from-base-200 via-base-300/40 to-base-200 absolute max-lg:inset-0 min-h-full opacity-25 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100 bg-base-300"
 		>
 			<div
 				class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,color-mix(in_oklab,var(--color-secondary)_22%,transparent),transparent_65%)]"
