@@ -1,0 +1,20 @@
+@theme {
+	--animate-float-sheet-reverse: floatSheetReverse 8s ease-in-out infinite;
+
+	@keyframes floatSheetReverse {
+		0%,
+		100% {
+			transform: rotateX(14deg) rotateY(16deg) rotateZ(-3deg) translateY(0);
+		}
+		50% {
+			transform: rotateX(12deg) rotateY(12deg) rotateZ(-2deg) translateY(8px);
+		}
+	}
+
+	--color-ext-background: hsl(222.2 84% 7%);
+	--color-ext-foreground: hsl(210 40% 98%);
+	--color-ext-card: hsl(222.2 47.4% 11.2%);
+	--color-ext-border: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary-foreground: hsl(210 40% 98%);
+}

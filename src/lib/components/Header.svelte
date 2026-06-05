@@ -13,6 +13,13 @@
 	import X from '@lucide/svelte/icons/x';
 	import banner from '../assets/banner.webp';
 
+	interface Props {
+		/** Priorité haute pour l’image bannière (page d’accueil / candidat LCP). */
+		lcpImage?: boolean;
+	}
+
+	let { lcpImage = false }: Props = $props();
+
 	const NAV_DRAWER_ID = 'public-site-nav-drawer';
 
 	interface Link {
@@ -55,6 +62,9 @@
 						height={232}
 						alt="Bannière de F95 France"
 						class="h-full w-auto object-contain"
+						loading={lcpImage ? 'eager' : 'lazy'}
+						decoding={lcpImage ? 'sync' : 'async'}
+						fetchpriority={lcpImage ? 'high' : 'auto'}
 						draggable="false"
 					/>
 				</a>
