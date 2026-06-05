@@ -1,16 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import banner from '$lib/assets/banner.webp';
-	import Header from '$lib/components/Header.svelte';
+	import HomeHero from '$lib/components/home/HomeHero.svelte';
 	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
-	import { onMount } from 'svelte';
-	import { fade } from 'svelte/transition';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,167 +34,7 @@
 		}
 	};
 
-	const DEFAULT_FIELD_SIZE = 2000;
 
-	// Cache de mémoïsation non réactif (les valeurs sont copiées dans des $state séparés).
-	const starShadowCache: Record<number, { small: string; medium: string; large: string }> = {};
-
-	const createSeededRandom = (seed: number) => {
-		let state = seed;
-		return () => {
-			state = (state * 1664525 + 1013904223) % 4294967296;
-			return state / 4294967296;
-		};
-	};
-
-	const buildStarShadows = (count: number, seed: number, fieldSize: number) => {
-		const random = createSeededRandom(seed);
-		const points: string[] = [];
-		for (let i = 0; i < count; i++) {
-			const x = Math.floor(random() * fieldSize);
-			const y = Math.floor(random() * fieldSize);
-			points.push(`${x}px ${y}px #FFF`);
-		}
-		return points.join(', ');
-	};
-
-	let starTravel = $state(DEFAULT_FIELD_SIZE);
-	let starOffsetX = $state(-1000);
-	let starsReady = $state(false);
-	let starsSmall = $state('');
-	let starsMedium = $state('');
-	let starsLarge = $state('');
-	let cachedFieldSize = $state(0);
-	let isAtTop = $state(true);
-	let resizeFrame: number | null = null;
-	let scrollFrame: number | null = null;
-
-	const getStarShadows = (fieldSize: number) => {
-		let cached = starShadowCache[fieldSize];
-		if (!cached) {
-			cached = {
-				small: buildStarShadows(280, 11, fieldSize),
-				medium: buildStarShadows(100, 22, fieldSize),
-				large: buildStarShadows(50, 33, fieldSize)
-			};
-			starShadowCache[fieldSize] = cached;
-		}
-		return cached;
-	};
-
-	const refreshStars = () => {
-		const innerWidth = window.innerWidth;
-		const innerHeight = window.innerHeight;
-		const largestSide = Math.max(innerWidth, innerHeight);
-		const fieldSize = Math.min(8000, Math.max(2500, Math.ceil((largestSide * 1.8) / 500) * 500));
-
-		starTravel = fieldSize;
-		starOffsetX = Math.floor((innerWidth - fieldSize) / 2);
-
-		if (fieldSize !== cachedFieldSize) {
-			cachedFieldSize = fieldSize;
-			const shadows = getStarShadows(fieldSize);
-			starsSmall = shadows.small;
-			starsMedium = shadows.medium;
-			starsLarge = shadows.large;
-		}
-	};
-
-	const scheduleRefreshStars = () => {
-		if (resizeFrame !== null) return;
-		resizeFrame = requestAnimationFrame(() => {
-			resizeFrame = null;
-			refreshStars();
-		});
-	};
-
-	const updateScrollState = () => {
-		isAtTop = window.scrollY < window.innerHeight / 4;
-	};
-
-	const scheduleUpdateScrollState = () => {
-		if (scrollFrame !== null) return;
-		scrollFrame = requestAnimationFrame(() => {
-			scrollFrame = null;
-			updateScrollState();
-		});
-	};
-
-	const scrollToNextSection = () => {
-		document.getElementById('home-updates')?.scrollIntoView({ behavior: 'smooth' });
-	};
-
-	type SheetLine = {
-		widthClass: string;
-		delayClass: string;
-	};
-
-	const shuffleSheetLines = (items: readonly SheetLine[], random: () => number): SheetLine[] => {
-		const result = [...items];
-		for (let i = result.length - 1; i > 0; i--) {
-			const j = Math.floor(random() * (i + 1));
-			[result[i], result[j]] = [result[j], result[i]];
-		}
-		return result;
-	};
-
-	const sheetLineClass =
-		'relative h-[0.7rem] overflow-hidden rounded-sm bg-base-content/16 before:absolute before:inset-y-0 before:left-0 before:w-[35%] before:bg-primary/28 before:opacity-50 before:animate-drift before:content-[""]';
-
-	const sheetLineVariants: SheetLine[] = [
-		{ widthClass: 'w-[82%]', delayClass: 'before:[animation-delay:-0.2s]' },
-		{ widthClass: 'w-[64%]', delayClass: 'before:[animation-delay:-1s]' },
-		{ widthClass: 'w-[74%]', delayClass: 'before:[animation-delay:-1.8s]' },
-		{ widthClass: 'w-[52%]', delayClass: 'before:[animation-delay:-2.6s]' }
-	];
-
-	const sheetRowSignature = (row: SheetLine[]) => row.map((line) => line.widthClass).join('|');
-
-	const buildRandomSheetRows = (random: () => number): SheetLine[][] => {
-		const rows: SheetLine[][] = [];
-		for (let i = 0; i < 6; i++) {
-			let row = shuffleSheetLines(sheetLineVariants, random);
-			let attempts = 0;
-			while (i > 0 && sheetRowSignature(row) === sheetRowSignature(rows[i - 1]) && attempts < 24) {
-				row = shuffleSheetLines(sheetLineVariants, random);
-				attempts++;
-			}
-			rows.push(row);
-		}
-		return rows;
-	};
-
-	// Grille décorative déterministe (SSR + hydratation identiques, pas de délai onMount).
-	const sheetRows = buildRandomSheetRows(createSeededRandom(77));
-
-	const activateStars = () => {
-		const run = () => {
-			refreshStars();
-			starsReady = true;
-		};
-		// Génération des box-shadow hors chemin critique (évite une longue tâche > 50 ms).
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(run, { timeout: 1500 });
-		} else {
-			setTimeout(run, 0);
-		}
-	};
-
-	onMount(() => {
-		// Après le premier paint (LCP) : étoiles en tâche de fond.
-		requestAnimationFrame(() => {
-			requestAnimationFrame(activateStars);
-		});
-		scheduleUpdateScrollState();
-		window.addEventListener('resize', scheduleRefreshStars, { passive: true });
-		window.addEventListener('scroll', scheduleUpdateScrollState, { passive: true });
-		return () => {
-			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
-			if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
-			window.removeEventListener('resize', scheduleRefreshStars);
-			window.removeEventListener('scroll', scheduleUpdateScrollState);
-		};
-	});
 </script>
 
 <svelte:head>
@@ -205,101 +42,7 @@
 </svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-16">
-	<section class="hero min-h-screen relative overflow-hidden bg-transparent">
-		<div class="top-0 absolute w-full z-40">
-			<Header lcpImage />
-		</div>
-		{#if starsReady}
-			<div class="pointer-events-none absolute inset-0" aria-hidden="true">
-				<div
-					class="hero-stars-layer"
-					style={`--star-size:1px;--star-duration:50s;--star-shadow:${starsSmall};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-				></div>
-				<div
-					class="hero-stars-layer"
-					style={`--star-size:2px;--star-duration:100s;--star-shadow:${starsMedium};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-				></div>
-				<div
-					class="hero-stars-layer"
-					style={`--star-size:3px;--star-duration:150s;--star-shadow:${starsLarge};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-				></div>
-			</div>
-		{/if}
-		<div class="hero-overlay bg-transparent"></div>
-		<div
-			class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
-		></div>
-		<div
-			class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
-		>
-			<div class="space-y-4 text-center sm:text-left max-w-2xl">
-				<h1
-					id="home-hero-title"
-					class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl"
-				>
-					La communauté française qui fait vivre vos
-					<span
-						class="mx-1 inline-block text-white [text-shadow:0_0_10px_color-mix(in_oklab,#ff005e_35%,transparent)] sm:animate-neon-glow sm:[text-shadow:none]"
-						>LewdGames</span
-					>
-					en VF
-				</h1>
-				<p class="home-hero-lead text-neutral-content/90">
-					F95 France rassemble traducteurs, relecteurs et joueurs pour suivre les sorties, améliorer
-					les traductions et partager chaque avancée en français.
-				</p>
-				<div class="flex flex-wrap gap-3 justify-center sm:justify-start pt-4">
-					<a href="/games" class="btn btn-primary" draggable="false">Explorer les jeux</a>
-					<a
-						href="/updates"
-						class="btn btn-ghost text-neutral-content hover:border-primary transition-colors duration-300 hover:text-primary"
-						draggable="false">Voir les mises à jour</a
-					>
-				</div>
-			</div>
-			<div
-				class="lg:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 lg:opacity-100 px-8 lg:px-0 select-none"
-			>
-				<div
-					class="absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] blur-[20px] opacity-50"
-				></div>
-				<div
-					class="relative grid gap-[0.55rem] rounded-2xl border border-base-content/20 bg-base-100/85 p-4 shadow-[0_25px_50px_-12px_color-mix(in_oklab,var(--color-neutral)_45%,transparent),inset_0_1px_0_color-mix(in_oklab,white_40%,transparent)] animate-float-sheet"
-				>
-					<div class="flex items-center justify-between px-0.5 pt-0.5 pb-2">
-						<span class="badge badge-primary badge-outline">Liste des traductions</span>
-					</div>
-					<div
-						class="grid grid-cols-4 gap-2 rounded-lg bg-primary/16 p-2.5 sm:text-sm font-semibold text-base-content/82 text-xs"
-					>
-						<div class="line-clamp-1">NOM DU JEU</div>
-						<div class="line-clamp-1">VERSION</div>
-						<div class="line-clamp-1">TRAD. VER.</div>
-						<div class="line-clamp-1">STATUS</div>
-					</div>
-					{#each sheetRows as row, rowIndex (rowIndex)}
-						<div
-							class="grid grid-cols-4 gap-2 rounded-lg border border-base-content/12 p-2.5 hover:bg-base-200/80"
-						>
-							{#each row as line, lineIndex (lineIndex)}
-								<div class="{sheetLineClass} {line.widthClass} {line.delayClass}"></div>
-							{/each}
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
-		{#if isAtTop}
-			<button
-				transition:fade={{ duration: 250 }}
-				aria-label="Faire défiler vers le bas"
-				class="btn hover:border-primary hover:text-primary border-secondary border-2 btn-circle mt-auto mb-8 btn-outline animate-bounce absolute bottom-0 text-secondary"
-				onclick={scrollToNextSection}
-			>
-				<ChevronDown size={24} strokeWidth={4} />
-			</button>
-		{/if}
-	</section>
+	<HomeHero />
 
 	<section
 		class="px-auto max-w-7xl mx-auto flex flex-col gap-16 px-2 w-full pt-16"
