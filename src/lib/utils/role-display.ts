@@ -1,7 +1,7 @@
 import {
-	isRoleBadgeStyle,
-	resolveRoleBadgeStyle,
-	type RoleBadgeStyle
+    isRoleBadgeStyle,
+    resolveRoleBadgeStyle,
+    type RoleBadgeStyle
 } from '$lib/permissions/role-badge-style';
 
 const SUPERADMIN_ANIMATED_CLASS = 'username-superadmin animate-text';
@@ -39,8 +39,8 @@ function resolveDisplayStyle(roleSlug: string, badgeStyle?: string | null): Role
 export function roleDaisyBadgeClass(roleSlug: string, badgeStyle?: string | null): string {
 	const style = resolveDisplayStyle(roleSlug, badgeStyle);
 	if (style === 'superadmin') return 'badge username-superadmin';
-	if (style === 'default') return 'badge badge-neutral badge-soft';
-	return `badge badge-${style} badge-soft`;
+	if (style === 'default') return 'badge badge-neutral badge-outline';
+	return `badge badge-${style} badge-outline`;
 }
 
 /** Couleur de texte daisyUI pour le pseudo (`text-primary`, etc.). */
@@ -48,5 +48,5 @@ export function roleDaisyTextClass(roleSlug: string, badgeStyle?: string | null)
 	const style = resolveDisplayStyle(roleSlug, badgeStyle);
 	if (style === 'superadmin') return 'username-superadmin';
 	if (style === 'default') return '';
-	return `text-${style}`;
+	return '';
 }

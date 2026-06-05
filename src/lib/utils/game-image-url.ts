@@ -40,10 +40,16 @@ function rewriteF95AttachmentsToPreview(url: string): string {
 	return parsed.toString();
 }
 
+/** Vignettes XenForo (`…/thumb/…`) — préférer l’image pleine résolution pour l’affichage. */
+function stripGameImageThumbnailPath(candidate: string): string {
+	if (!candidate.includes('thumb')) return candidate;
+	return candidate.replace(/\/thumb\//, '/').replace('thumb/', '');
+}
+
 function finalizeGameImageSrc(candidate: string): string {
 	if (!candidate) return '';
 	if (isGameImageGalleryPageUrl(candidate)) return '';
-	return rewriteF95AttachmentsToPreview(candidate);
+	return stripGameImageThumbnailPath(rewriteF95AttachmentsToPreview(candidate));
 }
 
 /**

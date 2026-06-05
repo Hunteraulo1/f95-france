@@ -29,7 +29,8 @@
 		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh --target dev",
 		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
 		"cron:check-version": "node cron/check-version.mjs",
-		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
+		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts",
+		"lighthouse": "bun run build && bun scripts/lighthouse-prod.mjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -45,6 +46,9 @@
 		"prettier": "3.8.3",
 		"prettier-plugin-svelte": "4.1.0",
 		"prettier-plugin-tailwindcss": "0.8.0",
+		"@puppeteer/browsers": "2.10.5",
+		"chrome-launcher": "1.2.1",
+		"lighthouse": "13.0.2",
 		"svelte": "5.56.1",
 		"svelte-check": "4.6.0",
 		"tailwindcss": "4.3.0",

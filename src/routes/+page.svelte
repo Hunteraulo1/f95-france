@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import DiscordBanner from '$lib/components/DiscordBanner.svelte';
-	import ExtensionBanner from '$lib/components/ExtensionBanner.svelte';
 	import Header from '$lib/components/Header.svelte';
+	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
@@ -39,6 +38,11 @@
 
 	const DEFAULT_FIELD_SIZE = 2000;
 
+	const starShadowCache = new Map<
+		number,
+		{ small: string; medium: string; large: string }
+	>();
+
 	const createSeededRandom = (seed: number) => {
 		let state = seed;
 		return () => {
@@ -63,20 +67,47 @@
 	let starsSmall = $state(buildStarShadows(280, 11, DEFAULT_FIELD_SIZE));
 	let starsMedium = $state(buildStarShadows(100, 22, DEFAULT_FIELD_SIZE));
 	let starsLarge = $state(buildStarShadows(50, 33, DEFAULT_FIELD_SIZE));
+	let cachedFieldSize = $state(0);
 	let isAtTop = $state(true);
+	let resizeFrame: number | null = null;
 
-	const computeStarFieldSize = () => {
-		const largestSide = Math.max(window.innerWidth, window.innerHeight);
-		return Math.min(8000, Math.max(2500, Math.ceil((largestSide * 1.8) / 500) * 500));
+	const getStarShadows = (fieldSize: number) => {
+		let cached = starShadowCache.get(fieldSize);
+		if (!cached) {
+			cached = {
+				small: buildStarShadows(280, 11, fieldSize),
+				medium: buildStarShadows(100, 22, fieldSize),
+				large: buildStarShadows(50, 33, fieldSize)
+			};
+			starShadowCache.set(fieldSize, cached);
+		}
+		return cached;
 	};
 
 	const refreshStars = () => {
-		const fieldSize = computeStarFieldSize();
+		const innerWidth = window.innerWidth;
+		const innerHeight = window.innerHeight;
+		const largestSide = Math.max(innerWidth, innerHeight);
+		const fieldSize = Math.min(8000, Math.max(2500, Math.ceil((largestSide * 1.8) / 500) * 500));
+
 		starTravel = fieldSize;
-		starOffsetX = Math.floor((window.innerWidth - fieldSize) / 2);
-		starsSmall = buildStarShadows(280, 11, fieldSize);
-		starsMedium = buildStarShadows(100, 22, fieldSize);
-		starsLarge = buildStarShadows(50, 33, fieldSize);
+		starOffsetX = Math.floor((innerWidth - fieldSize) / 2);
+
+		if (fieldSize !== cachedFieldSize) {
+			cachedFieldSize = fieldSize;
+			const shadows = getStarShadows(fieldSize);
+			starsSmall = shadows.small;
+			starsMedium = shadows.medium;
+			starsLarge = shadows.large;
+		}
+	};
+
+	const scheduleRefreshStars = () => {
+		if (resizeFrame !== null) return;
+		resizeFrame = requestAnimationFrame(() => {
+			resizeFrame = null;
+			refreshStars();
+		});
 	};
 
 	const updateScrollState = () => {
@@ -133,10 +164,11 @@
 		sheetRows = buildRandomSheetRows();
 		refreshStars();
 		updateScrollState();
-		window.addEventListener('resize', refreshStars);
+		window.addEventListener('resize', scheduleRefreshStars, { passive: true });
 		window.addEventListener('scroll', updateScrollState, { passive: true });
 		return () => {
-			window.removeEventListener('resize', refreshStars);
+			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+			window.removeEventListener('resize', scheduleRefreshStars);
 			window.removeEventListener('scroll', updateScrollState);
 		};
 	});
@@ -197,7 +229,7 @@
 					class="relative grid gap-[0.55rem] rounded-2xl border border-base-content/20 bg-base-100/85 p-4 shadow-[0_25px_50px_-12px_color-mix(in_oklab,var(--color-neutral)_45%,transparent),inset_0_1px_0_color-mix(in_oklab,white_40%,transparent)] animate-float-sheet"
 				>
 					<div class="flex items-center justify-between px-0.5 pt-0.5 pb-2">
-						<span class="badge badge-primary badge-soft">Liste des traductions</span>
+						<span class="badge badge-primary badge-outline">Liste des traductions</span>
 					</div>
 					<div
 						class="grid grid-cols-4 gap-2 rounded-lg bg-primary/16 p-2.5 sm:text-sm font-semibold text-base-content/82 text-xs"
@@ -239,7 +271,7 @@
 			<h2 class="text-2xl font-bold">Derniers changements</h2>
 			<a href="/updates">
 				<div
-					class="badge badge-primary badge-soft badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
+					class="badge badge-primary badge-outline badge-lg hover:border-primary hover:text-primary-content transition-colors duration-300"
 				>
 					<span class="mb-0.5 select-none">En voir plus</span>
 					<ArrowRight class="h-4 w-4 hover:translate-x-1 transition-transform duration-300" />
@@ -263,24 +295,40 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 select-none">
 				{#each data.updates as update (update.updateId)}
-					{@const homeUpdateImageSrc = resolveGameImageSrc(update.game.gameImage, {
-						website: update.game.gameWebsite
-					})}
 					<article
-						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex"
+						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex relative overflow-hidden"
 					>
+						{#if update.game.gameImage}
+							<img
+								src={update.game.gameImage}
+								alt=""
+								class="absolute inset-0 h-full w-full object-cover"
+								loading="lazy"
+								decoding="async"
+								referrerpolicy="no-referrer"
+								draggable="false"
+							/>
+						{:else}
+							<div class="absolute inset-0 bg-base-300" aria-hidden="true">
+                <div class="flex h-full w-full items-center justify-center text-sm text-base-content/50">
+                  Pas d’aperçu
+                </div>
+              </div>
+						{/if}
 						<a
 							href={resolve(`/games/${update.game.gameId}`)}
-							class="absolute flex items-center justify-center hover:opacity-100 opacity-0 sm:blocktop-0 left-0 w-full h-full rounded-lg hover:bg-black/30 transition-all duration-300 text-secondary"
+							aria-label={`Voir la fiche du jeu ${update.game.name ?? 'inconnu'}`}
+							class="absolute inset-0 z-20 flex items-center justify-center rounded-lg text-secondary opacity-0 transition-all duration-300 hover:bg-black/30 hover:opacity-100"
 							draggable="false"
 						>
 							<SquareArrowOutUpRight size={40} />
 						</a>
 						<div
-							class="card-body p-4 gap-3 bg-cover bg-center rounded-lg"
-							style={homeUpdateImageSrc ? `background-image: url(${homeUpdateImageSrc});` : ''}
-						>
-							<div class="flex flex-col items-start justify-between gap-3">
+							class="pointer-events-none absolute inset-0 bg-linear-to-b from-black/55 via-black/15 to-transparent"
+							aria-hidden="true"
+						></div>
+						<div class="card-body relative z-10 flex h-full flex-col justify-start gap-3 p-4">
+							<div class="flex flex-col items-start justify-between gap-3 text-neutral-content drop-shadow-sm">
 								<span
 									class={statusClass(update.updateStatus) + ' text-xs text-nowrap font-semibold'}
 									>{statusLabel(update.updateStatus)}</span
@@ -309,17 +357,21 @@
 		{/if}
 	</section>
 
-	<section class="mx-auto w-full max-w-7xl px-2 pt-16">
-		<DiscordBanner />
-	</section>
+	<LazyWhenVisible class="mx-auto w-full max-w-7xl px-2 pt-16">
+		{#await import('$lib/components/DiscordBanner.svelte') then { default: DiscordBanner }}
+			<DiscordBanner />
+		{/await}
+	</LazyWhenVisible>
 
-	<section class="mx-auto w-full max-w-7xl px-2">
-		<ExtensionBanner
-			games={data.extensionMockupGames}
-			extensionDownloads={data.extensionDownloads}
-			extensionBrowserTarget={data.extensionBrowserTarget}
-		/>
-	</section>
+	<LazyWhenVisible class="mx-auto w-full max-w-7xl px-2">
+		{#await import('$lib/components/ExtensionBanner.svelte') then { default: ExtensionBanner }}
+			<ExtensionBanner
+				games={data.extensionMockupGames}
+				extensionDownloads={data.extensionDownloads}
+				extensionBrowserTarget={data.extensionBrowserTarget}
+			/>
+		{/await}
+	</LazyWhenVisible>
 
 	<section class="px-auto max-w-7xl mx-auto flex flex-col gap-16 px-2 w-full">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

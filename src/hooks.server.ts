@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
-	extractApiKeyFromRequest,
-	getUserForApiKeyOwner,
-	jsonApiKeyGuardResponse,
-	validateApiKeyRequest
+    EXTENSION_ONLY_API_ROUTE,
+    consumeSessionApiKeyRateForUser,
+    extractApiKeyFromRequest,
+    getUserForApiKeyOwner,
+    jsonApiKeyGuardResponse,
+    validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import { logApp } from '$lib/server/app-logger';
@@ -14,12 +14,22 @@ import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { warmHomePayload } from '$lib/server/home-page-data';
 import { logApiAction } from '$lib/server/logger';
 import { notifyApiError } from '$lib/server/notifications';
 import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
-import type { Handle, RequestEvent } from '@sveltejs/kit';
+import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
+
+/**
+ * Démarrage du serveur : ouvre la connexion DB et préchauffe le cache de la home
+ * pour que le tout premier visiteur ne paie pas le coût à froid (TCP + TLS + requêtes).
+ */
+export const init: ServerInit = async () => {
+	if (building) return;
+	await warmHomePayload();
+};
 
 /** Chemin seul (sans query) — la query va dans `payload` du log API. */
 function requestRouteLabel(url: URL): string {

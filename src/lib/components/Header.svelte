@@ -48,7 +48,6 @@
 		type="checkbox"
 		class="drawer-toggle"
 		bind:checked={navDrawerOpen}
-		aria-hidden="true"
 	/>
 
 	<div class="drawer-content w-full min-w-0">
@@ -57,6 +56,8 @@
 				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
 					<img
 						src={banner}
+						width={1920}
+						height={232}
 						alt="Bannière de F95 France"
 						class="h-full w-auto object-contain"
 						draggable="false"
