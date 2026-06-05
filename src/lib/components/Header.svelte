@@ -96,7 +96,10 @@
 							<a
 								aria-current={page.url.pathname === '/dashboard/login' ? 'page' : undefined}
 								href={resolve('/dashboard/login')}
-								class="btn w-28 rounded-md border-base-content/10 bg-base-100 p-2 text-sm font-semibold shadow-lg hover:bg-base-300 hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
+								class="btn w-28 rounded-md p-2 text-sm font-semibold shadow-lg {page.url.pathname ===
+								'/dashboard/login'
+									? 'btn-primary'
+									: 'btn-outline btn-primary'}"
 								draggable="false"
 							>
 								Connexion
@@ -205,7 +208,13 @@
 						</button>
 					</form>
 				{:else}
-					<a href={resolve('/dashboard/login')} class="btn w-full" onclick={closeNavDrawer}>
+					<a
+						href={resolve('/dashboard/login')}
+						class="btn w-full {page.url.pathname === '/dashboard/login'
+							? 'btn-primary'
+							: 'btn-outline btn-primary'}"
+						onclick={closeNavDrawer}
+					>
 						Connexion
 					</a>
 					<a
