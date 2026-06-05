@@ -59,7 +59,7 @@
 		<div
 			class="card-body relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
 		>
-			<div class="badge badge-secondary badge-soft w-fit gap-1.5">
+			<div class="badge badge-secondary badge-outline w-fit gap-1.5">
 				<Puzzle class="size-3.5" aria-hidden="true" />
 				Extension F95 France
 			</div>

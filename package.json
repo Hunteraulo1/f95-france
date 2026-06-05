@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.5.5",
+	"version": "4.5.6",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -29,7 +29,8 @@
 		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh --target dev",
 		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
 		"cron:check-version": "node cron/check-version.mjs",
-		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
+		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts",
+		"lighthouse": "bun run build && bun scripts/lighthouse-prod.mjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -45,7 +46,10 @@
 		"prettier": "3.8.3",
 		"prettier-plugin-svelte": "4.1.0",
 		"prettier-plugin-tailwindcss": "0.8.0",
-		"svelte": "5.56.1",
+		"@puppeteer/browsers": "3.0.4",
+		"chrome-launcher": "1.2.1",
+		"lighthouse": "13.3.0",
+		"svelte": "5.56.2",
 		"svelte-check": "4.6.0",
 		"tailwindcss": "4.3.0",
 		"typescript": "6.0.3",
@@ -66,7 +70,7 @@
 		"drizzle-kit": "0.31.10",
 		"drizzle-orm": "0.45.2",
 		"linkedom": "0.18.12",
-		"marked": "^18.0.4",
+		"marked": "^18.0.5",
 		"otpauth": "9.5.1",
 		"postgres": "3.4.9",
 		"qrcode": "1.5.4",

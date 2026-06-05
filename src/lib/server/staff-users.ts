@@ -15,6 +15,30 @@ export type StaffUserListItem = {
 	lastConnectionAt: Date | null;
 };
 
+/** Staff pour la page d’accueil (sans agrégat `api_log`). */
+export async function listStaffUsersForHome(): Promise<
+	Pick<StaffUserListItem, 'id' | 'username' | 'avatar' | 'role' | 'roleLabel' | 'badgeStyle'>[]
+> {
+	const rows = await db
+		.select({
+			id: table.user.id,
+			username: table.user.username,
+			role: table.user.role,
+			roleLabel: table.appRole.label,
+			badgeStyle: table.appRole.badgeStyle,
+			avatar: table.user.avatar
+		})
+		.from(table.user)
+		.innerJoin(table.appRole, eq(table.user.role, table.appRole.slug))
+		.where(eq(table.appRole.staff, true))
+		.orderBy(desc(table.appRole.priority), asc(table.user.username));
+
+	return rows.map((row) => ({
+		...row,
+		roleLabel: SYSTEM_ROLE_LABELS[row.role] ?? row.roleLabel
+	}));
+}
+
 /** Utilisateurs staff, triés par force du rôle (`priority`) puis pseudo. */
 export async function listStaffUsers(): Promise<StaffUserListItem[]> {
 	const rows = await db

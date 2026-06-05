@@ -9,7 +9,8 @@ export type GameTranslationRow = typeof gameTranslation.$inferSelect;
  * Traductions indexées par `gameId`. Chaque tableau est trié par `updatedAt` décroissant.
  */
 export async function translationsByGameIds(
-	gameIds: string[]
+	gameIds: string[],
+	options?: { skipPublicApiMapping?: boolean }
 ): Promise<Map<string, GameTranslationRow[]>> {
 	const map = new Map<string, GameTranslationRow[]>();
 	for (const id of gameIds) map.set(id, []);
@@ -29,14 +30,16 @@ export async function translationsByGameIds(
 		list.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 	}
 
-	const allRows = Array.from(map.values()).flat();
-	const mapped = await mapTranslationsForPublicApi(allRows);
-	const mappedById = new Map(mapped.map((row) => [row.id, row]));
-	for (const [gameId, list] of map) {
-		map.set(
-			gameId,
-			list.map((row) => mappedById.get(row.id) ?? row)
-		);
+	if (!options?.skipPublicApiMapping) {
+		const allRows = Array.from(map.values()).flat();
+		const mapped = await mapTranslationsForPublicApi(allRows);
+		const mappedById = new Map(mapped.map((row) => [row.id, row]));
+		for (const [gameId, list] of map) {
+			map.set(
+				gameId,
+				list.map((row) => mappedById.get(row.id) ?? row)
+			);
+		}
 	}
 	return map;
 }

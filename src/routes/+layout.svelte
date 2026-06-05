@@ -54,7 +54,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href="/favicon.ico" />
+	<link rel="icon" href="/favicon.ico" sizes="any" />
 	<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 	<title>{SITE.name}</title>
 	<meta name="description" content={SITE.description} />
