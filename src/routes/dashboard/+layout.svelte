@@ -20,7 +20,9 @@
 
 <Header maintenanceMode={data.maintenanceMode} />
 
-<main class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open bg-base-200 overflow-y-auto">
+<main
+	class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open bg-base-200 overflow-y-auto"
+>
 	<div class="drawer-content p-4 sm:p-8 lg:p-16 max-w-[1536px] w-full mx-auto">
 		{@render children?.()}
 	</div>

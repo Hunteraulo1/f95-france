@@ -91,12 +91,9 @@
 				{#if !isHome}
 					<Header />
 				{/if}
-        <div
-          class="w-full mx-auto"
-          class:max-w-[1536px]={page.url.pathname !== '/'}
-        >
-				  {@render children()}
-        </div>
+				<div class="w-full mx-auto" class:max-w-[1536px]={page.url.pathname !== '/'}>
+					{@render children()}
+				</div>
 			</div>
 			<Footer />
 		{/if}

@@ -22,7 +22,9 @@
 </script>
 
 <HomeHeroMockupShell badge="Serveur Discord">
-	<div class="grid h-full min-h-0 grid-cols-[5.5rem_1fr] gap-2 overflow-hidden rounded-lg border border-base-content/12">
+	<div
+		class="grid h-full min-h-0 grid-cols-[5.5rem_1fr] gap-2 overflow-hidden rounded-lg border border-base-content/12"
+	>
 		<div class="flex flex-col gap-1 bg-base-200/70 p-2">
 			{#each channels as channel (channel.name)}
 				<div

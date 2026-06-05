@@ -22,7 +22,9 @@
 </script>
 
 <HomeHeroMockupShell badge="Wiki F95 France">
-	<div class="grid h-full min-h-0 grid-cols-[6.5rem_1fr] gap-2 overflow-hidden rounded-lg border border-base-content/12">
+	<div
+		class="grid h-full min-h-0 grid-cols-[6.5rem_1fr] gap-2 overflow-hidden rounded-lg border border-base-content/12"
+	>
 		<div class="flex flex-col gap-1.5 bg-base-200/60 p-2">
 			<div class="flex items-center gap-1 px-1 text-[0.62rem] font-semibold text-base-content/55">
 				<BookOpen class="size-3" aria-hidden="true" />

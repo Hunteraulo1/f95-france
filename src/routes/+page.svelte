@@ -33,8 +33,6 @@
 				return 'Info';
 		}
 	};
-
-
 </script>
 
 <svelte:head>

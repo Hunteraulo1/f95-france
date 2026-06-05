@@ -25,7 +25,7 @@
 	interface Link {
 		label: string;
 		href: string;
-    target?: string;
+		target?: string;
 	}
 
 	const links: Link[] = [
@@ -33,7 +33,7 @@
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
 		{ label: 'Traducteurs', href: '/translators' },
-    { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
+		{ label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 
 	let navDrawerOpen = $state(false);
@@ -84,7 +84,7 @@
 								href={link.href}
 								class="btn border-0 text-sm font-semibold shadow-none hover:bg-transparent hover:text-secondary aria-[current=page]:text-primary"
 								draggable="false"
-                target={link.target}
+								target={link.target}
 							>
 								{link.label}
 							</a>
@@ -99,8 +99,8 @@
 							<a
 								aria-current={page.url.pathname === '/dashboard/login' ? 'page' : undefined}
 								href={resolve('/dashboard/login')}
-								class="btn w-28 rounded-md p-2 text-sm font-semibold shadow-lg {page.url.pathname ===
-								'/dashboard/login'
+								class="btn w-28 rounded-md p-2 text-sm font-semibold shadow-lg {page.url
+									.pathname === '/dashboard/login'
 									? 'btn-primary'
 									: 'btn-outline btn-primary'}"
 								draggable="false"

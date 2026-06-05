@@ -54,8 +54,7 @@
 				document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
 				if (ageVerified) {
 					if (document.cookie.indexOf('f95-france-age-verified=1') === -1) {
-						document.cookie =
-							'f95-france-age-verified=1; path=/; max-age=31536000; SameSite=Lax';
+						document.cookie = 'f95-france-age-verified=1; path=/; max-age=31536000; SameSite=Lax';
 					}
 				} else {
 					document.documentElement.classList.add('overflow-hidden');

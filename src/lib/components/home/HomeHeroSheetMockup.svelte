@@ -57,20 +57,22 @@
 
 <HomeHeroMockupShell badge="Liste des traductions">
 	<div class="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-	<div
-		class="{sheetGridClass} shrink-0 rounded-lg bg-primary/16 p-2 text-xs font-semibold text-base-content/82 sm:text-sm"
-	>
-		<div class="line-clamp-1">NOM DU JEU</div>
-		<div class="line-clamp-1">VERSION</div>
-		<div class="line-clamp-1">TRAD. VER.</div>
-		<div class="line-clamp-1">STATUS</div>
-	</div>
-	{#each sheetRows as row, rowIndex (rowIndex)}
-		<div class="{sheetGridClass} rounded-lg border border-base-content/12 p-2.5 hover:bg-base-200/80">
-			{#each row as line, lineIndex (lineIndex)}
-				<div class="{sheetLineClass} {line.widthClass} {line.delayClass}"></div>
-			{/each}
+		<div
+			class="{sheetGridClass} shrink-0 rounded-lg bg-primary/16 p-2 text-xs font-semibold text-base-content/82 sm:text-sm"
+		>
+			<div class="line-clamp-1">NOM DU JEU</div>
+			<div class="line-clamp-1">VERSION</div>
+			<div class="line-clamp-1">TRAD. VER.</div>
+			<div class="line-clamp-1">STATUS</div>
 		</div>
-	{/each}
+		{#each sheetRows as row, rowIndex (rowIndex)}
+			<div
+				class="{sheetGridClass} rounded-lg border border-base-content/12 p-2.5 hover:bg-base-200/80"
+			>
+				{#each row as line, lineIndex (lineIndex)}
+					<div class="{sheetLineClass} {line.widthClass} {line.delayClass}"></div>
+				{/each}
+			</div>
+		{/each}
 	</div>
 </HomeHeroMockupShell>

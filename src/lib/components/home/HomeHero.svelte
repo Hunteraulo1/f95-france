@@ -35,7 +35,11 @@
 			highlightNeon: true,
 			lead: 'F95 France rassemble traducteurs, relecteurs et joueurs pour suivre les sorties, améliorer les traductions et partager chaque avancée en français.',
 			primaryCta: { href: '/games', label: 'Explorer les jeux' },
-			secondaryCta: { href: 'https://tableau-traduction.f95france.site/', label: 'Accèder au tableur', external: true },
+			secondaryCta: {
+				href: 'https://tableau-traduction.f95france.site/',
+				label: 'Accèder au tableur',
+				external: true
+			},
 			mockup: 'sheet'
 		},
 		{
@@ -326,17 +330,21 @@
 									href={slide.secondaryCta.href}
 									class="btn btn-ghost text-neutral-content hover:border-primary transition-colors duration-300 hover:text-primary"
 									draggable="false"
-								  target={slide.secondaryCta?.external ? '_blank' : undefined}
-								  rel={slide.secondaryCta?.external ? 'noopener noreferrer' : undefined}
+									target={slide.secondaryCta?.external ? '_blank' : undefined}
+									rel={slide.secondaryCta?.external ? 'noopener noreferrer' : undefined}
 								>
 									{slide.secondaryCta.label}
 								</a>
 							{/if}
-							</div>
 						</div>
-					{/each}
-				</div>
-				<div class="flex items-center justify-center gap-2 pt-2 xl:justify-start" role="tablist" aria-label="Aperçus du hero">
+					</div>
+				{/each}
+			</div>
+			<div
+				class="flex items-center justify-center gap-2 pt-2 xl:justify-start"
+				role="tablist"
+				aria-label="Aperçus du hero"
+			>
 				{#each slides as slide, index (slide.id)}
 					<button
 						type="button"
