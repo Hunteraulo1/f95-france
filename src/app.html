@@ -4,6 +4,30 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="preconnect" href="https://preview.f95zone.to" />
+		<style>
+			/* CSS critique : premier paint du hero avant la feuille Tailwind/daisyUI. */
+			html {
+				-webkit-text-size-adjust: 100%;
+			}
+			body {
+				margin: 0;
+				line-height: 1.5;
+				font-family:
+					ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+					'Segoe UI Symbol', 'Noto Color Emoji';
+			}
+			#home-hero-title {
+				margin: 0;
+				font-size: clamp(1.5rem, 4vw + 0.5rem, 3rem);
+				font-weight: 700;
+				line-height: 1.25;
+				color: #f5f5f5;
+			}
+			.home-hero-lead {
+				margin: 0;
+				color: rgb(245 245 245 / 0.9);
+			}
+		</style>
 		<script nonce="%sveltekit.nonce%">
 			(function () {
 				var theme = 'system';
@@ -16,6 +40,16 @@
 				} else {
 					var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 					document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+				}
+
+				var ageVerified = false;
+				try {
+					ageVerified = localStorage.getItem('f95-france-age-verified') === 'true';
+				} catch (e) {}
+
+				document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
+				if (!ageVerified) {
+					document.documentElement.classList.add('overflow-hidden');
 				}
 			})();
 		</script>

@@ -370,6 +370,42 @@ try {
 			console.log(`  ${id}: ${audit.displayValue ?? audit.title}`);
 		}
 	}
+
+	const mainThreadAudits = [
+		'mainthread-work-breakdown',
+		'long-tasks',
+		'bootup-time',
+		'third-party-summary'
+	];
+
+	for (const id of mainThreadAudits) {
+		const audit = report.audits[id];
+		if (!audit?.details?.items?.length) continue;
+
+		console.log(`\n--- ${audit.title} ---`);
+		if (audit.displayValue) console.log(audit.displayValue);
+
+		const items = [...audit.details.items]
+			.map((item) => ({
+				label:
+					item.group ??
+					item.source ??
+					item.url ??
+					item.scripting ??
+					item.taskName ??
+					item.duration ??
+					item.label ??
+					'—',
+				ms: item.duration ?? item.blockingTime ?? item.total ?? item.scripting ?? 0
+			}))
+			.sort((a, b) => b.ms - a.ms)
+			.slice(0, 12);
+
+		for (const row of items) {
+			const ms = typeof row.ms === 'number' ? `${Math.round(row.ms)} ms` : String(row.ms);
+			console.log(`  ${ms.padStart(8)}  ${row.label}`);
+		}
+	}
 } catch (error) {
 	console.error(error);
 	const message = error instanceof Error ? error.message : String(error);

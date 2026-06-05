@@ -1,13 +1,13 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
+	import { setAgeVerified } from '$lib/age-verification';
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
 	import { initializeUserFromLocals } from '$lib/stores';
-	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
 	import '../app.css';
@@ -24,12 +24,15 @@
 		initializeUserFromLocals(data.user);
 	});
 
-	let ageCheckReady = $state(false);
-	let ageVerified = $state(false);
+	const readInitialAgeVerified = () =>
+		browser ? document.documentElement.dataset.ageVerified === '1' : false;
+
+	let ageVerified = $state(readInitialAgeVerified());
 
 	$effect(() => {
-		if (!ageCheckReady) return;
+		if (!browser) return;
 		document.documentElement.classList.toggle('overflow-hidden', !ageVerified);
+		document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
 		return () => document.documentElement.classList.remove('overflow-hidden');
 	});
 
@@ -47,9 +50,12 @@
 	};
 
 	onMount(() => {
-		ageVerified = isAgeVerified();
-		ageCheckReady = true;
-		themeChange(false);
+		const run = () => themeChange(false);
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(run, { timeout: 2000 });
+		} else {
+			setTimeout(run, 0);
+		}
 	});
 </script>
 
@@ -70,35 +76,26 @@
 	<meta name="twitter:image" content={ogImage} />
 </svelte:head>
 
-{#if !ageCheckReady}
-	<div class="flex min-h-screen items-center justify-center bg-base-200">
-		<div class="flex h-full flex-col items-center justify-center gap-2">
-			<LoaderCircle size={40} class="animate-spin" />
-			<span class="text-lg font-medium text-base-content/80">Chargement...</span>
-		</div>
-	</div>
-{:else}
-	<div class="relative min-h-screen">
-		<div
-			class:pointer-events-none={!ageVerified}
-			class:select-none={!ageVerified}
-			inert={!ageVerified}
-		>
-			{#if isDashboardRoute}
+<div class="relative min-h-screen">
+	<div
+		class:pointer-events-none={!ageVerified}
+		class:select-none={!ageVerified}
+		inert={!ageVerified}
+	>
+		{#if isDashboardRoute}
+			{@render children()}
+		{:else}
+			<div class="flex min-h-screen flex-col bg-base-200">
+				{#if !isHome}
+					<Header />
+				{/if}
 				{@render children()}
-			{:else}
-				<div class="flex min-h-screen flex-col bg-base-200">
-					{#if !isHome}
-						<Header />
-					{/if}
-					{@render children()}
-				</div>
-				<Footer />
-			{/if}
-		</div>
-
-		{#if !ageVerified}
-			<AgeVerificationModal onConfirm={confirmAge} />
+			</div>
+			<Footer />
 		{/if}
 	</div>
-{/if}
+
+	{#if !ageVerified}
+		<AgeVerificationModal onConfirm={confirmAge} />
+	{/if}
+</div>

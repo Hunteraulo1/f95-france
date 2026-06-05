@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import banner from '$lib/assets/banner.webp';
 	import Header from '$lib/components/Header.svelte';
 	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
@@ -62,12 +63,14 @@
 
 	let starTravel = $state(DEFAULT_FIELD_SIZE);
 	let starOffsetX = $state(-1000);
-	let starsSmall = $state(buildStarShadows(280, 11, DEFAULT_FIELD_SIZE));
-	let starsMedium = $state(buildStarShadows(100, 22, DEFAULT_FIELD_SIZE));
-	let starsLarge = $state(buildStarShadows(50, 33, DEFAULT_FIELD_SIZE));
+	let starsReady = $state(false);
+	let starsSmall = $state('');
+	let starsMedium = $state('');
+	let starsLarge = $state('');
 	let cachedFieldSize = $state(0);
 	let isAtTop = $state(true);
 	let resizeFrame: number | null = null;
+	let scrollFrame: number | null = null;
 
 	const getStarShadows = (fieldSize: number) => {
 		let cached = starShadowCache[fieldSize];
@@ -112,6 +115,14 @@
 		isAtTop = window.scrollY < window.innerHeight / 4;
 	};
 
+	const scheduleUpdateScrollState = () => {
+		if (scrollFrame !== null) return;
+		scrollFrame = requestAnimationFrame(() => {
+			scrollFrame = null;
+			updateScrollState();
+		});
+	};
+
 	const scrollToNextSection = () => {
 		document.getElementById('home-updates')?.scrollIntoView({ behavior: 'smooth' });
 	};
@@ -142,13 +153,13 @@
 
 	const sheetRowSignature = (row: SheetLine[]) => row.map((line) => line.widthClass).join('|');
 
-	const buildRandomSheetRows = (): SheetLine[][] => {
+	const buildRandomSheetRows = (random: () => number): SheetLine[][] => {
 		const rows: SheetLine[][] = [];
 		for (let i = 0; i < 6; i++) {
-			let row = shuffleSheetLines(sheetLineVariants, Math.random);
+			let row = shuffleSheetLines(sheetLineVariants, random);
 			let attempts = 0;
 			while (i > 0 && sheetRowSignature(row) === sheetRowSignature(rows[i - 1]) && attempts < 24) {
-				row = shuffleSheetLines(sheetLineVariants, Math.random);
+				row = shuffleSheetLines(sheetLineVariants, random);
 				attempts++;
 			}
 			rows.push(row);
@@ -156,41 +167,64 @@
 		return rows;
 	};
 
-	let sheetRows = $state<SheetLine[][]>([]);
+	// Grille décorative déterministe (SSR + hydratation identiques, pas de délai onMount).
+	const sheetRows = buildRandomSheetRows(createSeededRandom(77));
+
+	const activateStars = () => {
+		const run = () => {
+			refreshStars();
+			starsReady = true;
+		};
+		// Génération des box-shadow hors chemin critique (évite une longue tâche > 50 ms).
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(run, { timeout: 1500 });
+		} else {
+			setTimeout(run, 0);
+		}
+	};
 
 	onMount(() => {
-		sheetRows = buildRandomSheetRows();
-		refreshStars();
-		updateScrollState();
+		// Après le premier paint (LCP) : étoiles en tâche de fond.
+		requestAnimationFrame(() => {
+			requestAnimationFrame(activateStars);
+		});
+		scheduleUpdateScrollState();
 		window.addEventListener('resize', scheduleRefreshStars, { passive: true });
-		window.addEventListener('scroll', updateScrollState, { passive: true });
+		window.addEventListener('scroll', scheduleUpdateScrollState, { passive: true });
 		return () => {
 			if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+			if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
 			window.removeEventListener('resize', scheduleRefreshStars);
-			window.removeEventListener('scroll', updateScrollState);
+			window.removeEventListener('scroll', scheduleUpdateScrollState);
 		};
 	});
 </script>
 
+<svelte:head>
+	<link rel="preload" as="image" href={banner} fetchpriority="high" />
+</svelte:head>
+
 <main class="flex w-full flex-1 flex-col gap-16">
 	<section class="hero min-h-screen relative overflow-hidden bg-transparent">
 		<div class="top-0 absolute w-full z-40">
-			<Header />
+			<Header lcpImage />
 		</div>
-		<div class="pointer-events-none absolute inset-0">
-			<div
-				class="hero-stars-layer"
-				style={`--star-size:1px;--star-duration:50s;--star-shadow:${starsSmall};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-			></div>
-			<div
-				class="hero-stars-layer"
-				style={`--star-size:2px;--star-duration:100s;--star-shadow:${starsMedium};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-			></div>
-			<div
-				class="hero-stars-layer"
-				style={`--star-size:3px;--star-duration:150s;--star-shadow:${starsLarge};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
-			></div>
-		</div>
+		{#if starsReady}
+			<div class="pointer-events-none absolute inset-0" aria-hidden="true">
+				<div
+					class="hero-stars-layer"
+					style={`--star-size:1px;--star-duration:50s;--star-shadow:${starsSmall};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
+				></div>
+				<div
+					class="hero-stars-layer"
+					style={`--star-size:2px;--star-duration:100s;--star-shadow:${starsMedium};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
+				></div>
+				<div
+					class="hero-stars-layer"
+					style={`--star-size:3px;--star-duration:150s;--star-shadow:${starsLarge};--star-offset-x:${starOffsetX}px;--star-travel:${starTravel}px;`}
+				></div>
+			</div>
+		{/if}
 		<div class="hero-overlay bg-transparent"></div>
 		<div
 			class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
@@ -199,12 +233,18 @@
 			class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content lg:flex-row items-center"
 		>
 			<div class="space-y-4 text-center sm:text-left max-w-2xl">
-				<h1 class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl">
+				<h1
+					id="home-hero-title"
+					class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl"
+				>
 					La communauté française qui fait vivre vos
-					<span class="mx-1 inline-block animate-neon-glow text-white">LewdGames</span>
+					<span
+						class="mx-1 inline-block text-white [text-shadow:0_0_10px_color-mix(in_oklab,#ff005e_35%,transparent)] sm:animate-neon-glow sm:[text-shadow:none]"
+						>LewdGames</span
+					>
 					en VF
 				</h1>
-				<p class="text-neutral-content/90">
+				<p class="home-hero-lead text-neutral-content/90">
 					F95 France rassemble traducteurs, relecteurs et joueurs pour suivre les sorties, améliorer
 					les traductions et partager chaque avancée en français.
 				</p>
