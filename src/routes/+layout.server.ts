@@ -1,8 +1,9 @@
+import { AGE_VERIFICATION_COOKIE } from '$lib/age-verification';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ url, locals }) => {
+export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 	const pathname = url.pathname;
 	const registrationEnabled = isRegistrationEnabled();
 
@@ -19,6 +20,7 @@ export const load: LayoutServerLoad = async ({ url, locals }) => {
 
 	return {
 		user: locals.user,
-		registrationEnabled
+		registrationEnabled,
+		ageVerified: cookies.get(AGE_VERIFICATION_COOKIE) === '1'
 	};
 };

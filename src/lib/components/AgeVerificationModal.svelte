@@ -13,7 +13,11 @@
 </script>
 
 <!-- modal-open requis : sans lui, .modal-box reste à opacity 0 (daisyUI) -->
-<dialog class="modal modal-open bg-transparent!" open aria-labelledby="age-verification-title">
+<dialog
+	class="age-verification-modal modal modal-open bg-transparent!"
+	open
+	aria-labelledby="age-verification-title"
+>
 	<div
 		class="modal-box relative z-10 w-full max-w-lg border border-base-300/80 bg-base-100 shadow-2xl"
 	>

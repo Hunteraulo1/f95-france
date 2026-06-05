@@ -24,8 +24,10 @@
 		initializeUserFromLocals(data.user);
 	});
 
-	const readInitialAgeVerified = () =>
-		browser ? document.documentElement.dataset.ageVerified === '1' : false;
+	const readInitialAgeVerified = () => {
+		if (data.ageVerified) return true;
+		return browser ? document.documentElement.dataset.ageVerified === '1' : false;
+	};
 
 	let ageVerified = $state(readInitialAgeVerified());
 
@@ -89,7 +91,9 @@
 				{#if !isHome}
 					<Header />
 				{/if}
-				{@render children()}
+				<div class="w-full mx-auto" class:max-w-[1536px]={page.url.pathname !== '/'}>
+					{@render children()}
+				</div>
 			</div>
 			<Footer />
 		{/if}

@@ -8,6 +8,7 @@ export const PERMISSION_REQUIRES: Partial<Record<PermissionKey, PermissionKey>> 
 	'games.revert_history': 'games.manage',
 	'submissions.own': 'games.manage',
 	'submissions.review': 'games.manage',
+	'users.view_email': 'users.manage',
 	'users.assign_admin': 'users.manage',
 	'config.edit': 'config.view',
 	'maintenance.manage': 'config.view'

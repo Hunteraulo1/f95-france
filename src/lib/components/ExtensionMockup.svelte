@@ -9,9 +9,11 @@
 
 	interface Props {
 		games: HomeExtensionMockupGame[];
+		/** Dans le hero : pas de perspective/flottement propres (gérés par le parent). */
+		heroEmbed?: boolean;
 	}
 
-	let { games }: Props = $props();
+	let { games, heroEmbed = false }: Props = $props();
 
 	const fallbackGames: HomeExtensionMockupGame[] = [
 		{
@@ -37,13 +39,18 @@
 	] as const;
 </script>
 
-<div class="relative mx-auto w-76 perspective-distant select-none" aria-hidden="true">
+<div
+	class="relative mx-auto w-76 select-none {heroEmbed ? '' : 'perspective-distant'}"
+	aria-hidden="true"
+>
 	<div
 		class="pointer-events-none absolute inset-[6%_-12%_-6%] rounded-4xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-secondary)_42%,transparent),transparent_70%)] blur-[20px]"
 	></div>
 
 	<div
-		class="relative flex h-135 w-76 flex-col overflow-hidden rounded-lg border border-ext-border bg-ext-background text-ext-secondary-foreground shadow-[0_28px_56px_-14px_color-mix(in_oklab,var(--color-neutral)_55%,transparent)] animate-float-sheet-reverse"
+		class="relative flex h-135 w-76 flex-col overflow-hidden rounded-lg border border-ext-border bg-ext-background text-ext-secondary-foreground shadow-[0_28px_56px_-14px_color-mix(in_oklab,var(--color-neutral)_55%,transparent)] {heroEmbed
+			? ''
+			: 'animate-float-sheet-reverse'}"
 	>
 		<div class="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 pt-0">
 			<div

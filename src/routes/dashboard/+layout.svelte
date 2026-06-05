@@ -1,4 +1,5 @@
 <script>
+	import '../../app.css';
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
@@ -19,8 +20,10 @@
 
 <Header maintenanceMode={data.maintenanceMode} />
 
-<main class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open">
-	<div class="drawer-content overflow-y-auto bg-base-200 p-4 sm:p-8 lg:p-16">
+<main
+	class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open bg-base-200 overflow-y-auto"
+>
+	<div class="drawer-content p-4 sm:p-8 lg:p-16 max-w-[1536px] w-full mx-auto">
 		{@render children?.()}
 	</div>
 	{#if data.user}

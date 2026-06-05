@@ -1,6 +1,7 @@
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import {
@@ -48,6 +49,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	assertDashboardAuthenticated(locals);
 
 	const canManageTranslators = hasPermission(locals, 'translators.manage');
+	const canViewUserEmails = hasPermission(locals, 'users.view_email');
 	const hasGamesManage = hasPermission(locals, 'games.manage');
 	const roleEditMode = hasGamesManage ? await getRoleEditMode(locals.user.role) : null;
 
@@ -113,10 +115,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		userDirectMode: locals.user.directMode ?? true
 	});
 
+	const usersForClient = users.map((u) => ({
+		...u,
+		email: formatUserEmailForDisplay(u.email, canViewUserEmails)
+	}));
+
 	return {
 		translator: translatorsWithPages,
-		users,
+		users: usersForClient,
 		canManageTranslators,
+		canViewUserEmails,
 		hasGamesManage,
 		roleEditMode,
 		translatorPagesWriteMode,

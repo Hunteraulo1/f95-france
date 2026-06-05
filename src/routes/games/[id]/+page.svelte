@@ -14,6 +14,7 @@
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import SquarePen from '@lucide/svelte/icons/square-pen';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -154,6 +155,12 @@
 								>
 									<ExternalLink class="h-4 w-4" />
 									Voir le thread
+								</a>
+							{/if}
+							{#if data.canManageGame}
+								<a href="/dashboard/game/{game.id}" class="btn btn-outline gap-2">
+									<SquarePen class="h-4 w-4" />
+									Modifier le jeu
 								</a>
 							{/if}
 							{#if game.threadId}

@@ -6,6 +6,7 @@
 	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { formatUserAccountOptionLabel } from '$lib/permissions/user-email';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -259,7 +260,9 @@
 				<select id="add-user-link" name="userId" class="select-bordered select w-full">
 					<option value="">Aucun</option>
 					{#each data.users as u (u.id)}
-						<option value={u.id}>{u.username} ({u.email})</option>
+						<option value={u.id}
+							>{formatUserAccountOptionLabel(u.username, u.email, data.canViewUserEmails)}</option
+						>
 					{/each}
 				</select>
 			</div>
@@ -346,7 +349,7 @@
 							<option value="" selected={!selectedTranslator.userId}>Aucun</option>
 							{#each data.users as u (u.id)}
 								<option value={u.id} selected={selectedTranslator.userId === u.id}>
-									{u.username} ({u.email})
+									{formatUserAccountOptionLabel(u.username, u.email, data.canViewUserEmails)}
 								</option>
 							{/each}
 						</select>
