@@ -5,9 +5,9 @@ import * as table from '$lib/server/db/schema';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import {
-    assertCanAssignUserRole,
-    assertCanManageUserWithRole,
-    listRolesAssignableToUsers
+	assertCanAssignUserRole,
+	assertCanManageUserWithRole,
+	listRolesAssignableToUsers
 } from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ilike, ne, or, sql } from 'drizzle-orm';

@@ -391,43 +391,41 @@
 										{#snippet trigger()}
 											<EllipsisVertical size={18} />
 										{/snippet}
-										{#snippet children()}
-											{#if t.tlink && t.tlink.trim().length > 0}
-												<li>
-													<a
-														href={t.tlink}
-														target="_blank"
-														rel="noopener noreferrer"
-														class="flex items-center gap-2"
-													>
-														<ExternalLink size={16} />
-														Ouvrir le lien de téléchargement
-													</a>
-												</li>
-											{/if}
-											{#if t.canResumeTranslatorAlerts}
-												<li>
-													<button
-														type="button"
-														class="text-primary"
-														onclick={() => openResumeModal(t)}
-													>
-														Reprendre la traduction
-													</button>
-												</li>
-											{/if}
-											{#if t.canMuteTranslatorAlerts}
-												<li>
-													<button
-														type="button"
-														class="text-error"
-														onclick={() => openAbandonModal(t)}
-													>
-														Abandonner la traduction
-													</button>
-												</li>
-											{/if}
-										{/snippet}
+										{#if t.tlink && t.tlink.trim().length > 0}
+											<li>
+												<a
+													href={t.tlink}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="flex items-center gap-2"
+												>
+													<ExternalLink size={16} />
+													Ouvrir le lien de téléchargement
+												</a>
+											</li>
+										{/if}
+										{#if t.canResumeTranslatorAlerts}
+											<li>
+												<button
+													type="button"
+													class="text-primary"
+													onclick={() => openResumeModal(t)}
+												>
+													Reprendre la traduction
+												</button>
+											</li>
+										{/if}
+										{#if t.canMuteTranslatorAlerts}
+											<li>
+												<button
+													type="button"
+													class="text-error"
+													onclick={() => openAbandonModal(t)}
+												>
+													Abandonner la traduction
+												</button>
+											</li>
+										{/if}
 									</FixedDropdownMenu>
 								{:else}
 									<span class="text-sm opacity-60">—</span>
