@@ -38,10 +38,8 @@
 
 	const DEFAULT_FIELD_SIZE = 2000;
 
-	const starShadowCache = new Map<
-		number,
-		{ small: string; medium: string; large: string }
-	>();
+	// Cache de mémoïsation non réactif (les valeurs sont copiées dans des $state séparés).
+	const starShadowCache: Record<number, { small: string; medium: string; large: string }> = {};
 
 	const createSeededRandom = (seed: number) => {
 		let state = seed;
@@ -72,14 +70,14 @@
 	let resizeFrame: number | null = null;
 
 	const getStarShadows = (fieldSize: number) => {
-		let cached = starShadowCache.get(fieldSize);
+		let cached = starShadowCache[fieldSize];
 		if (!cached) {
 			cached = {
 				small: buildStarShadows(280, 11, fieldSize),
 				medium: buildStarShadows(100, 22, fieldSize),
 				large: buildStarShadows(50, 33, fieldSize)
 			};
-			starShadowCache.set(fieldSize, cached);
+			starShadowCache[fieldSize] = cached;
 		}
 		return cached;
 	};
@@ -313,10 +311,12 @@
 							/>
 						{:else}
 							<div class="absolute inset-0 bg-base-300" aria-hidden="true">
-                <div class="flex h-full w-full items-center justify-center text-sm text-base-content/50">
-                  Pas d’aperçu
-                </div>
-              </div>
+								<div
+									class="flex h-full w-full items-center justify-center text-sm text-base-content/50"
+								>
+									Pas d’aperçu
+								</div>
+							</div>
 						{/if}
 						<a
 							href={resolve(`/games/${update.game.gameId}`)}
@@ -331,7 +331,9 @@
 							aria-hidden="true"
 						></div>
 						<div class="card-body relative z-10 flex h-full flex-col justify-start gap-3 p-4">
-							<div class="flex flex-col items-start justify-between gap-3 text-neutral-content drop-shadow-sm">
+							<div
+								class="flex flex-col items-start justify-between gap-3 text-neutral-content drop-shadow-sm"
+							>
 								<span
 									class={statusClass(update.updateStatus) + ' text-xs text-nowrap font-semibold'}
 									>{statusLabel(update.updateStatus)}</span

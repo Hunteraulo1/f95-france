@@ -1,8 +1,8 @@
 import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import {
-    effectiveTranslationVersion,
-    isTranslationOutdated
+	effectiveTranslationVersion,
+	isTranslationOutdated
 } from '$lib/server/api/translation-public';
 import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
 import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
@@ -48,7 +48,7 @@ export type HomePayload = {
 		teamRole: string;
 		teamRoleSlug: string;
 		teamBadgeStyle: string;
-		teamLink: string;
+		teamLink: `/profile/${string}`;
 	}[];
 	extensionMockupGames: Awaited<ReturnType<typeof listHomeExtensionMockupGames>>;
 	extensionDownloads: Awaited<ReturnType<typeof getExtensionReleaseDownloadUrls>>;

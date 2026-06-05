@@ -43,12 +43,7 @@
 </script>
 
 <div class="drawer drawer-end w-full">
-	<input
-		id={NAV_DRAWER_ID}
-		type="checkbox"
-		class="drawer-toggle"
-		bind:checked={navDrawerOpen}
-	/>
+	<input id={NAV_DRAWER_ID} type="checkbox" class="drawer-toggle" bind:checked={navDrawerOpen} />
 
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
