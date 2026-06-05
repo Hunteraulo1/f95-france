@@ -101,7 +101,9 @@
 					<select class="select-bordered select w-full" name="ownerUserId" required>
 						<option value="" disabled selected>Choisir un compte</option>
 						{#each data.usersList as u (u.id)}
-							<option value={u.id}>{u.username} — {u.email}</option>
+							<option value={u.id}>
+								{data.canViewUserEmails ? `${u.username} — ${u.email}` : u.username}
+							</option>
 						{/each}
 					</select>
 				</label>

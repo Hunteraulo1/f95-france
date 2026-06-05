@@ -6,6 +6,7 @@ import {
 	type PermissionKey
 } from '$lib/permissions/catalog';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import {
 	GAMES_MANAGE_PERMISSION,
 	isRoleEditMode,
@@ -25,6 +26,7 @@ import * as table from '$lib/server/db/schema';
 import {
 	assertPermission,
 	countUsersWithRoles,
+	hasPermission,
 	getEffectivePermissionsByRoles,
 	invalidateRolePermissionsCache,
 	listRolePermissions,
@@ -100,6 +102,8 @@ function enrichRoleRow(
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'roles.manage');
 
+	const canViewUserEmails = hasPermission(locals, 'users.view_email');
+
 	const rolesRaw = await selectAllAppRoles();
 	const roleSlugs = rolesRaw.map((r) => r.slug);
 	const [userCounts, effectivePermsBySlug, staffUsers, staffRoleIssues] = await Promise.all([
@@ -172,7 +176,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		isSelectedRoleSuperadmin,
 		rolePriorityMin: ROLE_PRIORITY_MIN,
 		rolePriorityMax: ROLE_PRIORITY_MAX,
-		staffUsers,
+		staffUsers: staffUsers.map((member) => ({
+			...member,
+			email: formatUserEmailForDisplay(member.email, canViewUserEmails)
+		})),
 		roles: rolesWithAccess,
 		noticeMessage,
 		selectedSlug,

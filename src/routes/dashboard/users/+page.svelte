@@ -6,6 +6,7 @@
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 	import User from '@lucide/svelte/icons/user';
 	import type { PageData } from './$types';
 
@@ -118,7 +119,7 @@
 									</a>
 								</div>
 							</td>
-							<td>{user.email}</td>
+							<td>{formatUserEmailForDisplay(user.email, data.canViewUserEmails)}</td>
 							<td>
 								<div
 									class="badge badge-outline text-nowrap {roleBadgeClass(
@@ -218,20 +219,22 @@
 					/>
 				</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-email" class="label">
-						<span class="label-text">Email</span>
-					</label>
-					<input
-						id="edit-email"
-						name="email"
-						type="email"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.email}
-						required
-					/>
-				</div>
+				{#if data.canViewUserEmails}
+					<div class="form-control mt-4 w-full">
+						<label for="edit-email" class="label">
+							<span class="label-text">Email</span>
+						</label>
+						<input
+							id="edit-email"
+							name="email"
+							type="email"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.email}
+							required
+						/>
+					</div>
+				{/if}
 
 				<div class="form-control mt-4 w-full">
 					<label for="edit-avatar" class="label">
