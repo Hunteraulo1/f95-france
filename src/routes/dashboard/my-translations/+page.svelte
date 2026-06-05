@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import AbandonTranslationModal from '$lib/components/dashboard/AbandonTranslationModal.svelte';
+	import FixedDropdownMenu from '$lib/components/dashboard/FixedDropdownMenu.svelte';
 	import ResumeTranslationModal from '$lib/components/dashboard/ResumeTranslationModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
@@ -196,10 +197,6 @@
 		Boolean(
 			(t.tlink && t.tlink.trim()) || t.canMuteTranslatorAlerts || t.canResumeTranslatorAlerts
 		);
-
-	/** Dernières lignes : menu vers le haut (évite le clip overflow + pagination). */
-	const dropdownOpensUpward = (rowIndex: number, rowCount: number) =>
-		rowCount > 0 && rowIndex >= rowCount - 2;
 </script>
 
 <div class="space-y-6">
@@ -317,7 +314,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.translations as t, rowIndex (t.id)}
+					{#each data.translations as t (t.id)}
 						<tr>
 							<td class="font-semibold">
 								<a class="link link-hover" href={`/dashboard/game/${t.game.id}`}>{t.game.name}</a>
@@ -390,31 +387,11 @@
 							</td>
 							<td class="text-right">
 								{#if rowHasMenuActions(t)}
-									<div
-										class="dropdown dropdown-end {dropdownOpensUpward(
-											rowIndex,
-											data.translations.length
-										)
-											? 'dropdown-top'
-											: ''}"
-									>
-										<button
-											type="button"
-											tabindex="0"
-											class="btn btn-ghost btn-square btn-sm"
-											aria-label="Actions pour {t.game.name}"
-										>
+									<FixedDropdownMenu label="Actions pour {t.game.name}">
+										{#snippet trigger()}
 											<EllipsisVertical size={18} />
-										</button>
-										<ul
-											tabindex="-1"
-											class="dropdown-content menu z-50 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg {dropdownOpensUpward(
-												rowIndex,
-												data.translations.length
-											)
-												? 'mb-1'
-												: 'mt-1'}"
-										>
+										{/snippet}
+										{#snippet children()}
 											{#if t.tlink && t.tlink.trim().length > 0}
 												<li>
 													<a
@@ -450,8 +427,8 @@
 													</button>
 												</li>
 											{/if}
-										</ul>
-									</div>
+										{/snippet}
+									</FixedDropdownMenu>
 								{:else}
 									<span class="text-sm opacity-60">—</span>
 								{/if}
