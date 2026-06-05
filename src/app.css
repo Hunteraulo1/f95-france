@@ -6,43 +6,9 @@
 		dark --prefersdark;
 	/* Uniquement les composants daisyUI réellement utilisés dans le projet. */
 	include:
-		alert,
-		avatar,
-		badge,
-		btn,
-		card,
-		checkbox,
-		collapse,
-		divider,
-		drawer,
-		dropdown,
-		fieldset,
-		footer,
-		hero,
-		input,
-		join,
-		kbd,
-		label,
-		link,
-		list,
-		loading,
-		mask,
-		menu,
-		modal,
-		navbar,
-		progress,
-		radio,
-		range,
-		select,
-		stat,
-		status,
-		steps,
-		table,
-		textarea,
-		timeline,
-		toast,
-		toggle,
-		tooltip;
+		alert, avatar, badge, btn, card, checkbox, collapse, divider, drawer, dropdown, fieldset,
+		footer, hero, input, join, kbd, label, link, list, loading, mask, menu, modal, navbar, progress,
+		radio, range, select, stat, status, steps, table, textarea, timeline, toast, toggle, tooltip;
 }
 
 @theme {
@@ -109,7 +75,6 @@
 			transform: translateY(calc(var(--star-travel) * -1));
 		}
 	}
-
 }
 
 .hero-stars-layer,
