@@ -27,6 +27,10 @@
 				margin: 0;
 				color: rgb(245 245 245 / 0.9);
 			}
+			/* Évite le flash de la modale d'âge si localStorage dit déjà « vérifié » (avant hydratation). */
+			html[data-age-verified='1'] .age-verification-modal {
+				display: none !important;
+			}
 		</style>
 		<script nonce="%sveltekit.nonce%">
 			(function () {
@@ -48,17 +52,18 @@
 				} catch (e) {}
 
 				document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
-				if (!ageVerified) {
+				if (ageVerified) {
+					if (document.cookie.indexOf('f95-france-age-verified=1') === -1) {
+						document.cookie =
+							'f95-france-age-verified=1; path=/; max-age=31536000; SameSite=Lax';
+					}
+				} else {
 					document.documentElement.classList.add('overflow-hidden');
 				}
 			})();
 		</script>
 		%sveltekit.head%
 	</head>
-	<!--
-		`off` : en dev, le HMR régénère les chunks (nodes/*.js) et les survols déclenchaient des précharges
-		qui échouent (NetworkError, « Preloading data failed »). En prod, tu peux repasser à `hover` si tu veux.
-	-->
 	<body data-sveltekit-preload-data="off">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>

@@ -24,8 +24,10 @@
 		initializeUserFromLocals(data.user);
 	});
 
-	const readInitialAgeVerified = () =>
-		browser ? document.documentElement.dataset.ageVerified === '1' : false;
+	const readInitialAgeVerified = () => {
+		if (data.ageVerified) return true;
+		return browser ? document.documentElement.dataset.ageVerified === '1' : false;
+	};
 
 	let ageVerified = $state(readInitialAgeVerified());
 
