@@ -5,41 +5,55 @@ import * as table from '$lib/server/db/schema';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import {
-	assertCanAssignUserRole,
-	assertCanManageUserWithRole,
-	listRolesAssignableToUsers
+    assertCanAssignUserRole,
+    assertCanManageUserWithRole,
+    listRolesAssignableToUsers
 } from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
+
+const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'users.manage');
 
 	const canViewUserEmails = hasPermission(locals, 'users.view_email');
 
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-	const [totalUsersResult, translatorsList] = await Promise.all([
-		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user),
-		db
-			.select({
-				id: table.translator.id,
-				name: table.translator.name,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.orderBy(table.translator.name)
+	const searchWhere = q
+		? or(
+				ilike(table.user.username, `%${escapeIlike(q)}%`),
+				...(canViewUserEmails ? [ilike(table.user.email, `%${escapeIlike(q)}%`)] : [])
+			)
+		: undefined;
+
+	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user);
+	const translatorsListPromise = db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			userId: table.translator.userId
+		})
+		.from(table.translator)
+		.orderBy(table.translator.name);
+
+	const [[totalUsersResult], translatorsList] = await Promise.all([
+		searchWhere ? countBase.where(searchWhere) : countBase,
+		translatorsListPromise
 	]);
 
-	const totalUsers = Number(totalUsersResult[0]?.count ?? 0);
+	const totalUsers = Number(totalUsersResult?.count ?? 0);
 	const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 	const page = Math.min(requestedPage, totalPages);
+	const offset = (page - 1) * PAGE_SIZE;
 
-	const users = await db
+	const listBase = db
 		.select({
 			id: table.user.id,
 			username: table.user.username,
@@ -52,10 +66,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					'last_connection_at'
 				)
 		})
-		.from(table.user)
+		.from(table.user);
+
+	const users = await (searchWhere ? listBase.where(searchWhere) : listBase)
 		.orderBy(table.user.createdAt)
 		.limit(PAGE_SIZE)
-		.offset((page - 1) * PAGE_SIZE);
+		.offset(offset);
 
 	const now = new Date();
 	const usersWithLiveLastConnection = users.map((u) =>
@@ -88,6 +104,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		roles,
 		canViewUserEmails,
 		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
+		q,
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
