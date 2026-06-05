@@ -4,15 +4,66 @@
  * Usage : bun run lighthouse
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..');
+/** Sous WSL/Linux, les chemins UNC Windows (`\\wsl.localhost\...`) deviennent un nom de dossier littéral. */
+function toFsPath(path) {
+  if (process.platform === 'win32') return path;
+  return path.replace(/\\/g, '/');
+}
+
+function resolveProjectRoot() {
+  const fromScript = resolve(toFsPath(dirname(fileURLToPath(import.meta.url))), '..');
+  const hasPackageJson = existsSync(join(fromScript, 'package.json'));
+
+  if (hasPackageJson && !fromScript.includes('\\')) {
+    return fromScript;
+  }
+
+  const cwd = resolve(toFsPath(process.cwd()));
+  if (existsSync(join(cwd, 'package.json'))) {
+    if (!hasPackageJson) {
+      console.warn(
+        'Chemin projet détecté via le répertoire courant (évite les chemins UNC Windows sous WSL).'
+      );
+    }
+    return cwd;
+  }
+
+  if (fromScript.includes('\\') || /wsl\.localhost/i.test(fromScript)) {
+    throw new Error(
+      [
+        'Chemin projet invalide sous WSL/Linux :',
+        fromScript,
+        '',
+        'Lancez « bun run lighthouse » depuis un terminal WSL dans le projet,',
+        'pas depuis PowerShell/CMD avec un chemin \\\\wsl.localhost\\....'
+      ].join('\n')
+    );
+  }
+
+  return fromScript;
+}
+
+const projectRoot = resolveProjectRoot();
 const browserCacheDir = join(projectRoot, '.cache', 'browsers');
 const lighthouseChromeProfileDir = join(projectRoot, '.cache', 'lighthouse-chrome');
+
+function removeMalformedLighthouseDirs() {
+  if (process.platform === 'win32') return;
+
+  for (const entry of readdirSync(projectRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (!/wsl\.localhost/i.test(entry.name) && !entry.name.includes('\\')) continue;
+
+    const target = join(projectRoot, entry.name);
+    rmSync(target, { recursive: true, force: true });
+    console.warn(`Dossier Lighthouse malformé supprimé : ${entry.name}`);
+  }
+}
 
 const ORIGIN = process.env.ORIGIN ?? 'http://localhost:4173';
 const PORT = process.env.PORT ?? '4173';
@@ -150,34 +201,122 @@ const CHROME_FLAGS = [
   '--disable-extensions'
 ];
 
-async function killChromeInstance(chrome) {
-  try {
-    await Promise.race([chrome.kill(), delay(5000)]);
-  } catch {
-    // chrome-launcher kill peut échouer si le processus est déjà mort
+const DEBUG_HOST = '127.0.0.1';
+
+function prepareChromeProfileDir() {
+  removeMalformedLighthouseDirs();
+  rmSync(lighthouseChromeProfileDir, { recursive: true, force: true });
+  mkdirSync(lighthouseChromeProfileDir, { recursive: true });
+}
+
+/**
+ * On lance Chrome nous-mêmes au lieu d’utiliser `chrome-launcher` : sous WSL ce dernier
+ * convertit le `userDataDir` Linux en chemin Windows (`wslpath -w`), ce qui crée des dossiers
+ * parasites (`\\wsl.localhost\...` ou `C:\…\lighthouse.XXXX`) car notre Chromium est un binaire Linux.
+ */
+function spawnChrome(chromePath) {
+  return spawn(
+    chromePath,
+    [
+      ...CHROME_FLAGS,
+      `--user-data-dir=${lighthouseChromeProfileDir}`,
+      '--remote-debugging-port=0',
+      'about:blank'
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] }
+  );
+}
+
+/** Chrome écrit « DevTools listening on ws://127.0.0.1:PORT/… » sur stderr au démarrage. */
+function readDebugPort(child, timeoutMs = 30000) {
+  return new Promise((resolvePort, reject) => {
+    let buffer = '';
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.stderr.off('data', onData);
+      child.off('exit', onExit);
+    };
+    const onData = (chunk) => {
+      buffer += chunk.toString();
+      const match = buffer.match(/DevTools listening on ws:\/\/[^:]+:(\d+)\//);
+      if (match) {
+        cleanup();
+        resolvePort(Number(match[1]));
+      }
+    };
+    const onExit = (code) => {
+      cleanup();
+      reject(new Error(`Chrome s’est arrêté (code ${code}) avant d’exposer le port DevTools.`));
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Délai dépassé : port DevTools introuvable.'));
+    }, timeoutMs);
+    child.stderr.on('data', onData);
+    child.on('exit', onExit);
+  });
+}
+
+async function waitForDebuggerReady(port, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://${DEBUG_HOST}:${port}/json/version`, {
+        signal: AbortSignal.timeout(2000)
+      });
+      if (res.ok) return;
+    } catch {
+      // débogueur pas encore prêt
+    }
+    await delay(250);
   }
+  throw new Error('Le débogueur Chrome n’a pas répondu à temps.');
+}
+
+function killChrome(child) {
+  return new Promise((resolveKill) => {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      resolveKill();
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* déjà mort */
+      }
+      resolveKill();
+    }, 5000);
+    child.once('exit', () => {
+      clearTimeout(timer);
+      resolveKill();
+    });
+    try {
+      child.kill('SIGTERM');
+    } catch {
+      clearTimeout(timer);
+      resolveKill();
+    }
+  });
 }
 
 async function runLighthouse(chromePath) {
-  const chromeLauncher = await import('chrome-launcher');
   const lighthouse = (await import('lighthouse')).default;
 
-  rmSync(lighthouseChromeProfileDir, { recursive: true, force: true });
+  prepareChromeProfileDir();
 
-  const chrome = await chromeLauncher.launch({
-    chromePath,
-    chromeFlags: CHROME_FLAGS,
-    userDataDir: lighthouseChromeProfileDir,
-    connectionPollInterval: 250,
-    maxConnectionRetries: 60
-  });
+  const chrome = spawnChrome(chromePath);
 
   try {
+    const port = await readDebugPort(chrome);
+    await waitForDebuggerReady(port);
+    chrome.stderr.resume(); // évite que le buffer stderr ne sature pendant l’audit
+
     const result = await lighthouse(ORIGIN, {
       logLevel: 'error',
       output: 'json',
       onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
-      port: chrome.port
+      port
     });
 
     if (!result?.lhr) {
@@ -187,8 +326,9 @@ async function runLighthouse(chromePath) {
     writeFileSync(REPORT_PATH, result.report);
     return result.lhr;
   } finally {
-    await killChromeInstance(chrome);
+    await killChrome(chrome);
     rmSync(lighthouseChromeProfileDir, { recursive: true, force: true });
+    removeMalformedLighthouseDirs();
   }
 }
 
@@ -237,7 +377,12 @@ try {
   }
 } catch (error) {
   console.error(error);
-  if (isWsl()) {
+  const message = error instanceof Error ? error.message : String(error);
+  const wslChromeIssue =
+    isWsl() &&
+    (/ECONNREFUSED|Chrome.*not.*found|No Chrome installations found/i.test(message) ||
+      /\/mnt\/c\/.*chrome/i.test(message));
+  if (wslChromeIssue) {
     console.error(
       [
         '',

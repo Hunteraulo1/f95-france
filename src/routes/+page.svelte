@@ -295,12 +295,15 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 select-none">
 				{#each data.updates as update (update.updateId)}
+					{@const homeUpdateImageSrc = resolveGameImageSrc(update.game.gameImage, {
+						website: update.game.gameWebsite
+					})}
 					<article
 						class="card card-border bg-base-100 aspect-4/3 last:hidden lg:last:flex sm:last:hidden xs:last:flex relative overflow-hidden"
 					>
-						{#if update.game.gameImage}
+						{#if homeUpdateImageSrc}
 							<img
-								src={update.game.gameImage}
+								src={homeUpdateImageSrc}
 								alt=""
 								class="absolute inset-0 h-full w-full object-cover"
 								loading="lazy"

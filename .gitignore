@@ -18,6 +18,7 @@ node_modules
 /scripts/*.md
 .lighthouse-report.json
 .cache/
+_tmp_*
 
 # Docker
 docker/postgres/init/
