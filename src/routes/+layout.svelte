@@ -20,14 +20,13 @@
 
 	let { data, children }: Props = $props();
 
-	initializeUserFromLocals(data.user);
-
 	$effect(() => {
 		initializeUserFromLocals(data.user);
 	});
 
 	/** Aligné sur le cookie SSR — le localStorage est resynchronisé après hydratation (app.html). */
-	let ageVerified = $state(data.ageVerified);
+	let ageVerifiedLocal = $state<boolean | null>(null);
+	const ageVerified = $derived(ageVerifiedLocal ?? data.ageVerified);
 
 	$effect(() => {
 		if (!browser) return;
@@ -46,13 +45,13 @@
 
 	const confirmAge = () => {
 		setAgeVerified();
-		ageVerified = true;
+		ageVerifiedLocal = true;
 	};
 
 	onMount(() => {
 		if (!ageVerified && isAgeVerified()) {
 			setAgeVerified();
-			ageVerified = true;
+			ageVerifiedLocal = true;
 		}
 
 		const run = () => themeChange(false);

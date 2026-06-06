@@ -1,13 +1,11 @@
 <script>
-	import '../../app.css';
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
-	import { initializeUserFromLocals, syncSessionFromLayoutData } from '$lib/stores';
+	import { syncSessionFromLayoutData } from '$lib/stores';
+	import '../../app.css';
 
 	let { children, data } = $props();
-
-	syncSessionFromLayoutData(data);
 
 	$effect(() => {
 		syncSessionFromLayoutData(data);
@@ -32,6 +30,9 @@
 			hasLinkedTranslator={data.hasLinkedTranslator}
 			canReturnToOwnAccount={data.canReturnToOwnAccount}
 			devOriginUsername={data.devOriginUsername}
+			permissions={data.permissions}
+			userRole={data.user.role}
+			hasUser={true}
 		/>
 	{/if}
 </main>
