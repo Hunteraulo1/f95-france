@@ -13,7 +13,6 @@ import {
 } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	voidSyncGameTranslationsToGoogleSheet,
@@ -375,9 +374,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			await syncAcTranslationsToCheckerVersion(gameId, normalizedCheckerVersion);
 		}
 		voidSyncGameTranslationsToGoogleSheet(gameId, 'dashboard/update-game');
-		if (!isSilentMode) {
-			await touchGameUpdatedToday(gameId);
-		}
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
 		return json({

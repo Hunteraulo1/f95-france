@@ -20,7 +20,6 @@ import {
 	parseRequestDirectMode,
 	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
-import { createGameUpdateRow } from '$lib/server/game-updates';
 import {
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
@@ -411,10 +410,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			return { gameId: newGameId, createdTranslationId: newTranslationId };
 		});
-
-		if (gameId) {
-			await createGameUpdateRow(gameId, 'adding');
-		}
 
 		if (shouldCreateTranslation && createdTranslationId) {
 			voidSyncTranslationToGoogleSheet(createdTranslationId, 'manager/create-game');
