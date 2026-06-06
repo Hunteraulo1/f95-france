@@ -1,57 +1,28 @@
-import { privateEnv } from '$lib/server/private-env';
 import {
-	hasGoogleTranslationConfigured,
-	translateTextToFrenchGoogle
-} from '$lib/server/translate-google';
-import { translateTextToFrenchMyMemory } from '$lib/server/translate-mymemory';
+    isDescriptionAutoTranslateEnabled,
+    translateTextToFrenchLibreTranslate
+} from '$lib/server/translate-libretranslate';
 
 export type GameDescriptionFields = {
 	description: string | null;
 	descriptionFr: string | null;
 };
 
-type TranslationProvider = 'mymemory' | 'google' | 'off';
-
 function normalizeDescription(value: string | null | undefined): string | null {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : null;
 }
 
-function resolveTranslationProvider(): TranslationProvider {
-	const raw = privateEnv('TRANSLATION_PROVIDER')?.toLowerCase();
-	if (raw === 'off' || raw === 'none' || raw === 'false') return 'off';
-	if (raw === 'google') return 'google';
-	if (raw === 'mymemory') return 'mymemory';
-	return 'mymemory';
-}
-
-/** Traduit un texte vers le français (MyMemory par défaut, Google en secours ou si configuré). */
+/** Traduit un texte vers le français via LibreTranslate. */
 export async function translateTextToFrench(text: string): Promise<string | null> {
 	const trimmed = text.trim();
-	if (!trimmed) return null;
+	if (!trimmed || !isDescriptionAutoTranslateEnabled()) return null;
 
-	const provider = resolveTranslationProvider();
-	if (provider === 'off') return null;
-
-	if (provider === 'google') {
-		const result = await translateTextToFrenchGoogle(trimmed);
-		if (result) return result;
-		console.warn('[game-description-fr] Google Translate indisponible');
-		return null;
+	const result = await translateTextToFrenchLibreTranslate(trimmed);
+	if (!result) {
+		console.warn('[game-description-fr] traduction LibreTranslate impossible');
 	}
-
-	const myMemory = await translateTextToFrenchMyMemory(trimmed);
-	if (myMemory) return myMemory;
-
-	if (await hasGoogleTranslationConfigured()) {
-		const google = await translateTextToFrenchGoogle(trimmed);
-		if (google) return google;
-	}
-
-	console.warn(
-		'[game-description-fr] traduction impossible (MyMemory quota ou erreur ; Google non configuré)'
-	);
-	return null;
+	return result;
 }
 
 /**
