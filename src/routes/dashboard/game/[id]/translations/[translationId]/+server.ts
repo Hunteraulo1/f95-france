@@ -2,38 +2,33 @@ import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookAdminNewSubmission,
-	sendDiscordWebhookUpdatesSubmissionApplied
+    sendDiscordWebhookAdminNewSubmission,
+    sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
-	assertDirectGameWriteAllowed,
-	assertGameManageAccess,
-	loadCurrentUserOrThrow,
-	parseRequestDirectMode,
-	resolveGameWriteMode
+    assertDirectGameWriteAllowed,
+    assertGameManageAccess,
+    loadCurrentUserOrThrow,
+    parseRequestDirectMode,
+    resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import {
-	recordTranslationChangeInUpdateHistory,
-	touchGameUpdatedToday
-} from '$lib/server/game-updates';
-import {
-	deleteTranslationFromGoogleSheet,
-	voidSyncTranslationToGoogleSheet,
-	voidSyncTranslatorActivityCountsToGoogleSheet
+    deleteTranslationFromGoogleSheet,
+    voidSyncTranslationToGoogleSheet,
+    voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import {
-	hasGameTranslationGameTypeColumn,
-	publicErrorFromUnknown
+    hasGameTranslationGameTypeColumn,
+    publicErrorFromUnknown
 } from '$lib/server/schema-column-compat';
 import {
-	createTranslationDeleteSubmission,
-	createTranslationUpdateSubmission
+    createTranslationDeleteSubmission,
+    createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
-import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
@@ -204,10 +199,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				},
 				pendingNames.length > 0 ? pendingNames : undefined
 			);
-			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
-			if (!isSilentMode) {
-				await touchGameUpdatedToday(gameId);
-			}
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameId
@@ -330,27 +321,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			resolvedTranslatorId,
 			resolvedProofreaderId
 		);
-		if (!isSilentMode) {
-			await recordTranslationChangeInUpdateHistory(gameId, {
-				userId: currentUser.id,
-				translationId,
-				before: translationRowToHistorySnapshot(before),
-				after: translationRowToHistorySnapshot({
-					translationName: directSet.translationName,
-					version: directSet.version,
-					tversion: directSet.tversion,
-					status: directSet.status,
-					ttype: directSet.ttype,
-					tlink: directSet.tlink,
-					tname: directSet.tname,
-					gameType: directSet.gameType ?? before.gameType,
-					translatorId: directSet.translatorId,
-					proofreaderId: directSet.proofreaderId,
-					ac: directSet.ac
-				}),
-				updateKind: 'update'
-			});
-		}
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
 		return json({ message: 'Traduction modifiée avec succès' });
@@ -453,13 +423,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
-		await recordTranslationChangeInUpdateHistory(gameId, {
-			userId: currentUser.id,
-			translationId,
-			before: translationRowToHistorySnapshot(tr),
-			after: null,
-			updateKind: 'update'
-		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			appLogWarn('sheets-sync', 'delete translation row failed', err);
 		});

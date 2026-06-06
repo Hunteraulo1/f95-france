@@ -4,33 +4,25 @@ import { logApp } from '$lib/server/app-logger';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-	sendDiscordWebhookProofreadersVersionBumps,
-	sendDiscordWebhookTranslatorsVersionBumps,
-	sendDiscordWebhookUpdatesAutoCheckVersionBump,
-	type TranslatorVersionBumpLine
+    sendDiscordWebhookProofreadersVersionBumps,
+    sendDiscordWebhookTranslatorsVersionBumps,
+    sendDiscordWebhookUpdatesAutoCheckVersionBump,
+    type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
+import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
-	resolveTranslationStatusAfterAcVersionSync,
-	syncAcTranslationsToCheckerVersion
-} from '$lib/server/translation-ac-status';
-import {
-	shouldNotifyTranslatorOnAutoCheckVersionBump,
-	tradVerIndicatesIntegrated
+    shouldNotifyTranslatorOnAutoCheckVersionBump,
+    tradVerIndicatesIntegrated
 } from '$lib/server/translation-notify-rules';
 import {
-	buildTranslationHistoryContext,
-	translationRowToHistorySnapshot
-} from '$lib/server/update-history';
-import {
-	hasF95CheckerGameVersionChange,
-	isF95CheckerVersionAligned,
-	needsF95VersionBump,
-	normalizeCheckerVersion
+    hasF95CheckerGameVersionChange,
+    isF95CheckerVersionAligned,
+    needsF95VersionBump,
+    normalizeCheckerVersion
 } from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
@@ -141,87 +133,6 @@ function autoCheckGamePatchFromScrape(scraped: ScrapedThreadGame) {
 		image: scraped.image ?? undefined,
 		updatedAt: new Date()
 	};
-}
-
-type AutoCheckAcTranslationBeforeSync = {
-	translationId: string;
-	translationName: string | null;
-	version: string | null;
-	tversion: string;
-	tname: string;
-	status: string;
-	ac: boolean;
-	translatorId: string | null;
-	proofreaderId: string | null;
-};
-
-/** Alimente `update` + historique pour tout jeu modifié par l’auto-check. */
-async function recordAutoCheckGameUpdate(
-	gameId: string,
-	gameVersion: string | null,
-	newVersion: string,
-	translations: AutoCheckAcTranslationBeforeSync[],
-	isActualVersionBump: boolean
-): Promise<void> {
-	let updateTouched = false;
-	let versionDeltaRecorded = false;
-
-	for (const t of translations) {
-		const before = translationRowToHistorySnapshot({
-			translationName: t.translationName,
-			version: t.version ?? gameVersion,
-			tversion: t.tversion,
-			tname: t.tname,
-			status: t.status,
-			ac: t.ac,
-			translatorId: t.translatorId,
-			proofreaderId: t.proofreaderId
-		});
-		const afterStatus = resolveTranslationStatusAfterAcVersionSync(
-			{ status: t.status, tversion: t.tversion, tname: t.tname },
-			newVersion
-		);
-		const after = translationRowToHistorySnapshot({
-			translationName: t.translationName,
-			version: newVersion,
-			tversion: t.tversion,
-			tname: t.tname,
-			status: afterStatus,
-			ac: t.ac,
-			translatorId: t.translatorId,
-			proofreaderId: t.proofreaderId
-		});
-		const history = buildTranslationHistoryContext(t.translationId, before, after);
-		if (!history) continue;
-
-		await touchGameUpdatedToday(gameId, { userId: null, ...history });
-		updateTouched = true;
-		if (
-			history.changes.deltas.some(
-				(delta) => delta.field === 'version' || delta.field === 'tversion'
-			)
-		) {
-			versionDeltaRecorded = true;
-		}
-	}
-
-	// Portée « featured » : delta version jeu même si la ref traduction était déjà à jour.
-	if (isActualVersionBump && !versionDeltaRecorded && translations[0]) {
-		await touchGameUpdatedToday(gameId, {
-			userId: null,
-			action: 'status_changed',
-			changes: {
-				entity: 'translation',
-				translationId: translations[0].translationId,
-				deltas: [{ field: 'version', oldValue: gameVersion ?? null, newValue: newVersion }]
-			}
-		});
-		updateTouched = true;
-	}
-
-	if (!updateTouched) {
-		await touchGameUpdatedToday(gameId);
-	}
 }
 
 /** API POST /api/cron/check-version / bouton dev : met à jour `gameVersion`, `tags`, `image` et le moteur des traductions ; ne modifie pas `game.name`. */
@@ -430,8 +341,6 @@ export async function runAutoCheckVersions(
 			versions.get(game.threadId),
 			game.gameVersion
 		);
-		const acBeforeSync = bumpTranslations.filter((t) => t.gameId === game.gameId);
-
 		await db
 			.update(table.game)
 			.set({
@@ -554,13 +463,6 @@ export async function runAutoCheckVersions(
 			}
 		}
 
-		await recordAutoCheckGameUpdate(
-			game.gameId,
-			game.gameVersion,
-			newVersion,
-			acBeforeSync,
-			isActualVersionBump
-		);
 	}
 
 	let translatorWebhooksSent = 0;
