@@ -33,7 +33,8 @@
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
 		{ label: 'Traducteurs', href: '/translators' },
-		{ label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
+    // TODO: Uncomment when Wiki is back online
+		// { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 
 	let navDrawerOpen = $state(false);
