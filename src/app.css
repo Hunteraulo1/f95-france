@@ -14,6 +14,13 @@
 	--animate-float-sheet-reverse: floatSheetReverse 8s ease-in-out infinite;
 	--animate-neon-glow: neon-glow 2s ease-in-out infinite alternate;
 
+	--color-ext-background: hsl(222.2 84% 7%);
+	--color-ext-foreground: hsl(210 40% 98%);
+	--color-ext-card: hsl(222.2 47.4% 11.2%);
+	--color-ext-border: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary-foreground: hsl(210 40% 98%);
+
 	@keyframes text {
 		0%,
 		100% {
@@ -81,31 +88,6 @@
 			transform: translateY(calc(var(--star-travel) * -1));
 		}
 	}
-
-	/* Mockup extension (f95list-ext, thème sombre) — préfixe --color-* pour bg-ext-*, text-ext-*, etc. */
-	--color-ext-background: hsl(222.2 84% 7%);
-	--color-ext-foreground: hsl(210 40% 98%);
-	--color-ext-card: hsl(222.2 47.4% 11.2%);
-	--color-ext-border: hsl(217.2 32.6% 17.5%);
-	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
-	--color-ext-secondary-foreground: hsl(210 40% 98%);
-}
-
-.hero-stars-layer,
-.hero-stars-layer::after {
-	position: absolute;
-	left: var(--star-offset-x);
-	width: var(--star-size);
-	height: var(--star-size);
-	background: transparent;
-	box-shadow: var(--star-shadow);
-	animation: animStar var(--star-duration) linear infinite;
-	content: '';
-}
-
-.hero-stars-layer::after {
-	top: var(--star-travel);
-	left: 0;
 }
 
 .username-superadmin {
@@ -208,67 +190,4 @@
 	font-family:
 		ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
 		'Noto Color Emoji';
-}
-
-/* Contenu markdown des pages légales (CDN → marked) */
-.legal-markdown :where(h1, h2, h3, h4) {
-	margin-top: 1.5em;
-	margin-bottom: 0.5em;
-	font-weight: 700;
-	line-height: 1.25;
-	color: var(--color-base-content);
-}
-
-.legal-markdown :where(h1) {
-	margin-top: 0;
-	font-size: 1.5rem;
-}
-
-.legal-markdown :where(h2) {
-	font-size: 1.25rem;
-}
-
-.legal-markdown :where(h3) {
-	font-size: 1.125rem;
-}
-
-.legal-markdown :where(p, ul, ol) {
-	margin-bottom: 1em;
-	line-height: 1.65;
-	color: color-mix(in oklch, var(--color-base-content) 88%, transparent);
-}
-
-.legal-markdown :where(ul, ol) {
-	padding-left: 1.5em;
-}
-
-.legal-markdown :where(li + li) {
-	margin-top: 0.35em;
-}
-
-.legal-markdown :where(a) {
-	color: var(--color-primary);
-	text-decoration: underline;
-	text-underline-offset: 2px;
-}
-
-.legal-markdown :where(a:hover) {
-	opacity: 0.85;
-}
-
-.legal-markdown :where(hr) {
-	margin: 2em 0;
-	border-color: var(--color-base-300);
-}
-
-.legal-markdown :where(strong) {
-	font-weight: 600;
-	color: var(--color-base-content);
-}
-
-.legal-markdown :where(blockquote) {
-	margin: 1em 0;
-	padding-left: 1em;
-	border-left: 3px solid var(--color-primary);
-	color: color-mix(in oklch, var(--color-base-content) 75%, transparent);
 }

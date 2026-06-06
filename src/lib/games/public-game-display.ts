@@ -85,6 +85,6 @@ export function formatTranslationVersionDisplay(opts: {
 	const reference = opts.referenceVersion?.trim() || '—';
 	if (opts.isIntegrated) return reference;
 	const tversion = opts.tversion?.trim() || '—';
-	if (opts.isOutdated) return `${tversion} / ${reference}`;
+	if (opts.isOutdated) return `${tversion} → ${reference}`;
 	return tversion;
 }

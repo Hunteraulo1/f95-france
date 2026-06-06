@@ -46,10 +46,10 @@
 >
 	<div class="relative block w-full lg:contents">
 		<figure
-			class="pointer-events-none flex items-center justify-center overflow-hidden bg-linear-to-br from-base-200 via-base-300/40 to-base-200 absolute max-lg:inset-0 min-h-full opacity-25 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100"
+			class="pointer-events-none flex items-center justify-center overflow-hidden bg-linear-to-br from-base-200 via-base-300/40 to-base-200 absolute max-lg:inset-0 min-h-full opacity-25 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100 bg-base-300"
 		>
 			<div
-				class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,color-mix(in_oklab,var(--color-secondary)_22%,transparent),transparent_65%)] bg-base-300"
+				class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,color-mix(in_oklab,var(--color-secondary)_22%,transparent),transparent_65%)]"
 			></div>
 			<div class="relative shrink-0 origin-center max-lg:scale-60 -translate-y-4">
 				<ExtensionMockup {games} />
@@ -59,7 +59,7 @@
 		<div
 			class="card-body relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
 		>
-			<div class="badge badge-secondary badge-soft w-fit gap-1.5">
+			<div class="badge badge-secondary badge-outline w-fit gap-1.5">
 				<Puzzle class="size-3.5" aria-hidden="true" />
 				Extension F95 France
 			</div>

@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 	import User from '@lucide/svelte/icons/user';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -14,6 +17,9 @@
 	}
 
 	let { data }: Props = $props();
+
+	let searchQuery = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let showEditUserModal = $state(false);
 	let selectedUser: (typeof data.users)[0] | null = $state(null);
@@ -33,15 +39,49 @@
 		userError = null;
 	};
 
-	const buildQuery = (overrides: { page?: number }) => {
+	const buildQuery = (overrides: { q?: string; page?: number }) => {
+		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
 		const page = overrides.page ?? data.page;
-		return page > 1 ? `?page=${page}` : '';
+		const params: string[] = [];
+		if (qVal) params.push(`q=${encodeURIComponent(qVal)}`);
+		if (page > 1) params.push(`page=${page}`);
+		return params.length ? `?${params.join('&')}` : '';
 	};
 
-	const buildHref = (overrides: { page?: number }) =>
+	const buildHref = (overrides: { q?: string; page?: number }) =>
 		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
 
 	const hrefForPage = (p: number) => buildHref({ page: p });
+
+	const navigateSearch = (value: string) => {
+		goto(resolve(`/dashboard/users${buildQuery({ q: value, page: 1 })}` as '/dashboard/users'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
+	};
+
+	const onSearchInput = (value: string) => {
+		searchQuery = value;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
+	};
+
+	const clearSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchQuery = '';
+		navigateSearch('');
+	};
+
+	$effect(() => {
+		const incoming = data.q ?? '';
+		untrack(() => {
+			if (incoming !== searchQuery) {
+				searchQuery = incoming;
+			}
+		});
+	});
 
 	const formatDateTime = (value: Date | string) =>
 		new Intl.DateTimeFormat('fr-FR', {
@@ -72,12 +112,38 @@
 </script>
 
 <section class="flex flex-col gap-4">
-	<h2 class="text-lg font-semibold text-base-content">
-		Gestion des utilisateurs
-		<span class="text-sm font-normal opacity-70"
-			>({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''})</span
-		>
-	</h2>
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<h2 class="text-lg font-semibold text-base-content">
+			Gestion des utilisateurs
+			<span class="text-sm font-normal opacity-70"
+				>({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''}{data.q
+					? ' trouvé' + (data.totalUsers > 1 ? 's' : '')
+					: ''})</span
+			>
+		</h2>
+		<label class="input flex max-w-md min-w-48 items-center gap-2">
+			<span class="sr-only">Rechercher un utilisateur</span>
+			<input
+				type="search"
+				class="grow"
+				placeholder={data.canViewUserEmails
+					? 'Rechercher (pseudo, email)…'
+					: 'Rechercher (pseudo)…'}
+				value={searchQuery}
+				oninput={(e) => onSearchInput(e.currentTarget.value)}
+			/>
+			{#if searchQuery}
+				<button
+					type="button"
+					class="btn btn-square btn-ghost btn-sm"
+					onclick={clearSearch}
+					aria-label="Effacer la recherche"
+				>
+					✕
+				</button>
+			{/if}
+		</label>
+	</div>
 
 	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 overflow-x-auto sm:p-8">
@@ -118,7 +184,7 @@
 									</a>
 								</div>
 							</td>
-							<td>{user.email}</td>
+							<td>{formatUserEmailForDisplay(user.email, data.canViewUserEmails)}</td>
 							<td>
 								<div
 									class="badge badge-outline text-nowrap {roleBadgeClass(
@@ -218,20 +284,22 @@
 					/>
 				</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-email" class="label">
-						<span class="label-text">Email</span>
-					</label>
-					<input
-						id="edit-email"
-						name="email"
-						type="email"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.email}
-						required
-					/>
-				</div>
+				{#if data.canViewUserEmails}
+					<div class="form-control mt-4 w-full">
+						<label for="edit-email" class="label">
+							<span class="label-text">Email</span>
+						</label>
+						<input
+							id="edit-email"
+							name="email"
+							type="email"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.email}
+							required
+						/>
+					</div>
+				{/if}
 
 				<div class="form-control mt-4 w-full">
 					<label for="edit-avatar" class="label">

@@ -20,6 +20,7 @@ export const PERMISSION_KEYS = [
 	'submissions.review',
 	'translators.manage',
 	'users.manage',
+	'users.view_email',
 	'users.assign_admin',
 	'roles.manage',
 	'api.management',
@@ -161,6 +162,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Administration'
 	},
 	{
+		key: 'users.view_email',
+		label: 'Emails des utilisateurs',
+		description: 'Voir les adresses email des comptes utilisateurs',
+		group: 'Administration'
+	},
+	{
 		key: 'users.assign_admin',
 		label: 'Attribuer admin / superadmin',
 		description: 'Promouvoir un compte au rôle administrateur ou superadmin',
@@ -255,6 +262,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'submissions.review',
 		'translators.manage',
 		'users.manage',
+		'users.view_email',
 		'config.edit',
 		'content.view_ids'
 	],

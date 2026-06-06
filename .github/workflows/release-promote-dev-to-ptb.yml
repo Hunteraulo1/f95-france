@@ -173,18 +173,34 @@ jobs:
 
       - name: Fusionner quand les checks sont OK
         if: steps.gate.outputs.release == 'true'
+        id: merge
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           PR="${{ steps.pr.outputs.number }}"
+          MERGED=false
 
           if gh pr merge "$PR" --auto --merge 2>/dev/null; then
-            echo "Auto-merge activé sur PR #$PR — fusion dès que les checks requis passent."
-            exit 0
+            echo "Auto-merge activé sur PR #$PR — attente de la fusion sur ptb…"
+          else
+            echo "Auto-merge indisponible — attente des checks puis fusion directe."
+            gh pr checks "$PR" --watch --fail-fast
+            gh pr merge "$PR" --merge
           fi
 
-          echo "Auto-merge indisponible — attente des checks puis fusion directe."
-          gh pr checks "$PR" --watch --fail-fast
-          gh pr merge "$PR" --merge
-          echo "PR #$PR fusionnée."
+          for _ in $(seq 1 90); do
+            STATE="$(gh pr view "$PR" --json state -q .state 2>/dev/null || true)"
+            if [ "$STATE" = "MERGED" ]; then
+              echo "PR #$PR fusionnée sur ptb."
+              MERGED=true
+              break
+            fi
+            sleep 20
+          done
+
+          if [ "$MERGED" != true ]; then
+            echo "::warning::PR dev→ptb pas fusionnée à temps."
+          fi
+          echo "merged=$MERGED" >> "$GITHUB_OUTPUT"
+          echo "La PR ptb→main sera ouverte par le workflow « Release promote ptb → main » à la fusion de la PR sur ptb."

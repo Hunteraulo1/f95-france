@@ -8,7 +8,6 @@ import type { ManagerExtractDraft } from '$lib/server/extract-draft';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { createGameUpdateRow } from '$lib/server/game-updates';
 import { hasPermission } from '$lib/server/permissions';
 import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
 import { scrapeThread, type ScrapedThreadGame } from '$lib/server/scrape';
@@ -475,8 +474,6 @@ export async function runExtractThreadGame(input: {
 	if (!gameId) {
 		return { ok: false, status: 500, body: { error: 'Création du jeu échouée' } };
 	}
-
-	await createGameUpdateRow(gameId, 'adding');
 
 	return {
 		ok: true,

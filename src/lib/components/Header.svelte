@@ -13,18 +13,28 @@
 	import X from '@lucide/svelte/icons/x';
 	import banner from '../assets/banner.webp';
 
+	interface Props {
+		/** Priorité haute pour l’image bannière (page d’accueil / candidat LCP). */
+		lcpImage?: boolean;
+	}
+
+	let { lcpImage = false }: Props = $props();
+
 	const NAV_DRAWER_ID = 'public-site-nav-drawer';
 
 	interface Link {
 		label: string;
 		href: string;
+		target?: string;
 	}
 
 	const links: Link[] = [
 		{ label: 'Accueil', href: resolve('/') },
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
-		{ label: 'Traducteurs', href: '/translators' }
+		{ label: 'Traducteurs', href: '/translators' },
+    // TODO: Uncomment when Wiki is back online
+		// { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 
 	let navDrawerOpen = $state(false);
@@ -43,13 +53,7 @@
 </script>
 
 <div class="drawer drawer-end w-full">
-	<input
-		id={NAV_DRAWER_ID}
-		type="checkbox"
-		class="drawer-toggle"
-		bind:checked={navDrawerOpen}
-		aria-hidden="true"
-	/>
+	<input id={NAV_DRAWER_ID} type="checkbox" class="drawer-toggle" bind:checked={navDrawerOpen} />
 
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
@@ -57,8 +61,13 @@
 				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
 					<img
 						src={banner}
+						width={1920}
+						height={232}
 						alt="Bannière de F95 France"
 						class="h-full w-auto object-contain"
+						loading={lcpImage ? 'eager' : 'lazy'}
+						decoding={lcpImage ? 'sync' : 'async'}
+						fetchpriority={lcpImage ? 'high' : 'auto'}
 						draggable="false"
 					/>
 				</a>
@@ -76,6 +85,7 @@
 								href={link.href}
 								class="btn border-0 text-sm font-semibold shadow-none hover:bg-transparent hover:text-secondary aria-[current=page]:text-primary"
 								draggable="false"
+								target={link.target}
 							>
 								{link.label}
 							</a>
@@ -90,7 +100,10 @@
 							<a
 								aria-current={page.url.pathname === '/dashboard/login' ? 'page' : undefined}
 								href={resolve('/dashboard/login')}
-								class="btn w-28 rounded-md border-base-content/10 bg-base-100 p-2 text-sm font-semibold shadow-lg hover:bg-base-300 hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
+								class="btn w-28 rounded-md p-2 text-sm font-semibold shadow-lg {page.url
+									.pathname === '/dashboard/login'
+									? 'btn-primary'
+									: 'btn-outline btn-primary'}"
 								draggable="false"
 							>
 								Connexion
@@ -199,7 +212,13 @@
 						</button>
 					</form>
 				{:else}
-					<a href={resolve('/dashboard/login')} class="btn w-full" onclick={closeNavDrawer}>
+					<a
+						href={resolve('/dashboard/login')}
+						class="btn w-full {page.url.pathname === '/dashboard/login'
+							? 'btn-primary'
+							: 'btn-outline btn-primary'}"
+						onclick={closeNavDrawer}
+					>
 						Connexion
 					</a>
 					<a

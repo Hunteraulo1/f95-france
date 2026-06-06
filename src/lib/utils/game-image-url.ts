@@ -30,20 +30,30 @@ function parseHttpUrl(raw: string): URL | null {
 	}
 }
 
-/** `attachments` renvoie souvent 402 en hotlink ; `preview` sert les vignettes publiques. */
-function rewriteF95AttachmentsToPreview(url: string): string {
+/**
+ * `preview` sert des vignettes très compressées (~8 Ko, floues une fois agrandies) ;
+ * `attachments` renvoie le fichier d’origine pleine résolution (HTTP 200 sans referer).
+ * On rétablit donc `attachments` pour l’affichage, y compris pour les anciennes URLs `preview` en base.
+ */
+function rewriteF95PreviewToAttachments(url: string): string {
 	const parsed = parseHttpUrl(url);
 	if (!parsed) return url;
-	if (parsed.hostname.toLowerCase() !== F95_ATTACHMENTS_HOST) return url;
-	parsed.hostname = F95_PREVIEW_HOST;
+	if (parsed.hostname.toLowerCase() !== F95_PREVIEW_HOST) return url;
+	parsed.hostname = F95_ATTACHMENTS_HOST;
 	parsed.protocol = 'https:';
 	return parsed.toString();
+}
+
+/** Vignettes XenForo (`…/thumb/…`) — préférer l’image pleine résolution pour l’affichage. */
+function stripGameImageThumbnailPath(candidate: string): string {
+	if (!candidate.includes('thumb')) return candidate;
+	return candidate.replace(/\/thumb\//, '/').replace('thumb/', '');
 }
 
 function finalizeGameImageSrc(candidate: string): string {
 	if (!candidate) return '';
 	if (isGameImageGalleryPageUrl(candidate)) return '';
-	return rewriteF95AttachmentsToPreview(candidate);
+	return stripGameImageThumbnailPath(rewriteF95PreviewToAttachments(candidate));
 }
 
 /**

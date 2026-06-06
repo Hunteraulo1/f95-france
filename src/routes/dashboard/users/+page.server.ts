@@ -1,4 +1,5 @@
 import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
@@ -9,34 +10,50 @@ import {
 	listRolesAssignableToUsers
 } from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ilike, ne, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
 
+const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'users.manage');
 
+	const canViewUserEmails = hasPermission(locals, 'users.view_email');
+
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-	const [totalUsersResult, translatorsList] = await Promise.all([
-		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user),
-		db
-			.select({
-				id: table.translator.id,
-				name: table.translator.name,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.orderBy(table.translator.name)
+	const searchWhere = q
+		? or(
+				ilike(table.user.username, `%${escapeIlike(q)}%`),
+				...(canViewUserEmails ? [ilike(table.user.email, `%${escapeIlike(q)}%`)] : [])
+			)
+		: undefined;
+
+	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user);
+	const translatorsListPromise = db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			userId: table.translator.userId
+		})
+		.from(table.translator)
+		.orderBy(table.translator.name);
+
+	const [[totalUsersResult], translatorsList] = await Promise.all([
+		searchWhere ? countBase.where(searchWhere) : countBase,
+		translatorsListPromise
 	]);
 
-	const totalUsers = Number(totalUsersResult[0]?.count ?? 0);
+	const totalUsers = Number(totalUsersResult?.count ?? 0);
 	const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 	const page = Math.min(requestedPage, totalPages);
+	const offset = (page - 1) * PAGE_SIZE;
 
-	const users = await db
+	const listBase = db
 		.select({
 			id: table.user.id,
 			username: table.user.username,
@@ -49,10 +66,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					'last_connection_at'
 				)
 		})
-		.from(table.user)
+		.from(table.user);
+
+	const users = await (searchWhere ? listBase.where(searchWhere) : listBase)
 		.orderBy(table.user.createdAt)
 		.limit(PAGE_SIZE)
-		.offset((page - 1) * PAGE_SIZE);
+		.offset(offset);
 
 	const now = new Date();
 	const usersWithLiveLastConnection = users.map((u) =>
@@ -74,11 +93,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}))
 	);
 
+	const usersForClient = usersWithLiveLastConnection.map((u) => ({
+		...u,
+		email: formatUserEmailForDisplay(u.email, canViewUserEmails)
+	}));
+
 	return {
-		users: usersWithLiveLastConnection,
+		users: usersForClient,
 		translators: translatorsList,
 		roles,
+		canViewUserEmails,
 		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
+		q,
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
@@ -90,10 +116,13 @@ export const actions: Actions = {
 	updateUser: async ({ request, locals }) => {
 		await assertPermission(locals, 'users.manage');
 
+		const canViewUserEmails = hasPermission(locals, 'users.view_email');
+
 		const formData = await request.formData();
 		const userId = formData.get('userId') as string;
 		const username = formData.get('username') as string;
-		const email = formData.get('email') as string;
+		const emailRaw = formData.get('email');
+		const email = typeof emailRaw === 'string' ? emailRaw.trim() : '';
 		const role = formData.get('role') as string;
 		const avatar = formData.get('avatar') as string;
 		const linkedTranslatorRaw = formData.get('linkedTranslatorId');
@@ -102,8 +131,12 @@ export const actions: Actions = {
 				? linkedTranslatorRaw.trim()
 				: '';
 
-		if (!userId || !username || !email || !role) {
-			return fail(400, { message: 'Tous les champs sont requis' });
+		if (!userId || !username || !role) {
+			return fail(400, { message: 'Tous les champs requis sont manquants' });
+		}
+
+		if (canViewUserEmails && !email) {
+			return fail(400, { message: 'L’adresse email est requise' });
 		}
 
 		if (!(await roleExists(role))) {
@@ -122,7 +155,8 @@ export const actions: Actions = {
 
 			const currentUser = await db
 				.select({
-					role: table.user.role
+					role: table.user.role,
+					email: table.user.email
 				})
 				.from(table.user)
 				.where(eq(table.user.id, userId))
@@ -133,6 +167,7 @@ export const actions: Actions = {
 			}
 
 			const currentUserRole = currentUser[0].role;
+			const emailToSave = canViewUserEmails ? email : currentUser[0].email;
 
 			const manageCheck = await assertCanManageUserWithRole(locals, currentUserRole, userId);
 			if (!manageCheck.allowed) {
@@ -150,7 +185,7 @@ export const actions: Actions = {
 				.update(table.user)
 				.set({
 					username,
-					email,
+					email: emailToSave,
 					role,
 					avatar: avatar || ''
 				})

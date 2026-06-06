@@ -11,7 +11,6 @@ import {
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
@@ -342,7 +341,6 @@ export async function runAutoCheckVersions(
 			versions.get(game.threadId),
 			game.gameVersion
 		);
-
 		await db
 			.update(table.game)
 			.set({
@@ -462,16 +460,6 @@ export async function runAutoCheckVersions(
 					gameName: game.gameName,
 					detail: error instanceof Error ? error.message : String(error)
 				});
-			}
-		}
-
-		// Table `update` : nouvelle version F95 + traduction intégrée en auto-check
-		if (isActualVersionBump) {
-			const hasIntegratedAc = impactedTranslations.some(
-				(t) => t.gameId === game.gameId && t.tname === 'integrated' && t.ac === true
-			);
-			if (hasIntegratedAc) {
-				await touchGameUpdatedToday(game.gameId);
 			}
 		}
 	}

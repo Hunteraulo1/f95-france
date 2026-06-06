@@ -7,7 +7,8 @@ import {
 } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -15,8 +16,10 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	await assertPermission(locals, 'api.management', 'Accès réservé aux super-administrateurs.');
 
+	const canViewUserEmails = hasPermission(locals, 'users.view_email');
+
 	try {
-		const [keys, usersList] = await Promise.all([
+		const [keysRaw, usersListRaw] = await Promise.all([
 			listApiKeysForAdmin(),
 			db
 				.select({
@@ -28,7 +31,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 				.orderBy(table.user.username)
 		]);
 
-		return { keys, usersList };
+		const keys = keysRaw.map((row) => ({
+			...row,
+			ownerEmail: formatUserEmailForDisplay(row.ownerEmail, canViewUserEmails)
+		}));
+		const usersList = usersListRaw.map((row) => ({
+			...row,
+			email: formatUserEmailForDisplay(row.email, canViewUserEmails)
+		}));
+
+		return { keys, usersList, canViewUserEmails };
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		if (
