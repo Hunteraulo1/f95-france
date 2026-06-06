@@ -4,10 +4,10 @@ import { logApp } from '$lib/server/app-logger';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookProofreadersVersionBumps,
-    sendDiscordWebhookTranslatorsVersionBumps,
-    sendDiscordWebhookUpdatesAutoCheckVersionBump,
-    type TranslatorVersionBumpLine
+	sendDiscordWebhookProofreadersVersionBumps,
+	sendDiscordWebhookTranslatorsVersionBumps,
+	sendDiscordWebhookUpdatesAutoCheckVersionBump,
+	type TranslatorVersionBumpLine
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
@@ -15,22 +15,22 @@ import { touchGameUpdatedToday } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import {
-    resolveTranslationStatusAfterAcVersionSync,
-    syncAcTranslationsToCheckerVersion
+	resolveTranslationStatusAfterAcVersionSync,
+	syncAcTranslationsToCheckerVersion
 } from '$lib/server/translation-ac-status';
 import {
-    shouldNotifyTranslatorOnAutoCheckVersionBump,
-    tradVerIndicatesIntegrated
+	shouldNotifyTranslatorOnAutoCheckVersionBump,
+	tradVerIndicatesIntegrated
 } from '$lib/server/translation-notify-rules';
 import {
-    buildTranslationHistoryContext,
-    translationRowToHistorySnapshot
+	buildTranslationHistoryContext,
+	translationRowToHistorySnapshot
 } from '$lib/server/update-history';
 import {
-    hasF95CheckerGameVersionChange,
-    isF95CheckerVersionAligned,
-    needsF95VersionBump,
-    normalizeCheckerVersion
+	hasF95CheckerGameVersionChange,
+	isF95CheckerVersionAligned,
+	needsF95VersionBump,
+	normalizeCheckerVersion
 } from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
