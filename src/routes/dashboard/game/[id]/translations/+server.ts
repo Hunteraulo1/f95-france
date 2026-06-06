@@ -2,20 +2,20 @@ import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    sendDiscordWebhookAdminNewSubmission,
-    sendDiscordWebhookUpdatesSubmissionApplied
+	sendDiscordWebhookAdminNewSubmission,
+	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
-    assertDirectGameWriteAllowed,
-    assertGameManageAccess,
-    loadCurrentUserOrThrow,
-    parseRequestDirectMode,
-    resolveGameWriteMode
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
 import {
-    voidSyncTranslationToGoogleSheet,
-    voidSyncTranslatorActivityCountsToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
 import { createTranslationSubmission } from '$lib/server/submissions';
