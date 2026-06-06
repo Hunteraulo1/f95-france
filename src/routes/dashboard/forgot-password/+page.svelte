@@ -45,10 +45,7 @@
 			{/if}
 
 			{#if form?.message}
-				<div
-					role="alert"
-					class="alert text-sm {form.success ? 'alert-success' : 'alert-error'}"
-				>
+				<div role="alert" class="alert text-sm {form.success ? 'alert-success' : 'alert-error'}">
 					<span>{form.message}</span>
 				</div>
 			{/if}

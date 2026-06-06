@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import DiscordIcon from '$lib/components/DiscordIcon.svelte';
 	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
@@ -9,7 +10,12 @@
 	import type { ActionData, PageData } from './$types';
 
 	interface Props {
-		data: PageData & { resetNotice: string | null };
+		data: PageData & {
+			resetNotice: string | null;
+			discordNotice: string | null;
+			discordLoginEnabled: boolean;
+			discordLoginHref: string;
+		};
 		form: ActionData;
 	}
 
@@ -111,6 +117,12 @@
 				<p class="mt-2 text-sm text-base-content/70">Accédez au tableau de bord F95 France</p>
 			</div>
 
+			{#if data?.discordNotice}
+				<div role="alert" class="alert alert-soft text-sm alert-error">
+					<span>{data.discordNotice}</span>
+				</div>
+			{/if}
+
 			{#if data?.resetNotice}
 				<div role="alert" class="alert alert-soft text-sm alert-success">
 					<span>{data.resetNotice}</span>
@@ -201,19 +213,28 @@
 						<LogIn size={18} aria-hidden="true" />
 						Se connecter
 					</button>
-          
-          <a
-            href="/dashboard/forgot-password"
-            class="label-text-alt link link-hover link-primary mx-auto mt-2"
-          >
-            Mot de passe oublié ?
-          </a>
+
+					<a
+						href="/dashboard/forgot-password"
+						class="label-text-alt link link-hover link-primary mx-auto mt-2"
+					>
+						Mot de passe oublié ?
+					</a>
 				</div>
 			</form>
 
 			<div class="divider text-xs text-base-content/50">ou</div>
 
 			<div class="flex flex-col gap-3">
+				{#if data?.discordLoginEnabled}
+					<a
+						href={data.discordLoginHref}
+						class="btn btn-block gap-2 bg-[#5865F2] text-white hover:bg-[#4752C4] border-0"
+					>
+						<DiscordIcon size={18} />
+						Se connecter avec Discord
+					</a>
+				{/if}
 				{#if showCaptcha}
 					<p class="text-center text-xs text-base-content/60">
 						Un captcha est requis après une tentative échouée (mot de passe ou passkey).

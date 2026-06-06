@@ -187,7 +187,7 @@
 								<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
 							</form>
 						{:else}
-							<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
+							<a href="/api/discord-oauth/authorize" class="btn btn-primary">Lier mon Discord</a>
 						{/if}
 					</div>
 					{#if $user?.discordId}

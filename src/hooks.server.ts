@@ -1,11 +1,11 @@
 import { building } from '$app/environment';
 import {
-    EXTENSION_ONLY_API_ROUTE,
-    consumeSessionApiKeyRateForUser,
-    extractApiKeyFromRequest,
-    getUserForApiKeyOwner,
-    jsonApiKeyGuardResponse,
-    validateApiKeyRequest
+	EXTENSION_ONLY_API_ROUTE,
+	consumeSessionApiKeyRateForUser,
+	extractApiKeyFromRequest,
+	getUserForApiKeyOwner,
+	jsonApiKeyGuardResponse,
+	validateApiKeyRequest
 } from '$lib/server/api-keys';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import { logApp } from '$lib/server/app-logger';

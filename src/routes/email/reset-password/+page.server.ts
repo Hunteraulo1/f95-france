@@ -27,7 +27,11 @@ export const actions: Actions = {
 		const confirmPassword = String(formData.get('confirmPassword') ?? '');
 
 		if (!token) {
-			return fail(400, { success: false, message: 'Lien de réinitialisation invalide.', token: '' });
+			return fail(400, {
+				success: false,
+				message: 'Lien de réinitialisation invalide.',
+				token: ''
+			});
 		}
 
 		if (!password || password.length < 8) {

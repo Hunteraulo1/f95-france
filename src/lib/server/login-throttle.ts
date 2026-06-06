@@ -161,6 +161,10 @@ export async function recordPasskeyRegisterAttempt(event: RequestEvent): Promise
 		windowStartedAt = row.windowStartedAt;
 	}
 
+	if (failedCount >= MAX_ATTEMPTS) {
+		lockedUntil = new Date(now.getTime() + LOCK_MS);
+	}
+
 	await db
 		.update(table.loginThrottle)
 		.set({

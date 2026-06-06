@@ -1,7 +1,4 @@
-import {
-    dashboardVerifyEmailPath,
-    verifyEmailWithToken
-} from '$lib/server/email-verification';
+import { dashboardVerifyEmailPath, verifyEmailWithToken } from '$lib/server/email-verification';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

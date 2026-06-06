@@ -1,14 +1,14 @@
 import {
-    checkPasswordResetRequestThrottle,
-    recordPasswordResetRequest
+	checkPasswordResetRequestThrottle,
+	recordPasswordResetRequest
 } from '$lib/server/login-throttle';
 import { isSmtpConfigured } from '$lib/server/mail';
 import { requestPasswordResetByEmail } from '$lib/server/password-reset';
 import {
-    extractTurnstileTokenFromFormData,
-    getTurnstileSiteKey,
-    isTurnstileConfigured,
-    verifyTurnstileFromForm
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
 } from '$lib/server/turnstile';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -67,7 +67,8 @@ export const actions: Actions = {
 					});
 				case 'smtp_not_configured':
 					return fail(503, {
-						message: 'L’envoi d’emails n’est pas configuré sur ce serveur. Contactez un administrateur.'
+						message:
+							'L’envoi d’emails n’est pas configuré sur ce serveur. Contactez un administrateur.'
 					});
 			}
 		}

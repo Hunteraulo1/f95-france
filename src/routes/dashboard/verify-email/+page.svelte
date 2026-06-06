@@ -45,10 +45,7 @@
 			</div>
 
 			{#if form?.message}
-				<div
-					role="alert"
-					class="alert text-sm {form.success ? 'alert-success' : 'alert-error'}"
-				>
+				<div role="alert" class="alert text-sm {form.success ? 'alert-success' : 'alert-error'}">
 					<span>{form.message}</span>
 				</div>
 			{/if}
@@ -63,12 +60,7 @@
 				{#if data.justVerified}
 					<a href="/dashboard" class="btn btn-primary">Accéder au tableau de bord</a>
 				{:else}
-					<form
-						method="post"
-						action="?/resend"
-						use:enhance={createFormEnhance()}
-						class="w-full"
-					>
+					<form method="post" action="?/resend" use:enhance={createFormEnhance()} class="w-full">
 						<button type="submit" class="btn btn-block btn-primary btn-outline">
 							Renvoyer l’email de vérification
 						</button>

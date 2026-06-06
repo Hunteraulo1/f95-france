@@ -1,8 +1,8 @@
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import {
-    emailVerificationRequired,
-    isUserEmailVerified,
-    sendVerificationEmailForUser
+	emailVerificationRequired,
+	isUserEmailVerified,
+	sendVerificationEmailForUser
 } from '$lib/server/email-verification';
 import { isSmtpConfigured } from '$lib/server/mail';
 import { fail, redirect } from '@sveltejs/kit';
@@ -47,7 +47,8 @@ export const actions: Actions = {
 				});
 			case 'smtp_not_configured':
 				return fail(503, {
-					message: 'L’envoi d’emails n’est pas configuré sur ce serveur. Contactez un administrateur.'
+					message:
+						'L’envoi d’emails n’est pas configuré sur ce serveur. Contactez un administrateur.'
 				});
 			case 'send_failed':
 				return fail(502, {

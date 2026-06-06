@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';

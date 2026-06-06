@@ -1,25 +1,26 @@
 import * as auth from '$lib/server/auth';
+import { isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
 import {
-    dashboardVerifyEmailPath,
-    sendVerificationEmailForUser
+	dashboardVerifyEmailPath,
+	sendVerificationEmailForUser
 } from '$lib/server/email-verification';
 import {
-    checkLoginThrottle,
-    clearLoginThrottle,
-    recordLoginFailure
+	checkLoginThrottle,
+	clearLoginThrottle,
+	recordLoginFailure
 } from '$lib/server/login-throttle';
 import {
-    REGISTRATION_ACCOUNT_EXISTS_MESSAGE,
-    REGISTRATION_INVITE_INVALID_MESSAGE,
-    isRegistrationEnabled,
-    isRegistrationInviteRequired,
-    verifyRegistrationInvite
+	REGISTRATION_ACCOUNT_EXISTS_MESSAGE,
+	REGISTRATION_INVITE_INVALID_MESSAGE,
+	isRegistrationEnabled,
+	isRegistrationInviteRequired,
+	verifyRegistrationInvite
 } from '$lib/server/registration-policy';
 import {
-    extractTurnstileTokenFromFormData,
-    getTurnstileSiteKey,
-    isTurnstileConfigured,
-    verifyTurnstileFromForm
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
 } from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
@@ -49,6 +50,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		requiresInviteCode: isRegistrationInviteRequired(),
+		discordLoginEnabled: isDiscordOAuthConfigured(),
 		turnstileSiteKey: getTurnstileSiteKey(),
 		turnstileEnabled: isTurnstileConfigured()
 	};

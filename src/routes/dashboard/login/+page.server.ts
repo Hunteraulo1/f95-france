@@ -1,22 +1,24 @@
+import { discordLoginErrorMessage, discordOAuthAuthorizePath } from '$lib/discord-oauth-url';
 import * as auth from '$lib/server/auth';
 import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
+import { isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
 import {
-    dashboardVerifyEmailPath,
-    emailVerificationRequired,
-    isUserEmailVerified
+	dashboardVerifyEmailPath,
+	emailVerificationRequired,
+	isUserEmailVerified
 } from '$lib/server/email-verification';
 import {
-    checkLoginThrottle,
-    clearLoginThrottle,
-    loginRequiresCaptcha,
-    recordLoginFailure
+	checkLoginThrottle,
+	clearLoginThrottle,
+	loginRequiresCaptcha,
+	recordLoginFailure
 } from '$lib/server/login-throttle';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import {
-    extractTurnstileTokenFromFormData,
-    getTurnstileSiteKey,
-    isTurnstileConfigured,
-    verifyTurnstileFromForm
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
 } from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
@@ -28,6 +30,9 @@ export type LoginPageLoadData = {
 	registrationEnabled: boolean;
 	registrationNotice: string | null;
 	resetNotice: string | null;
+	discordNotice: string | null;
+	discordLoginEnabled: boolean;
+	discordLoginHref: string;
 	turnstileSiteKey: string;
 	turnstileEnabled: boolean;
 	requiresCaptcha: boolean;
@@ -52,12 +57,17 @@ export const load: PageServerLoad<LoginPageLoadData> = async (event) => {
 			: null;
 
 	const requiresCaptcha = await loginRequiresCaptcha(event);
+	const redirectTo = safeDashboardRedirectPath(url.searchParams.get('redirectTo'));
+	const discordLoginEnabled = isDiscordOAuthConfigured();
 
 	return {
-		redirectTo: safeDashboardRedirectPath(url.searchParams.get('redirectTo')),
+		redirectTo,
 		registrationEnabled: isRegistrationEnabled(),
 		registrationNotice,
 		resetNotice,
+		discordNotice: discordLoginErrorMessage(url.searchParams.get('discord_error')),
+		discordLoginEnabled,
+		discordLoginHref: discordOAuthAuthorizePath({ redirectTo }),
 		turnstileSiteKey: getTurnstileSiteKey(),
 		turnstileEnabled: isTurnstileConfigured(),
 		requiresCaptcha

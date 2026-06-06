@@ -462,7 +462,7 @@
 				{/if}
 				<Pagination
 					currentPage={page}
-					totalPages={totalPages}
+					{totalPages}
 					totalCount={total}
 					countLabel="jeu"
 					countLabelPlural="jeux"

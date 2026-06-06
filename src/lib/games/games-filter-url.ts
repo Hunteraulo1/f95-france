@@ -1,9 +1,9 @@
 import {
-    cloneGamesFilterGroups,
-    createDefaultGamesFilterGroups,
-    GAMES_FILTER_GROUP_NAMES,
-    type GamesFilterGroupName,
-    type GamesFilterGroupState
+	cloneGamesFilterGroups,
+	createDefaultGamesFilterGroups,
+	GAMES_FILTER_GROUP_NAMES,
+	type GamesFilterGroupName,
+	type GamesFilterGroupState
 } from '$lib/games/games-filter-config';
 import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
 

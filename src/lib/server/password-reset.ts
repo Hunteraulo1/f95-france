@@ -129,7 +129,10 @@ export async function sendPasswordResetEmailForUser(
 
 	const rawToken = await createResetToken(userId);
 	const origin = resolveEmailLinkOrigin(options?.requestOrigin);
-	const resetUrl = absoluteUrl(`/email/reset-password?token=${encodeURIComponent(rawToken)}`, origin);
+	const resetUrl = absoluteUrl(
+		`/email/reset-password?token=${encodeURIComponent(rawToken)}`,
+		origin
+	);
 	const unsubscribeUrl = absoluteUrl(
 		`/email/unsubscribe?token=${encodeURIComponent(user.emailUnsubscribeToken)}`,
 		origin
@@ -197,10 +200,9 @@ export async function requestPasswordResetByEmail(
 	return { ok: true, message: PASSWORD_RESET_GENERIC_SUCCESS_MESSAGE };
 }
 
-export async function validatePasswordResetToken(rawToken: string): Promise<
-	| { ok: true; userId: string }
-	| { ok: false; reason: 'invalid' | 'expired' }
-> {
+export async function validatePasswordResetToken(
+	rawToken: string
+): Promise<{ ok: true; userId: string } | { ok: false; reason: 'invalid' | 'expired' }> {
 	const trimmed = rawToken.trim();
 	if (!trimmed) return { ok: false, reason: 'invalid' };
 

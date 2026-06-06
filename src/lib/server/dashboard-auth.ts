@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 const DASHBOARD_PUBLIC_EXACT = new Set([
 	'/dashboard/login',
 	'/dashboard/register',
+	'/dashboard/register/discord',
 	'/dashboard/logout',
 	'/dashboard/forgot-password'
 ]);

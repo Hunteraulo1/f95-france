@@ -14,7 +14,12 @@
 	<div class="card w-full max-w-md border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-4 text-center sm:p-8">
 			{#if data.status === 'verified'}
-				<CheckCircle2 class="mx-auto text-success" size={48} strokeWidth={1.75} aria-hidden="true" />
+				<CheckCircle2
+					class="mx-auto text-success"
+					size={48}
+					strokeWidth={1.75}
+					aria-hidden="true"
+				/>
 				<h1 class="text-2xl font-bold">Email confirmé</h1>
 				<p class="text-sm text-base-content/70">
 					Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant utiliser votre

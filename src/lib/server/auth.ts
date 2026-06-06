@@ -5,22 +5,24 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { generateEmailUnsubscribeToken } from '$lib/server/email-verification';
 import {
-    hashPassword,
-    hashSessionSecret,
-    verifySessionSecret,
-    type PasswordVerifyResult
+	hashPassword,
+	hashSessionSecret,
+	verifySessionSecret,
+	type PasswordVerifyResult
 } from '$lib/server/password-hash';
+import { encodeBase64url } from '@oslojs/encoding';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
+import { randomBytes } from 'node:crypto';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 export const sessionCookieName = 'auth-session';
 
 export {
-    INVALID_CREDENTIALS_MESSAGE,
-    hashPassword,
-    verifyPassword
+	INVALID_CREDENTIALS_MESSAGE,
+	hashPassword,
+	verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
 
@@ -193,6 +195,83 @@ export async function getUserByEmail(email: string) {
 	const [user] = await db.select().from(table.user).where(eq(table.user.email, email));
 
 	return user || null;
+}
+
+export async function getUserByDiscordId(discordId: string) {
+	const [user] = await db.select().from(table.user).where(eq(table.user.discordId, discordId));
+	return user ?? null;
+}
+
+export async function createUserFromDiscord(params: {
+	username: string;
+	email: string;
+	discordId: string;
+	avatar?: string;
+	emailVerifiedAt?: Date | null;
+}) {
+	const oauthSecret = encodeBase64url(randomBytes(32));
+	const hashedPassword = await hashPassword(oauthSecret);
+	const userId = crypto.randomUUID();
+	const emailUnsubscribeToken = generateEmailUnsubscribeToken();
+
+	const user: table.User = {
+		id: userId,
+		email: params.email,
+		username: params.username,
+		discordId: params.discordId,
+		avatar: params.avatar ?? '',
+		passwordHash: hashedPassword,
+		twoFactorEnabled: false,
+		twoFactorSecret: null,
+		role: 'user',
+		theme: 'system',
+		directMode: true,
+		devUserId: null,
+		gameAdd: 0,
+		gameEdit: 0,
+		profileBio: null,
+		profileBackgroundUrl: null,
+		profileMusicUrl: null,
+		profileCursorUrl: null,
+		savedGamesFilters: '[]',
+		savedUpdatesFilters: '[]',
+		emailVerifiedAt: params.emailVerifiedAt ?? null,
+		emailUnsubscribeToken,
+		emailMarketingOptOut: false,
+		createdAt: new Date(),
+		updatedAt: new Date()
+	};
+
+	await db.insert(table.user).values(user);
+	await ensureSessionApiKey(userId);
+	return user;
+}
+
+export async function signInUserAndGetDestination(
+	event: RequestEvent,
+	user: Pick<table.User, 'id' | 'emailVerifiedAt'>,
+	redirectTo: string
+) {
+	const sessionToken = generateSessionToken();
+	const session = await createSession(sessionToken, user.id);
+	setSessionTokenCookie(event, sessionToken, session.expiresAt);
+
+	const { clearLoginThrottle } = await import('$lib/server/login-throttle');
+	await clearLoginThrottle(event);
+
+	const { dashboardVerifyEmailPath, emailVerificationRequired, isUserEmailVerified } =
+		await import('$lib/server/email-verification');
+
+	let destination = redirectTo;
+	if (
+		emailVerificationRequired() &&
+		!isUserEmailVerified(user) &&
+		destination !== dashboardVerifyEmailPath()
+	) {
+		destination = dashboardVerifyEmailPath();
+	}
+
+	return destination;
 }
 
 export async function getUserByUsername(username: string) {

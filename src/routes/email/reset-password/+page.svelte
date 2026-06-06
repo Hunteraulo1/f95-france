@@ -46,7 +46,9 @@
 						<KeyRound size={28} strokeWidth={1.75} aria-hidden="true" />
 					</div>
 					<h1 class="text-2xl font-bold tracking-tight">Nouveau mot de passe</h1>
-					<p class="mt-2 text-sm text-base-content/70">Choisissez un mot de passe d’au moins 8 caractères.</p>
+					<p class="mt-2 text-sm text-base-content/70">
+						Choisissez un mot de passe d’au moins 8 caractères.
+					</p>
 				</div>
 
 				{#if form?.message && !form.success}
@@ -96,7 +98,12 @@
 				</form>
 			{:else if data.status === 'expired'}
 				<div class="text-center">
-					<MailWarning class="mx-auto text-warning" size={48} strokeWidth={1.75} aria-hidden="true" />
+					<MailWarning
+						class="mx-auto text-warning"
+						size={48}
+						strokeWidth={1.75}
+						aria-hidden="true"
+					/>
 					<h1 class="mt-4 text-2xl font-bold">Lien expiré</h1>
 					<p class="mt-2 text-sm text-base-content/70">
 						Ce lien de réinitialisation a expiré. Demandez-en un nouveau.
@@ -119,7 +126,8 @@
 					<a href="/dashboard/forgot-password" class="btn btn-ghost btn-block mt-4">
 						Demander un nouveau lien
 					</a>
-					<a href="/dashboard/login" class="link mt-2 text-sm link-primary">Retour à la connexion</a>
+					<a href="/dashboard/login" class="link mt-2 text-sm link-primary">Retour à la connexion</a
+					>
 				</div>
 			{/if}
 		</div>

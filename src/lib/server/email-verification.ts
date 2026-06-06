@@ -90,7 +90,9 @@ function escapeHtml(value: string): string {
 }
 
 async function deleteVerificationTokensForUser(userId: string): Promise<void> {
-	await db.delete(table.emailVerificationToken).where(eq(table.emailVerificationToken.userId, userId));
+	await db
+		.delete(table.emailVerificationToken)
+		.where(eq(table.emailVerificationToken.userId, userId));
 }
 
 export async function createVerificationToken(userId: string): Promise<string> {
@@ -114,7 +116,15 @@ export async function sendVerificationEmailForUser(
 	options?: { requestOrigin?: string | null }
 ): Promise<
 	| { ok: true }
-	| { ok: false; reason: 'user_not_found' | 'already_verified' | 'smtp_not_configured' | 'cooldown' | 'send_failed' }
+	| {
+			ok: false;
+			reason:
+				| 'user_not_found'
+				| 'already_verified'
+				| 'smtp_not_configured'
+				| 'cooldown'
+				| 'send_failed';
+	  }
 > {
 	if (!emailVerificationRequired()) {
 		await db
@@ -183,10 +193,9 @@ export async function sendVerificationEmailForUser(
 	}
 }
 
-export async function verifyEmailWithToken(rawToken: string): Promise<
-	| { ok: true; userId: string }
-	| { ok: false; reason: 'invalid' | 'expired' }
-> {
+export async function verifyEmailWithToken(
+	rawToken: string
+): Promise<{ ok: true; userId: string } | { ok: false; reason: 'invalid' | 'expired' }> {
 	const trimmed = rawToken.trim();
 	if (!trimmed) return { ok: false, reason: 'invalid' };
 
@@ -209,7 +218,9 @@ export async function verifyEmailWithToken(rawToken: string): Promise<
 	}
 
 	if (row.expiresAt.getTime() <= now.getTime()) {
-		await db.delete(table.emailVerificationToken).where(eq(table.emailVerificationToken.id, row.id));
+		await db
+			.delete(table.emailVerificationToken)
+			.where(eq(table.emailVerificationToken.id, row.id));
 		return { ok: false, reason: 'expired' };
 	}
 
@@ -223,10 +234,9 @@ export async function verifyEmailWithToken(rawToken: string): Promise<
 	return { ok: true, userId: row.userId };
 }
 
-export async function unsubscribeFromMarketingEmails(unsubscribeToken: string): Promise<
-	| { ok: true; username: string }
-	| { ok: false; reason: 'invalid' }
-> {
+export async function unsubscribeFromMarketingEmails(
+	unsubscribeToken: string
+): Promise<{ ok: true; username: string } | { ok: false; reason: 'invalid' }> {
 	const trimmed = unsubscribeToken.trim();
 	if (!trimmed) return { ok: false, reason: 'invalid' };
 
