@@ -3,11 +3,12 @@ import { appLogError } from '$lib/server/app-log-bridge';
 import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { generateEmailUnsubscribeToken } from '$lib/server/email-verification';
 import {
-	hashPassword,
-	hashSessionSecret,
-	verifySessionSecret,
-	type PasswordVerifyResult
+    hashPassword,
+    hashSessionSecret,
+    verifySessionSecret,
+    type PasswordVerifyResult
 } from '$lib/server/password-hash';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -17,9 +18,9 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 export const sessionCookieName = 'auth-session';
 
 export {
-	INVALID_CREDENTIALS_MESSAGE,
-	hashPassword,
-	verifyPassword
+    INVALID_CREDENTIALS_MESSAGE,
+    hashPassword,
+    verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
 
@@ -153,6 +154,7 @@ export async function createUser(username: string, email: string, password: stri
 	const hashedPassword = await hashPassword(password);
 
 	const userId = crypto.randomUUID();
+	const emailUnsubscribeToken = generateEmailUnsubscribeToken();
 
 	const user: table.User = {
 		id: userId,
@@ -175,6 +177,9 @@ export async function createUser(username: string, email: string, password: stri
 		profileCursorUrl: null,
 		savedGamesFilters: '[]',
 		savedUpdatesFilters: '[]',
+		emailVerifiedAt: null,
+		emailUnsubscribeToken,
+		emailMarketingOptOut: false,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};

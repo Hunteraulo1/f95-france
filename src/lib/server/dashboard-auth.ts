@@ -3,7 +3,8 @@ import { redirect } from '@sveltejs/kit';
 const DASHBOARD_PUBLIC_EXACT = new Set([
 	'/dashboard/login',
 	'/dashboard/register',
-	'/dashboard/logout'
+	'/dashboard/logout',
+	'/dashboard/forgot-password'
 ]);
 
 /** Profil public canonique (`/profile/{pseudo}`). */
@@ -27,10 +28,22 @@ export function isPublicGamesPath(pathname: string): boolean {
 	return pathname === '/games' || pathname.startsWith('/games/');
 }
 
+/** Liens email (vérification, désinscription). */
+export function isPublicEmailPath(pathname: string): boolean {
+	return (
+		pathname === '/email/verify' ||
+		pathname === '/email/unsubscribe' ||
+		pathname === '/email/reset-password'
+	);
+}
+
 /** Pages accessibles sans connexion (hors assets). */
 export function isPublicSitePath(pathname: string): boolean {
 	return (
-		isPublicProfilePath(pathname) || isPublicDashboardPath(pathname) || isPublicGamesPath(pathname)
+		isPublicProfilePath(pathname) ||
+		isPublicDashboardPath(pathname) ||
+		isPublicGamesPath(pathname) ||
+		isPublicEmailPath(pathname)
 	);
 }
 

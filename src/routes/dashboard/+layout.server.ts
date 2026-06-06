@@ -2,6 +2,7 @@ import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
+import { ensureEmailVerifiedOrRedirect } from '$lib/server/email-verification';
 import { hasPermission } from '$lib/server/permissions';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
@@ -15,6 +16,10 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 	if (!locals.user && !isPublicDashboardPath(pathname)) {
 		const redirectTo = encodeURIComponent(pathname + url.search);
 		redirect(303, `/dashboard/login?redirectTo=${redirectTo}`);
+	}
+
+	if (locals.user) {
+		ensureEmailVerifiedOrRedirect(locals.user, pathname);
 	}
 
 	let pendingSubmissionsCount = 0;

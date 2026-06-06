@@ -1,9 +1,9 @@
 import {
-	cloneGamesFilterGroups,
-	createDefaultGamesFilterGroups,
-	GAMES_FILTER_GROUP_NAMES,
-	type GamesFilterGroupName,
-	type GamesFilterGroupState
+    cloneGamesFilterGroups,
+    createDefaultGamesFilterGroups,
+    GAMES_FILTER_GROUP_NAMES,
+    type GamesFilterGroupName,
+    type GamesFilterGroupState
 } from '$lib/games/games-filter-config';
 import { PUBLIC_GAMES_SORT_OPTIONS, type PublicGamesSort } from '$lib/games/public-games-query';
 
@@ -32,6 +32,8 @@ function emptySelections(): Record<GamesFilterGroupName, FilterSelection> {
 		tags: { includes: [], excludes: [] }
 	};
 }
+
+export const createEmptyPublicGamesFilterSelections = emptySelections;
 
 function parseListParam(raw: string | null): string[] {
 	if (!raw?.trim()) return [];
@@ -157,9 +159,10 @@ export function hasActivePublicGamesListFilters(params: PublicGamesListParams): 
 	if (params.query) return true;
 	if (params.sort !== 'updated_desc') return true;
 
-	return GAMES_FILTER_GROUP_NAMES.some(
-		(name) => params.filters[name].includes.length > 0 || params.filters[name].excludes.length > 0
-	);
+	return GAMES_FILTER_GROUP_NAMES.some((name) => {
+		const sel = params.filters[name];
+		return (sel?.includes.length ?? 0) > 0 || (sel?.excludes.length ?? 0) > 0;
+	});
 }
 
 export function cloneFilterGroups(groups: GamesFilterGroupState[]): GamesFilterGroupState[] {

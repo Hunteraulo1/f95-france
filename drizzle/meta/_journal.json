@@ -267,6 +267,20 @@
       "when": 1780571323744,
       "tag": "0037_slow_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1780776438522,
+      "tag": "0038_high_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780780598195,
+      "tag": "0039_lyrical_luke_cage",
+      "breakpoints": true
     }
   ]
 }

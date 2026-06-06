@@ -1,24 +1,39 @@
 import * as auth from '$lib/server/auth';
 import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
 import {
-	checkLoginThrottle,
-	clearLoginThrottle,
-	loginRequiresCaptcha,
-	recordLoginFailure
+    dashboardVerifyEmailPath,
+    emailVerificationRequired,
+    isUserEmailVerified
+} from '$lib/server/email-verification';
+import {
+    checkLoginThrottle,
+    clearLoginThrottle,
+    loginRequiresCaptcha,
+    recordLoginFailure
 } from '$lib/server/login-throttle';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import {
-	extractTurnstileTokenFromFormData,
-	getTurnstileSiteKey,
-	isTurnstileConfigured,
-	verifyTurnstileFromForm
+    extractTurnstileTokenFromFormData,
+    getTurnstileSiteKey,
+    isTurnstileConfigured,
+    verifyTurnstileFromForm
 } from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => {
+export type LoginPageLoadData = {
+	redirectTo: string;
+	registrationEnabled: boolean;
+	registrationNotice: string | null;
+	resetNotice: string | null;
+	turnstileSiteKey: string;
+	turnstileEnabled: boolean;
+	requiresCaptcha: boolean;
+};
+
+export const load: PageServerLoad<LoginPageLoadData> = async (event) => {
 	const { locals, url } = event;
 
 	if (locals.user) {
@@ -31,12 +46,18 @@ export const load: PageServerLoad = async (event) => {
 		registrationNotice = 'Les inscriptions sont actuellement fermées.';
 	}
 
+	const resetNotice =
+		url.searchParams.get('reset') === '1'
+			? 'Votre mot de passe a été mis à jour. Vous pouvez vous connecter.'
+			: null;
+
 	const requiresCaptcha = await loginRequiresCaptcha(event);
 
 	return {
 		redirectTo: safeDashboardRedirectPath(url.searchParams.get('redirectTo')),
 		registrationEnabled: isRegistrationEnabled(),
 		registrationNotice,
+		resetNotice,
 		turnstileSiteKey: getTurnstileSiteKey(),
 		turnstileEnabled: isTurnstileConfigured(),
 		requiresCaptcha
@@ -138,9 +159,17 @@ export const actions: Actions = {
 			await clearLoginThrottle(event);
 
 			const formRedirect = formData.get('redirectTo');
-			const destination = safeDashboardRedirectPath(
+			let destination = safeDashboardRedirectPath(
 				typeof formRedirect === 'string' ? formRedirect : null
 			);
+
+			if (
+				emailVerificationRequired() &&
+				!isUserEmailVerified(user) &&
+				destination !== dashboardVerifyEmailPath()
+			) {
+				destination = dashboardVerifyEmailPath();
+			}
 
 			throw redirect(302, destination);
 		} catch (error) {

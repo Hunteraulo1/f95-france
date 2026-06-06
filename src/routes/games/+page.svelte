@@ -5,6 +5,7 @@
 	import { GAMES_VIEW_MODE_KEY, type GamesListViewMode } from '$lib/games/games-filter-config';
 	import {
 		buildPublicGamesListSearchParams,
+		createEmptyPublicGamesFilterSelections,
 		hasActivePublicGamesListFilters,
 		type PublicGamesListParams
 	} from '$lib/games/games-filter-url';
@@ -65,9 +66,9 @@
 	});
 
 	$effect(() => {
-		searchQuery = data.query;
-		sortValue = data.sort;
-		filterGroups = structuredClone(data.filterGroups);
+		searchQuery = data.query ?? '';
+		sortValue = data.sort ?? 'updated_desc';
+		filterGroups = structuredClone(data.filterGroups ?? []);
 	});
 
 	$effect(() => {
@@ -84,12 +85,17 @@
 
 	const rowTagsExpanded = (gameId: string) => tagsExpanded || expandedTagRowIds.has(gameId);
 
+	const games = $derived(data.games ?? []);
+	const total = $derived(data.total ?? 0);
+	const page = $derived(data.page ?? 1);
+	const totalPages = $derived(data.totalPages ?? 1);
+
 	const listParams = $derived.by(
 		(): PublicGamesListParams => ({
-			page: data.page,
-			query: data.query,
-			sort: data.sort,
-			filters: data.filters
+			page,
+			query: data.query ?? '',
+			sort: data.sort ?? 'updated_desc',
+			filters: data.filters ?? createEmptyPublicGamesFilterSelections()
 		})
 	);
 
@@ -131,11 +137,11 @@
 	const resultSummary = $derived.by(() => {
 		if (data.error) return '';
 		const hasFilters = hasActivePublicGamesListFilters(listParams);
-		const countLabel = `${data.total} jeu${data.total > 1 ? 'x' : ''}`;
+		const countLabel = `${total} jeu${total > 1 ? 'x' : ''}`;
 		if (hasFilters) {
-			return `${countLabel} trouvé${data.total > 1 ? 's' : ''}`;
+			return `${countLabel} trouvé${total > 1 ? 's' : ''}`;
 		}
-		return `${countLabel} référencé${data.total > 1 ? 's' : ''}`;
+		return `${countLabel} référencé${total > 1 ? 's' : ''}`;
 	});
 
 	const hasFilters = $derived(hasActivePublicGamesListFilters(listParams));
@@ -420,7 +426,7 @@
 			</div>
 		{:else}
 			<p class="text-sm text-base-content/60">{resultSummary}</p>
-			{#if !data.games.length}
+			{#if !games.length}
 				<div class="card border border-base-300 bg-base-100">
 					<div class="card-body items-start gap-2">
 						<h2 class="card-title text-lg">Aucun jeu trouvé</h2>
@@ -441,7 +447,7 @@
 			{:else}
 				{#if displayViewMode === 'list'}
 					<ul class="list rounded-box bg-base-100 shadow-md">
-						{#each data.games as game (game.id)}
+						{#each games as game (game.id)}
 							{@render gameListRow(game)}
 						{/each}
 					</ul>
@@ -449,15 +455,15 @@
 					<div
 						class="grid grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
 					>
-						{#each data.games as game (game.id)}
+						{#each games as game (game.id)}
 							{@render gameGridCard(game)}
 						{/each}
 					</div>
 				{/if}
 				<Pagination
-					currentPage={data.page}
-					totalPages={data.totalPages}
-					totalCount={data.total}
+					currentPage={page}
+					totalPages={totalPages}
+					totalCount={total}
 					countLabel="jeu"
 					countLabelPlural="jeux"
 					hrefForPage={gamesHref}

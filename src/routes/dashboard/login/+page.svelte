@@ -6,8 +6,14 @@
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import { startAuthentication } from '@simplewebauthn/browser';
+	import type { ActionData, PageData } from './$types';
 
-	let { form, data } = $props();
+	interface Props {
+		data: PageData & { resetNotice: string | null };
+		form: ActionData;
+	}
+
+	let { form, data }: Props = $props();
 	let username = $state('');
 	let passkeyError = $state('');
 	let passkeyLoading = $state(false);
@@ -105,6 +111,12 @@
 				<p class="mt-2 text-sm text-base-content/70">Accédez au tableau de bord F95 France</p>
 			</div>
 
+			{#if data?.resetNotice}
+				<div role="alert" class="alert alert-soft text-sm alert-success">
+					<span>{data.resetNotice}</span>
+				</div>
+			{/if}
+
 			{#if data?.registrationNotice}
 				<div role="alert" class="alert alert-soft text-sm alert-warning">
 					<span>{data.registrationNotice}</span>
@@ -138,9 +150,11 @@
 				</div>
 
 				<div class="form-control w-full">
-					<label class="label pt-0" for="login-password">
-						<span class="label-text font-medium">Mot de passe</span>
-					</label>
+					<div class="label pt-0">
+						<label for="login-password">
+							<span class="label-text font-medium">Mot de passe</span>
+						</label>
+					</div>
 					<input
 						id="login-password"
 						type="password"
@@ -187,6 +201,13 @@
 						<LogIn size={18} aria-hidden="true" />
 						Se connecter
 					</button>
+          
+          <a
+            href="/dashboard/forgot-password"
+            class="label-text-alt link link-hover link-primary mx-auto mt-2"
+          >
+            Mot de passe oublié ?
+          </a>
 				</div>
 			</form>
 

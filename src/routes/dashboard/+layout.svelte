@@ -3,14 +3,14 @@
 	import Header from '$lib/components/dashboard/Header.svelte';
 	import Sidebar from '$lib/components/dashboard/Sidebar.svelte';
 	import Toaster from '$lib/components/Toaster.svelte';
-	import { initializeUserFromLocals, setRoleBadgeStyles, setUserPermissions } from '$lib/stores';
+	import { initializeUserFromLocals, syncSessionFromLayoutData } from '$lib/stores';
 
 	let { children, data } = $props();
 
+	syncSessionFromLayoutData(data);
+
 	$effect(() => {
-		initializeUserFromLocals(data?.user);
-		setUserPermissions(data?.permissions ?? []);
-		setRoleBadgeStyles(data?.roleBadgeStyles ?? {});
+		syncSessionFromLayoutData(data);
 	});
 </script>
 
