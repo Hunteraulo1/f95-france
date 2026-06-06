@@ -123,17 +123,19 @@ async function applyDiscordAccountExtras(params: {
 			accessToken: params.accessToken,
 			guildId: params.guildId
 		});
-		const hasTranslatorRole = roleIds.includes(params.translatorRoleId);
-		const currentRole = params.currentRole ?? 'user';
+		if (roleIds) {
+			const hasTranslatorRole = roleIds.includes(params.translatorRoleId);
+			const currentRole = params.currentRole ?? 'user';
 
-		if (!params.isStaffAccount && hasTranslatorRole && currentRole === 'user') {
-			await db
-				.update(table.user)
-				.set({ role: 'translator' })
-				.where(eq(table.user.id, params.userId));
-		}
-		if (!params.isStaffAccount && !hasTranslatorRole && currentRole === 'translator') {
-			await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, params.userId));
+			if (!params.isStaffAccount && hasTranslatorRole && currentRole === 'user') {
+				await db
+					.update(table.user)
+					.set({ role: 'translator' })
+					.where(eq(table.user.id, params.userId));
+			}
+			if (!params.isStaffAccount && !hasTranslatorRole && currentRole === 'translator') {
+				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, params.userId));
+			}
 		}
 	}
 }

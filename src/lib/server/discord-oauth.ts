@@ -106,13 +106,20 @@ export async function getDiscordIdentity(accessToken: string) {
 	return (await response.json()) as DiscordIdentity;
 }
 
-export async function getDiscordGuildMemberRoles(params: { accessToken: string; guildId: string }) {
+/** Rôles du membre sur le serveur Discord, ou `null` si la sync est impossible (config, hors serveur, etc.). */
+export async function getDiscordGuildMemberRoles(params: {
+	accessToken: string;
+	guildId: string;
+}): Promise<string[] | null> {
 	const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${params.guildId}/member`, {
 		headers: { authorization: `Bearer ${params.accessToken}` }
 	});
 	if (!response.ok) {
 		const text = await response.text();
-		throw new Error(`Récupération rôles Discord échouée (${response.status}): ${text}`);
+		console.warn(
+			`Sync rôles Discord ignorée (${response.status}, guild ${params.guildId}): ${text}`
+		);
+		return null;
 	}
 	const data = (await response.json()) as { roles?: string[] };
 	return Array.isArray(data.roles) ? data.roles : [];

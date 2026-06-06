@@ -246,7 +246,7 @@ export async function resetPasswordWithToken(
 
 	await db
 		.update(table.user)
-		.set({ passwordHash, updatedAt: now })
+		.set({ passwordHash, hasPassword: true, updatedAt: now })
 		.where(eq(table.user.id, validation.userId));
 
 	await db.delete(table.session).where(eq(table.session.userId, validation.userId));

@@ -281,6 +281,13 @@
       "when": 1780780598195,
       "tag": "0039_lyrical_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1780784680980,
+      "tag": "0040_left_avengers",
+      "breakpoints": true
     }
   ]
 }

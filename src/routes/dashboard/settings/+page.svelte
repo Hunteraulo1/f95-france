@@ -166,26 +166,37 @@
 				>
 					<div class="flex justify-end">
 						{#if $user?.discordId}
-							<form
-								class="w-full"
-								method="POST"
-								action="?/unlinkDiscord"
-								use:enhance={createFormEnhance({
-									onStart: () => {
-										discordError = null;
-										discordInfo = null;
-									},
-									onFailure: (message) => {
-										discordError = message;
-									},
-									onSuccess: async () => {
-										await loadUserData();
-										discordInfo = 'Compte Discord délié avec succès.';
-									}
-								})}
-							>
-								<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
-							</form>
+							{#if data.hasPassword}
+								<form
+									class="w-full"
+									method="POST"
+									action="?/unlinkDiscord"
+									use:enhance={createFormEnhance({
+										onStart: () => {
+											discordError = null;
+											discordInfo = null;
+										},
+										onFailure: (message) => {
+											discordError = message;
+										},
+										onSuccess: async () => {
+											await loadUserData();
+											discordInfo = 'Compte Discord délié avec succès.';
+										}
+									})}
+								>
+									<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+								</form>
+							{:else}
+								<div class="flex w-full flex-col gap-2">
+									<button type="button" class="btn btn-outline btn-error btn-disabled" disabled>
+										Délier Discord
+									</button>
+									<p class="text-xs text-base-content/60">
+										Définissez un mot de passe ci-dessous avant de délier Discord.
+									</p>
+								</div>
+							{/if}
 						{:else}
 							<a href="/api/discord-oauth/authorize" class="btn btn-primary">Lier mon Discord</a>
 						{/if}
@@ -261,10 +272,20 @@
 	</div>
 
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-base-content">Changer le mot de passe</h2>
+		<h2 class="text-lg font-semibold text-base-content">
+			{data.hasPassword ? 'Changer le mot de passe' : 'Définir un mot de passe'}
+		</h2>
 
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:py-8">
+				{#if !data.hasPassword}
+					<div role="alert" class="alert alert-soft text-sm alert-warning">
+						<span>
+							Votre compte a été créé via Discord. Définissez un mot de passe pour pouvoir vous
+							connecter sans Discord ou délier votre compte Discord.
+						</span>
+					</div>
+				{/if}
 				{#if passwordError}
 					<div class="mb-4 alert w-full alert-error">
 						<span>{passwordError}</span>
@@ -278,10 +299,11 @@
 
 				<form
 					method="POST"
-					action="?/changePassword"
+					action={data.hasPassword ? '?/changePassword' : '?/setInitialPassword'}
 					class="w-full"
 					use:enhance={createFormEnhance({
 						updateOnlyOnSuccess: true,
+						invalidateAll: true,
 						onStart: () => {
 							passwordError = null;
 							passwordInfo = null;
@@ -289,21 +311,28 @@
 						onFailure: (message) => {
 							passwordError = message;
 						},
-						onSuccess: (_result, { formElement }) => {
-							passwordInfo = 'Mot de passe mis à jour avec succès.';
+						onSuccess: async (_result, { formElement }) => {
+							passwordInfo = data.hasPassword
+								? 'Mot de passe mis à jour avec succès.'
+								: 'Mot de passe défini avec succès.';
 							formElement?.reset();
+							if (!data.hasPassword) {
+								await loadUserData();
+							}
 						}
 					})}
 				>
 					<div class="flex w-full flex-col gap-3">
-						<input
-							type="password"
-							name="currentPassword"
-							placeholder="Mot de passe actuel"
-							class="input-bordered input w-full"
-							autocomplete="current-password"
-							required
-						/>
+						{#if data.hasPassword}
+							<input
+								type="password"
+								name="currentPassword"
+								placeholder="Mot de passe actuel"
+								class="input-bordered input w-full"
+								autocomplete="current-password"
+								required
+							/>
+						{/if}
 						<input
 							type="password"
 							name="newPassword"
@@ -325,7 +354,9 @@
 					</div>
 
 					<div class="mt-4 flex justify-end">
-						<button type="submit" class="btn btn-primary">Mettre à jour</button>
+						<button type="submit" class="btn btn-primary">
+							{data.hasPassword ? 'Mettre à jour' : 'Définir le mot de passe'}
+						</button>
 					</div>
 				</form>
 			</div>

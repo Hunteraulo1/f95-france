@@ -1,13 +1,13 @@
 import { sql } from 'drizzle-orm';
 import {
-	boolean,
-	integer,
-	pgEnum,
-	pgTable,
-	primaryKey,
-	text,
-	timestamp,
-	varchar
+    boolean,
+    integer,
+    pgEnum,
+    pgTable,
+    primaryKey,
+    text,
+    timestamp,
+    varchar
 } from 'drizzle-orm/pg-core';
 
 export const themeEnum = pgEnum('theme_enum', ['system', 'light', 'dark']);
@@ -19,6 +19,8 @@ export const user = pgTable('user', {
 	discordId: varchar('discord_id', { length: 255 }).unique(),
 	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+	/** False pour les comptes créés via Discord OAuth sans mot de passe choisi par l’utilisateur. */
+	hasPassword: boolean('has_password').notNull().default(true),
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
 	twoFactorSecret: text('two_factor_secret'),
 	role: varchar('role', { length: 255 }).notNull().default('user'),
