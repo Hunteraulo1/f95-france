@@ -52,16 +52,17 @@
 			primaryCta: { href: SITE.discordInviteUrl, label: 'Rejoindre le serveur', external: true },
 			mockup: 'discord'
 		},
-		{
-			id: 'wiki',
-			label: 'Wiki',
-			titleBefore: 'Tout savoir grace au wiki de',
-			titleHighlight: 'F95 France',
-			titleAfter: '',
-			lead: 'Guides, tutoriels et documentation pour comprendre le site, contribuer aux traductions et tirer le meilleur parti des outils de la communauté.',
-			primaryCta: { href: SITE.wikiUrl, label: 'Consulter le wiki', external: true },
-			mockup: 'wiki'
-		}
+    // TODO: Uncomment when Wiki is back online
+		// {
+		// 	id: 'wiki',
+		// 	label: 'Wiki',
+		// 	titleBefore: 'Tout savoir grace au wiki de',
+		// 	titleHighlight: 'F95 France',
+		// 	titleAfter: '',
+		// 	lead: 'Guides, tutoriels et documentation pour comprendre le site, contribuer aux traductions et tirer le meilleur parti des outils de la communauté.',
+		// 	primaryCta: { href: SITE.wikiUrl, label: 'Consulter le wiki', external: true },
+		// 	mockup: 'wiki'
+		// }
 	];
 
 	const SLIDE_INTERVAL_MS = 7000;
