@@ -168,6 +168,7 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 			const emailToSave = canViewUserEmails ? email : currentUser[0].email;
+			const emailChanged = canViewUserEmails && emailToSave !== currentUser[0].email;
 
 			const manageCheck = await assertCanManageUserWithRole(locals, currentUserRole, userId);
 			if (!manageCheck.allowed) {
@@ -187,9 +188,17 @@ export const actions: Actions = {
 					username,
 					email: emailToSave,
 					role,
-					avatar: avatar || ''
+					avatar: avatar || '',
+					...(emailChanged ? { emailVerifiedAt: null } : {})
 				})
 				.where(eq(table.user.id, userId));
+
+			if (emailChanged) {
+				const { sendVerificationEmailForUser } = await import('$lib/server/email-verification');
+				await sendVerificationEmailForUser(userId).catch((error) => {
+					console.error('Erreur envoi email de vérification après changement email:', error);
+				});
+			}
 
 			if (linkedTranslatorId) {
 				const tr = await db

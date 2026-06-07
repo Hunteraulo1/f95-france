@@ -2,7 +2,7 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import { setAgeVerified } from '$lib/age-verification';
+	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
@@ -24,12 +24,9 @@
 		initializeUserFromLocals(data.user);
 	});
 
-	const readInitialAgeVerified = () => {
-		if (data.ageVerified) return true;
-		return browser ? document.documentElement.dataset.ageVerified === '1' : false;
-	};
-
-	let ageVerified = $state(readInitialAgeVerified());
+	/** Aligné sur le cookie SSR — le localStorage est resynchronisé après hydratation (app.html). */
+	let ageVerifiedLocal = $state<boolean | null>(null);
+	const ageVerified = $derived(ageVerifiedLocal ?? data.ageVerified);
 
 	$effect(() => {
 		if (!browser) return;
@@ -48,10 +45,15 @@
 
 	const confirmAge = () => {
 		setAgeVerified();
-		ageVerified = true;
+		ageVerifiedLocal = true;
 	};
 
 	onMount(() => {
+		if (!ageVerified && isAgeVerified()) {
+			setAgeVerified();
+			ageVerifiedLocal = true;
+		}
+
 		const run = () => themeChange(false);
 		if ('requestIdleCallback' in window) {
 			requestIdleCallback(run, { timeout: 2000 });

@@ -79,3 +79,14 @@ export const setUserPermissions = (permissions: string[]) => {
 export const setRoleBadgeStyles = (styles: Record<string, string>) => {
 	roleBadgeStyles.set(styles);
 };
+
+/** Alimente les stores session depuis le layout (SSR + navigations client). */
+export const syncSessionFromLayoutData = (data: {
+	user?: User | null;
+	permissions?: string[];
+	roleBadgeStyles?: Record<string, string>;
+}): void => {
+	initializeUserFromLocals(data.user ?? null);
+	setUserPermissions(data.permissions ?? []);
+	setRoleBadgeStyles(data.roleBadgeStyles ?? {});
+};

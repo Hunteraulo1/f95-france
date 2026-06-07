@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "has_password" boolean DEFAULT true NOT NULL;

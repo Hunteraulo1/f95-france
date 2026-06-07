@@ -32,8 +32,8 @@
 		{ label: 'Accueil', href: resolve('/') },
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
-		{ label: 'Traducteurs', href: '/translators' },
-    // TODO: Uncomment when Wiki is back online
+		{ label: 'Traducteurs', href: '/translators' }
+		// TODO: Uncomment when Wiki is back online
 		// { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 

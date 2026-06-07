@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import DiscordIcon from '$lib/components/DiscordIcon.svelte';
 	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
+	import { discordOAuthAuthorizePath } from '$lib/discord-oauth-url';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
@@ -8,14 +10,25 @@
 
 	interface Props {
 		form: ActionData & { errors?: Record<string, string> };
-		data: { requiresInviteCode: boolean; turnstileSiteKey: string; turnstileEnabled: boolean };
+		data: {
+			requiresInviteCode: boolean;
+			discordLoginEnabled: boolean;
+			turnstileSiteKey: string;
+			turnstileEnabled: boolean;
+		};
 	}
 
 	let { form, data }: Props = $props();
 	let captchaToken = $state('');
+	let inviteCode = $state('');
 	let turnstileWidget = $state<TurnstileWidget | undefined>();
 
 	const showCaptcha = $derived(Boolean(data?.turnstileEnabled && data?.turnstileSiteKey));
+	const discordRegisterHref = $derived(
+		discordOAuthAuthorizePath({
+			inviteCode: data?.requiresInviteCode ? inviteCode : undefined
+		})
+	);
 </script>
 
 <svelte:head>
@@ -98,6 +111,7 @@
 							autocomplete="off"
 							class="input-bordered input w-full"
 							placeholder="Code fourni par l’équipe"
+							bind:value={inviteCode}
 						/>
 					</div>
 				{/if}
@@ -164,6 +178,22 @@
 					</button>
 				</div>
 			</form>
+
+			{#if data?.discordLoginEnabled}
+				<div class="divider text-xs text-base-content/50">ou</div>
+				<a
+					href={discordRegisterHref}
+					class="btn btn-block gap-2 bg-[#5865F2] text-white hover:bg-[#4752C4] border-0"
+				>
+					<DiscordIcon size={18} />
+					S’inscrire avec Discord
+				</a>
+				{#if data.requiresInviteCode && !inviteCode.trim()}
+					<p class="text-center text-xs text-base-content/60">
+						Saisissez votre code d’invitation ci-dessus avant de continuer avec Discord.
+					</p>
+				{/if}
+			{/if}
 
 			<p class="text-center text-sm text-base-content/70">
 				Déjà un compte ?

@@ -1,7 +1,9 @@
 import { env } from '$env/dynamic/private';
+import type { DiscordOAuthIntent } from '$lib/server/discord-oauth-state';
 
 const DISCORD_API_BASE = 'https://discord.com/api';
-const DISCORD_OAUTH_SCOPES = ['identify', 'guilds.members.read'];
+const DISCORD_OAUTH_SCOPES_LINK = ['identify', 'guilds.members.read'] as const;
+const DISCORD_OAUTH_SCOPES_LOGIN = ['identify', 'email', 'guilds.members.read'] as const;
 
 type DiscordTokenResponse = {
 	access_token: string;
@@ -17,7 +19,18 @@ export type DiscordIdentity = {
 	discriminator?: string;
 	global_name?: string | null;
 	avatar?: string | null;
+	email?: string | null;
+	verified?: boolean;
 };
+
+export function isDiscordOAuthConfigured() {
+	const { clientId, clientSecret } = getDiscordOAuthConfig();
+	return Boolean(clientId && clientSecret);
+}
+
+export function getDiscordOAuthScopes(intent: DiscordOAuthIntent) {
+	return intent === 'login' ? [...DISCORD_OAUTH_SCOPES_LOGIN] : [...DISCORD_OAUTH_SCOPES_LINK];
+}
 
 export function getDiscordOAuthConfig() {
 	const clientId = env.DISCORD_OAUTH_CLIENT_ID?.trim() ?? '';
@@ -41,12 +54,14 @@ export function getDiscordAuthorizeUrl(params: {
 	clientId: string;
 	redirectUri: string;
 	state: string;
+	intent?: DiscordOAuthIntent;
 }) {
+	const scopes = getDiscordOAuthScopes(params.intent ?? 'link');
 	const search = new URLSearchParams({
 		client_id: params.clientId,
 		response_type: 'code',
 		redirect_uri: params.redirectUri,
-		scope: DISCORD_OAUTH_SCOPES.join(' '),
+		scope: scopes.join(' '),
 		state: params.state,
 		prompt: 'consent'
 	});
@@ -91,13 +106,20 @@ export async function getDiscordIdentity(accessToken: string) {
 	return (await response.json()) as DiscordIdentity;
 }
 
-export async function getDiscordGuildMemberRoles(params: { accessToken: string; guildId: string }) {
+/** Rôles du membre sur le serveur Discord, ou `null` si la sync est impossible (config, hors serveur, etc.). */
+export async function getDiscordGuildMemberRoles(params: {
+	accessToken: string;
+	guildId: string;
+}): Promise<string[] | null> {
 	const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${params.guildId}/member`, {
 		headers: { authorization: `Bearer ${params.accessToken}` }
 	});
 	if (!response.ok) {
 		const text = await response.text();
-		throw new Error(`Récupération rôles Discord échouée (${response.status}): ${text}`);
+		console.warn(
+			`Sync rôles Discord ignorée (${response.status}, guild ${params.guildId}): ${text}`
+		);
+		return null;
 	}
 	const data = (await response.json()) as { roles?: string[] };
 	return Array.isArray(data.roles) ? data.roles : [];

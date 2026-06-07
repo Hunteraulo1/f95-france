@@ -51,8 +51,8 @@
 			lead: 'Annonces des mises à jour, entraide traduction, discussions entre joueurs et suivi des sorties en temps réel avec l’équipe.',
 			primaryCta: { href: SITE.discordInviteUrl, label: 'Rejoindre le serveur', external: true },
 			mockup: 'discord'
-		},
-    // TODO: Uncomment when Wiki is back online
+		}
+		// TODO: Uncomment when Wiki is back online
 		// {
 		// 	id: 'wiki',
 		// 	label: 'Wiki',

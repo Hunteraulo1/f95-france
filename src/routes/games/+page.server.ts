@@ -1,8 +1,8 @@
 import { buildFilterGroupsForUi, parsePublicGamesListParams } from '$lib/games/games-filter-url';
-import { listPublicGames } from '$lib/server/public-games';
-import { listTranslatorFilterOptions } from '$lib/server/public-games-translators';
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema';
+import { listPublicGames } from '$lib/server/public-games';
+import { listTranslatorFilterOptions } from '$lib/server/public-games-translators';
 import { parseSavedGamesFilters } from '$lib/server/saved-games-filters';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -31,6 +31,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 		return {
 			...result,
+			games: result.games ?? [],
 			filterGroups,
 			translatorIds: translators,
 			savedFilters,

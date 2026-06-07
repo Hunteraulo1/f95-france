@@ -234,10 +234,10 @@
 									<span class="label-text-alt text-wrap text-base-content/50">
 										{#if data.config?.hasGoogleOAuthToken}
 											<span class="text-success">✓ Jetons OAuth présents</span>
-											— Google Sheets. La traduction des descriptions utilise MyMemory par défaut.
+											— synchronisation Google Sheets.
 										{:else}
-											Accès Google Sheets. Traduction auto : MyMemory (gratuit), voir
-											<code class="text-xs">TRANSLATION_PROVIDER</code> dans
+											Accès Google Sheets (OAuth). Traduction auto des descriptions :
+											LibreTranslate, voir <code class="text-xs">LIBRETRANSLATE_URL</code> dans
 											<code class="text-xs">.env</code>.
 										{/if}
 									</span>

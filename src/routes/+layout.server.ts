@@ -12,7 +12,10 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 			redirect(303, '/dashboard/login?registration=disabled');
 		}
 
-		const isAuthPage = pathname === '/dashboard/login' || pathname === '/dashboard/register';
+		const isAuthPage =
+			pathname === '/dashboard/login' ||
+			pathname === '/dashboard/register' ||
+			pathname === '/dashboard/forgot-password';
 		if (isAuthPage && locals.user) {
 			redirect(302, '/dashboard');
 		}
