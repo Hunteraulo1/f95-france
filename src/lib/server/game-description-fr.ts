@@ -1,6 +1,6 @@
 import {
-    isDescriptionAutoTranslateEnabled,
-    translateTextToFrenchLibreTranslate
+	isDescriptionAutoTranslateEnabled,
+	translateTextToFrenchLibreTranslate
 } from '$lib/server/translate-libretranslate';
 
 export type GameDescriptionFields = {

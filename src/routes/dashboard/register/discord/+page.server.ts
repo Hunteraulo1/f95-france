@@ -1,23 +1,23 @@
 import {
-    finalizeDiscordSignup,
-    REGISTRATION_INVITE_INVALID_MESSAGE,
-    validateDiscordSignupUsername
+	finalizeDiscordSignup,
+	REGISTRATION_INVITE_INVALID_MESSAGE,
+	validateDiscordSignupUsername
 } from '$lib/server/discord-auth';
 import { getDiscordOAuthConfig } from '$lib/server/discord-oauth';
 import {
-    clearDiscordSignupPendingCookie,
-    readDiscordSignupPendingCookie
+	clearDiscordSignupPendingCookie,
+	readDiscordSignupPendingCookie
 } from '$lib/server/discord-signup-pending';
 import {
-    isRegistrationEnabled,
-    isRegistrationInviteRequired,
-    verifyRegistrationInvite
+	isRegistrationEnabled,
+	isRegistrationInviteRequired,
+	verifyRegistrationInvite
 } from '$lib/server/registration-policy';
 import {
-    extractTurnstileTokenFromFormData,
-    getTurnstileSiteKey,
-    isTurnstileConfigured,
-    verifyTurnstileFromForm
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
 } from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 function maskEmail(email: string): string {
 	const [local, domain] = email.split('@');
 	if (!local || !domain) return email;
-	const visible = local.length <= 2 ? local[0] ?? '*' : `${local.slice(0, 2)}***`;
+	const visible = local.length <= 2 ? (local[0] ?? '*') : `${local.slice(0, 2)}***`;
 	return `${visible}@${domain}`;
 }
 

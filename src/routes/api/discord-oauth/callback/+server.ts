@@ -1,8 +1,8 @@
 import { completeDiscordLogin, linkDiscordToUser, parseDiscordId } from '$lib/server/discord-auth';
 import {
-    exchangeDiscordCode,
-    getDiscordIdentity,
-    getDiscordOAuthConfig
+	exchangeDiscordCode,
+	getDiscordIdentity,
+	getDiscordOAuthConfig
 } from '$lib/server/discord-oauth';
 import { readDiscordOAuthCookies } from '$lib/server/discord-oauth-state';
 import { isRedirect, redirect } from '@sveltejs/kit';

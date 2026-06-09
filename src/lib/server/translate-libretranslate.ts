@@ -67,7 +67,9 @@ async function translateChunk(text: string, baseUrl: string, apiKey?: string): P
 
 	if (!res.ok) {
 		const detail = json?.error ?? (typeof json === 'object' ? JSON.stringify(json) : '');
-		throw new Error(`LibreTranslate HTTP ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+		throw new Error(
+			`LibreTranslate HTTP ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`
+		);
 	}
 
 	const translated = json?.translatedText;
