@@ -71,7 +71,7 @@
 		"drizzle-kit": "0.31.10",
 		"drizzle-orm": "0.45.2",
 		"linkedom": "0.18.12",
-		"marked": "^18.0.5",
+		"marked": "18.0.5",
 		"nodemailer": "8.0.10",
 		"otpauth": "9.5.1",
 		"postgres": "3.4.9",
