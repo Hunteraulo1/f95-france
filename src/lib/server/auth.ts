@@ -5,10 +5,10 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { generateEmailUnsubscribeToken } from '$lib/server/email-verification';
 import {
-    hashPassword,
-    hashSessionSecret,
-    verifySessionSecret,
-    type PasswordVerifyResult
+	hashPassword,
+	hashSessionSecret,
+	verifySessionSecret,
+	type PasswordVerifyResult
 } from '$lib/server/password-hash';
 import { encodeBase64url } from '@oslojs/encoding';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -20,9 +20,9 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 export const sessionCookieName = 'auth-session';
 
 export {
-    INVALID_CREDENTIALS_MESSAGE,
-    hashPassword,
-    verifyPassword
+	INVALID_CREDENTIALS_MESSAGE,
+	hashPassword,
+	verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
 

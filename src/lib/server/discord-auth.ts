@@ -2,21 +2,21 @@ import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
-    getDiscordAvatarUrl,
-    getDiscordGuildMemberRoles,
-    type DiscordIdentity
+	getDiscordAvatarUrl,
+	getDiscordGuildMemberRoles,
+	type DiscordIdentity
 } from '$lib/server/discord-oauth';
 import type { DiscordOAuthContext } from '$lib/server/discord-oauth-state';
 import {
-    clearDiscordSignupPendingCookie,
-    setDiscordSignupPendingCookie,
-    type DiscordSignupPending
+	clearDiscordSignupPendingCookie,
+	setDiscordSignupPendingCookie,
+	type DiscordSignupPending
 } from '$lib/server/discord-signup-pending';
 import { sendVerificationEmailForUser } from '$lib/server/email-verification';
 import {
-    REGISTRATION_INVITE_INVALID_MESSAGE,
-    isRegistrationEnabled,
-    verifyRegistrationInvite
+	REGISTRATION_INVITE_INVALID_MESSAGE,
+	isRegistrationEnabled,
+	verifyRegistrationInvite
 } from '$lib/server/registration-policy';
 import { encodeBase64url } from '@oslojs/encoding';
 import { redirect, type RequestEvent } from '@sveltejs/kit';
@@ -64,7 +64,7 @@ export function validateDiscordSignupUsername(username: string): string | null {
 		return "Le nom d'utilisateur ne peut pas dépasser 32 caractères.";
 	}
 	if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
-		return "Utilisez uniquement des lettres, chiffres, tirets et underscores.";
+		return 'Utilisez uniquement des lettres, chiffres, tirets et underscores.';
 	}
 	return null;
 }

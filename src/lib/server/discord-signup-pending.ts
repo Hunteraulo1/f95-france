@@ -69,9 +69,8 @@ export function readDiscordSignupPendingCookie(
 	}
 }
 
-export function clearDiscordSignupPendingCookie(event: Pick<RequestEvent, 'cookies' | 'url' | 'request'>) {
-	event.cookies.delete(
-		DISCORD_SIGNUP_PENDING_COOKIE,
-		secureSessionCookieOptions(event)
-	);
+export function clearDiscordSignupPendingCookie(
+	event: Pick<RequestEvent, 'cookies' | 'url' | 'request'>
+) {
+	event.cookies.delete(DISCORD_SIGNUP_PENDING_COOKIE, secureSessionCookieOptions(event));
 }

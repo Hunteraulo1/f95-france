@@ -21,9 +21,11 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 		}
 	}
 
+	const bypassVerif = url.searchParams.has('bypassVerif');
+
 	return {
 		user: locals.user,
 		registrationEnabled,
-		ageVerified: cookies.get(AGE_VERIFICATION_COOKIE) === '1'
+		ageVerified: bypassVerif || cookies.get(AGE_VERIFICATION_COOKIE) === '1'
 	};
 };

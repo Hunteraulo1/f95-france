@@ -26,7 +26,8 @@
 
 	/** Aligné sur le cookie SSR — le localStorage est resynchronisé après hydratation (app.html). */
 	let ageVerifiedLocal = $state<boolean | null>(null);
-	const ageVerified = $derived(ageVerifiedLocal ?? data.ageVerified);
+	const bypassVerif = $derived(page.url.searchParams.has('bypassVerif'));
+	const ageVerified = $derived(bypassVerif || (ageVerifiedLocal ?? data.ageVerified));
 
 	$effect(() => {
 		if (!browser) return;

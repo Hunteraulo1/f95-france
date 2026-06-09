@@ -31,9 +31,7 @@
 	});
 
 	const showCaptcha = $derived(Boolean(data.turnstileEnabled && data.turnstileSiteKey));
-	const pageError = $derived(
-		form?.message ?? discordLoginErrorMessage(data.errorCode)
-	);
+	const pageError = $derived(form?.message ?? discordLoginErrorMessage(data.errorCode));
 </script>
 
 <svelte:head>
