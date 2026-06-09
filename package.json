@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.6.1",
+	"version": "4.6.2",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -44,7 +44,7 @@
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "3.19.0",
 		"globals": "17.6.0",
-		"prettier": "3.8.3",
+		"prettier": "3.8.4",
 		"prettier-plugin-svelte": "4.1.0",
 		"prettier-plugin-tailwindcss": "0.8.0",
 		"@puppeteer/browsers": "3.0.4",
@@ -71,7 +71,7 @@
 		"drizzle-kit": "0.31.10",
 		"drizzle-orm": "0.45.2",
 		"linkedom": "0.18.12",
-		"marked": "^18.0.5",
+		"marked": "18.0.5",
 		"nodemailer": "8.0.10",
 		"otpauth": "9.5.1",
 		"postgres": "3.4.9",

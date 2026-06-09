@@ -1,9 +1,24 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
-@plugin 'daisyui/index.js' {
-	themes:
-		light --default,
-		dark --prefersdark;
+@plugin 'daisyui';
+
+@plugin 'daisyui/theme' {
+	name: 'light';
+	default: true;
+
+	--color-base-content: var(--color-slate-800);
+}
+
+@plugin 'daisyui/theme' {
+	name: 'dark';
+	prefersdark: true;
+
+	--color-ext-background: hsl(222.2 84% 7%);
+	--color-ext-foreground: hsl(210 40% 98%);
+	--color-ext-card: hsl(222.2 47.4% 11.2%);
+	--color-ext-border: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary-foreground: hsl(210 40% 98%);
 }
 
 @theme {
@@ -14,12 +29,12 @@
 	--animate-float-sheet-reverse: floatSheetReverse 8s ease-in-out infinite;
 	--animate-neon-glow: neon-glow 2s ease-in-out infinite alternate;
 
-	--color-ext-background: hsl(222.2 84% 7%);
-	--color-ext-foreground: hsl(210 40% 98%);
-	--color-ext-card: hsl(222.2 47.4% 11.2%);
-	--color-ext-border: hsl(217.2 32.6% 17.5%);
-	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
-	--color-ext-secondary-foreground: hsl(210 40% 98%);
+	--color-ext-background: hsl(0 0% 87%);
+	--color-ext-foreground: hsl(222.2 84% 4.9%);
+	--color-ext-card: hsl(0 0% 95%);
+	--color-ext-border: hsl(214.3 31.8% 81.4%);
+	--color-ext-secondary: hsl(210 20% 80%);
+	--color-ext-secondary-foreground: hsl(222.2 47.4% 11.2%);
 
 	@keyframes text {
 		0%,
