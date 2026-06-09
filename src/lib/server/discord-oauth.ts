@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { DiscordOAuthIntent } from '$lib/server/discord-oauth-state';
+import { discordAvatarApiUrl, resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 
 const DISCORD_API_BASE = 'https://discord.com/api';
 const DISCORD_OAUTH_SCOPES_LINK = ['identify', 'guilds.members.read'] as const;
@@ -126,12 +127,11 @@ export async function getDiscordGuildMemberRoles(params: {
 }
 
 export async function getDiscordAvatarUrl(discordId: string) {
-	const response = await fetch(
-		`https://avatar-cyan.vercel.app/api/${encodeURIComponent(discordId)}`
-	);
+	const response = await fetch(discordAvatarApiUrl(discordId));
 	if (!response.ok) return null;
 
 	const data = (await response.json()) as { avatarUrl?: string };
 	const avatarUrl = typeof data.avatarUrl === 'string' ? data.avatarUrl.trim() : '';
-	return avatarUrl || null;
+	if (!avatarUrl) return null;
+	return resolveDiscordAvatarDisplayUrl(avatarUrl);
 }

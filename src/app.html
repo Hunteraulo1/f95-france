@@ -21,10 +21,17 @@
 				font-size: clamp(1.5rem, 4vw + 0.5rem, 3rem);
 				font-weight: 700;
 				line-height: 1.25;
+			}
+			html[data-theme='light'] #home-hero-title {
+				color: #1e293b;
+			}
+			html[data-theme='dark'] #home-hero-title {
 				color: #f5f5f5;
 			}
-			.home-hero-lead {
-				margin: 0;
+			html[data-theme='light'] .home-hero-lead {
+				color: rgb(30 41 59 / 0.9);
+			}
+			html[data-theme='dark'] .home-hero-lead {
 				color: rgb(245 245 245 / 0.9);
 			}
 			/* Évite le flash de la modale d'âge si localStorage dit déjà « vérifié » (avant hydratation). */

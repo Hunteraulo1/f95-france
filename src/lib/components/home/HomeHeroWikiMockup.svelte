@@ -26,7 +26,7 @@
 		class="grid h-full min-h-0 grid-cols-[6.5rem_1fr] gap-2 overflow-hidden rounded-lg border border-base-content/12"
 	>
 		<div class="flex flex-col gap-1.5 bg-base-200/60 p-2">
-			<div class="flex items-center gap-1 px-1 text-[0.62rem] font-semibold text-base-content/55">
+			<div class="flex items-center gap-1 px-1 text-[0.62rem] font-semibold text-base-content/80">
 				<BookOpen class="size-3" aria-hidden="true" />
 				Sommaire
 			</div>
@@ -34,7 +34,7 @@
 				<div
 					class="rounded-md px-1.5 py-1 text-[0.62rem] hover:bg-base-300 hover:text-base-content {item.active
 						? 'bg-primary/16 font-semibold text-base-content hover:bg-primary hover:text-base-content'
-						: 'text-base-content/65'}"
+						: 'text-base-content/80'}"
 				>
 					{item.label}
 				</div>

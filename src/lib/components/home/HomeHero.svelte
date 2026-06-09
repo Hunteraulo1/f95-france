@@ -286,7 +286,7 @@
 		class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
 	></div>
 	<div
-		class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-base-foreground xl:flex-row xl:items-center"
+		class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-base-content xl:flex-row xl:items-center"
 	>
 		<div class="w-full min-w-0 max-w-2xl flex-1 space-y-4 text-center xl:text-left">
 			<div class="grid w-full grid-cols-[minmax(0,1fr)]">
@@ -297,10 +297,11 @@
 							? 'relative z-1 opacity-100'
 							: 'pointer-events-none opacity-0'}"
 						style:transition-duration={prefersReducedMotion ? '200ms' : '420ms'}
+						inert={slideIndex !== activeSlide}
 						aria-hidden={slideIndex !== activeSlide}
 					>
 						<h1
-							id={slideIndex === activeSlide ? 'home-hero-title text-current' : undefined}
+							id={slideIndex === activeSlide ? 'home-hero-title' : undefined}
 							class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl"
 						>
 							{slide.titleBefore}
@@ -315,7 +316,7 @@
 								{slide.titleAfter}
 							{/if}
 						</h1>
-						<p class="text-current/90">{slide.lead}</p>
+						<p class="home-hero-lead text-base-content/90">{slide.lead}</p>
 						<div class="flex flex-wrap gap-3 justify-center xl:justify-start pt-4">
 							<a
 								href={slide.primaryCta.href}
@@ -352,7 +353,7 @@
 						role="tab"
 						class="btn btn-xs btn-circle transition-colors {index === activeSlide
 							? 'btn-primary'
-							: 'btn-ghost border border-base-content/25 text-base-content/70'}"
+							: 'btn-ghost border border-base-content/30 text-base-content'}"
 						aria-selected={index === activeSlide}
 						aria-label={slide.label}
 						onclick={() => goToSlide(index)}
@@ -365,6 +366,8 @@
 
 		<div
 			class="xl:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 px-8 select-none xl:opacity-100 xl:px-0 -translate-x-4"
+			aria-hidden="true"
+			inert
 		>
 			<HomeHeroMockupFlip {activeSlide} {slides} />
 		</div>

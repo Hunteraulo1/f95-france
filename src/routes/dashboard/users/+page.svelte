@@ -5,9 +5,10 @@
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
-	import { roleBadgeStyles } from '$lib/stores';
-	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
+	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import User from '@lucide/svelte/icons/user';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -167,7 +168,7 @@
 									<div class="avatar">
 										<div class="mask flex h-10 w-10 items-center justify-center mask-squircle">
 											{#if user?.avatar && user.avatar !== ''}
-												<img alt="avatar" src={user.avatar} />
+												<img alt="avatar" src={resolveDiscordAvatarDisplayUrl(user.avatar)} />
 											{:else}
 												<User size={24} />
 											{/if}

@@ -1,7 +1,8 @@
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+import { getDiscordAvatarUrl } from '$lib/server/discord-oauth';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import {
@@ -14,8 +15,6 @@ import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
-
-const DISCORD_AVATAR_API_BASE_URL = 'https://avatar-cyan.vercel.app/api';
 
 async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: string | null) {
 	const normalizedDiscordId = discordId?.trim();
@@ -30,13 +29,7 @@ async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: st
 	if (!currentUser || currentUser.avatar.trim() !== '') return;
 
 	try {
-		const response = await fetch(
-			`${DISCORD_AVATAR_API_BASE_URL}/${encodeURIComponent(normalizedDiscordId)}`
-		);
-		if (!response.ok) return;
-
-		const data = (await response.json()) as { avatarUrl?: string };
-		const avatarUrl = typeof data.avatarUrl === 'string' ? data.avatarUrl.trim() : '';
+		const avatarUrl = await getDiscordAvatarUrl(normalizedDiscordId);
 		if (!avatarUrl) return;
 
 		await db.update(table.user).set({ avatar: avatarUrl }).where(eq(table.user.id, userId));

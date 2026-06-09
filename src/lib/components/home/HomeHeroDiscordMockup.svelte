@@ -30,7 +30,7 @@
 				<div
 					class="flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.62rem] font-medium hover:bg-base-300 hover:text-base-content {channel.active
 						? 'bg-primary/18 text-base-content hover:bg-primary/25 hover:text-base-content'
-						: 'text-base-content/70'}"
+						: 'text-base-content/80'}"
 				>
 					<channel.icon class="size-3 shrink-0 opacity-70" aria-hidden="true" />
 					<span class="truncate">{channel.name}</span>
