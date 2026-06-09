@@ -51,8 +51,8 @@
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
 			<div class="navbar-start w-full">
-				<a href={resolve('/')} class="py-10 max-w-xs" draggable="false">
-					<BannerLogo class="h-10 w-auto object-contain" />
+				<a href={resolve('/')} class="py-10" draggable="false">
+					<BannerLogo class="h-4 xs:h-6 sm:h-8 md:h-10 lg:h-10 w-auto object-contain" />
 				</a>
 			</div>
 
