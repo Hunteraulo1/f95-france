@@ -260,7 +260,7 @@
 	onmouseleave={resumeSlides}
 >
 	<div class="top-0 absolute w-full z-40">
-		<Header lcpImage />
+		<Header />
 	</div>
 	{#if starsReady}
 		<div

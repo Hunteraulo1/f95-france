@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import BannerLogo from '$lib/components/BannerLogo.svelte';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
 	import { clearUserData, user } from '$lib/stores';
 	import { profilePublicHref } from '$lib/utils/profile-url';
@@ -11,14 +12,6 @@
 	import User from '@lucide/svelte/icons/user';
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import X from '@lucide/svelte/icons/x';
-	import banner from '../assets/banner.webp';
-
-	interface Props {
-		/** Priorité haute pour l’image bannière (page d’accueil / candidat LCP). */
-		lcpImage?: boolean;
-	}
-
-	let { lcpImage = false }: Props = $props();
 
 	const NAV_DRAWER_ID = 'public-site-nav-drawer';
 
@@ -58,18 +51,8 @@
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
 			<div class="navbar-start w-full">
-				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
-					<img
-						src={banner}
-						width={1920}
-						height={232}
-						alt="Bannière de F95 France"
-						class="h-full w-auto object-contain"
-						loading={lcpImage ? 'eager' : 'lazy'}
-						decoding={lcpImage ? 'sync' : 'async'}
-						fetchpriority={lcpImage ? 'high' : 'auto'}
-						draggable="false"
-					/>
+				<a href={resolve('/')} class="py-10 max-w-xs" draggable="false">
+					<BannerLogo class="h-10 w-auto object-contain" />
 				</a>
 			</div>
 

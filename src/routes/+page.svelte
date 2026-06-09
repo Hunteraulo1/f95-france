@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import banner from '$lib/assets/banner.webp';
 	import HomeHero from '$lib/components/home/HomeHero.svelte';
 	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
@@ -34,10 +33,6 @@
 		}
 	};
 </script>
-
-<svelte:head>
-	<link rel="preload" as="image" href={banner} fetchpriority="high" />
-</svelte:head>
 
 <main class="flex w-full flex-1 flex-col gap-16">
 	<HomeHero />
