@@ -5,6 +5,7 @@
 	import BannerLogo from '$lib/components/BannerLogo.svelte';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
 	import { clearUserData, user } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profilePublicHref } from '$lib/utils/profile-url';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -146,7 +147,11 @@
 						<div class="avatar placeholder">
 							<div class="flex w-10 items-center justify-center rounded-full bg-base-300">
 								{#if $user.avatar}
-									<img alt="" src={$user.avatar} class="rounded-full" />
+									<img
+										alt=""
+										src={resolveDiscordAvatarDisplayUrl($user.avatar)}
+										class="rounded-full"
+									/>
 								{:else}
 									<User class="h-5 w-5" />
 								{/if}

@@ -3,6 +3,7 @@
 	import HomeHero from '$lib/components/home/HomeHero.svelte';
 	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
 	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
@@ -180,7 +181,12 @@
 								<div
 									class="w-20 rounded-full ring-2 ring-base-300 ring-offset-2 ring-offset-base-100 transition group-hover:ring-primary/50 sm:w-24"
 								>
-									<img draggable="false" src={team.teamImage} alt="" loading="lazy" />
+									<img
+										draggable="false"
+										src={resolveDiscordAvatarDisplayUrl(team.teamImage)}
+										alt=""
+										loading="lazy"
+									/>
 								</div>
 							</div>
 							<div class="min-w-0 w-full space-y-2">

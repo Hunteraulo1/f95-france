@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
@@ -119,7 +120,7 @@
 						{#if translator.avatar}
 							<img
 								class="size-8 rounded-full object-cover"
-								src={translator.avatar}
+								src={resolveDiscordAvatarDisplayUrl(translator.avatar)}
 								alt=""
 								loading="lazy"
 							/>

@@ -13,6 +13,7 @@
 		getPermissionParent,
 		permissionRequirementLabel
 	} from '$lib/permissions/dependencies';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profileDashboardHref } from '$lib/utils/profile-url';
 	import { roleBadgeClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
@@ -198,7 +199,7 @@
 								<a href={resolve(profileDashboardHref(member.username))} class="gap-2">
 									<div class="avatar">
 										<div class="w-7 rounded-full">
-											<img src={member.avatar} alt="" />
+											<img src={resolveDiscordAvatarDisplayUrl(member.avatar)} alt="" />
 										</div>
 									</div>
 									<span class="flex min-w-0 flex-col">

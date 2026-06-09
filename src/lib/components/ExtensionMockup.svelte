@@ -42,6 +42,7 @@
 <div
 	class="relative mx-auto w-76 select-none {heroEmbed ? '' : 'perspective-distant'}"
 	aria-hidden="true"
+	inert
 >
 	<div
 		class="pointer-events-none absolute inset-[6%_-12%_-6%] rounded-4xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-secondary)_42%,transparent),transparent_70%)] blur-[20px]"

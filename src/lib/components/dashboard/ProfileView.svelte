@@ -12,6 +12,7 @@
 	import type { ProfileStats } from '$lib/server/profile-stats';
 	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
 	import { roleBadgeStyles } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import User from '@lucide/svelte/icons/user';
@@ -132,7 +133,7 @@
 			>
 				{#if user.avatar && user.avatar !== ''}
 					<img
-						src={user.avatar}
+						src={resolveDiscordAvatarDisplayUrl(user.avatar)}
 						alt="Avatar de {user.username}"
 						class="h-full w-full rounded-full object-cover"
 					/>

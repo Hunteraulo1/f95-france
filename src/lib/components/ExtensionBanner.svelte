@@ -67,7 +67,7 @@
 				<h2 id="extension-promo-title" class="text-2xl font-bold leading-tight sm:text-3xl">
 					Vos traductions françaises, directement sur F95zone
 				</h2>
-				<p class="text-base text-base-content/70">
+				<p class="text-base text-base-content/80">
 					L’extension enrichit les fils F95zone et LewdCorner : statut des traductions, filtres
 					puissants, notifications et lien avec le site F95 France.
 				</p>
@@ -100,7 +100,7 @@
 						<Download class="size-4" aria-hidden="true" />
 						{downloadLabel}
 					</a>
-					<span class="text-xs text-base-content/50">{downloadHint}</span>
+					<span class="text-xs text-base-content/70">{downloadHint}</span>
 				</div>
 
 				{#if browserTarget === 'chromium'}
@@ -125,12 +125,12 @@
 				{/if}
 
 				{#if alternateHref && alternateLabel}
-					<p class="text-xs text-base-content/55">
+					<p class="text-xs text-base-content/70">
 						<a
 							href={alternateHref}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="link link-hover text-base-content/70"
+							class="link link-hover text-base-content/80"
 							draggable="false"
 						>
 							{alternateLabel}
