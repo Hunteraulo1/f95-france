@@ -295,6 +295,13 @@
       "when": 1781092162349,
       "tag": "0041_yielding_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1781133419240,
+      "tag": "0042_solid_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

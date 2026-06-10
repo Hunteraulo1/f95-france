@@ -182,6 +182,7 @@ export async function createUser(username: string, email: string, password: stri
 		emailVerifiedAt: null,
 		emailUnsubscribeToken,
 		emailMarketingOptOut: false,
+		lastSeenAt: null,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};
@@ -238,6 +239,7 @@ export async function createUserFromDiscord(params: {
 		emailVerifiedAt: params.emailVerifiedAt ?? null,
 		emailUnsubscribeToken,
 		emailMarketingOptOut: false,
+		lastSeenAt: null,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};

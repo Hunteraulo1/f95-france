@@ -17,6 +17,7 @@ import { getMaintenanceMode } from '$lib/server/maintenance-mode';
 import { notifyApiError } from '$lib/server/notifications';
 import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
+import { touchUserLastSeen } from '$lib/server/user-last-connection';
 import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
 
 /**
@@ -178,6 +179,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.permissions = [];
 	}
 
+	const pathname = event.url.pathname;
+	if (event.locals.user && pathname.startsWith('/dashboard') && !isStaticAssetPath(pathname)) {
+		touchUserLastSeen(event.locals.user.id);
+	}
+
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
 	// Pas de requête DB pendant le prerender (build sans Postgres).
@@ -244,7 +250,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const method = event.request.method.toUpperCase();
-	const pathname = event.url.pathname;
 
 	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
 	const isSessionQuotaMeteredApiPath =

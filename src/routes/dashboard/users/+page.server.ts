@@ -6,6 +6,10 @@ import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import {
+	fetchLastApiActivityByUserIds,
+	resolveLastConnectionAt
+} from '$lib/server/user-last-connection';
+import {
 	assertCanAssignUserRole,
 	assertCanManageUserWithRole,
 	listRolesAssignableToUsers
@@ -62,10 +66,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			role: table.user.role,
 			avatar: table.user.avatar,
 			createdAt: table.user.createdAt,
-			lastConnectionAt:
-				sql<Date | null>`(select max(${table.apiLog.createdAt}) from ${table.apiLog} where ${table.apiLog.userId} = ${table.user.id})`.as(
-					'last_connection_at'
-				)
+			lastSeenAt: table.user.lastSeenAt
 		})
 		.from(table.user);
 
@@ -74,15 +75,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.limit(PAGE_SIZE)
 		.offset(offset);
 
+	const lastApiActivityByUserId = await fetchLastApiActivityByUserIds(users.map((u) => u.id));
 	const now = new Date();
-	const usersWithLiveLastConnection = users.map((u) =>
-		u.id === locals.user?.id
-			? {
-					...u,
-					lastConnectionAt: now
-				}
-			: u
-	);
+	const usersWithLiveLastConnection = users.map((u) => ({
+		id: u.id,
+		username: u.username,
+		email: u.email,
+		role: u.role,
+		avatar: u.avatar,
+		createdAt: u.createdAt,
+		lastConnectionAt:
+			u.id === locals.user?.id
+				? now
+				: resolveLastConnectionAt(u.lastSeenAt, lastApiActivityByUserId.get(u.id))
+	}));
 
 	const appRoles = await listAppRoles();
 	const roles = await listRolesAssignableToUsers(
