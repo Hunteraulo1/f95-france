@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { hasPermission } from '$lib/permissions/client';
 	import { newToast, roleBadgeStyles } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleUsernameClass } from '$lib/utils/role-display';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
@@ -72,7 +73,7 @@
 								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
 									{#if submission.user.avatar}
 										<img
-											src={submission.user.avatar}
+											src={resolveDiscordAvatarDisplayUrl(submission.user.avatar)}
 											alt={submission.user.username}
 											class="h-8 w-8 rounded-full object-cover"
 										/>
@@ -104,7 +105,7 @@
 								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
 									{#if submission.openedByUser.avatar}
 										<img
-											src={submission.openedByUser.avatar}
+											src={resolveDiscordAvatarDisplayUrl(submission.openedByUser.avatar)}
 											alt={submission.openedByUser.username}
 											class="h-8 w-8 rounded-full object-cover"
 										/>

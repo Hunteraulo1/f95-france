@@ -58,7 +58,7 @@
 <HomeHeroMockupShell badge="Liste des traductions">
 	<div class="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
 		<div
-			class="{sheetGridClass} shrink-0 rounded-lg bg-primary/16 p-2 text-xs font-semibold text-base-content/82 sm:text-sm"
+			class="{sheetGridClass} shrink-0 rounded-lg bg-primary/16 p-2 text-xs font-semibold text-base-content sm:text-sm"
 		>
 			<div class="line-clamp-1">NOM DU JEU</div>
 			<div class="line-clamp-1">VERSION</div>

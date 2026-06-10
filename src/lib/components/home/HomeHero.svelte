@@ -51,8 +51,8 @@
 			lead: 'Annonces des mises à jour, entraide traduction, discussions entre joueurs et suivi des sorties en temps réel avec l’équipe.',
 			primaryCta: { href: SITE.discordInviteUrl, label: 'Rejoindre le serveur', external: true },
 			mockup: 'discord'
-		},
-    // TODO: Uncomment when Wiki is back online
+		}
+		// TODO: Uncomment when Wiki is back online
 		// {
 		// 	id: 'wiki',
 		// 	label: 'Wiki',
@@ -92,7 +92,7 @@
 		for (let i = 0; i < count; i++) {
 			const x = Math.floor(random() * fieldWidth);
 			const y = Math.floor(random() * fieldHeight);
-			points.push(`${x}px ${y}px #FFF`);
+			points.push(`${x}px ${y}px var(--color-primary)`);
 		}
 		return points.join(', ');
 	};
@@ -260,7 +260,7 @@
 	onmouseleave={resumeSlides}
 >
 	<div class="top-0 absolute w-full z-40">
-		<Header lcpImage />
+		<Header />
 	</div>
 	{#if starsReady}
 		<div
@@ -286,7 +286,7 @@
 		class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
 	></div>
 	<div
-		class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-neutral-content xl:flex-row xl:items-center"
+		class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-base-content xl:flex-row xl:items-center"
 	>
 		<div class="w-full min-w-0 max-w-2xl flex-1 space-y-4 text-center xl:text-left">
 			<div class="grid w-full grid-cols-[minmax(0,1fr)]">
@@ -297,6 +297,7 @@
 							? 'relative z-1 opacity-100'
 							: 'pointer-events-none opacity-0'}"
 						style:transition-duration={prefersReducedMotion ? '200ms' : '420ms'}
+						inert={slideIndex !== activeSlide}
 						aria-hidden={slideIndex !== activeSlide}
 					>
 						<h1
@@ -305,7 +306,7 @@
 						>
 							{slide.titleBefore}
 							<span
-								class="mx-1 inline-block text-white {slide.highlightNeon
+								class="mx-1 inline-block {slide.highlightNeon
 									? '[text-shadow:0_0_10px_color-mix(in_oklab,#ff005e_35%,transparent)] sm:animate-neon-glow sm:text-shadow:none'
 									: 'text-primary'}"
 							>
@@ -315,7 +316,7 @@
 								{slide.titleAfter}
 							{/if}
 						</h1>
-						<p class="text-neutral-content/90">{slide.lead}</p>
+						<p class="home-hero-lead text-base-content/90">{slide.lead}</p>
 						<div class="flex flex-wrap gap-3 justify-center xl:justify-start pt-4">
 							<a
 								href={slide.primaryCta.href}
@@ -329,7 +330,7 @@
 							{#if slide.secondaryCta}
 								<a
 									href={slide.secondaryCta.href}
-									class="btn btn-ghost text-neutral-content hover:border-primary transition-colors duration-300 hover:text-primary"
+									class="btn btn-ghost hover:border-primary transition-colors duration-300 hover:text-primary"
 									draggable="false"
 									target={slide.secondaryCta?.external ? '_blank' : undefined}
 									rel={slide.secondaryCta?.external ? 'noopener noreferrer' : undefined}
@@ -352,7 +353,7 @@
 						role="tab"
 						class="btn btn-xs btn-circle transition-colors {index === activeSlide
 							? 'btn-primary'
-							: 'btn-ghost border border-neutral-content/25 text-neutral-content/70'}"
+							: 'btn-ghost border border-base-content/30 text-base-content'}"
 						aria-selected={index === activeSlide}
 						aria-label={slide.label}
 						onclick={() => goToSlide(index)}
@@ -365,6 +366,8 @@
 
 		<div
 			class="xl:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 px-8 select-none xl:opacity-100 xl:px-0 -translate-x-4"
+			aria-hidden="true"
+			inert
 		>
 			<HomeHeroMockupFlip {activeSlide} {slides} />
 		</div>

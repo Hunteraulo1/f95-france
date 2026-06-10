@@ -13,6 +13,7 @@
 		getPermissionParent,
 		permissionRequirementLabel
 	} from '$lib/permissions/dependencies';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profileDashboardHref } from '$lib/utils/profile-url';
 	import { roleBadgeClass } from '$lib/utils/role-display';
 	import type { PageData } from './$types';
@@ -34,6 +35,9 @@
 	const isSelectedSuperadmin = $derived(data.isSelectedRoleSuperadmin);
 	const roleFieldsLocked = $derived(!canManageSelected || isSelectedSuperadmin);
 	const roleMetaLocked = $derived(selectedRole?.isSystem || isSelectedSuperadmin);
+	const canEditMaxApiKeys = $derived(
+		canManageSelected || (isSelectedSuperadmin && data.canEditRolePriority)
+	);
 	const selectedHasGamesManage = $derived(
 		isSelectedSuperadmin || (permissionChecks['games.manage'] ?? false)
 	);
@@ -198,7 +202,7 @@
 								<a href={resolve(profileDashboardHref(member.username))} class="gap-2">
 									<div class="avatar">
 										<div class="w-7 rounded-full">
-											<img src={member.avatar} alt="" />
+											<img src={resolveDiscordAvatarDisplayUrl(member.avatar)} alt="" />
 										</div>
 									</div>
 									<span class="flex min-w-0 flex-col">
@@ -229,8 +233,8 @@
 				{#if isSelectedSuperadmin}
 					<div role="alert" class="alert alert-info">
 						<span>
-							Le rôle Super administrateur possède automatiquement tous les droits. Ces paramètres
-							ne peuvent pas être modifiés.
+							Le rôle Super administrateur possède automatiquement tous les droits. Seule la limite
+							de clés API peut être ajustée ici.
 						</span>
 					</div>
 				{:else if !canManageSelected && data.selectedManageBlockedReason}
@@ -348,6 +352,23 @@
 									</span>
 								</label>
 							</fieldset>
+							<fieldset class="fieldset">
+								<legend class="fieldset-legend">Clés API</legend>
+								<input
+									type="number"
+									name="maxApiKeys"
+									class="input w-full max-w-xs"
+									min={data.roleApiKeysMin}
+									max={data.roleApiKeysMax}
+									step="1"
+									value={selectedRole.maxApiKeys}
+									disabled={!canEditMaxApiKeys}
+								/>
+								<p class="label text-xs">
+									Nombre maximal de clés API actives par compte avec ce rôle ({data.roleApiKeysMin}–{data.roleApiKeysMax}).
+									0 interdit toute clé.
+								</p>
+							</fieldset>
 							{#if data.canEditRolePriority}
 								<fieldset class="fieldset">
 									<legend class="fieldset-legend">Force du rôle</legend>
@@ -383,9 +404,9 @@
 									Gestion des jeux ».
 								</p>
 							{/if}
-							{#if canManageSelected && !isSelectedSuperadmin}
+							{#if canEditMaxApiKeys}
 								<button type="submit" class="btn w-fit btn-sm btn-primary">
-									{selectedRole.isSystem && selectedHasGamesManage
+									{selectedRole.isSystem && selectedHasGamesManage && !isSelectedSuperadmin
 										? 'Enregistrer le mode'
 										: 'Enregistrer'}
 								</button>
@@ -546,6 +567,21 @@
 					</p>
 				</fieldset>
 			{/if}
+			<fieldset class="fieldset">
+				<legend class="fieldset-legend">Clés API</legend>
+				<input
+					type="number"
+					name="maxApiKeys"
+					class="input w-full max-w-xs"
+					min={data.roleApiKeysMin}
+					max={data.roleApiKeysMax}
+					step="1"
+					value="3"
+				/>
+				<p class="label text-xs">
+					Maximum de clés actives par compte ({data.roleApiKeysMin}–{data.roleApiKeysMax}).
+				</p>
+			</fieldset>
 		</form>
 		{#snippet footer()}
 			<button type="button" class="btn" onclick={() => (showCreateModal = false)}>Annuler</button>

@@ -1,110 +1,111 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { completeDiscordLogin, linkDiscordToUser, parseDiscordId } from '$lib/server/discord-auth';
 import {
 	exchangeDiscordCode,
-	getDiscordAvatarUrl,
-	getDiscordGuildMemberRoles,
 	getDiscordIdentity,
 	getDiscordOAuthConfig
 } from '$lib/server/discord-oauth';
+import { readDiscordOAuthCookies } from '$lib/server/discord-oauth-state';
 import { isRedirect, redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
-const DISCORD_OAUTH_STATE_COOKIE = 'discord_oauth_state';
+function loginErrorRedirect(code: string) {
+	return redirect(302, `/dashboard/login?discord_error=${encodeURIComponent(code)}`);
+}
 
-export const GET: RequestHandler = async ({ locals, url, cookies }) => {
-	if (!locals.user) {
-		throw redirect(302, '/dashboard/login');
-	}
+function linkErrorRedirect(code: string) {
+	return redirect(302, `/dashboard/settings?discord_error=${encodeURIComponent(code)}`);
+}
 
+export const GET: RequestHandler = async (event) => {
+	const { locals, url, cookies } = event;
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');
 	const error = url.searchParams.get('error');
-	const cookieState = cookies.get(DISCORD_OAUTH_STATE_COOKIE);
-	cookies.delete(DISCORD_OAUTH_STATE_COOKIE, { path: '/' });
+	const { state: cookieState, context } = readDiscordOAuthCookies(cookies);
+
+	const intent = context?.intent ?? 'link';
+	const errorRedirect = intent === 'login' ? loginErrorRedirect : linkErrorRedirect;
 
 	if (error) {
-		throw redirect(302, `/dashboard/settings?discord_error=${encodeURIComponent(error)}`);
+		throw errorRedirect(error === 'access_denied' ? 'access_denied' : error);
 	}
-	if (!code || !state || !cookieState || state !== cookieState) {
-		throw redirect(302, '/dashboard/settings?discord_error=invalid_state');
+	if (!code || !state || !cookieState || state !== cookieState || !context) {
+		throw errorRedirect('invalid_state');
 	}
 
 	const { clientId, clientSecret, guildId, translatorRoleId, autoRoleSync } =
 		getDiscordOAuthConfig();
 	if (!clientId || !clientSecret) {
-		throw redirect(302, '/dashboard/settings?discord_error=oauth_not_configured');
+		throw errorRedirect('oauth_not_configured');
 	}
 
 	try {
 		const redirectUri = `${url.origin}/api/discord-oauth/callback`;
 		const token = await exchangeDiscordCode({ code, clientId, clientSecret, redirectUri });
 		const identity = await getDiscordIdentity(token.access_token);
-		const discordId = identity.id?.trim();
+		const discordId = parseDiscordId(identity);
 
-		if (!/^\d{17,20}$/.test(discordId)) {
-			throw redirect(302, '/dashboard/settings?discord_error=invalid_discord_id');
+		if (!discordId) {
+			throw errorRedirect('invalid_discord_id');
 		}
 
-		const [currentUser] = await db
-			.select({ avatar: table.user.avatar, role: table.user.role })
-			.from(table.user)
-			.where(eq(table.user.id, locals.user.id))
-			.limit(1);
-
-		await db.update(table.user).set({ discordId }).where(eq(table.user.id, locals.user.id));
-
-		const [matchingTranslator] = await db
-			.select({ id: table.translator.id, userId: table.translator.userId })
-			.from(table.translator)
-			.where(eq(table.translator.discordId, discordId))
-			.limit(1);
-		if (
-			matchingTranslator &&
-			(!matchingTranslator.userId || matchingTranslator.userId === locals.user.id)
-		) {
-			await db
-				.update(table.translator)
-				.set({ userId: locals.user.id })
-				.where(eq(table.translator.id, matchingTranslator.id));
-		}
-
-		if ((currentUser?.avatar ?? '').trim() === '') {
-			const avatarUrl = await getDiscordAvatarUrl(discordId);
-			if (avatarUrl) {
-				await db
-					.update(table.user)
-					.set({ avatar: avatarUrl })
-					.where(eq(table.user.id, locals.user.id));
-			}
-		}
-
-		if (autoRoleSync && guildId && translatorRoleId) {
-			const roleIds = await getDiscordGuildMemberRoles({
+		if (context.intent === 'login') {
+			const destination = await completeDiscordLogin({
+				event,
+				context,
+				identity,
+				discordId,
 				accessToken: token.access_token,
-				guildId
+				autoRoleSync,
+				guildId,
+				translatorRoleId
 			});
-			const hasTranslatorRole = roleIds.includes(translatorRoleId);
-			const currentRole = currentUser?.role ?? 'user';
-			const isStaffAccount =
-				locals.user != null && (locals.permissions?.includes('users.manage') ?? false);
+			throw redirect(302, destination);
+		}
 
-			if (!isStaffAccount && hasTranslatorRole && currentRole === 'user') {
-				await db
-					.update(table.user)
-					.set({ role: 'translator' })
-					.where(eq(table.user.id, locals.user.id));
+		if (!locals.user) {
+			throw redirect(302, '/dashboard/login');
+		}
+
+		const isStaffAccount = locals.permissions?.includes('users.manage') ?? false;
+
+		try {
+			await linkDiscordToUser({
+				userId: locals.user.id,
+				discordId,
+				accessToken: token.access_token,
+				isStaffAccount,
+				autoRoleSync,
+				guildId,
+				translatorRoleId
+			});
+		} catch (linkError) {
+			if (linkError instanceof Error && linkError.message === 'discord_already_linked') {
+				throw linkErrorRedirect('discord_already_linked');
 			}
-			if (!isStaffAccount && !hasTranslatorRole && currentRole === 'translator') {
-				await db.update(table.user).set({ role: 'user' }).where(eq(table.user.id, locals.user.id));
-			}
+			throw linkError;
 		}
 
 		throw redirect(302, '/dashboard/settings?discord_success=linked');
-	} catch (error: unknown) {
-		if (isRedirect(error)) throw error;
-		console.error('Erreur callback OAuth Discord:', error);
-		throw redirect(302, '/dashboard/settings?discord_error=callback_failed');
+	} catch (callbackError: unknown) {
+		if (isRedirect(callbackError)) throw callbackError;
+
+		if (callbackError instanceof Error) {
+			const known = callbackError.message;
+			if (
+				known in
+				{
+					registration_disabled: 1,
+					invite_invalid: 1,
+					account_exists: 1,
+					email_required: 1
+				}
+			) {
+				throw errorRedirect(known);
+			}
+		}
+
+		console.error('Erreur callback OAuth Discord:', callbackError);
+		throw errorRedirect('callback_failed');
 	}
 };

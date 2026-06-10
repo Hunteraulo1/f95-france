@@ -48,6 +48,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		user: locals.user,
+		hasPassword: locals.user.hasPassword,
 		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
 		passkeys
@@ -88,6 +89,19 @@ export const actions: Actions = {
 			return fail(401, { message: 'Non authentifié' });
 		}
 
+		const [dbUser] = await db
+			.select({ hasPassword: table.user.hasPassword })
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
+
+		if (!dbUser?.hasPassword) {
+			return fail(400, {
+				message:
+					'Définissez d’abord un mot de passe avant de délier Discord, sinon vous ne pourrez plus vous connecter.'
+			});
+		}
+
 		try {
 			await db.update(table.user).set({ discordId: null }).where(eq(table.user.id, locals.user.id));
 			return { success: true, message: 'Compte Discord délié.' };
@@ -95,6 +109,56 @@ export const actions: Actions = {
 			console.error('Erreur lors du délien Discord:', error);
 			return fail(500, { message: 'Erreur lors du délien Discord.' });
 		}
+	},
+
+	setInitialPassword: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const [dbUser] = await db
+			.select({ id: table.user.id, hasPassword: table.user.hasPassword })
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
+
+		if (!dbUser) {
+			return fail(404, { message: 'Utilisateur introuvable.' });
+		}
+
+		if (dbUser.hasPassword) {
+			return fail(400, {
+				message: 'Utilisez le formulaire de changement de mot de passe ci-dessous.'
+			});
+		}
+
+		const formData = await request.formData();
+		const newPassword = String(formData.get('newPassword') ?? '');
+		const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+		if (!newPassword || !confirmPassword) {
+			return fail(400, { message: 'Tous les champs mot de passe sont requis.' });
+		}
+
+		if (newPassword.length < 8) {
+			return fail(400, { message: 'Le mot de passe doit contenir au moins 8 caractères.' });
+		}
+
+		if (newPassword !== confirmPassword) {
+			return fail(400, { message: 'La confirmation ne correspond pas au mot de passe.' });
+		}
+
+		const nextHash = await auth.hashPassword(newPassword);
+		await db
+			.update(table.user)
+			.set({
+				passwordHash: nextHash,
+				hasPassword: true,
+				updatedAt: new Date()
+			})
+			.where(eq(table.user.id, dbUser.id));
+
+		return { success: true, message: 'Mot de passe défini avec succès.' };
 	},
 
 	changePassword: async ({ request, locals }) => {
@@ -147,6 +211,7 @@ export const actions: Actions = {
 			.update(table.user)
 			.set({
 				passwordHash: nextHash,
+				hasPassword: true,
 				updatedAt: new Date()
 			})
 			.where(eq(table.user.id, dbUser.id));

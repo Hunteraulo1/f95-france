@@ -267,6 +267,41 @@
       "when": 1780571323744,
       "tag": "0037_slow_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1780776438522,
+      "tag": "0038_high_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780780598195,
+      "tag": "0039_lyrical_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1780784680980,
+      "tag": "0040_left_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1781092162349,
+      "tag": "0041_yielding_silhouette",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1781133419240,
+      "tag": "0042_solid_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

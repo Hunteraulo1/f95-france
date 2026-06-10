@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import KeyRound from '@lucide/svelte/icons/key-round';
@@ -47,7 +48,7 @@
 			<KeyRound class="size-8 text-primary" aria-hidden="true" />
 			<h1 class="text-2xl font-semibold">Mes clés API</h1>
 		</div>
-		<a href="/api" class="btn gap-2 btn-outline btn-sm">
+		<a href="https://api.f95france.site" class="btn gap-2 btn-outline btn-sm">
 			<BookOpen class="size-4 shrink-0" aria-hidden="true" />
 			Documentation API
 		</a>
@@ -56,8 +57,7 @@
 	<p class="text-sm text-base-content/80">
 		Pour appeler l’API sous
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">/api/</code>
-		, il faut une <strong>session</strong> (cookie) ou cette
-		<strong>clé</strong> dans
+		, envoie ta <strong>clé</strong> dans
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">Authorization: Bearer …</code>
 		ou
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">X-Api-Key</code>. La clé agit comme ton
@@ -65,11 +65,6 @@
 		<strong>{data.limits.maxKeys}</strong> clés actives ; chaque nouvelle clé a un quota de
 		<strong>{data.limits.defaultRpm}</strong> requêtes par minute. Pour augmenter cette limite,
 		<strong>contacte un administrateur</strong>.
-	</p>
-	<p class="text-sm text-base-content/70">
-		Pour limiter une clé à la route extension uniquement, ajoute le tag
-		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">[extension-only]</code>
-		dans son libellé.
 	</p>
 
 	<div class="alert alert-info sm:alert-horizontal">
@@ -80,7 +75,7 @@
 	</div>
 
 	<p class="text-sm text-base-content/70">
-		Clés API actives (hors session) : {data.activeCount} / {data.limits.maxKeys}
+		Clés API actives : {data.activeCount} / {data.limits.maxKeys}
 	</p>
 
 	{#if newKey}
@@ -132,6 +127,20 @@
 						name="label"
 						placeholder="Extension navigateur, script…"
 					/>
+					{#if data.canUseLabelBrackets}
+						<p class="text-xs text-base-content/70">
+							Tu peux utiliser des crochets, par ex.
+							<code class="rounded bg-base-200 px-1 py-0.5"
+								>{API_KEY_EXTENSION_ONLY_LABEL_TOKEN}</code
+							>
+							pour limiter la clé à l’extension.
+						</p>
+					{:else}
+						<p class="text-xs text-base-content/70">
+							Les crochets [ ] dans le libellé sont réservés — contacte un administrateur si tu en
+							as besoin.
+						</p>
+					{/if}
 				</label>
 				<label class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Expiration (optionnel)</span>
@@ -181,30 +190,6 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr class="bg-base-200/50">
-					<td><span class="text-base-content/60">—</span></td>
-					<td>
-						<span class="font-medium">Session</span>
-					</td>
-					<td>{data.sessionKey?.requestsPerMinute ?? data.limits.defaultRpm}</td>
-					<td class="tabular-nums">
-						{formatCount(data.sessionKey?.totalRequestCount ?? 0)}
-					</td>
-					<td><span class="text-base-content/70">—</span></td>
-					<td><span class="text-base-content/70">—</span></td>
-					<td>
-						{#if data.sessionKey?.lastUsedAt}
-							{new Intl.DateTimeFormat('fr-FR', {
-								dateStyle: 'short',
-								timeStyle: 'short'
-							}).format(new Date(data.sessionKey.lastUsedAt))}
-						{:else}
-							<span class="text-base-content/70">—</span>
-						{/if}
-					</td>
-					<td><span class="badge badge-success">Active</span></td>
-					<td></td>
-				</tr>
 				{#each data.keys as row (row.id)}
 					<tr>
 						<td><code class="text-sm">{row.keyPrefix}…</code></td>

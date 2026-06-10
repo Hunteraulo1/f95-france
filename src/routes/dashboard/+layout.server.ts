@@ -2,6 +2,12 @@ import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
+import {
+	emailVerificationRequired,
+	ensureEmailVerifiedOrRedirect,
+	isUserEmailVerified
+} from '$lib/server/email-verification';
+import { getMaintenanceMode } from '$lib/server/maintenance-mode';
 import { hasPermission } from '$lib/server/permissions';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
@@ -9,12 +15,18 @@ import { redirect } from '@sveltejs/kit';
 import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
-	const pathname = url.pathname;
+export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) => {
+	depends('app:dashboard-layout');
 
-	if (!locals.user && !isPublicDashboardPath(pathname)) {
-		const redirectTo = encodeURIComponent(pathname + url.search);
-		redirect(303, `/dashboard/login?redirectTo=${redirectTo}`);
+	// Ne lire `url` que si nécessaire : sinon SvelteKit relance ce load à chaque changement de page.
+	if (!locals.user) {
+		const pathname = url.pathname;
+		if (!isPublicDashboardPath(pathname)) {
+			const redirectTo = encodeURIComponent(pathname + url.search);
+			redirect(303, `/dashboard/login?redirectTo=${redirectTo}`);
+		}
+	} else if (emailVerificationRequired() && !isUserEmailVerified(locals.user)) {
+		ensureEmailVerifiedOrRedirect(locals.user, url.pathname);
 	}
 
 	let pendingSubmissionsCount = 0;
@@ -52,18 +64,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url }) => {
 		}
 	}
 
-	let maintenanceMode = false;
-
-	try {
-		const [cfg] = await db
-			.select({ maintenanceMode: table.config.maintenanceMode })
-			.from(table.config)
-			.where(eq(table.config.id, 'main'))
-			.limit(1);
-		maintenanceMode = cfg?.maintenanceMode === true;
-	} catch (error) {
-		console.warn('Erreur lors du chargement du mode maintenance:', error);
-	}
+	const maintenanceMode = await getMaintenanceMode();
 
 	let hasLinkedTranslator = false;
 

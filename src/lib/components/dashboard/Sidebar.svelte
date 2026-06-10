@@ -2,8 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import type { PermissionKey } from '$lib/permissions/catalog';
-	import { hasPermission } from '$lib/permissions/client';
-	import { user } from '$lib/stores';
+	import { permissionGranted } from '$lib/permissions/check';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';
@@ -28,20 +27,20 @@
 		hasLinkedTranslator?: boolean;
 		canReturnToOwnAccount?: boolean;
 		devOriginUsername?: string | null;
+		permissions?: string[];
+		userRole?: string | null;
+		hasUser?: boolean;
 	}
 
 	let {
 		pendingSubmissionsCount = 0,
 		hasLinkedTranslator = false,
 		canReturnToOwnAccount = false,
-		devOriginUsername = null
-	}: Pick<
-		Props,
-		| 'pendingSubmissionsCount'
-		| 'hasLinkedTranslator'
-		| 'canReturnToOwnAccount'
-		| 'devOriginUsername'
-	> = $props();
+		devOriginUsername = null,
+		permissions = [],
+		userRole = null,
+		hasUser = false
+	}: Props = $props();
 	let isDrawerOpen = $state(true);
 	let returnUserError = $state<string | null>(null);
 
@@ -92,7 +91,7 @@
 
 	const canAccessNav = (access: NavAccess) => {
 		if (access === 'all') return true;
-		return $hasPermission(access);
+		return permissionGranted(userRole, permissions, access);
 	};
 
 	const nav: (NavItem | NavItemSplit)[] = [
@@ -220,7 +219,7 @@
 		<!-- Sidebar content here -->
 		<ul class="menu w-full grow">
 			{#each nav as item, index ('split' in item ? `split-${index}` : item.href || item.label || `item-${index}`)}
-				{#if $user && canAccessNav(item.access)}
+				{#if hasUser && canAccessNav(item.access)}
 					{#if 'split' in item}
 						<div class="divider"></div>
 					{:else if canShowNavItem(item)}
@@ -230,6 +229,7 @@
 							<a
 								class="flex h-8 items-center font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
 								class:text-red-400={item.href === '/dashboard/logout'}
+								data-sveltekit-preload-data="hover"
 								data-tip={item.label}
 								href={item.href}
 								onclick={closeDrawerOnMobile}

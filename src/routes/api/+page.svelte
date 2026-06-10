@@ -5,7 +5,7 @@
 
 	let container = $state<HTMLDivElement | null>(null);
 
-	const SPEC_URL = '/api/openapi-public.yaml';
+	const SPEC_URL = 'https://api.f95france.site/yaml';
 	const SCRIPT_MARK = 'data-f95-redoc';
 
 	/** https://redocly.com/docs/redoc/config */

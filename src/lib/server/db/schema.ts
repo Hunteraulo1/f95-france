@@ -19,6 +19,8 @@ export const user = pgTable('user', {
 	discordId: varchar('discord_id', { length: 255 }).unique(),
 	avatar: varchar('avatar', { length: 255 }).notNull(),
 	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+	/** False pour les comptes créés via Discord OAuth sans mot de passe choisi par l’utilisateur. */
+	hasPassword: boolean('has_password').notNull().default(true),
 	twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
 	twoFactorSecret: text('two_factor_secret'),
 	role: varchar('role', { length: 255 }).notNull().default('user'),
@@ -35,8 +37,40 @@ export const user = pgTable('user', {
 	savedGamesFilters: text('saved_games_filters').notNull().default('[]'),
 	/** Presets de filtres de la page mises à jour (JSON sérialisé). */
 	savedUpdatesFilters: text('saved_updates_filters').notNull().default('[]'),
+	/** Null tant que l’adresse email n’a pas été confirmée. */
+	emailVerifiedAt: timestamp('email_verified_at'),
+	/** Jeton opaque pour le lien de désinscription des emails (hors vérification). */
+	emailUnsubscribeToken: varchar('email_unsubscribe_token', { length: 64 }).notNull().unique(),
+	/** Désinscription des emails informatifs / marketing (pas les emails de sécurité). */
+	emailMarketingOptOut: boolean('email_marketing_opt_out').notNull().default(false),
+	/** Dernière activité sur le dashboard (mise à jour à chaque requête authentifiée). */
+	lastSeenAt: timestamp('last_seen_at'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const emailVerificationToken = pgTable('email_verification_token', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export const passwordResetToken = pgTable('password_reset_token', {
+	id: varchar('id', { length: 255 })
+		.primaryKey()
+		.default(sql`gen_random_uuid()`),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
 export const session = pgTable('session', {
@@ -285,6 +319,8 @@ export const appRole = pgTable('app_role', {
 	staff: boolean('staff').notNull().default(false),
 	/** Force / priorité d'affichage (tri staff et liste des rôles). Éditable par superadmin uniquement. */
 	priority: integer('priority').notNull().default(0),
+	/** Nombre maximal de clés API Bearer actives par compte avec ce rôle. */
+	maxApiKeys: integer('max_api_keys').notNull().default(3),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

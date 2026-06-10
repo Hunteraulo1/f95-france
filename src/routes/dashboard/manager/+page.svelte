@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { hasPermission } from '$lib/permissions/client';
+	import { permissionGranted } from '$lib/permissions/check';
 	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
@@ -31,6 +31,17 @@
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	/** Incrémenté à chaque recherche lancée : ignore les réponses d’une requête plus ancienne. */
 	let searchGeneration = 0;
+
+	interface PageData {
+		user: { role: string } | null;
+		permissions: string[];
+	}
+
+	let { data }: { data: PageData } = $props();
+
+	const canViewGameIds = $derived(
+		permissionGranted(data.user?.role, data.permissions, 'content.view_ids')
+	);
 
 	const searchGames = async (query: string, generation: number) => {
 		if (!query || query.length < 1) {
@@ -102,7 +113,6 @@
 
 	const getAddGameHref = () => {
 		const q = searchQuery;
-		// Uniquement si la recherche est entièrement un threadId (pas "2 machintruck")
 		if (/^\d+$/.test(q)) {
 			const threadId = Number.parseInt(q, 10);
 			if (threadId > 0) {
@@ -194,7 +204,7 @@
 											</div>
 										</div>
 									</a>
-									{#if $hasPermission('content.view_ids')}
+									{#if canViewGameIds}
 										<button
 											type="button"
 											class="absolute right-0 mt-3 mr-2 badge shrink-0 self-start overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200"

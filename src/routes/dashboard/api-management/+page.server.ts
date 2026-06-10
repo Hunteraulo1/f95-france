@@ -1,13 +1,14 @@
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import {
 	createApiKey,
 	listApiKeysForAdmin,
 	restoreRevokedApiKeyAdmin,
 	revokeApiKeyForActor,
-	updateApiKeyLimitsAdmin
+	updateApiKeyLimitsAdmin,
+	validateApiKeyLabelForActor
 } from '$lib/server/api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -77,6 +78,14 @@ export const actions: Actions = {
 		}
 
 		const label = String(formData.get('label') ?? '').trim() || 'Clé API';
+		const labelCheck = validateApiKeyLabelForActor(label, {
+			role: locals.user!.role,
+			permissions: locals.permissions
+		});
+		if (!labelCheck.ok) {
+			return fail(400, { message: labelCheck.message });
+		}
+
 		const rpmParsed = Number.parseInt(String(formData.get('requestsPerMinute') ?? '60'), 10);
 		const requestsPerMinute = Number.isFinite(rpmParsed)
 			? Math.min(10_000, Math.max(0, rpmParsed))

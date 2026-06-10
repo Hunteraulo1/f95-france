@@ -1,14 +1,19 @@
 import * as auth from '$lib/server/auth';
+import { isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
+import {
+	dashboardVerifyEmailPath,
+	sendVerificationEmailForUser
+} from '$lib/server/email-verification';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
 import {
-	isRegistrationEnabled,
-	isRegistrationInviteRequired,
 	REGISTRATION_ACCOUNT_EXISTS_MESSAGE,
 	REGISTRATION_INVITE_INVALID_MESSAGE,
+	isRegistrationEnabled,
+	isRegistrationInviteRequired,
 	verifyRegistrationInvite
 } from '$lib/server/registration-policy';
 import {
@@ -45,6 +50,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		requiresInviteCode: isRegistrationInviteRequired(),
+		discordLoginEnabled: isDiscordOAuthConfigured(),
 		turnstileSiteKey: getTurnstileSiteKey(),
 		turnstileEnabled: isTurnstileConfigured()
 	};
@@ -135,6 +141,12 @@ export const actions: Actions = {
 			const user = await auth.createUser(username, email, password);
 
 			try {
+				await sendVerificationEmailForUser(user.id, { requestOrigin: event.url.origin });
+			} catch (emailError) {
+				console.error('Erreur lors de l’envoi de l’email de vérification:', emailError);
+			}
+
+			try {
 				const { notifyNewUserRegistration } = await import('$lib/server/notifications');
 				await notifyNewUserRegistration(user.id, username);
 			} catch (notificationError) {
@@ -147,7 +159,7 @@ export const actions: Actions = {
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 			await clearLoginThrottle(event);
 
-			throw redirect(302, '/dashboard');
+			throw redirect(302, dashboardVerifyEmailPath());
 		} catch (error) {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;

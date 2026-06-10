@@ -27,12 +27,12 @@
 			</div>
 			<div class="min-w-0 space-y-1">
 				<h2 class="text-lg font-bold sm:text-xl">Rejoignez notre Discord</h2>
-				<p class="text-sm text-base-content/70 sm:text-base">
+				<p class="text-sm text-base-content/80 sm:text-base">
 					Échanges avec la communauté, annonces des mises à jour, entraide traduction et suivi des
 					sorties en direct.
 				</p>
 				<p
-					class="flex items-center gap-1.5 text-xs font-medium text-base-content/50 transition group-hover:text-primary"
+					class="flex items-center gap-1.5 text-xs font-medium text-base-content/75 transition group-hover:text-primary"
 				>
 					<Users class="size-3.5 shrink-0" aria-hidden="true" />
 					discord.f95france.site

@@ -2,11 +2,13 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import { setAgeVerified } from '$lib/age-verification';
+	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import { applyFaviconEnvBadge } from '$lib/site-favicon';
+	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
@@ -24,18 +26,22 @@
 		initializeUserFromLocals(data.user);
 	});
 
-	const readInitialAgeVerified = () => {
-		if (data.ageVerified) return true;
-		return browser ? document.documentElement.dataset.ageVerified === '1' : false;
-	};
-
-	let ageVerified = $state(readInitialAgeVerified());
+	/** Aligné sur le cookie SSR — le localStorage est resynchronisé après hydratation (app.html). */
+	let ageVerifiedLocal = $state<boolean | null>(null);
+	const bypassVerif = $derived(page.url.searchParams.has('bypassVerif'));
+	const ageVerified = $derived(bypassVerif || (ageVerifiedLocal ?? data.ageVerified));
 
 	$effect(() => {
 		if (!browser) return;
 		document.documentElement.classList.toggle('overflow-hidden', !ageVerified);
 		document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
 		return () => document.documentElement.classList.remove('overflow-hidden');
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const badge = resolveSiteEnvBadge(page.url.hostname);
+		void applyFaviconEnvBadge(badge);
 	});
 
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
@@ -48,10 +54,15 @@
 
 	const confirmAge = () => {
 		setAgeVerified();
-		ageVerified = true;
+		ageVerifiedLocal = true;
 	};
 
 	onMount(() => {
+		if (!ageVerified && isAgeVerified()) {
+			setAgeVerified();
+			ageVerifiedLocal = true;
+		}
+
 		const run = () => themeChange(false);
 		if ('requestIdleCallback' in window) {
 			requestIdleCallback(run, { timeout: 2000 });

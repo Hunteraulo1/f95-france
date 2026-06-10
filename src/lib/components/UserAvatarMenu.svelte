@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { clearUserData, user } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profilePublicHref } from '$lib/utils/profile-url';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -26,7 +27,7 @@
 		>
 			<div class="flex w-10 items-center justify-center rounded-full">
 				{#if $user.avatar && $user.avatar !== ''}
-					<img alt="" src={$user.avatar} draggable="false" />
+					<img alt="" src={resolveDiscordAvatarDisplayUrl($user.avatar)} draggable="false" />
 				{:else}
 					<User />
 				{/if}

@@ -51,7 +51,7 @@ export async function listStaffUsers(): Promise<StaffUserListItem[]> {
 			badgeStyle: table.appRole.badgeStyle,
 			avatar: table.user.avatar,
 			createdAt: table.user.createdAt,
-			lastConnectionAt: sql<Date | null>`max(${table.apiLog.createdAt})`
+			lastConnectionAt: sql<Date | null>`GREATEST(${table.user.lastSeenAt}, max(${table.apiLog.createdAt}))`
 		})
 		.from(table.user)
 		.innerJoin(table.appRole, eq(table.user.role, table.appRole.slug))
@@ -66,6 +66,7 @@ export async function listStaffUsers(): Promise<StaffUserListItem[]> {
 			table.appRole.badgeStyle,
 			table.user.avatar,
 			table.user.createdAt,
+			table.user.lastSeenAt,
 			table.appRole.priority
 		)
 		.orderBy(desc(table.appRole.priority), asc(table.user.username));

@@ -2,8 +2,10 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import BannerLogo from '$lib/components/BannerLogo.svelte';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
 	import { clearUserData, user } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profilePublicHref } from '$lib/utils/profile-url';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -11,14 +13,6 @@
 	import User from '@lucide/svelte/icons/user';
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import X from '@lucide/svelte/icons/x';
-	import banner from '../assets/banner.webp';
-
-	interface Props {
-		/** Priorité haute pour l’image bannière (page d’accueil / candidat LCP). */
-		lcpImage?: boolean;
-	}
-
-	let { lcpImage = false }: Props = $props();
 
 	const NAV_DRAWER_ID = 'public-site-nav-drawer';
 
@@ -32,8 +26,8 @@
 		{ label: 'Accueil', href: resolve('/') },
 		{ label: 'Jeux', href: resolve('/games') },
 		{ label: 'Mises à jour', href: '/updates' },
-		{ label: 'Traducteurs', href: '/translators' },
-    // TODO: Uncomment when Wiki is back online
+		{ label: 'Traducteurs', href: '/translators' }
+		// TODO: Uncomment when Wiki is back online
 		// { label: 'Wiki', href: 'https://wiki.f95france.site', target: '_blank' }
 	];
 
@@ -58,18 +52,8 @@
 	<div class="drawer-content w-full min-w-0">
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
 			<div class="navbar-start w-full">
-				<a href={resolve('/')} class="h-full select-none py-10 max-w-xs" draggable="false">
-					<img
-						src={banner}
-						width={1920}
-						height={232}
-						alt="Bannière de F95 France"
-						class="h-full w-auto object-contain"
-						loading={lcpImage ? 'eager' : 'lazy'}
-						decoding={lcpImage ? 'sync' : 'async'}
-						fetchpriority={lcpImage ? 'high' : 'auto'}
-						draggable="false"
-					/>
+				<a href={resolve('/')} class="py-10" draggable="false">
+					<BannerLogo class="h-4 xs:h-6 sm:h-8 md:h-10 lg:h-10 w-auto object-contain" />
 				</a>
 			</div>
 
@@ -163,7 +147,11 @@
 						<div class="avatar placeholder">
 							<div class="flex w-10 items-center justify-center rounded-full bg-base-300">
 								{#if $user.avatar}
-									<img alt="" src={$user.avatar} class="rounded-full" />
+									<img
+										alt=""
+										src={resolveDiscordAvatarDisplayUrl($user.avatar)}
+										class="rounded-full"
+									/>
 								{:else}
 									<User class="h-5 w-5" />
 								{/if}

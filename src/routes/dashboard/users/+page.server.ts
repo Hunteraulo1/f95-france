@@ -2,8 +2,13 @@ import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
+import {
+	fetchLastApiActivityByUserIds,
+	resolveLastConnectionAt
+} from '$lib/server/user-last-connection';
 import {
 	assertCanAssignUserRole,
 	assertCanManageUserWithRole,
@@ -61,10 +66,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			role: table.user.role,
 			avatar: table.user.avatar,
 			createdAt: table.user.createdAt,
-			lastConnectionAt:
-				sql<Date | null>`(select max(${table.apiLog.createdAt}) from ${table.apiLog} where ${table.apiLog.userId} = ${table.user.id})`.as(
-					'last_connection_at'
-				)
+			lastSeenAt: table.user.lastSeenAt
 		})
 		.from(table.user);
 
@@ -73,15 +75,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.limit(PAGE_SIZE)
 		.offset(offset);
 
+	const lastApiActivityByUserId = await fetchLastApiActivityByUserIds(users.map((u) => u.id));
 	const now = new Date();
-	const usersWithLiveLastConnection = users.map((u) =>
-		u.id === locals.user?.id
-			? {
-					...u,
-					lastConnectionAt: now
-				}
-			: u
-	);
+	const usersWithLiveLastConnection = users.map((u) => ({
+		id: u.id,
+		username: u.username,
+		email: u.email,
+		role: u.role,
+		avatar: u.avatar,
+		createdAt: u.createdAt,
+		lastConnectionAt:
+			u.id === locals.user?.id
+				? now
+				: resolveLastConnectionAt(u.lastSeenAt, lastApiActivityByUserId.get(u.id))
+	}));
 
 	const appRoles = await listAppRoles();
 	const roles = await listRolesAssignableToUsers(
@@ -168,6 +175,7 @@ export const actions: Actions = {
 
 			const currentUserRole = currentUser[0].role;
 			const emailToSave = canViewUserEmails ? email : currentUser[0].email;
+			const emailChanged = canViewUserEmails && emailToSave !== currentUser[0].email;
 
 			const manageCheck = await assertCanManageUserWithRole(locals, currentUserRole, userId);
 			if (!manageCheck.allowed) {
@@ -187,9 +195,17 @@ export const actions: Actions = {
 					username,
 					email: emailToSave,
 					role,
-					avatar: avatar || ''
+					avatar: avatar || '',
+					...(emailChanged ? { emailVerifiedAt: null } : {})
 				})
 				.where(eq(table.user.id, userId));
+
+			if (emailChanged) {
+				const { sendVerificationEmailForUser } = await import('$lib/server/email-verification');
+				await sendVerificationEmailForUser(userId).catch((error) => {
+					console.error('Erreur envoi email de vérification après changement email:', error);
+				});
+			}
 
 			if (linkedTranslatorId) {
 				const tr = await db
@@ -225,6 +241,64 @@ export const actions: Actions = {
 			}
 
 			return fail(500, { message: "Erreur lors de la mise à jour de l'utilisateur" });
+		}
+	},
+
+	sendPasswordReset: async ({ request, locals, url }) => {
+		await assertPermission(locals, 'users.manage');
+
+		const formData = await request.formData();
+		const userId = formData.get('userId') as string;
+
+		if (!userId) {
+			return fail(400, { message: 'Utilisateur manquant' });
+		}
+
+		const [user] = await db
+			.select({
+				id: table.user.id,
+				role: table.user.role,
+				username: table.user.username
+			})
+			.from(table.user)
+			.where(eq(table.user.id, userId))
+			.limit(1);
+
+		if (!user) {
+			return fail(404, { message: 'Utilisateur non trouvé' });
+		}
+
+		const manageCheck = await assertCanManageUserWithRole(locals, user.role, userId);
+		if (!manageCheck.allowed) {
+			return fail(403, { message: manageCheck.message });
+		}
+
+		const result = await sendPasswordResetEmailForUser(userId, {
+			requestOrigin: url.origin
+		});
+
+		if (result.ok) {
+			return {
+				success: true,
+				message: `Un email de réinitialisation a été envoyé à ${user.username}.`
+			};
+		}
+
+		switch (result.reason) {
+			case 'cooldown':
+				return fail(429, {
+					message:
+						'Un email de réinitialisation a déjà été envoyé récemment. Veuillez patienter 2 minutes.'
+				});
+			case 'send_failed':
+				return fail(502, {
+					message:
+						'Impossible d’envoyer l’email pour le moment. Vérifiez la configuration SMTP ou réessayez plus tard.'
+				});
+			case 'user_not_found':
+				return fail(404, { message: 'Utilisateur non trouvé' });
+			default:
+				return fail(500, { message: 'Erreur lors de l’envoi de l’email de réinitialisation' });
 		}
 	}
 };

@@ -1,7 +1,6 @@
 import { building } from '$app/environment';
 import {
 	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
 	extractApiKeyFromRequest,
 	getUserForApiKeyOwner,
 	jsonApiKeyGuardResponse,
@@ -12,15 +11,14 @@ import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
 import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import { warmHomePayload } from '$lib/server/home-page-data';
 import { logApiAction } from '$lib/server/logger';
+import { getMaintenanceMode } from '$lib/server/maintenance-mode';
 import { notifyApiError } from '$lib/server/notifications';
 import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
+import { touchUserLastSeen } from '$lib/server/user-last-connection';
 import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 
 /**
  * Démarrage du serveur : ouvre la connexion DB et préchauffe le cache de la home
@@ -94,6 +92,8 @@ function getRequestLoggingDecision(
 		isSensitiveOAuthOrPasskeyRoute ||
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/forgot-password' ||
+		pathname === '/email/reset-password' ||
 		pathname === '/dashboard/settings' ||
 		pathname.startsWith('/dashboard/api-keys') ||
 		pathname === '/dashboard/users' ||
@@ -103,6 +103,8 @@ function getRequestLoggingDecision(
 	const isSensitiveBodyRoute =
 		pathname === '/dashboard/login' ||
 		pathname === '/dashboard/register' ||
+		pathname === '/dashboard/forgot-password' ||
+		pathname === '/email/reset-password' ||
 		pathname === '/dashboard/logout' ||
 		isSensitiveSettingsAction ||
 		isSensitiveOAuthOrPasskeyRoute;
@@ -177,22 +179,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.permissions = [];
 	}
 
+	const pathname = event.url.pathname;
+	if (event.locals.user && pathname.startsWith('/dashboard') && !isStaticAssetPath(pathname)) {
+		touchUserLastSeen(event.locals.user.id);
+	}
+
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
 	// Pas de requête DB pendant le prerender (build sans Postgres).
 	if (!building) {
 		try {
-			const [cfg] = await db
-				.select()
-				.from(table.config)
-				.where(eq(table.config.id, 'main'))
-				.limit(1);
-			const maintenanceEnabled = cfg?.maintenanceMode === true;
+			const maintenanceEnabled = await getMaintenanceMode();
 			if (maintenanceEnabled) {
 				const path = event.url.pathname;
 				const isAuthException =
 					path === '/dashboard/login' ||
 					path === '/dashboard/register' ||
+					path === '/dashboard/forgot-password' ||
 					path === '/dashboard/logout' ||
 					isPublicSitePath(path);
 				const isMaintenancePage = path === '/maintenance' || path.startsWith('/maintenance/');
@@ -247,7 +250,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const method = event.request.method.toUpperCase();
-	const pathname = event.url.pathname;
 
 	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
 	const isSessionQuotaMeteredApiPath =
@@ -264,7 +266,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/api/passkeys/') ||
 		pathname.startsWith('/api/google-oauth/');
 
-	// Routes /api/* : si en-tête Bearer / X-Api-Key → auth par clé ; sinon session cookie (quota `kind=session`).
+	// Routes /api/* : clé API obligatoire (Authorization: Bearer … / X-Api-Key).
 	if (
 		isApiPath &&
 		method !== 'OPTIONS' &&
@@ -303,13 +305,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
 			event.locals.apiKeyRouteScope = keyResult.routeScope;
-		} else if (event.locals.user) {
-			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
-			if (!sessionRate.ok) {
-				return applySecurityHeaders(
-					jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders)
-				);
-			}
 		} else {
 			return applySecurityHeaders(jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders));
 		}
