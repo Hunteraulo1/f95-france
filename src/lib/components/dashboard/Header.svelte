@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
+	import { isDevHost, isPtbHost } from '$lib/site-host';
 	import { user } from '$lib/stores';
 	import Menu from '@lucide/svelte/icons/menu';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
@@ -14,10 +15,8 @@
 	let { maintenanceMode = false }: Props = $props();
 
 	const VERSION = pkg.version;
-	const isPtbHost = $derived(page.url.hostname === 'ptb.f95france.site');
-	const isDevHost = $derived(
-		page.url.hostname === 'localhost' || page.url.hostname === '127.0.0.1'
-	);
+	const showDevBadge = $derived(isDevHost(page.url.hostname));
+	const showPtbBadge = $derived(isPtbHost(page.url.hostname));
 </script>
 
 <div class="navbar h-4 bg-base-100 shadow-sm">
@@ -36,14 +35,14 @@
 					>
 						v{VERSION}
 					</span>
-					{#if isDevHost}
+					{#if showDevBadge}
 						<span
 							class="rounded-full bg-info/20 px-2 text-xs font-bold text-info"
 							title="Environnement de développement local"
 						>
 							DEV
 						</span>
-					{:else if isPtbHost}
+					{:else if showPtbBadge}
 						<span
 							class="rounded-full bg-warning/20 px-2 text-xs font-bold text-warning"
 							title="Environnement PTB (pre-production)"
