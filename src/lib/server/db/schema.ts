@@ -317,6 +317,8 @@ export const appRole = pgTable('app_role', {
 	staff: boolean('staff').notNull().default(false),
 	/** Force / priorité d'affichage (tri staff et liste des rôles). Éditable par superadmin uniquement. */
 	priority: integer('priority').notNull().default(0),
+	/** Nombre maximal de clés API Bearer actives par compte avec ce rôle. */
+	maxApiKeys: integer('max_api_keys').notNull().default(3),
 	isSystem: boolean('is_system').notNull().default(false),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()

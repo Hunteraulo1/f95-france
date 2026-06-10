@@ -6,13 +6,19 @@ import {
 	type PermissionKey
 } from '$lib/permissions/catalog';
 import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import {
 	GAMES_MANAGE_PERMISSION,
 	isRoleEditMode,
 	resolveEffectiveRoleEditMode,
 	ROLE_EDIT_MODE_OPTIONS
 } from '$lib/permissions/edit-mode';
+import {
+	parseRoleMaxApiKeysInput,
+	resolveRoleMaxApiKeys,
+	ROLE_API_KEYS_MAX,
+	ROLE_API_KEYS_MIN,
+	USER_API_KEY_MAX_COUNT_DEFAULT
+} from '$lib/permissions/role-api-keys';
 import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
 import {
 	parseRolePriorityInput,
@@ -20,14 +26,15 @@ import {
 	ROLE_PRIORITY_MIN
 } from '$lib/permissions/role-priority';
 import { sortRolesByPriority } from '$lib/permissions/sort-roles';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { selectAllAppRoles } from '$lib/server/app-role-query';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
 	assertPermission,
 	countUsersWithRoles,
-	hasPermission,
 	getEffectivePermissionsByRoles,
+	hasPermission,
 	invalidateRolePermissionsCache,
 	listRolePermissions,
 	listRolePermissionsStored,
@@ -91,6 +98,7 @@ function enrichRoleRow(
 		hasGamesManage,
 		storedEditMode,
 		badgeStyle,
+		maxApiKeys: resolveRoleMaxApiKeys(r.slug, r.maxApiKeys),
 		editMode: resolveEffectiveRoleEditMode(storedEditMode, hasGamesManage),
 		userCount: userCounts[r.slug] ?? 0,
 		permissionCount: effectivePerms.length,
@@ -176,6 +184,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		isSelectedRoleSuperadmin,
 		rolePriorityMin: ROLE_PRIORITY_MIN,
 		rolePriorityMax: ROLE_PRIORITY_MAX,
+		roleApiKeysMin: ROLE_API_KEYS_MIN,
+		roleApiKeysMax: ROLE_API_KEYS_MAX,
 		staffUsers: staffUsers.map((member) => ({
 			...member,
 			email: formatUserEmailForDisplay(member.email, canViewUserEmails)
@@ -231,6 +241,8 @@ export const actions: Actions = {
 			}
 			priority = parsedPriority;
 		}
+		const parsedMaxApiKeys = parseRoleMaxApiKeysInput(formData.get('maxApiKeys'));
+		const maxApiKeys = parsedMaxApiKeys ?? USER_API_KEY_MAX_COUNT_DEFAULT;
 		const slugRaw = (formData.get('slug') as string)?.trim();
 		const slug = slugifyRole(slugRaw || label || '');
 
@@ -274,6 +286,7 @@ export const actions: Actions = {
 				badgeStyle,
 				staff,
 				priority,
+				maxApiKeys,
 				isSystem: false
 			});
 			await setRolePermissions(slug, assignableInitial);
@@ -306,6 +319,34 @@ export const actions: Actions = {
 			.limit(1);
 		if (!role) {
 			return fail(404, { message: 'Rôle introuvable' });
+		}
+
+		const parsedMaxApiKeys = parseRoleMaxApiKeysInput(formData.get('maxApiKeys'));
+		if (parsedMaxApiKeys === null) {
+			return fail(400, {
+				message: `Nombre de clés API invalide (${ROLE_API_KEYS_MIN}–${ROLE_API_KEYS_MAX})`
+			});
+		}
+
+		if (isSuperadminRole(slug)) {
+			if (!isSuperadminRole(locals.user?.role)) {
+				return fail(403, {
+					message:
+						'Seul un super administrateur peut modifier la limite de clés API du rôle Super administrateur'
+				});
+			}
+
+			try {
+				await db
+					.update(table.appRole)
+					.set({ maxApiKeys: parsedMaxApiKeys, updatedAt: new Date() })
+					.where(eq(table.appRole.slug, slug));
+				redirect(303, rolePageUrl(slug, 'updated'));
+			} catch (error) {
+				if (isRedirect(error)) throw error;
+				console.error('updateRole (superadmin maxApiKeys):', error);
+				return fail(500, { message: 'Impossible de mettre à jour le rôle' });
+			}
 		}
 
 		const badgeStyle =
@@ -341,6 +382,7 @@ export const actions: Actions = {
 					description: role.isSystem ? role.description : description,
 					badgeStyle,
 					staff,
+					maxApiKeys: parsedMaxApiKeys,
 					...priorityPatch,
 					...(hasGamesManage && editMode ? { editMode } : {}),
 					updatedAt: new Date()

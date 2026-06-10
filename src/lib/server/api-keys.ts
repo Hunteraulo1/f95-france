@@ -1,4 +1,8 @@
 import { permissionGranted } from '$lib/permissions/check';
+import {
+	USER_API_KEY_MAX_COUNT_DEFAULT,
+	resolveRoleMaxApiKeys
+} from '$lib/permissions/role-api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
@@ -12,8 +16,8 @@ export const API_KEY_KIND_SESSION = 'session';
 export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
 const EXTENSION_ONLY_LABEL_TOKEN = '[extension-only]';
 
-/** Nombre maximal de clés actives par compte utilisateur (hors révoquées). */
-export const USER_API_KEY_MAX_COUNT = 3;
+/** @deprecated Utiliser `USER_API_KEY_MAX_COUNT_DEFAULT` ou `getMaxApiKeysForRole`. */
+export const USER_API_KEY_MAX_COUNT = USER_API_KEY_MAX_COUNT_DEFAULT;
 /** Valeur par défaut (req/min) pour une nouvelle clé côté utilisateur. */
 export const USER_API_KEY_DEFAULT_RPM = 30;
 /** Plafond de requêtes/minute pour une clé créée par l’utilisateur lui-même. */
@@ -231,6 +235,16 @@ export async function countActiveApiKeysForOwner(ownerUserId: string): Promise<n
 		);
 
 	return row?.count ?? 0;
+}
+
+export async function getMaxApiKeysForRole(roleSlug: string): Promise<number> {
+	const [row] = await db
+		.select({ maxApiKeys: table.appRole.maxApiKeys })
+		.from(table.appRole)
+		.where(eq(table.appRole.slug, roleSlug))
+		.limit(1);
+
+	return resolveRoleMaxApiKeys(roleSlug, row?.maxApiKeys);
 }
 
 export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyListRow[]> {
