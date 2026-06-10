@@ -16,7 +16,6 @@ servers:
 
 # Au moins une des exigences ci‑dessous doit être satisfaite (OU logique entre les éléments du tableau).
 security:
-  - SessionCookie: []
   - ApiKeyBearer: []
   - ApiKeyHeader: []
 
@@ -607,12 +606,6 @@ paths:
 
 components:
   securitySchemes:
-    SessionCookie:
-      type: apiKey
-      in: cookie
-      name: auth-session
-      description: |
-        Cookie de session émis après connexion sur le site (tableau de bord). Envoyé automatiquement par le navigateur pour les requêtes same-site.
     ApiKeyBearer:
       type: http
       scheme: bearer
@@ -788,14 +781,14 @@ components:
   responses:
     Unauthorized:
       description: |
-        Session absente ou expirée, ou clé API manquante / invalide / révoquée / expirée.
+        Clé API manquante, invalide, révoquée ou expirée.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     TooManyRequests:
       description: |
-        Limite de fréquence atteinte : trop de requêtes dans la minute pour la session ou la clé API utilisée. Réessayer après un court délai.
+        Limite de fréquence atteinte : trop de requêtes dans la minute pour la clé API utilisée. Réessayer après un court délai.
       headers:
         Retry-After:
           description: Délai recommandé avant un nouvel essai (secondes).

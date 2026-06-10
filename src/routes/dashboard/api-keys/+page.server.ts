@@ -1,7 +1,6 @@
 import {
 	countActiveApiKeysForOwner,
 	createApiKey,
-	getSessionApiKeyRowForOwner,
 	listApiKeysForOwner,
 	revokeApiKeyForActor,
 	USER_API_KEY_DEFAULT_RPM,
@@ -28,10 +27,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const revokedFilter = parseRevokedFilter(url.searchParams.get('revoked'));
 
 	try {
-		const [allKeys, activeCount, sessionKey] = await Promise.all([
+		const [allKeys, activeCount] = await Promise.all([
 			listApiKeysForOwner(locals.user.id),
-			countActiveApiKeysForOwner(locals.user.id),
-			getSessionApiKeyRowForOwner(locals.user.id)
+			countActiveApiKeysForOwner(locals.user.id)
 		]);
 		const keys =
 			revokedFilter === 'all'
@@ -42,7 +40,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			keys,
 			revokedFilter,
-			sessionKey,
 			activeCount,
 			limits: {
 				maxKeys: USER_API_KEY_MAX_COUNT,

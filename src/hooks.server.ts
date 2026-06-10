@@ -1,7 +1,6 @@
 import { building } from '$app/environment';
 import {
 	EXTENSION_ONLY_API_ROUTE,
-	consumeSessionApiKeyRateForUser,
 	extractApiKeyFromRequest,
 	getUserForApiKeyOwner,
 	jsonApiKeyGuardResponse,
@@ -269,7 +268,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/api/passkeys/') ||
 		pathname.startsWith('/api/google-oauth/');
 
-	// Routes /api/* : si en-tête Bearer / X-Api-Key → auth par clé ; sinon session cookie (quota `kind=session`).
+	// Routes /api/* : clé API obligatoire (Authorization: Bearer … / X-Api-Key).
 	if (
 		isApiPath &&
 		method !== 'OPTIONS' &&
@@ -308,13 +307,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.user = userRow;
 			event.locals.authenticatedViaApiKey = true;
 			event.locals.apiKeyRouteScope = keyResult.routeScope;
-		} else if (event.locals.user) {
-			const sessionRate = await consumeSessionApiKeyRateForUser(event.locals.user.id);
-			if (!sessionRate.ok) {
-				return applySecurityHeaders(
-					jsonApiKeyGuardResponse(sessionRate.failure, apiPublicErrorCorsHeaders)
-				);
-			}
 		} else {
 			return applySecurityHeaders(jsonApiKeyGuardResponse('missing', apiPublicErrorCorsHeaders));
 		}

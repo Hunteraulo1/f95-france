@@ -22,14 +22,6 @@ export const USER_API_KEY_MAX_RPM = 60;
 export function hashApiKeySecret(rawKey: string): string {
 	return encodeHexLowerCase(sha256(new TextEncoder().encode(rawKey)));
 }
-
-/** Hash synthétique pour la ligne `kind=session` (jamais égal à un vrai secret Bearer). */
-export function syntheticSessionKeyHash(ownerUserId: string): string {
-	return encodeHexLowerCase(
-		sha256(new TextEncoder().encode(`f95fr_session_synthetic_v1:${ownerUserId}`))
-	);
-}
-
 export function generateApiKeyPlaintext(): { rawKey: string; keyPrefix: string } {
 	const bytes = new Uint8Array(24);
 	crypto.getRandomValues(bytes);
@@ -169,8 +161,7 @@ const FAILURE_SPEC: Record<
 	missing: {
 		status: 401,
 		body: {
-			error:
-				'Authentification requise : session (cookie) ou clé API (Authorization: Bearer … / X-Api-Key).'
+			error: 'Authentification requise : clé API (Authorization: Bearer … / X-Api-Key).'
 		}
 	},
 	invalid: { status: 401, body: { error: 'Clé API invalide ou révoquée.' } },
@@ -179,7 +170,7 @@ const FAILURE_SPEC: Record<
 		status: 429,
 		body: {
 			error:
-				'Limite de fréquence atteinte : vous avez dépassé le nombre de requêtes autorisées par minute pour cette session ou cette clé API. Réessayez dans environ une minute.'
+				'Limite de fréquence atteinte : vous avez dépassé le nombre de requêtes autorisées par minute pour cette clé API. Réessayez dans environ une minute.'
 		},
 		extraHeaders: { 'retry-after': '60' }
 	},
@@ -260,114 +251,6 @@ export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyLi
 			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_BEARER))
 		)
 		.orderBy(desc(table.apiKey.createdAt));
-}
-
-/** Crée la ligne `session` si absente (quota cookie /api/). Idempotent. */
-export async function ensureSessionApiKey(ownerUserId: string): Promise<void> {
-	const [existing] = await db
-		.select({ id: table.apiKey.id })
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-	if (existing) return;
-
-	const id = crypto.randomUUID();
-	const keyHash = syntheticSessionKeyHash(ownerUserId);
-	const now = new Date();
-	try {
-		await db.insert(table.apiKey).values({
-			id,
-			keyHash,
-			keyPrefix: 'session',
-			label: 'Session',
-			kind: API_KEY_KIND_SESSION,
-			requestsPerMinute: USER_API_KEY_DEFAULT_RPM,
-			expiresAt: null,
-			revokedAt: null,
-			lastUsedAt: null,
-			ownerUserId,
-			createdByUserId: null,
-			createdAt: now,
-			updatedAt: now
-		});
-	} catch {
-		const [again] = await db
-			.select({ id: table.apiKey.id })
-			.from(table.apiKey)
-			.where(
-				and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-			)
-			.limit(1);
-		if (!again) throw new Error('ensureSessionApiKey: échec insertion ligne session');
-	}
-}
-
-export async function getSessionApiKeyRowForOwner(
-	ownerUserId: string
-): Promise<ApiKeyListRow | null> {
-	await ensureSessionApiKey(ownerUserId);
-	const [row] = await db
-		.select({
-			id: table.apiKey.id,
-			keyPrefix: table.apiKey.keyPrefix,
-			label: table.apiKey.label,
-			requestsPerMinute: table.apiKey.requestsPerMinute,
-			expiresAt: table.apiKey.expiresAt,
-			revokedAt: table.apiKey.revokedAt,
-			lastUsedAt: table.apiKey.lastUsedAt,
-			totalRequestCount: table.apiKey.totalRequestCount,
-			createdAt: table.apiKey.createdAt
-		})
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-	return row ?? null;
-}
-
-/** Quota pour les requêtes /api/ authentifiées par cookie (pas par clé). */
-export async function consumeSessionApiKeyRateForUser(
-	ownerUserId: string
-): Promise<{ ok: true } | { ok: false; failure: ApiKeyValidateFailure }> {
-	await ensureSessionApiKey(ownerUserId);
-	const [row] = await db
-		.select({
-			id: table.apiKey.id,
-			requestsPerMinute: table.apiKey.requestsPerMinute,
-			revokedAt: table.apiKey.revokedAt
-		})
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-
-	if (!row || row.revokedAt) {
-		return { ok: false, failure: 'rate_limited' };
-	}
-
-	const rate = await consumeApiKeyRate(row.id, row.requestsPerMinute);
-	if (rate === 'quota_disabled') {
-		return { ok: false, failure: 'quota_disabled' };
-	}
-	if (rate === 'rate_limited') {
-		return { ok: false, failure: 'rate_limited' };
-	}
-
-	const touch = new Date();
-	await db
-		.update(table.apiKey)
-		.set({
-			lastUsedAt: touch,
-			updatedAt: touch,
-			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
-		})
-		.where(eq(table.apiKey.id, row.id));
-
-	return { ok: true };
 }
 
 export type ApiKeyAdminRow = ApiKeyListRow & {
