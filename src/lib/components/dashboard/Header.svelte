@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
 	import { user } from '$lib/stores';
 	import Menu from '@lucide/svelte/icons/menu';
@@ -13,6 +14,10 @@
 	let { maintenanceMode = false }: Props = $props();
 
 	const VERSION = pkg.version;
+	const isPtbHost = $derived(page.url.hostname === 'ptb.f95france.site');
+	const isDevHost = $derived(
+		page.url.hostname === 'localhost' || page.url.hostname === '127.0.0.1'
+	);
 </script>
 
 <div class="navbar h-4 bg-base-100 shadow-sm">
@@ -25,10 +30,27 @@
 		<a class="btn btn-ghost" href="/">
 			<div class="flex w-full flex-col items-center justify-center gap-2 xs:flex-row">
 				<h1 class="text-sm xs:text-xl">F95 France</h1>
-				<span
-					class="rounded-full px-2 text-xs font-bold text-slate-500 xs:bg-slate-700 xs:text-slate-100"
-				>
-					v{VERSION}
+				<span class="flex items-center gap-1.5">
+					<span
+						class="rounded-full px-2 text-xs font-bold text-slate-500 xs:bg-slate-700 xs:text-slate-100"
+					>
+						v{VERSION}
+					</span>
+					{#if isDevHost}
+						<span
+							class="rounded-full bg-info/20 px-2 text-xs font-bold text-info"
+							title="Environnement de développement local"
+						>
+							DEV
+						</span>
+					{:else if isPtbHost}
+						<span
+							class="rounded-full bg-warning/20 px-2 text-xs font-bold text-warning"
+							title="Environnement PTB (pre-production)"
+						>
+							PTB
+						</span>
+					{/if}
 				</span>
 			</div>
 		</a>
