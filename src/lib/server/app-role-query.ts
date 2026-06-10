@@ -1,3 +1,4 @@
+import { resolveRoleMaxApiKeys } from '$lib/permissions/role-api-keys';
 import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
 import { SYSTEM_ROLE_PRIORITIES } from '$lib/permissions/role-priority';
 import { db } from '$lib/server/db';
@@ -42,6 +43,7 @@ async function selectAllAppRolesLegacy(): Promise<AppRoleRecord[]> {
 		badgeStyle: resolveRoleBadgeStyle(row.slug, null),
 		staff: STAFF_ROLE_SLUGS.has(row.slug),
 		priority: SYSTEM_ROLE_PRIORITIES[row.slug] ?? 0,
+		maxApiKeys: resolveRoleMaxApiKeys(row.slug, null),
 		isSystem: row.is_system,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at
@@ -60,7 +62,8 @@ export async function selectAllAppRoles(): Promise<AppRoleRecord[]> {
 		if (
 			!isMissingAppRoleColumn(error, 'badge_style') &&
 			!isMissingAppRoleColumn(error, 'staff') &&
-			!isMissingAppRoleColumn(error, 'priority')
+			!isMissingAppRoleColumn(error, 'priority') &&
+			!isMissingAppRoleColumn(error, 'max_api_keys')
 		) {
 			throw error;
 		}

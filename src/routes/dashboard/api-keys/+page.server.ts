@@ -1,11 +1,10 @@
 import {
 	countActiveApiKeysForOwner,
 	createApiKey,
-	getSessionApiKeyRowForOwner,
+	getMaxApiKeysForRole,
 	listApiKeysForOwner,
 	revokeApiKeyForActor,
-	USER_API_KEY_DEFAULT_RPM,
-	USER_API_KEY_MAX_COUNT
+	USER_API_KEY_DEFAULT_RPM
 } from '$lib/server/api-keys';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -28,10 +27,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const revokedFilter = parseRevokedFilter(url.searchParams.get('revoked'));
 
 	try {
-		const [allKeys, activeCount, sessionKey] = await Promise.all([
+		const [allKeys, activeCount, maxKeys] = await Promise.all([
 			listApiKeysForOwner(locals.user.id),
 			countActiveApiKeysForOwner(locals.user.id),
-			getSessionApiKeyRowForOwner(locals.user.id)
+			getMaxApiKeysForRole(locals.user.role)
 		]);
 		const keys =
 			revokedFilter === 'all'
@@ -42,10 +41,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			keys,
 			revokedFilter,
-			sessionKey,
 			activeCount,
 			limits: {
-				maxKeys: USER_API_KEY_MAX_COUNT,
+				maxKeys,
 				defaultRpm: USER_API_KEY_DEFAULT_RPM
 			}
 		};
@@ -71,10 +69,11 @@ export const actions: Actions = {
 			return fail(401, { message: 'Non connecté.' });
 		}
 
+		const maxKeys = await getMaxApiKeysForRole(locals.user.role);
 		const active = await countActiveApiKeysForOwner(locals.user.id);
-		if (active >= USER_API_KEY_MAX_COUNT) {
+		if (active >= maxKeys) {
 			return fail(400, {
-				message: `Nombre maximal de clés actives atteint (${USER_API_KEY_MAX_COUNT}). Révoquez une clé existante.`
+				message: `Nombre maximal de clés actives atteint (${maxKeys}). Révoquez une clé existante.`
 			});
 		}
 

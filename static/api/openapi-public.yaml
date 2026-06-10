@@ -2,24 +2,12 @@ openapi: 3.0.3
 info:
   title: API publique F95 France
   description: |
-    Routes HTTP en **lecture seule** (méthode GET) avec en-tête CORS ouvert (`*`), destinées aux intégrations publiques.
+    ⚠️ Cette API est dépréciée.
 
-    ### Authentification
+    Veuillez migrer vers :
+    https://api.f95france.site
 
-    Pour chaque opération décrite dans cette spécification, la requête doit prouver l’identité par **l’une** des options suivantes :
-
-    1. **Cookie de session** — après connexion sur le tableau de bord (`auth-session`, envoi automatique avec `credentials: 'include'` depuis le même site).
-    2. **Clé API** — en-tête **`Authorization`** avec le schéma **`Bearer`** et la **clé complète** comme jeton (ex. préfixe `f95ext_…`), ou en-tête **`X-Api-Key`** avec la même valeur. Les clés sont créées dans le compte utilisateur (**Mes clés API** dans le tableau de bord) ; elles portent le **nom du compte propriétaire** et un **quota de requêtes par minute** (compteur côté serveur). Pour relever ce plafond, **contactez un administrateur du site**. Réponse **`429`** si la **limite par minute** est dépassée (trop de requêtes dans la fenêtre courante).
-
-    Les appels avec clé se comportent comme si le **propriétaire** de la clé effectuait la requête (droits et données visibles alignés sur ce compte).
-
-    **Sans authentification valide :** réponse **`401`** (`application/json`, champ `error`).
-
-    ### Usage
-
-    Utilisez l’API avec modération : un volume de requêtes trop élevé ou un comportement abusif peut entraîner l’application de **restrictions** (limitation de débit, blocage temporaire ou définitif, etc.) sans préavis.
-
-    **Documentation interactive (Redoc) :** [`/api/`](/api/)
+    Fin de support prévue le 16 juin 2026.
   version: 1.0.0
 
 servers:
@@ -28,7 +16,6 @@ servers:
 
 # Au moins une des exigences ci‑dessous doit être satisfaite (OU logique entre les éléments du tableau).
 security:
-  - SessionCookie: []
   - ApiKeyBearer: []
   - ApiKeyHeader: []
 
@@ -47,6 +34,7 @@ tags:
 paths:
   /api/games:
     get:
+      deprecated: true
       tags: [Jeux]
       summary: Liste des jeux
       operationId: listGames
@@ -127,6 +115,7 @@ paths:
 
   /api/games/{id}:
     get:
+      deprecated: true
       tags: [Jeux]
       summary: Détail d’un jeu
       operationId: getGameById
@@ -204,6 +193,7 @@ paths:
 
   /api/translations:
     get:
+      deprecated: true
       tags: [Traductions]
       summary: Liste des traductions
       description: |
@@ -240,6 +230,7 @@ paths:
 
   /api/translations/{id}:
     get:
+      deprecated: true
       tags: [Traductions]
       summary: Détail d’une traduction
       operationId: getTranslationById
@@ -267,6 +258,7 @@ paths:
 
   /api/translators:
     get:
+      deprecated: true
       tags: [Traducteurs]
       summary: Liste des traducteurs (projection publique)
       description: |
@@ -308,6 +300,7 @@ paths:
 
   /api/translators/{id}:
     get:
+      deprecated: true
       tags: [Traducteurs]
       summary: Détail d’un traducteur (projection publique)
       operationId: getTranslatorById
@@ -335,6 +328,7 @@ paths:
 
   /api/updates:
     get:
+      deprecated: true
       tags: [Mises à jour]
       summary: Dernières mises à jour
       operationId: listUpdates
@@ -493,6 +487,7 @@ paths:
 
   /api/updates/{id}:
     get:
+      deprecated: true
       tags: [Mises à jour]
       summary: Détail d’une mise à jour
       operationId: getUpdateById
@@ -611,12 +606,6 @@ paths:
 
 components:
   securitySchemes:
-    SessionCookie:
-      type: apiKey
-      in: cookie
-      name: auth-session
-      description: |
-        Cookie de session émis après connexion sur le site (tableau de bord). Envoyé automatiquement par le navigateur pour les requêtes same-site.
     ApiKeyBearer:
       type: http
       scheme: bearer
@@ -792,14 +781,14 @@ components:
   responses:
     Unauthorized:
       description: |
-        Session absente ou expirée, ou clé API manquante / invalide / révoquée / expirée.
+        Clé API manquante, invalide, révoquée ou expirée.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     TooManyRequests:
       description: |
-        Limite de fréquence atteinte : trop de requêtes dans la minute pour la session ou la clé API utilisée. Réessayer après un court délai.
+        Limite de fréquence atteinte : trop de requêtes dans la minute pour la clé API utilisée. Réessayer après un court délai.
       headers:
         Retry-After:
           description: Délai recommandé avant un nouvel essai (secondes).

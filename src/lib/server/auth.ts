@@ -1,4 +1,3 @@
-import { ensureSessionApiKey } from '$lib/server/api-keys';
 import { appLogError } from '$lib/server/app-log-bridge';
 import { secureSessionCookieOptions } from '$lib/server/cookie-options';
 import { db } from '$lib/server/db';
@@ -20,8 +19,8 @@ const DAY_IN_MS = 1000 * 60 * 60 * 24;
 export const sessionCookieName = 'auth-session';
 
 export {
-	INVALID_CREDENTIALS_MESSAGE,
 	hashPassword,
+	INVALID_CREDENTIALS_MESSAGE,
 	verifyPassword
 } from '$lib/server/password-hash';
 export type { PasswordVerifyResult };
@@ -188,7 +187,6 @@ export async function createUser(username: string, email: string, password: stri
 	};
 
 	await db.insert(table.user).values(user);
-	await ensureSessionApiKey(userId);
 	return user;
 }
 
@@ -245,7 +243,6 @@ export async function createUserFromDiscord(params: {
 	};
 
 	await db.insert(table.user).values(user);
-	await ensureSessionApiKey(userId);
 	return user;
 }
 
