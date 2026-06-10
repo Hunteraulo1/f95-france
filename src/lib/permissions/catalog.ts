@@ -10,6 +10,7 @@ export const PERMISSION_KEYS = [
 	'profile.customize.cursor',
 	'settings.view',
 	'api_keys.own',
+	'api_keys.label_brackets',
 	'games.manage',
 	'games.auto_check',
 	'games.silent_mode',
@@ -96,6 +97,13 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		key: 'api_keys.own',
 		label: 'Mes clés API',
 		description: 'Gérer ses propres clés API',
+		group: 'Général'
+	},
+	{
+		key: 'api_keys.label_brackets',
+		label: 'Libellés avec crochets',
+		description:
+			'Utiliser des crochets [ ] dans le libellé d’une clé API (ex. [extension-only] pour restreindre une clé à /api/extension-api)',
 		group: 'Général'
 	},
 	{
@@ -252,6 +260,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'profile.view',
 		'settings.view',
 		'api_keys.own',
+		'api_keys.label_brackets',
 		'games.manage',
 		'games.auto_check',
 		'games.silent_mode',

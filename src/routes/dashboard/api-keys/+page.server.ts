@@ -4,8 +4,10 @@ import {
 	getMaxApiKeysForRole,
 	listApiKeysForOwner,
 	revokeApiKeyForActor,
-	USER_API_KEY_DEFAULT_RPM
+	USER_API_KEY_DEFAULT_RPM,
+	validateApiKeyLabelForActor
 } from '$lib/server/api-keys';
+import { hasPermission } from '$lib/server/permissions';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -42,6 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			keys,
 			revokedFilter,
 			activeCount,
+			canUseLabelBrackets: hasPermission(locals, 'api_keys.label_brackets'),
 			limits: {
 				maxKeys,
 				defaultRpm: USER_API_KEY_DEFAULT_RPM
@@ -79,6 +82,14 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const label = String(formData.get('label') ?? '').trim() || 'Ma clé';
+
+		const labelCheck = validateApiKeyLabelForActor(label, {
+			role: locals.user.role,
+			permissions: locals.permissions
+		});
+		if (!labelCheck.ok) {
+			return fail(400, { message: labelCheck.message });
+		}
 
 		const expiresRaw = String(formData.get('expiresAt') ?? '').trim();
 		let expiresAt: Date | null = null;

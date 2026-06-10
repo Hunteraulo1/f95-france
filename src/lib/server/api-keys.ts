@@ -1,3 +1,4 @@
+import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 import { permissionGranted } from '$lib/permissions/check';
 import {
 	USER_API_KEY_MAX_COUNT_DEFAULT,
@@ -14,7 +15,40 @@ const RATE_WINDOW_MS = 60_000;
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
 export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
-const EXTENSION_ONLY_LABEL_TOKEN = '[extension-only]';
+export { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
+const EXTENSION_ONLY_LABEL_TOKEN = API_KEY_EXTENSION_ONLY_LABEL_TOKEN;
+
+const API_KEY_LABEL_BRACKETS_RE = /[[\]]/;
+
+export function apiKeyLabelUsesBrackets(label: string): boolean {
+	return API_KEY_LABEL_BRACKETS_RE.test(label);
+}
+
+export function canUseApiKeyLabelBrackets(actor: {
+	role: string | undefined;
+	permissions?: readonly string[] | undefined;
+}): boolean {
+	return (
+		permissionGranted(actor.role, actor.permissions, 'api.management') ||
+		permissionGranted(actor.role, actor.permissions, 'api_keys.label_brackets')
+	);
+}
+
+export function validateApiKeyLabelForActor(
+	label: string,
+	actor: { role: string | undefined; permissions?: readonly string[] | undefined }
+): { ok: true } | { ok: false; message: string } {
+	if (!apiKeyLabelUsesBrackets(label)) {
+		return { ok: true };
+	}
+	if (canUseApiKeyLabelBrackets(actor)) {
+		return { ok: true };
+	}
+	return {
+		ok: false,
+		message: `Les crochets [ ] dans le libellé sont réservés (ex. ${API_KEY_EXTENSION_ONLY_LABEL_TOKEN} pour l’extension). Demandez la permission « Libellés avec crochets » à un administrateur.`
+	};
+}
 
 /** @deprecated Utiliser `USER_API_KEY_MAX_COUNT_DEFAULT` ou `getMaxApiKeysForRole`. */
 export const USER_API_KEY_MAX_COUNT = USER_API_KEY_MAX_COUNT_DEFAULT;
