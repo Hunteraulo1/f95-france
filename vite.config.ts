@@ -5,7 +5,15 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
 	optimizeDeps: {
-		exclude: ['@lucide/svelte']
+		exclude: [
+			'@lucide/svelte',
+			'svelte-codemirror-editor',
+			'codemirror',
+			'@codemirror/lang-markdown',
+			'@codemirror/state',
+			'@codemirror/view',
+			'@codemirror/language'
+		]
 	},
 	server: {
 		fs: {

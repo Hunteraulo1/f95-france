@@ -1,7 +1,9 @@
 <script lang="ts">
+	import MarkdownContent from '$lib/components/MarkdownContent.svelte';
 	import ProfileStatsPanel from '$lib/components/dashboard/ProfileStats.svelte';
 	import ProfileTranslations from '$lib/components/dashboard/ProfileTranslations.svelte';
 	import YoutubeAudioPlayer from '$lib/components/dashboard/YoutubeAudioPlayer.svelte';
+	import { parseMarkdownDocument } from '$lib/markdown/content';
 	import type { CustomProfileTheme, TranslatorPageLink } from '$lib/profile/custom-profile';
 	import {
 		PROFILE_BACKGROUND_HEIGHT,
@@ -12,6 +14,7 @@
 	import type { ProfileStats } from '$lib/server/profile-stats';
 	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
 	import { roleBadgeStyles } from '$lib/stores';
+	import '$lib/styles/profile-markdown.css';
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -82,6 +85,8 @@
 		translator: 'Traducteur',
 		superadmin: 'Super Admin'
 	};
+
+	const bioDocument = $derived(customProfile?.bio ? parseMarkdownDocument(customProfile.bio) : []);
 </script>
 
 {#if hasCustomCursor && customCursorActive && customProfile?.cursorUrl}
@@ -169,7 +174,7 @@
 				<div class="card border border-base-300 bg-base-100/95 shadow-sm">
 					<div class="card-body gap-2">
 						<h4 class="card-title text-base">À propos</h4>
-						<p class="whitespace-pre-wrap text-base-content/90">{customProfile.bio}</p>
+						<MarkdownContent document={bioDocument} class="profile-markdown" />
 					</div>
 				</div>
 			{/if}
