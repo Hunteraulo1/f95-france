@@ -1,0 +1,46 @@
+.profile-bio-editor-shell {
+	width: 100%;
+	overflow: hidden;
+	border-radius: var(--radius-field, 0.25rem);
+	border: var(--border, 1px) solid var(--color-base-300);
+	background-color: var(--color-base-100);
+	color: var(--color-base-content);
+	transition:
+		border-color 0.15s ease,
+		outline 0.15s ease;
+}
+
+.profile-bio-editor-shell:focus-within {
+	border-color: color-mix(in oklch, var(--color-base-content) 20%, var(--color-base-300));
+	outline: 2px solid color-mix(in oklch, var(--color-base-content) 20%, transparent);
+	outline-offset: 2px;
+}
+
+.profile-bio-toolbar :where(.btn) {
+	min-height: 1.75rem;
+	height: auto;
+	border-radius: calc(var(--radius-field, 0.25rem) - 2px);
+}
+
+.profile-bio-editor {
+	width: 100%;
+	overflow: hidden;
+	background-color: var(--color-base-100);
+}
+
+.profile-bio-editor :where(.cm-editor) {
+	background-color: transparent;
+}
+
+.profile-bio-editor :where(.cm-editor.cm-focused) {
+	outline: none;
+}
+
+.profile-bio-editor :where(.cm-scroller) {
+	overflow: auto;
+}
+
+.profile-bio-editor :where(.cm-placeholder) {
+	color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+	font-style: normal;
+}

@@ -2,6 +2,7 @@ import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
+import { invalidateMaintenanceModeCache } from '$lib/server/maintenance-mode';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -144,6 +145,10 @@ export const actions: Actions = {
 					message:
 						'Configuration absente : droit « Configuration (écriture) » requis pour l’initialiser'
 				});
+			}
+
+			if (maintenanceChanged) {
+				invalidateMaintenanceModeCache();
 			}
 
 			return { success: true, message: 'Configuration mise à jour avec succès' };

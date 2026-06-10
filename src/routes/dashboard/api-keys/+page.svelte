@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import KeyRound from '@lucide/svelte/icons/key-round';
@@ -126,6 +127,20 @@
 						name="label"
 						placeholder="Extension navigateur, script…"
 					/>
+					{#if data.canUseLabelBrackets}
+						<p class="text-xs text-base-content/70">
+							Tu peux utiliser des crochets, par ex.
+							<code class="rounded bg-base-200 px-1 py-0.5"
+								>{API_KEY_EXTENSION_ONLY_LABEL_TOKEN}</code
+							>
+							pour limiter la clé à l’extension.
+						</p>
+					{:else}
+						<p class="text-xs text-base-content/70">
+							Les crochets [ ] dans le libellé sont réservés — contacte un administrateur si tu en
+							as besoin.
+						</p>
+					{/if}
 				</label>
 				<label class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Expiration (optionnel)</span>

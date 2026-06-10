@@ -11,7 +11,8 @@ export const PERMISSION_REQUIRES: Partial<Record<PermissionKey, PermissionKey>> 
 	'users.view_email': 'users.manage',
 	'users.assign_admin': 'users.manage',
 	'config.edit': 'config.view',
-	'maintenance.manage': 'config.view'
+	'maintenance.manage': 'config.view',
+	'api_keys.label_brackets': 'api_keys.own'
 };
 
 const DEPENDENTS_BY_PARENT = new Map<PermissionKey, PermissionKey[]>();

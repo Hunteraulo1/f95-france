@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import MarkdownContent from '$lib/components/MarkdownContent.svelte';
+	import ProfileBioEditor from '$lib/components/dashboard/ProfileBioEditor.svelte';
 	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { parseMarkdownDocument } from '$lib/markdown/content';
 	import type { RoleEditMode } from '$lib/permissions/edit-mode';
 	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
 	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
@@ -12,6 +15,7 @@
 		PROFILE_CURSOR_DISPLAY_PX
 	} from '$lib/profile/custom-profile';
 	import { loadUserData } from '$lib/stores';
+	import '$lib/styles/profile-markdown.css';
 
 	type LinkedTranslator = {
 		id: string;
@@ -103,6 +107,7 @@
 	const hasTranslatorPagesChanges = $derived(
 		currentTranslatorPagesSignature !== initialTranslatorPagesSignature
 	);
+	const bioPreviewDocument = $derived(profileBio.trim() ? parseMarkdownDocument(profileBio) : []);
 </script>
 
 <section class="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -306,17 +311,18 @@
 					{#if profileCustomize.bio}
 						<fieldset class="fieldset gap-2">
 							<legend class="fieldset-legend">Bio</legend>
-							<textarea
-								name="profileBio"
-								class="textarea textarea-bordered w-full"
-								rows="5"
-								maxlength={PROFILE_BIO_MAX_LENGTH}
-								placeholder="Présentez-vous, vos spécialités, vos projets…"
-								bind:value={profileBio}
-							></textarea>
+							<ProfileBioEditor bind:value={profileBio} maxLength={PROFILE_BIO_MAX_LENGTH} />
 							<p class="label text-base-content/60">
 								{profileBio.length}/{PROFILE_BIO_MAX_LENGTH} caractères
 							</p>
+							{#if bioPreviewDocument.length > 0}
+								<div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+									<p class="mb-2 text-xs font-medium uppercase tracking-wide text-base-content/60">
+										Aperçu
+									</p>
+									<MarkdownContent document={bioPreviewDocument} class="profile-markdown" />
+								</div>
+							{/if}
 						</fieldset>
 					{:else}
 						<input type="hidden" name="profileBio" value={profileBio} />

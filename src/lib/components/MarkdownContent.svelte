@@ -1,12 +1,14 @@
 <script lang="ts">
-	import '$lib/styles/legal-markdown.css';
 	import type { Inline, ListItem, MarkdownBlock } from '$lib/markdown/content';
+	import '$lib/styles/legal-markdown.css';
 
 	interface Props {
 		document: MarkdownBlock[];
+		/** Classe CSS du conteneur (styles typographiques du markdown). */
+		class?: string;
 	}
 
-	let { document }: Props = $props();
+	let { document, class: className = 'legal-markdown' }: Props = $props();
 </script>
 
 {#snippet inlines(nodes: Inline[])}
@@ -100,6 +102,6 @@
 	{/each}
 {/snippet}
 
-<div class="legal-markdown">
+<div class={className}>
 	{@render renderBlocks(document)}
 </div>
