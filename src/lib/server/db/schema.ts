@@ -43,6 +43,8 @@ export const user = pgTable('user', {
 	emailUnsubscribeToken: varchar('email_unsubscribe_token', { length: 64 }).notNull().unique(),
 	/** Désinscription des emails informatifs / marketing (pas les emails de sécurité). */
 	emailMarketingOptOut: boolean('email_marketing_opt_out').notNull().default(false),
+	/** Dernière activité sur le dashboard (mise à jour à chaque requête authentifiée). */
+	lastSeenAt: timestamp('last_seen_at'),
 	createdAt: timestamp('created_at').notNull().defaultNow(),
 	updatedAt: timestamp('updated_at').notNull().defaultNow()
 });

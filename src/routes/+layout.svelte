@@ -7,6 +7,8 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import { applyFaviconEnvBadge } from '$lib/site-favicon';
+	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
 	import { onMount } from 'svelte';
 	import { themeChange } from 'theme-change';
@@ -34,6 +36,12 @@
 		document.documentElement.classList.toggle('overflow-hidden', !ageVerified);
 		document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
 		return () => document.documentElement.classList.remove('overflow-hidden');
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const badge = resolveSiteEnvBadge(page.url.hostname);
+		void applyFaviconEnvBadge(badge);
 	});
 
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
