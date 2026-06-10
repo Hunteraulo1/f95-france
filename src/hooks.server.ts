@@ -11,15 +11,13 @@ import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
 import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import { warmHomePayload } from '$lib/server/home-page-data';
 import { logApiAction } from '$lib/server/logger';
+import { getMaintenanceMode } from '$lib/server/maintenance-mode';
 import { notifyApiError } from '$lib/server/notifications';
 import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
 import { applySecurityHeaders } from '$lib/server/security-headers';
 import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 
 /**
  * Démarrage du serveur : ouvre la connexion DB et préchauffe le cache de la home
@@ -185,12 +183,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Pas de requête DB pendant le prerender (build sans Postgres).
 	if (!building) {
 		try {
-			const [cfg] = await db
-				.select()
-				.from(table.config)
-				.where(eq(table.config.id, 'main'))
-				.limit(1);
-			const maintenanceEnabled = cfg?.maintenanceMode === true;
+			const maintenanceEnabled = await getMaintenanceMode();
 			if (maintenanceEnabled) {
 				const path = event.url.pathname;
 				const isAuthException =
