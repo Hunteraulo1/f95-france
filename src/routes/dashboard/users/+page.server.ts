@@ -2,6 +2,7 @@ import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
 import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import {
@@ -234,6 +235,64 @@ export const actions: Actions = {
 			}
 
 			return fail(500, { message: "Erreur lors de la mise à jour de l'utilisateur" });
+		}
+	},
+
+	sendPasswordReset: async ({ request, locals, url }) => {
+		await assertPermission(locals, 'users.manage');
+
+		const formData = await request.formData();
+		const userId = formData.get('userId') as string;
+
+		if (!userId) {
+			return fail(400, { message: 'Utilisateur manquant' });
+		}
+
+		const [user] = await db
+			.select({
+				id: table.user.id,
+				role: table.user.role,
+				username: table.user.username
+			})
+			.from(table.user)
+			.where(eq(table.user.id, userId))
+			.limit(1);
+
+		if (!user) {
+			return fail(404, { message: 'Utilisateur non trouvé' });
+		}
+
+		const manageCheck = await assertCanManageUserWithRole(locals, user.role, userId);
+		if (!manageCheck.allowed) {
+			return fail(403, { message: manageCheck.message });
+		}
+
+		const result = await sendPasswordResetEmailForUser(userId, {
+			requestOrigin: url.origin
+		});
+
+		if (result.ok) {
+			return {
+				success: true,
+				message: `Un email de réinitialisation a été envoyé à ${user.username}.`
+			};
+		}
+
+		switch (result.reason) {
+			case 'cooldown':
+				return fail(429, {
+					message:
+						'Un email de réinitialisation a déjà été envoyé récemment. Veuillez patienter 2 minutes.'
+				});
+			case 'send_failed':
+				return fail(502, {
+					message:
+						'Impossible d’envoyer l’email pour le moment. Vérifiez la configuration SMTP ou réessayez plus tard.'
+				});
+			case 'user_not_found':
+				return fail(404, { message: 'Utilisateur non trouvé' });
+			default:
+				return fail(500, { message: 'Erreur lors de l’envoi de l’email de réinitialisation' });
 		}
 	}
 };

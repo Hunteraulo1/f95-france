@@ -6,9 +6,11 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
-	import { roleBadgeStyles } from '$lib/stores';
+	import { newToast, roleBadgeStyles } from '$lib/stores';
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	import KeyRound from '@lucide/svelte/icons/key-round';
+	import Mail from '@lucide/svelte/icons/mail';
 	import User from '@lucide/svelte/icons/user';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -26,6 +28,11 @@
 	let selectedUser: (typeof data.users)[0] | null = $state(null);
 	let userError = $state<string | null>(null);
 
+	let showPasswordResetModal = $state(false);
+	let passwordResetUser: (typeof data.users)[0] | null = $state(null);
+	let passwordResetSending = $state(false);
+	let passwordResetError = $state<string | null>(null);
+
 	const roles = $derived(data.roles);
 
 	const openEditUserModal = (user: (typeof data.users)[0]) => {
@@ -39,6 +46,41 @@
 		selectedUser = null;
 		userError = null;
 	};
+
+	const openPasswordResetModal = (user: (typeof data.users)[0]) => {
+		passwordResetUser = user;
+		passwordResetError = null;
+		passwordResetSending = false;
+		showPasswordResetModal = true;
+	};
+
+	const closePasswordResetModal = () => {
+		if (passwordResetSending) return;
+		showPasswordResetModal = false;
+		passwordResetUser = null;
+		passwordResetError = null;
+	};
+
+	const passwordResetEnhance = createFormEnhance({
+		updateOnlyOnSuccess: true,
+		onStart: () => {
+			passwordResetError = null;
+			passwordResetSending = true;
+		},
+		onFailure: (message) => {
+			passwordResetSending = false;
+			passwordResetError = message;
+			newToast({ alertType: 'error', message });
+		},
+		onSuccess: (result) => {
+			passwordResetSending = false;
+			const message =
+				(result.data as { message?: string } | undefined)?.message ??
+				'Email de réinitialisation envoyé.';
+			newToast({ alertType: 'success', message });
+			closePasswordResetModal();
+		}
+	});
 
 	const buildQuery = (overrides: { q?: string; page?: number }) => {
 		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
@@ -218,9 +260,18 @@
 								{/if}
 							</td>
 							<td>
-								<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
-									Modifier
-								</button>
+								<div class="flex flex-wrap items-center gap-2">
+									<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
+										Modifier
+									</button>
+									<button
+										type="button"
+										class="btn btn-outline btn-sm"
+										onclick={() => openPasswordResetModal(user)}
+									>
+										Réinitialiser par email
+									</button>
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -370,6 +421,113 @@
 		{#snippet footer()}
 			<button type="button" class="btn" onclick={closeEditUserModal}>Annuler</button>
 			<button type="submit" form="edit-user-form" class="btn btn-primary">Enregistrer</button>
+		{/snippet}
+	</DaisyDashboardModal>
+{/if}
+
+{#if showPasswordResetModal && passwordResetUser}
+	<DaisyDashboardModal
+		open={showPasswordResetModal}
+		title="Réinitialiser le mot de passe"
+		description="Un email avec un lien sécurisé sera envoyé à l’adresse du compte."
+		maxWidthClass="max-w-md"
+		onClose={closePasswordResetModal}
+	>
+		{#if passwordResetError}
+			<div role="alert" class="alert alert-error text-sm">
+				<span>{passwordResetError}</span>
+			</div>
+		{/if}
+
+		<div class="flex flex-col gap-4">
+			<div class="flex justify-center">
+				<div
+					class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+				>
+					<KeyRound size={28} strokeWidth={1.75} aria-hidden="true" />
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 rounded-box border border-base-300 bg-base-200/50 p-4">
+				<div class="avatar">
+					<div class="mask flex h-12 w-12 items-center justify-center mask-squircle">
+						{#if passwordResetUser.avatar}
+							<img alt="" src={resolveDiscordAvatarDisplayUrl(passwordResetUser.avatar)} />
+						{:else}
+							<User size={24} />
+						{/if}
+					</div>
+				</div>
+				<div class="min-w-0 flex-1">
+					<p
+						class="truncate font-semibold {roleUsernameClass(
+							passwordResetUser.role,
+							$roleBadgeStyles[passwordResetUser.role]
+						)}"
+					>
+						{passwordResetUser.username}
+					</p>
+					<p class="truncate text-sm text-base-content/70">
+						{formatUserEmailForDisplay(passwordResetUser.email, data.canViewUserEmails)}
+					</p>
+					<div
+						class="badge mt-1 badge-outline badge-sm {roleBadgeClass(
+							passwordResetUser.role,
+							$roleBadgeStyles[passwordResetUser.role]
+						)}"
+					>
+						{roles.find((r) => r.value === passwordResetUser?.role)?.label ||
+							passwordResetUser.role}
+					</div>
+				</div>
+			</div>
+
+			<div role="alert" class="alert alert-info text-sm">
+				<span>
+					L’utilisateur pourra choisir un nouveau mot de passe via le lien reçu par email. Son mot
+					de passe actuel reste valide tant que le lien n’a pas été utilisé.
+				</span>
+			</div>
+
+			<ul class="list-disc space-y-1.5 pl-5 text-sm text-base-content/70">
+				<li>Le lien expire dans <strong>1 heure</strong>.</li>
+				<li>Les sessions actives seront fermées après la réinitialisation.</li>
+				<li>Un nouvel envoi est bloqué pendant <strong>2 minutes</strong>.</li>
+			</ul>
+		</div>
+
+		<form
+			id="password-reset-form"
+			method="POST"
+			action="?/sendPasswordReset"
+			use:enhance={passwordResetEnhance}
+		>
+			<input type="hidden" name="userId" value={passwordResetUser.id} />
+		</form>
+
+		{#snippet footer()}
+			<button
+				type="button"
+				class="btn"
+				onclick={closePasswordResetModal}
+				disabled={passwordResetSending}
+			>
+				Annuler
+			</button>
+			<button
+				type="submit"
+				form="password-reset-form"
+				class="btn gap-2 btn-primary"
+				disabled={passwordResetSending}
+			>
+				{#if passwordResetSending}
+					<span class="loading loading-sm loading-spinner" aria-hidden="true"></span>
+					Envoi en cours…
+				{:else}
+					<Mail size={16} aria-hidden="true" />
+					Envoyer l’email
+				{/if}
+			</button>
 		{/snippet}
 	</DaisyDashboardModal>
 {/if}
