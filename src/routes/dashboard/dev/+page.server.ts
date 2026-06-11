@@ -1416,11 +1416,11 @@ export const actions: Actions = {
 		await assertPermission(locals, 'dev.panel');
 		try {
 			const before = (await db.execute(
-				sql`select count(*)::int as count from game_translation`
+				sql`select count(*) as count from game_translation`
 			)) as unknown as Array<{
-				count: number;
+				count: number | string;
 			}>;
-			const beforeCount = before[0]?.count ?? 0;
+			const beforeCount = Number(before[0]?.count ?? 0);
 
 			const { removed, duplicateIds } = await dedupeStrictDuplicateTranslations();
 			if (duplicateIds.length === 0) {
@@ -1467,13 +1467,14 @@ export const actions: Actions = {
 					translationName: null,
 					updatedAt: new Date()
 				})
-				.where(sql`${table.gameTranslation.translationName} is not null`)
-				.returning({ id: table.gameTranslation.id });
+				.where(sql`${table.gameTranslation.translationName} is not null`);
 
 			return {
 				success: true,
 				message: 'Nom de traduction vidé pour toutes les traductions',
-				details: { updated: updated.length }
+				details: {
+					updated: (updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0
+				}
 			};
 		} catch (error: unknown) {
 			return {

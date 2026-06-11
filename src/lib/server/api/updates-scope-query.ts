@@ -34,9 +34,13 @@ export async function featuredUpdatesScopeWhere(): Promise<SQL> {
 		where uh.update_id = ${table.update.id}
 		and uh.changes is not null
 		and exists (
-			select 1 from jsonb_array_elements(uh.changes::jsonb->'deltas') as delta
-			where (delta->>'field' = 'version' or delta->>'field' = 'tversion')
-			and coalesce(delta->>'oldValue', '') is distinct from coalesce(delta->>'newValue', '')
+			select 1 from JSON_TABLE(uh.changes, '$.deltas[*]' COLUMNS (
+				delta_field VARCHAR(255) PATH '$.field',
+				old_val TEXT PATH '$.oldValue',
+				new_val TEXT PATH '$.newValue'
+			)) as delta
+			where (delta.delta_field = 'version' or delta.delta_field = 'tversion')
+			and not (coalesce(delta.old_val, '') <=> coalesce(delta.new_val, ''))
 		)
 	)`;
 

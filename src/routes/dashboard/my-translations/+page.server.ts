@@ -6,7 +6,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { voidSyncTranslationToGoogleSheet } from '$lib/server/google-sheets-sync';
 import { fail, redirect } from '@sveltejs/kit';
-import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, desc, eq, like, inArray, or } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const FILTER_COOKIE_PATH = '/dashboard/my-translations';
@@ -82,9 +82,9 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 						eq(table.gameTranslation.proofreaderId, linkedTranslator.id)
 					);
 
-	// Échappe les jokers SQL dans le terme de recherche pour utiliser ilike littéralement.
+	// Échappe les jokers SQL dans le terme de recherche pour utiliser like littéralement.
 	const whereSearch = q
-		? ilike(table.game.name, `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`)
+		? like(table.game.name, `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`)
 		: undefined;
 
 	const translations = await db

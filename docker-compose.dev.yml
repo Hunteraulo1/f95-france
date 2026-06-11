@@ -1,0 +1,29 @@
+name: f95france-dashboard-dev
+
+services:
+  mariadb-dev:
+    image: mariadb:11.4
+    container_name: f96-trad-dash-mariadb-dev
+    restart: unless-stopped
+    env_file: .env
+
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+
+    ports:
+      - '127.0.0.1:3306:3306'
+
+    volumes:
+      - mariadb_dev_data:/var/lib/mysql
+
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mariadb_dev_data:

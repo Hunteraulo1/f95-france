@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { apiLog, user } from '$lib/server/db/schema';
 import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 
 type LogPayload = {
 	method: string;
@@ -34,23 +35,22 @@ export const logApiAction = async ({
 	errorMessage
 }: LogPayload) => {
 	try {
-		const [inserted] = await db
-			.insert(apiLog)
-			.values({
-				method,
-				route,
-				status,
-				userId: userId ?? null,
-				ipAddress: ipAddress ?? null,
-				payload: payload ?? null,
-				errorMessage: errorMessage ?? null
-			})
-			.returning({
-				id: apiLog.id,
-				createdAt: apiLog.createdAt
-			});
+		const id = randomUUID();
+		const createdAt = new Date();
+		await db.insert(apiLog).values({
+			id,
+			method,
+			route,
+			status,
+			userId: userId ?? null,
+			ipAddress: ipAddress ?? null,
+			payload: payload ?? null,
+			errorMessage: errorMessage ?? null,
+			createdAt
+		});
 
-		if (inserted && !route.startsWith('/api/extension-api')) {
+		if (!route.startsWith('/api/extension-api')) {
+			const inserted = { id, createdAt };
 			let logUser: LiveLogEntry['user'] = null;
 			if (userId) {
 				const [row] = await db

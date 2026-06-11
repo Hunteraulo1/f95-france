@@ -42,7 +42,7 @@ export async function listHomeExtensionMockupGames(limit = 4): Promise<HomeExten
 				ne(game.name, '')
 			)
 		)
-		.orderBy(sql`random()`)
+		.orderBy(sql`RAND()`)
 		.limit(limit);
 
 	if (rows.length === 0) return [];

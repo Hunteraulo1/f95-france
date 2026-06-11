@@ -37,6 +37,7 @@ import {
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 
 async function resolveSubmissionContributorIds(
 	parsedData: { pendingNewTranslators?: unknown },
@@ -418,41 +419,35 @@ export async function applySubmission(submissionId: string) {
 			autoTranslate: true
 		});
 
-		const [insertedGame] = await db
-			.insert(table.game)
-			.values({
-				name: gameData.name,
-				description: descFields.description,
-				descriptionFr: descFields.descriptionFr,
-				website: gameData.website as 'f95z' | 'lc' | 'other',
-				threadId: gameData.threadId
-					? typeof gameData.threadId === 'string'
-						? parseInt(gameData.threadId)
-						: gameData.threadId
+		const gameId = randomUUID();
+		await db.insert(table.game).values({
+			id: gameId,
+			name: gameData.name,
+			description: descFields.description,
+			descriptionFr: descFields.descriptionFr,
+			website: gameData.website as 'f95z' | 'lc' | 'other',
+			threadId: gameData.threadId
+				? typeof gameData.threadId === 'string'
+					? parseInt(gameData.threadId)
+					: gameData.threadId
+				: null,
+			tags: gameData.tags || '',
+			link: gameData.link || '',
+			image: gameData.image,
+			gameAutoCheck: resolveGameAutoCheckForWebsite(
+				String(gameData.website),
+				gameData.gameAutoCheck,
+				true
+			),
+			gameVersion:
+				gameData.gameVersion !== undefined &&
+				gameData.gameVersion !== null &&
+				String(gameData.gameVersion).trim()
+					? String(gameData.gameVersion).trim()
 					: null,
-				tags: gameData.tags || '',
-				link: gameData.link || '',
-				image: gameData.image,
-				gameAutoCheck: resolveGameAutoCheckForWebsite(
-					String(gameData.website),
-					gameData.gameAutoCheck,
-					true
-				),
-				gameVersion:
-					gameData.gameVersion !== undefined &&
-					gameData.gameVersion !== null &&
-					String(gameData.gameVersion).trim()
-						? String(gameData.gameVersion).trim()
-						: null,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			})
-			.returning({ id: table.game.id });
-
-		const gameId = insertedGame?.id;
-		if (!gameId) {
-			throw new Error('Impossible de récupérer le jeu créé');
-		}
+			createdAt: new Date(),
+			updatedAt: new Date()
+		});
 
 		const translationTname =
 			typeof parsedData.translation?.tname === 'string'
@@ -473,47 +468,38 @@ export async function applySubmission(submissionId: string) {
 					? coerceGameEngineType(translationData.gameType)
 					: engineFromGamePayload;
 			const allowsNewGameAc = await getGameAllowsTranslationAutoCheck(gameId!);
-			const [createdTranslation] = await db
-				.insert(table.gameTranslation)
-				.values({
-					gameId: gameId!,
-					translationName:
-						typeof translationData.translationName === 'string' &&
-						translationData.translationName.trim()
-							? translationData.translationName.trim()
-							: null,
-					version:
-						typeof translationData.version === 'string'
-							? translationData.version.trim() || null
-							: null,
-					tversion: normalizeTranslationTversion(translationTname, translationData.tversion),
-					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
-					ttype: translationData.ttype as
-						| 'auto'
-						| 'vf'
-						| 'manual'
-						| 'semi-auto'
-						| 'to_tested'
-						| 'hs',
-					tname: translationTname as
-						| 'no_translation'
-						| 'integrated'
-						| 'translation'
-						| 'translation_with_mods',
-					gameType: engineNewTr,
-					tlink: translationData.tlink || '',
-					translatorId: resolvedTranslatorId,
-					proofreaderId: resolvedProofreaderId,
-					ac: clampTranslationAc(allowsNewGameAc, translationData.ac ?? false),
-					createdAt: new Date(),
-					updatedAt: new Date()
-				})
-				.returning({ id: table.gameTranslation.id });
+			const newTranslationId = randomUUID();
+			await db.insert(table.gameTranslation).values({
+				id: newTranslationId,
+				gameId: gameId!,
+				translationName:
+					typeof translationData.translationName === 'string' &&
+					translationData.translationName.trim()
+						? translationData.translationName.trim()
+						: null,
+				version:
+					typeof translationData.version === 'string'
+						? translationData.version.trim() || null
+						: null,
+				tversion: normalizeTranslationTversion(translationTname, translationData.tversion),
+				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
+				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
+				tname: translationTname as
+					| 'no_translation'
+					| 'integrated'
+					| 'translation'
+					| 'translation_with_mods',
+				gameType: engineNewTr,
+				tlink: translationData.tlink || '',
+				translatorId: resolvedTranslatorId,
+				proofreaderId: resolvedProofreaderId,
+				ac: clampTranslationAc(allowsNewGameAc, translationData.ac ?? false),
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
 
-			if (createdTranslation?.id) {
-				newGameTranslationId = createdTranslation.id;
-				voidSyncTranslationToGoogleSheet(createdTranslation.id, 'submission/apply-game');
-			}
+			newGameTranslationId = newTranslationId;
+			voidSyncTranslationToGoogleSheet(newTranslationId, 'submission/apply-game');
 			voidSyncTranslatorActivityCountsToGoogleSheet(resolvedTranslatorId, resolvedProofreaderId);
 			addCount += 1;
 		}
@@ -661,7 +647,7 @@ export async function applySubmission(submissionId: string) {
 
 		const resolvedContributors = await resolveSubmissionContributorIds(parsedData, translationData);
 		const allowsAc = await getGameAllowsTranslationAutoCheck(sub.gameId);
-		let syncedTranslationId: string | null = null;
+		let syncedTranslationId: string | null;
 		let translationHistoryBefore: TranslationHistorySnapshot | null = null;
 
 		if (sub.translationId) {
@@ -781,63 +767,9 @@ export async function applySubmission(submissionId: string) {
 					String(translationData.gameType).trim() !== ''
 						? coerceGameEngineType(translationData.gameType)
 						: fallbackEngine;
-				const [recreated] = await db
-					.insert(table.gameTranslation)
-					.values({
-						gameId: sub.gameId,
-						translationName: translationData.translationName || null,
-						version:
-							typeof translationData.version === 'string'
-								? translationData.version.trim() || null
-								: null,
-						tversion: translationData.tversion,
-						status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
-						ttype: translationData.ttype as
-							| 'auto'
-							| 'vf'
-							| 'manual'
-							| 'semi-auto'
-							| 'to_tested'
-							| 'hs',
-						gameType: engineRecreated,
-						tlink: translationData.tlink || '',
-						tname: insertTname as typeof table.gameTranslation.$inferInsert.tname,
-						translatorId: resolvedContributors.translatorId,
-						proofreaderId: resolvedContributors.proofreaderId,
-						ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
-						createdAt: new Date(),
-						updatedAt: new Date()
-					})
-					.returning({ id: table.gameTranslation.id });
-
-				const translationId = recreated?.id;
-
-				// Mettre à jour la soumission avec le nouveau translationId
-				if (translationId) {
-					await db
-						.update(table.submission)
-						.set({ translationId })
-						.where(eq(table.submission.id, submissionId));
-					syncedTranslationId = translationId;
-				}
-				addCount += 1;
-			}
-		} else {
-			// Créer une nouvelle traduction
-			const insertTnameNew =
-				translationData.tname != null && String(translationData.tname).length > 0
-					? translationData.tname
-					: 'translation';
-			const engineNewTr = await defaultGameTypeForGame(sub.gameId);
-			const engineCreated =
-				translationData.gameType !== undefined &&
-				translationData.gameType !== null &&
-				String(translationData.gameType).trim() !== ''
-					? coerceGameEngineType(translationData.gameType)
-					: engineNewTr;
-			const [createdRow] = await db
-				.insert(table.gameTranslation)
-				.values({
+				const translationId = randomUUID();
+				await db.insert(table.gameTranslation).values({
+					id: translationId,
 					gameId: sub.gameId,
 					translationName: translationData.translationName || null,
 					version:
@@ -853,27 +785,65 @@ export async function applySubmission(submissionId: string) {
 						| 'semi-auto'
 						| 'to_tested'
 						| 'hs',
-					gameType: engineCreated,
+					gameType: engineRecreated,
 					tlink: translationData.tlink || '',
-					tname: insertTnameNew as typeof table.gameTranslation.$inferInsert.tname,
+					tname: insertTname as typeof table.gameTranslation.$inferInsert.tname,
 					translatorId: resolvedContributors.translatorId,
 					proofreaderId: resolvedContributors.proofreaderId,
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
 					createdAt: new Date(),
 					updatedAt: new Date()
-				})
-				.returning({ id: table.gameTranslation.id });
+				});
 
-			const translationId = createdRow?.id;
-
-			// Mettre à jour la soumission avec le translationId
-			if (translationId) {
+				// Mettre à jour la soumission avec le nouveau translationId
 				await db
 					.update(table.submission)
 					.set({ translationId })
 					.where(eq(table.submission.id, submissionId));
 				syncedTranslationId = translationId;
+				addCount += 1;
 			}
+		} else {
+			// Créer une nouvelle traduction
+			const insertTnameNew =
+				translationData.tname != null && String(translationData.tname).length > 0
+					? translationData.tname
+					: 'translation';
+			const engineNewTr = await defaultGameTypeForGame(sub.gameId);
+			const engineCreated =
+				translationData.gameType !== undefined &&
+				translationData.gameType !== null &&
+				String(translationData.gameType).trim() !== ''
+					? coerceGameEngineType(translationData.gameType)
+					: engineNewTr;
+			const translationId = randomUUID();
+			await db.insert(table.gameTranslation).values({
+				id: translationId,
+				gameId: sub.gameId,
+				translationName: translationData.translationName || null,
+				version:
+					typeof translationData.version === 'string'
+						? translationData.version.trim() || null
+						: null,
+				tversion: translationData.tversion,
+				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
+				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
+				gameType: engineCreated,
+				tlink: translationData.tlink || '',
+				tname: insertTnameNew as typeof table.gameTranslation.$inferInsert.tname,
+				translatorId: resolvedContributors.translatorId,
+				proofreaderId: resolvedContributors.proofreaderId,
+				ac: clampTranslationAc(allowsAc, translationData.ac ?? false),
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
+
+			// Mettre à jour la soumission avec le translationId
+			await db
+				.update(table.submission)
+				.set({ translationId })
+				.where(eq(table.submission.id, submissionId));
+			syncedTranslationId = translationId;
 			addCount += 1;
 		}
 		if (syncedTranslationId) {

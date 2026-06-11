@@ -87,7 +87,7 @@ async function listTranslationHistoryEntries(
 		.where(
 			and(
 				eq(table.update.gameId, gameId),
-				sql`${table.updateHistory.changes}::jsonb->>'translationId' = ${translationId}`
+				sql`JSON_VALUE(${table.updateHistory.changes}, '$.translationId') = ${translationId}`
 			)
 		)
 		.orderBy(desc(table.updateHistory.createdAt));

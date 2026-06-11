@@ -224,8 +224,8 @@ async function syncSystemRolePermissionLinks(): Promise<void> {
 
 		await db
 			.insert(table.appRolePermission)
-			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })))
-			.onConflictDoNothing();
+			.ignore()
+			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })));
 	}
 }
 

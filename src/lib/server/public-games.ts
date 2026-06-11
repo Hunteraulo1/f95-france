@@ -5,7 +5,7 @@ import type { GameTranslationRow } from '$lib/server/api/games-with-translations
 import { translationsByGameIds } from '$lib/server/api/games-with-translations';
 import { countUpToDateTranslations } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
+import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
 import { game } from '$lib/server/db/schema';
 import {
 	buildGameCatalogFilterParts,
@@ -121,7 +121,7 @@ export async function listPublicGames(params: PublicGamesListParams) {
 				}) ?? '',
 			website: row.website,
 			gameVersion: row.gameVersion,
-			engineTypes: Array.isArray(row.engineTypes) ? row.engineTypes.map(String) : [],
+			engineTypes: parseEngineTypes(row.engineTypes),
 			updatedAt: row.updatedAt,
 			translationCount: translations.length,
 			upToDateTranslationCount: countUpToDateTranslations(translations, gameVersion),

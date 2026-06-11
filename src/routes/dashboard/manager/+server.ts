@@ -1,7 +1,8 @@
 import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
+import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
@@ -34,7 +35,7 @@ import {
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
-import { and, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, like, or, sql } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
@@ -76,7 +77,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${parsed}`
+						sql`JSON_VALUE(${table.submission.data}, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(${table.submission.data}, '$.game.threadId') AS UNSIGNED) = ${parsed}`
 					)
 				)
 				.limit(1);
@@ -101,8 +102,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rechercher par nom de jeu (insensible à la casse) ou par threadId
 		const threadIdQuery = Number.parseInt(query, 10);
 		const whereClause = Number.isNaN(threadIdQuery)
-			? ilike(table.game.name, `%${query}%`)
-			: or(ilike(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
+			? like(table.game.name, `%${query}%`)
+			: or(like(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
 		const enginesSq = enginesPerGameSubquery();
 		const rawGames = await db
 			.select({
@@ -126,7 +127,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		const games = rawGames.map(({ engineTypes, ...rest }) => ({
 			...rest,
-			engineTypes: Array.isArray(engineTypes) ? engineTypes : []
+			engineTypes: parseEngineTypes(engineTypes)
 		}));
 
 		return json({ games });
@@ -346,66 +347,54 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			: '';
 
 		const { gameId, createdTranslationId } = await db.transaction(async (tx) => {
-			const [insertedGame] = await tx
-				.insert(table.game)
-				.values({
-					name,
-					description: descFields.description,
-					descriptionFr: descFields.descriptionFr,
-					website,
-					threadId: validThreadId,
-					tags: typeof tags === 'string' ? tags.trim() || '' : '',
-					link: linkValue,
-					image: imageValue,
-					gameAutoCheck: nextGameAutoCheck,
-					gameVersion:
-						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
-					createdAt: new Date(),
-					updatedAt: new Date()
-				})
-				.returning({ id: table.game.id });
-
-			const newGameId = insertedGame?.id;
-			if (!newGameId) {
-				throw new Error('GAME_INSERT_FAILED');
-			}
+			const newGameId = randomUUID();
+			await tx.insert(table.game).values({
+				id: newGameId,
+				name,
+				description: descFields.description,
+				descriptionFr: descFields.descriptionFr,
+				website,
+				threadId: validThreadId,
+				tags: typeof tags === 'string' ? tags.trim() || '' : '',
+				link: linkValue,
+				image: imageValue,
+				gameAutoCheck: nextGameAutoCheck,
+				gameVersion:
+					typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
 
 			let newTranslationId: string | undefined;
 			if (shouldCreateTranslation && translation) {
-				const [createdTranslation] = await tx
-					.insert(table.gameTranslation)
-					.values({
-						gameId: newGameId,
-						translationName: normalizeTranslationName(translation.translationName),
-						version:
-							typeof translation.version === 'string' ? translation.version.trim() || null : null,
-						tversion: normalizedTranslationTversion,
-						status: translation.status,
-						ttype: translation.ttype,
-						tname:
-							(translation.tname as
-								| 'no_translation'
-								| 'integrated'
-								| 'translation'
-								| 'translation_with_mods') || 'translation',
-						gameType: coerceGameEngineType(
-							typeof translation.gameType === 'string' && translation.gameType.trim()
-								? translation.gameType
-								: type
-						),
-						tlink: translation.tlink || '',
-						translatorId: translation.translatorId || null,
-						proofreaderId: translation.proofreaderId || null,
-						ac: nextTranslationAc,
-						createdAt: new Date(),
-						updatedAt: new Date()
-					})
-					.returning({ id: table.gameTranslation.id });
-
-				newTranslationId = createdTranslation?.id;
-				if (!newTranslationId) {
-					throw new Error('TRANSLATION_INSERT_FAILED');
-				}
+				newTranslationId = randomUUID();
+				await tx.insert(table.gameTranslation).values({
+					id: newTranslationId,
+					gameId: newGameId,
+					translationName: normalizeTranslationName(translation.translationName),
+					version:
+						typeof translation.version === 'string' ? translation.version.trim() || null : null,
+					tversion: normalizedTranslationTversion,
+					status: translation.status,
+					ttype: translation.ttype,
+					tname:
+						(translation.tname as
+							| 'no_translation'
+							| 'integrated'
+							| 'translation'
+							| 'translation_with_mods') || 'translation',
+					gameType: coerceGameEngineType(
+						typeof translation.gameType === 'string' && translation.gameType.trim()
+							? translation.gameType
+							: type
+					),
+					tlink: translation.tlink || '',
+					translatorId: translation.translatorId || null,
+					proofreaderId: translation.proofreaderId || null,
+					ac: nextTranslationAc,
+					createdAt: new Date(),
+					updatedAt: new Date()
+				});
 			}
 
 			return { gameId: newGameId, createdTranslationId: newTranslationId };

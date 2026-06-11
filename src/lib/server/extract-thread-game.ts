@@ -4,6 +4,7 @@ import type { PermissionKey } from '$lib/permissions/catalog';
 import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 import type { ManagerExtractDraft } from '$lib/server/extract-draft';
 import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
@@ -452,28 +453,22 @@ export async function runExtractThreadGame(input: {
 		autoTranslate: true
 	});
 
-	const [inserted] = await db
-		.insert(table.game)
-		.values({
-			name: payload.name,
-			description: descFields.description,
-			descriptionFr: descFields.descriptionFr,
-			website,
-			threadId: threadIdParsed,
-			tags: payload.tags,
-			link: payload.link,
-			image: payload.image,
-			gameAutoCheck: payload.gameAutoCheck,
-			gameVersion: payload.gameVersion,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		})
-		.returning({ id: table.game.id });
-
-	const gameId = inserted?.id;
-	if (!gameId) {
-		return { ok: false, status: 500, body: { error: 'Création du jeu échouée' } };
-	}
+	const gameId = randomUUID();
+	await db.insert(table.game).values({
+		id: gameId,
+		name: payload.name,
+		description: descFields.description,
+		descriptionFr: descFields.descriptionFr,
+		website,
+		threadId: threadIdParsed,
+		tags: payload.tags,
+		link: payload.link,
+		image: payload.image,
+		gameAutoCheck: payload.gameAutoCheck,
+		gameVersion: payload.gameVersion,
+		createdAt: new Date(),
+		updatedAt: new Date()
+	});
 
 	return {
 		ok: true,

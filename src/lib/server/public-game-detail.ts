@@ -5,7 +5,7 @@ import {
 	isTranslationOutdated
 } from '$lib/server/api/translation-public';
 import { db } from '$lib/server/db';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
+import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
 import { game, translator, update as updateTable } from '$lib/server/db/schema';
 import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
 import { error } from '@sveltejs/kit';
@@ -151,7 +151,7 @@ export async function loadPublicGameDetail(gameId: string): Promise<PublicGameDe
 		tags: splitGameTags(row.tags),
 		image: row.image,
 		gameVersion: row.gameVersion,
-		engineTypes: Array.isArray(row.engineTypes) ? row.engineTypes.map(String) : [],
+		engineTypes: parseEngineTypes(row.engineTypes),
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		translations,
