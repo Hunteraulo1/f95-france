@@ -25,8 +25,8 @@
 		class="hidden h-full w-auto object-contain [html[data-theme=dark]_&]:block"
 		width="1920"
 		height="231"
+		loading="lazy"
 		decoding="async"
-		fetchpriority="high"
 		draggable="false"
 	/>
 </div>
