@@ -1,6 +1,8 @@
 import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+const dev = process.env.NODE_ENV !== 'production';
+
 /** Origines autorisées pour les actions POST (CSRF) — localhost + URL publique au build. */
 function buildTrustedOrigins() {
 	const local = [
@@ -74,6 +76,7 @@ const config = {
 				'font-src': ['self'],
 				'connect-src': [
 					'self',
+					...(dev ? ['ws://localhost:*', 'wss://localhost:*'] : []),
 					'https://www.youtube.com',
 					'https://www.youtube-nocookie.com',
 					'https://www.google.com',
