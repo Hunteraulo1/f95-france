@@ -2,94 +2,87 @@ import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
-import { fail } from '@sveltejs/kit';
+import { invalidateMaintenanceModeCache } from '$lib/server/maintenance-mode';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
+import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Vérifier que l'utilisateur est admin
-	if (!locals.user || locals.user.role !== 'superadmin') {
-		throw new Error('Accès non autorisé');
-	}
+const DEFAULT_CONFIG_ROW = {
+	id: 'main',
+	appName: 'F95 France',
+	googleSpreadsheetId: null,
+	googleOAuthAccessToken: null,
+	googleOAuthRefreshToken: null,
+	googleOAuthTokenExpiry: null,
+	autoCheckLastRunAt: null,
+	maintenanceMode: false,
+	updatedAt: new Date()
+} satisfies Config;
 
-	// Charger la configuration
+function permissionFlags(locals: App.Locals) {
+	return {
+		canEditConfig: hasPermission(locals, 'config.edit'),
+		canManageMaintenance: hasPermission(locals, 'maintenance.manage')
+	};
+}
+
+export const load: PageServerLoad = async ({ locals }) => {
+	await assertPermission(locals, 'config.view');
+
+	const { canEditConfig, canManageMaintenance } = permissionFlags(locals);
+
 	let config;
 	try {
 		config = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
 
-		// Si la configuration n'existe pas, la créer avec les valeurs par défaut
-		if (config.length === 0) {
+		// Création initiale réservée aux comptes autorisés à modifier la config.
+		if (config.length === 0 && canEditConfig) {
 			await db.insert(table.config).values({
 				id: 'main',
 				appName: 'F95 France'
 			});
 			config = await db.select().from(table.config).where(eq(table.config.id, 'main')).limit(1);
 		}
-	} catch (error: unknown) {
-		// Si la table n'existe pas encore, retourner une configuration par défaut
+	} catch (err: unknown) {
 		console.warn(
 			"Table config n'existe pas encore, utilisation de la configuration par défaut:",
-			error
+			err
 		);
-		config = [
-			{
-				id: 'main',
-				appName: 'F95 France',
-				discordWebhookUpdates: null,
-				discordWebhookLogs: null,
-				discordWebhookTranslators: null,
-				discordWebhookProofreaders: null,
-				googleSpreadsheetId: null,
-				googleApiKey: null,
-				googleOAuthClientId: null,
-				googleOAuthClientSecret: null,
-				googleOAuthAccessToken: null,
-				googleOAuthRefreshToken: null,
-				googleOAuthTokenExpiry: null,
-				autoCheckIntervalMinutes: 360,
-				autoCheckReferenceTime: '00:00',
-				autoCheckLastRunAt: null,
-				maintenanceMode: false,
-				updatedAt: new Date()
-			} as Config
-		];
+		config = [DEFAULT_CONFIG_ROW];
 	}
 
+	const row = config[0] ?? DEFAULT_CONFIG_ROW;
+	const clientConfig = toConfigClientSafe(row);
+
 	return {
-		config: toConfigClientSafe(config[0])
+		config: {
+			...clientConfig,
+			// Valeur éditable en base (pas l’ID effectif issu de l’env pour l’affichage formulaire).
+			googleSpreadsheetId: row.googleSpreadsheetId?.trim() ?? ''
+		},
+		canEditConfig,
+		canManageMaintenance,
+		canSave: canEditConfig || canManageMaintenance
 	};
 };
 
 export const actions: Actions = {
 	updateConfig: async ({ request, locals }) => {
-		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
+		const { canEditConfig, canManageMaintenance } = permissionFlags(locals);
+
+		if (!canEditConfig && !canManageMaintenance) {
+			error(403, 'Accès non autorisé');
 		}
 
 		const formData = await request.formData();
-		const appName = formData.get('appName') as string;
-		const googleSpreadsheetId = formData.get('googleSpreadsheetId') as string;
-		const autoCheckIntervalMinutesRaw = formData.get('autoCheckIntervalMinutes') as string;
-		const autoCheckReferenceTimeRaw = (formData.get('autoCheckReferenceTime') as string) ?? '00:00';
-		const maintenanceMode = formData.get('maintenanceMode') === 'on';
-
-		if (!appName) {
-			return fail(400, { message: "Le nom de l'application est requis" });
-		}
-		const parsedInterval = Number.parseInt((autoCheckIntervalMinutesRaw ?? '').trim(), 10);
-		if (!Number.isFinite(parsedInterval) || parsedInterval < 5 || parsedInterval > 1440) {
-			return fail(400, {
-				message: "L'intervalle d'auto-check doit être un nombre entre 5 et 1440 minutes"
-			});
-		}
-		const referenceTime = autoCheckReferenceTimeRaw.trim();
-		if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(referenceTime)) {
-			return fail(400, { message: "L'heure de référence doit être au format HH:mm" });
-		}
+		const appNameRaw = formData.get('appName');
+		const spreadsheetRaw = formData.get('googleSpreadsheetId');
+		const appName = typeof appNameRaw === 'string' ? appNameRaw.trim() : '';
+		const googleSpreadsheetId = typeof spreadsheetRaw === 'string' ? spreadsheetRaw.trim() : '';
+		const wantsConfigFields = appNameRaw !== null || spreadsheetRaw !== null;
 
 		try {
-			// Vérifier si la configuration existe
 			const existingConfig = await db
 				.select()
 				.from(table.config)
@@ -97,46 +90,76 @@ export const actions: Actions = {
 				.limit(1);
 
 			const currentConfig = existingConfig[0];
+			const currentMaintenance = currentConfig?.maintenanceMode ?? false;
+			const nextMaintenance = canManageMaintenance
+				? formData.get('maintenanceMode') === 'on'
+				: currentMaintenance;
+			const maintenanceChanged = canManageMaintenance && nextMaintenance !== currentMaintenance;
+
+			if (wantsConfigFields && !canEditConfig) {
+				return fail(403, {
+					message: 'Droit « Configuration (écriture) » requis pour modifier ces champs'
+				});
+			}
+
+			if (!canEditConfig && !maintenanceChanged) {
+				return fail(403, { message: 'Aucune modification autorisée avec vos droits actuels' });
+			}
+
+			if (canEditConfig && !appName) {
+				return fail(400, { message: "Le nom de l'application est requis" });
+			}
+
 			const keepCurrentIfEmpty = (value: string, currentValue: string | null) => {
 				const trimmed = value?.trim() ?? '';
 				return trimmed === '' ? currentValue : trimmed;
 			};
 
+			const patch: {
+				appName?: string;
+				googleSpreadsheetId?: string | null;
+				maintenanceMode: boolean;
+			} = {
+				maintenanceMode: nextMaintenance
+			};
+
+			if (canEditConfig) {
+				patch.appName = appName;
+				patch.googleSpreadsheetId = keepCurrentIfEmpty(
+					googleSpreadsheetId,
+					currentConfig?.googleSpreadsheetId ?? null
+				);
+			}
+
 			if (existingConfig.length > 0) {
-				await db
-					.update(table.config)
-					.set({
-						appName,
-						googleSpreadsheetId: keepCurrentIfEmpty(
-							googleSpreadsheetId,
-							currentConfig.googleSpreadsheetId
-						),
-						autoCheckIntervalMinutes: parsedInterval,
-						autoCheckReferenceTime: referenceTime,
-						maintenanceMode
-					})
-					.where(eq(table.config.id, 'main'));
-			} else {
+				await db.update(table.config).set(patch).where(eq(table.config.id, 'main'));
+			} else if (canEditConfig) {
 				await db.insert(table.config).values({
 					id: 'main',
 					appName,
 					googleSpreadsheetId: googleSpreadsheetId || null,
-					autoCheckIntervalMinutes: parsedInterval,
-					autoCheckReferenceTime: referenceTime,
-					maintenanceMode
+					maintenanceMode: patch.maintenanceMode
+				});
+			} else {
+				return fail(403, {
+					message:
+						'Configuration absente : droit « Configuration (écriture) » requis pour l’initialiser'
 				});
 			}
 
+			if (maintenanceChanged) {
+				invalidateMaintenanceModeCache();
+			}
+
 			return { success: true, message: 'Configuration mise à jour avec succès' };
-		} catch (error: unknown) {
-			console.error('Erreur lors de la mise à jour de la configuration:', error);
+		} catch (err: unknown) {
+			console.error('Erreur lors de la mise à jour de la configuration:', err);
 
 			const mysqlError =
-				error && typeof error === 'object' && 'cause' in error
-					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
+				err && typeof err === 'object' && 'cause' in err
+					? (err.cause as { code?: string; errno?: number; sqlMessage?: string })
 					: null;
 
-			// Si la table n'existe pas encore
 			if (
 				mysqlError &&
 				(mysqlError.code === 'ER_NO_SUCH_TABLE' || mysqlError.sqlMessage?.includes("doesn't exist"))

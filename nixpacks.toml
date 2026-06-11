@@ -1,16 +1,17 @@
 [phases.setup]
-nixPkgs = ["nodejs_24", "bun"]
+# Client MariaDB pour sync prod → PTB au démarrage (mysqldump / mysql).
+nixPkgs = ["nodejs_24", "bun", "mariadb"]
 
 [phases.install]
 cmds = [
-  "bun install --frozen-lockfile"
+  "rm -rf node_modules bun.lockb || true",
+  "bun install"
 ]
 
 [phases.build]
 cmds = [
-  "bun run build",
-  "bun install --frozen-lockfile --production"
+  "bun run build"
 ]
 
 [start]
-cmd = "node build/handler.js"
+cmd = "bun run start"

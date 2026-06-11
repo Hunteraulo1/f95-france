@@ -33,7 +33,16 @@ To create a production version of your app:
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+Preview du build de production (serveur **adapter-node**, pas `vite preview`) :
+
+```sh
+bun run build
+bun run preview
+```
+
+Ouvre http://127.0.0.1:4173/ — `ORIGIN` est fixé pour le preview local. Après un rebuild, fais un rechargement forcé (Ctrl+Shift+R) pour éviter un vieux `app.*.js` en cache (erreur `__sveltekit_* is undefined`).
+
+Ne lance pas `vite preview` ni `bun run dev` en parallèle sur le même onglet.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
@@ -57,14 +66,29 @@ Arrêter la DB:
 npm run db:dev:down
 ```
 
-URL locale à utiliser dans `.env`:
+### Évolution du schéma (obligatoire)
 
-```env
-DATABASE_URL="postgresql://f95france:f95france@localhost:5433/f95france"
-```
+La source de vérité est `src/lib/server/db/schema.ts`. **Ne pas** écrire de fichiers SQL à la main dans `drizzle/` ni utiliser `db:push`.
 
-Puis pousser le schéma:
+1. Modifier `src/lib/server/db/schema.ts`
+2. Générer la migration : `bun run db:generate`
+3. Relire le SQL généré dans `drizzle/`
+4. Appliquer : `bun run db:migrate`
+
+Première install sur une base vide : `bun run db:migrate` applique tout le journal.
+
+Après sync prod → dev (`bun run db:sync:prod-to-dev`), le schéma `public` est copié puis stamp + migrate.
+
+**PTB (Coolify)** : pour repartir de la prod à chaque déploiement (données + journal `drizzle`) :
+
+1. Variables Coolify (ressource PTB uniquement) : `POSTGRES_PROD_*`, `POSTGRES_*` ou `POSTGRES_PTB_*`, `SYNC_PROD_TO_PTB_ON_DEPLOY=true`
+2. Laisser la commande de démarrage Coolify sur `bun run start` (déjà le cas avec Nixpacks)
+3. Sync manuelle : `bun run db:sync:prod-to-ptb`
+
+Le clone PTB inclut `public` et `drizzle` ; seules les migrations plus récentes que la prod sont ensuite appliquées.
+
+**Production :** après chaque déploiement qui modifie le schéma :
 
 ```sh
-npm run db:push
+bun run db:migrate
 ```

@@ -1,122 +1,28 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
-import { defaultGameTypeForGame } from '$lib/server/game-engine-type';
+import { assertPermission } from '$lib/server/permissions';
 import {
+	formDataToSubmissionPayload,
+	loadSubmissionListPage,
+	parseSubmissionStatusFilter
+} from '$lib/server/submission-pages';
+import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
+import {
+	normalizeTranslationInPayload,
 	parseSubmissionPayloadJson,
 	persistSubmissionPayload,
 	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
 import { fail } from '@sveltejs/kit';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
-const PAGE_SIZE = 20;
-
-const normalizeMaybeString = (value: FormDataEntryValue | null): string | null => {
-	if (typeof value !== 'string') return null;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : null;
-};
-
-const formDataToSubmissionPayload = (
-	submissionType: string,
-	formData: FormData
-): Record<string, unknown> | null => {
-	const maybeTrim = (v: FormDataEntryValue | null): string =>
-		typeof v === 'string' ? v.trim() : '';
-	const boolFromForm = (v: FormDataEntryValue | null, defaultValue: boolean): boolean => {
-		// HTML checkboxes submit "on" when checked, or are absent when unchecked.
-		if (v === null) return defaultValue;
-		if (typeof v !== 'string') return Boolean(v);
-		const s = v.trim().toLowerCase();
-		if (s === '' || s === 'on' || s === 'true' || s === '1' || s === 'yes') return true;
-		if (s === 'false' || s === '0' || s === 'no' || s === 'off') return false;
-		return defaultValue;
-	};
-
-	const buildTranslation = (): Record<string, unknown> => ({
-		translationName: maybeTrim(formData.get('editTranslationTranslationName')) || null,
-		version: maybeTrim(formData.get('editTranslationVersion')) || null,
-		tversion: maybeTrim(formData.get('editTranslationTversion')),
-		status: maybeTrim(formData.get('editTranslationStatus')),
-		ttype: maybeTrim(formData.get('editTranslationTtype')),
-		gameType: maybeTrim(formData.get('editTranslationGameType')),
-		tlink: maybeTrim(formData.get('editTranslationTlink')) || null,
-		tname: maybeTrim(formData.get('editTranslationTname')),
-		translatorId: maybeTrim(formData.get('editTranslationTranslatorId')) || null,
-		proofreaderId: maybeTrim(formData.get('editTranslationProofreaderId')) || null,
-		ac: boolFromForm(formData.get('editTranslationAc'), false)
-	});
-
-	const buildGame = (): Record<string, unknown> => ({
-		name: maybeTrim(formData.get('editGameName')),
-		description: maybeTrim(formData.get('editGameDescription')) || null,
-		website: maybeTrim(formData.get('editGameWebsite')),
-		threadId: maybeTrim(formData.get('editGameThreadId')) || null,
-		tags: maybeTrim(formData.get('editGameTags')) || null,
-		link: maybeTrim(formData.get('editGameLink')) || null,
-		image: maybeTrim(formData.get('editGameImage')),
-		gameAutoCheck: boolFromForm(formData.get('editGameAutoCheck'), true),
-		gameVersion: maybeTrim(formData.get('editGameGameVersion')) || null
-	});
-
-	if (submissionType === 'translator_pages') {
-		const translatorId = normalizeMaybeString(formData.get('translatorId'));
-		const names = formData.getAll('editTranslatorPageName').map((v) => String(v ?? '').trim());
-		const links = formData.getAll('editTranslatorPageLink').map((v) => String(v ?? '').trim());
-		const max = Math.max(names.length, links.length);
-		const pages = Array.from({ length: max })
-			.map((_, i) => ({ name: names[i] ?? '', link: links[i] ?? '' }))
-			.filter((p) => p.name !== '' || p.link !== '');
-
-		return {
-			translatorId: translatorId ?? '',
-			pages
-		};
-	}
-
-	if (submissionType === 'translation') {
-		return { translation: buildTranslation() };
-	}
-
-	if (submissionType === 'game' || submissionType === 'update') {
-		const payload: Record<string, unknown> = { game: buildGame() };
-
-		// Inclure la traduction si le formulaire la contient (soumission "game" avec traduction incluse).
-		const hasAnyTranslationField =
-			typeof formData.get('editTranslationTname') === 'string' ||
-			typeof formData.get('editTranslationTranslationName') === 'string' ||
-			typeof formData.get('editTranslationTversion') === 'string' ||
-			typeof formData.get('editTranslationStatus') === 'string';
-		if (hasAnyTranslationField) {
-			payload.translation = buildTranslation();
-		}
-
-		return payload;
-	}
-
-	return null;
-};
-
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'submissions.review');
 
-	const statusFilterRaw = url.searchParams.get('status') || 'pending';
-	const statusFilter =
-		statusFilterRaw === 'all' ||
-		statusFilterRaw === 'pending' ||
-		statusFilterRaw === 'opened' ||
-		statusFilterRaw === 'to_fix' ||
-		statusFilterRaw === 'accepted' ||
-		statusFilterRaw === 'rejected'
-			? statusFilterRaw
-			: 'pending';
-
+	const statusFilter = parseSubmissionStatusFilter(url.searchParams.get('status'));
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
@@ -124,220 +30,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const whereCondition =
 			statusFilter === 'all' ? undefined : eq(table.submission.status, statusFilter);
 
-		const [countRow] = whereCondition
-			? await db
-					.select({ count: sql<number>`count(*)`.as('count') })
-					.from(table.submission)
-					.where(whereCondition)
-			: await db.select({ count: sql<number>`count(*)`.as('count') }).from(table.submission);
-
-		const totalCount = Number(countRow?.count ?? 0);
-		const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-		const page = Math.min(requestedPage, totalPages);
-		const offset = (page - 1) * PAGE_SIZE;
-
-		// Charger les soumissions avec les informations utilisateur (paginé)
-		const listQuery = db
-			.select({
-				id: table.submission.id,
-				status: table.submission.status,
-				type: table.submission.type,
-				adminNotes: table.submission.adminNotes,
-				data: table.submission.data,
-				gameId: table.submission.gameId,
-				translationId: table.submission.translationId,
-				createdAt: table.submission.createdAt,
-				updatedAt: table.submission.updatedAt,
-				user: {
-					id: table.user.id,
-					username: table.user.username,
-					avatar: table.user.avatar
-				},
-				game: {
-					id: table.game.id,
-					name: table.game.name,
-					image: table.game.image,
-					website: table.game.website
-				},
-				translation: {
-					id: table.gameTranslation.id,
-					version: table.gameTranslation.version,
-					tversion: table.gameTranslation.tversion,
-					translationName: table.gameTranslation.translationName
-				}
-			})
-			.from(table.submission)
-			.leftJoin(table.user, eq(table.submission.userId, table.user.id))
-			.leftJoin(table.game, eq(table.submission.gameId, table.game.id))
-			.leftJoin(
-				table.gameTranslation,
-				eq(table.submission.translationId, table.gameTranslation.id)
-			);
-
-		const submissions = await (whereCondition ? listQuery.where(whereCondition) : listQuery)
-			.orderBy(desc(table.submission.createdAt))
-			.limit(PAGE_SIZE)
-			.offset(offset);
-
-		// Parser les données et récupérer les jeux/traductions actuels pour les modifications
-		const submissionsWithData = await Promise.all(
-			submissions.map(async (sub) => {
-				let parsedData = null;
-				let currentGame = null;
-				let currentTranslation = null;
-				let currentTranslator = null;
-
-				if (sub.data) {
-					try {
-						parsedData = JSON.parse(sub.data);
-					} catch (e) {
-						console.error('Erreur lors du parsing des données de soumission:', e);
-					}
-				}
-
-				// Pour les soumissions acceptées, charger les données actuelles depuis la base de données
-				// Pour les modifications de jeu, récupérer le jeu actuel
-				if (sub.gameId) {
-					const currentGameResult = await db
-						.select()
-						.from(table.game)
-						.where(eq(table.game.id, sub.gameId))
-						.limit(1);
-
-					if (currentGameResult.length > 0) {
-						const row = currentGameResult[0];
-						const repType = await defaultGameTypeForGame(row.id);
-						currentGame = { ...row, type: repType };
-					}
-				}
-
-				// Pour les modifications de traduction, récupérer la traduction actuelle
-				if (sub.translationId) {
-					const currentTranslationResult = await db
-						.select()
-						.from(table.gameTranslation)
-						.where(eq(table.gameTranslation.id, sub.translationId))
-						.limit(1);
-
-					if (currentTranslationResult.length > 0) {
-						currentTranslation = currentTranslationResult[0];
-					}
-				}
-
-				// Pour les pages traducteur, récupérer le traducteur actuel
-				if (sub.type === 'translator_pages' && parsedData?.translatorId) {
-					const currentTranslatorResult = await db
-						.select({
-							id: table.translator.id,
-							name: table.translator.name,
-							pages: table.translator.pages
-						})
-						.from(table.translator)
-						.where(eq(table.translator.id, String(parsedData.translatorId)))
-						.limit(1);
-
-					if (currentTranslatorResult.length > 0) {
-						const row = currentTranslatorResult[0];
-						let pages: Array<{ name: string; link: string }> = [];
-						try {
-							const parsed = JSON.parse(row.pages || '[]') as Array<{
-								name?: string;
-								link?: string;
-							}>;
-							if (Array.isArray(parsed)) {
-								pages = parsed.map((p) => ({
-									name: String(p.name ?? ''),
-									link: String(p.link ?? '')
-								}));
-							}
-						} catch {
-							pages = [];
-						}
-
-						currentTranslator = {
-							id: row.id,
-							name: row.name,
-							pages
-						};
-					}
-				}
-
-				return {
-					...sub,
-					adminNotes: sub.adminNotes || '',
-					parsedData,
-					currentGame,
-					currentTranslation,
-					currentTranslator
-				};
-			})
-		);
-
-		// Compter les soumissions par statut
-		const pendingCountResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(eq(table.submission.status, 'pending'));
-
-		const acceptedCountResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(eq(table.submission.status, 'accepted'));
-
-		const openedCountResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(eq(table.submission.status, 'opened'));
-
-		const rejectedCountResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(eq(table.submission.status, 'rejected'));
-
-		const toFixCountResult = await db
-			.select({ count: sql<number>`count(*)`.as('count') })
-			.from(table.submission)
-			.where(eq(table.submission.status, 'to_fix'));
-
-		const pendingCount = pendingCountResult[0]?.count || 0;
-		const openedCount = openedCountResult[0]?.count || 0;
-		const toFixCount = toFixCountResult[0]?.count || 0;
-		const acceptedCount = acceptedCountResult[0]?.count || 0;
-		const rejectedCount = rejectedCountResult[0]?.count || 0;
-
-		// Charger tous les traducteurs pour pouvoir afficher leurs noms
-		const translators = await db
-			.select({
-				id: table.translator.id,
-				name: table.translator.name,
-				userId: table.translator.userId,
-				username: table.user.username
-			})
-			.from(table.translator)
-			.leftJoin(table.user, eq(table.user.id, table.translator.userId));
-
-		return {
-			submissions: submissionsWithData,
+		return await loadSubmissionListPage({
+			where: whereCondition,
 			statusFilter,
-			page,
-			pageSize: PAGE_SIZE,
-			totalCount,
-			totalPages,
-			pendingCount,
-			openedCount,
-			toFixCount,
-			acceptedCount,
-			rejectedCount,
-			translators
-		};
+			requestedPage,
+			includeAdminNotes: true
+		});
 	} catch (error: unknown) {
-		// Si la table n'existe pas encore, retourner des valeurs par défaut
-		console.warn("Table submission n'existe pas encore:", error);
+		console.warn(
+			'Erreur chargement soumissions (admin) — vérifier migrations (`opened_by_user_id`) :',
+			error
+		);
 		return {
 			submissions: [],
 			statusFilter,
 			page: 1,
-			pageSize: PAGE_SIZE,
+			pageSize: 20,
 			totalCount: 0,
 			totalPages: 1,
 			pendingCount: 0,
@@ -352,27 +60,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	openSubmission: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId') as string;
 		if (!submissionId) return fail(400, { message: 'submissionId requis' });
 
-		// Uniquement si la soumission est encore en attente.
 		await db
 			.update(table.submission)
-			.set({ status: 'opened', updatedAt: new Date() })
+			.set({
+				status: 'opened',
+				updatedAt: new Date(),
+				...(await submissionOpenedByUserIdPatch(locals.user!.id))
+			})
 			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
 
 		return { success: true };
 	},
-	/** Admin / superadmin : corriger le JSON tant que la soumission n’est pas acceptée. */
 	updateSubmissionData: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId');
@@ -393,6 +99,11 @@ export const actions: Actions = {
 			.limit(1);
 
 		if (!sub) return fail(404, { message: 'Soumission non trouvée' });
+		if (sub.type === 'delete') {
+			return fail(400, {
+				message: 'Les soumissions de suppression ne peuvent pas être modifiées.'
+			});
+		}
 		if (
 			sub.status !== 'pending' &&
 			sub.status !== 'opened' &&
@@ -411,6 +122,7 @@ export const actions: Actions = {
 			parsed = { ok: true, data: rebuiltPayload };
 		}
 
+		normalizeTranslationInPayload(parsed.data);
 		const shapeError = validateSubmissionPayloadForType(sub.type, parsed.data);
 		if (shapeError) return fail(400, { message: shapeError });
 
@@ -419,10 +131,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 	updateStatus: async ({ request, locals }) => {
-		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'submissions.review');
 
 		const formData = await request.formData();
 		const submissionId = formData.get('submissionId') as string;
@@ -434,12 +143,10 @@ export const actions: Actions = {
 			return fail(400, { message: 'ID de soumission et statut requis' });
 		}
 
-		// Vérifier que le statut est valide
 		if (!['pending', 'opened', 'to_fix', 'accepted', 'rejected'].includes(status)) {
 			return fail(400, { message: 'Statut invalide' });
 		}
 
-		// Si le statut est "rejected", la note admin est obligatoire
 		if (
 			(status === 'rejected' || status === 'to_fix') &&
 			(!adminNotes || adminNotes.trim() === '')
@@ -453,7 +160,6 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Récupérer la soumission actuelle pour vérifier son statut
 			const currentSubmission = await db
 				.select({
 					status: table.submission.status,
@@ -474,15 +180,14 @@ export const actions: Actions = {
 			const submissionUserId = currentSubmission[0].userId;
 			const submissionType = currentSubmission[0].type;
 
-			// Si des modifications de payload sont présentes dans le formulaire,
-			// les persister avant la mise à jour du statut (enregistrement unique).
-			if (submissionDataJson !== null) {
+			if (submissionDataJson !== null && submissionType !== 'delete') {
 				let parsed = parseSubmissionPayloadJson(submissionDataJson);
 				if (!parsed.ok) {
 					const rebuiltPayload = formDataToSubmissionPayload(submissionType, formData);
 					if (!rebuiltPayload) return fail(400, { message: parsed.message });
 					parsed = { ok: true, data: rebuiltPayload };
 				}
+				normalizeTranslationInPayload(parsed.data);
 				const shapeError = validateSubmissionPayloadForType(submissionType, parsed.data);
 				if (shapeError) {
 					return fail(400, { message: shapeError });
@@ -490,23 +195,31 @@ export const actions: Actions = {
 				await persistSubmissionPayload(submissionId, parsed.data);
 			}
 
-			// Autoriser le retour à "pending" sauf depuis "accepted" (workflow protégé).
 			if (status === 'pending' && currentStatus === 'accepted') {
 				return fail(400, {
 					message: 'Impossible de repasser en attente depuis une soumission acceptée'
 				});
 			}
 
-			// Mettre à jour le statut
+			const statusUpdate: {
+				status: 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected';
+				adminNotes: string | null;
+				openedByUserId?: string | null;
+			} = {
+				status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
+				adminNotes: adminNotes || null
+			};
+			if (status === 'opened' && currentStatus === 'pending') {
+				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(locals.user!.id));
+			}
+			if (status === 'pending') {
+				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(null));
+			}
 			await db
 				.update(table.submission)
-				.set({
-					status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
-					adminNotes: adminNotes || null
-				})
+				.set(statusUpdate)
 				.where(eq(table.submission.id, submissionId));
 
-			// Créer une notification si le statut a changé
 			if (currentStatus !== status) {
 				try {
 					const { notifySubmissionStatusChange } = await import('$lib/server/notifications');
@@ -519,12 +232,10 @@ export const actions: Actions = {
 						adminNotes
 					);
 				} catch (notificationError: unknown) {
-					// Ne pas bloquer la mise à jour du statut si la notification échoue
 					console.error('Erreur lors de la création de la notification:', notificationError);
 				}
 			}
 
-			// Si la soumission est acceptée et qu'elle ne l'était pas déjà, appliquer les changements
 			if (status === 'accepted' && currentStatus !== 'accepted') {
 				try {
 					const translationWasUpdate =
@@ -550,7 +261,6 @@ export const actions: Actions = {
 					});
 				} catch (applyError: unknown) {
 					console.error("Erreur lors de l'application de la soumission:", applyError);
-					// Revenir au statut précédent en cas d'erreur
 					await db
 						.update(table.submission)
 						.set({
@@ -567,13 +277,11 @@ export const actions: Actions = {
 				}
 			}
 
-			// Si la soumission passe de "accepted" à "rejected", annuler les changements
 			if (status === 'rejected' && currentStatus === 'accepted') {
 				try {
 					await revertSubmission(submissionId);
 				} catch (revertError: unknown) {
 					console.error("Erreur lors de l'annulation de la soumission:", revertError);
-					// Revenir au statut précédent en cas d'erreur
 					await db
 						.update(table.submission)
 						.set({

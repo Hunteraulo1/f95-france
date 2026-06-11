@@ -1,64 +1,108 @@
-/**
- * Configuration de connexion Postgres.
- * Supporte soit DATABASE_URL, soit les variables PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD
- * (utile quand le mot de passe contient des caractères spéciaux : & # % ! ^ etc.)
- */
-export type PostgresConfig =
-	| string
-	| {
-			host: string;
-			port: number;
-			database: string;
-			user: string;
-			password: string;
-			ssl?: boolean | 'require';
-	  };
+import { env as processEnv } from 'node:process';
 
-function sslFromPgSslMode(env: Record<string, string | undefined>): boolean | 'require' {
-	const m = env.PGSSLMODE?.toLowerCase();
+export type MariadbConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl?: boolean;
+};
+
+export type DbEnvSource = Record<string, string | undefined>;
+
+function pickEnv(source: DbEnvSource, ...keys: string[]): string | undefined {
+	for (const key of keys) {
+		const raw = source[key];
+		if (typeof raw === 'string') return raw;
+	}
+	return undefined;
+}
+
+function pickEnvTrimmed(source: DbEnvSource, ...keys: string[]): string | undefined {
+	const value = pickEnv(source, ...keys);
+	if (value === undefined) return undefined;
+	const trimmed = value.trim();
+	return trimmed === '' ? undefined : trimmed;
+}
+
+function isLocalHost(host: string): boolean {
+	return /^(localhost|127\.0\.0\.1)$/i.test(host.trim());
+}
+
+function isInternalHost(host: string): boolean {
+	const h = host.trim();
+	if (isLocalHost(h)) return true;
+
+	const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+	if (m) {
+		const a = Number(m[1]);
+		const b = Number(m[2]);
+		if (a === 10) return true;
+		if (a === 172 && b >= 16 && b <= 31) return true;
+		if (a === 192 && b === 168) return true;
+	}
+
+	// Nom de service Docker (ex. mariadb sur le réseau Coolify)
+	if (!h.includes('.')) return true;
+
+	return false;
+}
+
+function sslFromEnv(source: DbEnvSource, host: string): boolean {
+	const m = pickEnv(source, 'MARIADB_SSL_MODE')?.toLowerCase();
 	if (m === 'disable') return false;
-	return 'require';
+	if (m === 'require') return true;
+	if (isInternalHost(host)) return false;
+	return true;
 }
 
-export function getPostgresConfig(env: Record<string, string | undefined>): PostgresConfig {
-	const { PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, DATABASE_URL } = env;
+function resolveDbCredentials(source: DbEnvSource): {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+} | null {
+	const host = pickEnvTrimmed(source, 'MARIADB_HOST');
+	if (!host) return null;
 
-	if (PGHOST && PGPASSWORD !== undefined) {
-		return {
-			host: PGHOST,
-			port: PGPORT ? parseInt(PGPORT, 10) : 5432,
-			database: PGDATABASE ?? 'postgres',
-			user: PGUSER ?? 'postgres',
-			password: PGPASSWORD,
-			ssl: sslFromPgSslMode(env)
-		};
-	}
+	const password = pickEnv(source, 'MARIADB_PASSWORD');
+	if (password === undefined) return null;
 
-	if (DATABASE_URL) {
-		return DATABASE_URL;
-	}
+	const portRaw = pickEnvTrimmed(source, 'MARIADB_PORT');
+	const port = portRaw ? Number.parseInt(portRaw, 10) : 3306;
 
-	throw new Error(
-		'Configuration base de données manquante : définir DATABASE_URL ou (PGHOST + PGPASSWORD, et optionnellement PGPORT, PGDATABASE, PGUSER)'
-	);
+	return {
+		host,
+		port: Number.isFinite(port) ? port : 3306,
+		database: pickEnvTrimmed(source, 'MARIADB_DATABASE') ?? 'f95france',
+		user: pickEnvTrimmed(source, 'MARIADB_USER') ?? 'f95france',
+		password
+	};
 }
 
-/** URL pour drizzle-kit (dbCredentials.url) ; encode le mot de passe si on utilise PGHOST/PGPASSWORD. */
-export function getDatabaseUrl(env: Record<string, string | undefined>): string {
-	const { PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, DATABASE_URL } = env;
-
-	if (PGHOST && PGPASSWORD !== undefined) {
-		const port = PGPORT ?? '5432';
-		const database = PGDATABASE ?? 'postgres';
-		const user = PGUSER ?? 'postgres';
-		return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(PGPASSWORD)}@${PGHOST}:${port}/${encodeURIComponent(database)}`;
+export function getMariadbConfigFromEnv(source: DbEnvSource = processEnv): MariadbConfig {
+	const credentials = resolveDbCredentials(source);
+	if (!credentials) {
+		throw new Error(
+			'Configuration base de données manquante : définir MARIADB_HOST + MARIADB_PASSWORD'
+		);
 	}
 
-	if (DATABASE_URL) {
-		return DATABASE_URL;
-	}
+	return {
+		...credentials,
+		ssl: sslFromEnv(source, credentials.host)
+	};
+}
 
-	throw new Error(
-		'Configuration base de données manquante : définir DATABASE_URL ou PGHOST + PGPASSWORD'
-	);
+export function getMariadbConfig(): MariadbConfig {
+	return getMariadbConfigFromEnv(processEnv);
+}
+
+export function getMariadbUrl(source: DbEnvSource = processEnv): string {
+	const config = getMariadbConfigFromEnv(source);
+	const base = `mysql://${encodeURIComponent(config.user)}:${encodeURIComponent(config.password)}@${config.host}:${config.port}/${encodeURIComponent(config.database)}`;
+	if (config.ssl === false) return base;
+	return `${base}?ssl=true`;
 }

@@ -1,4 +1,4 @@
-import { getUserById } from '$lib/server/auth';
+import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import {
@@ -7,27 +7,38 @@ import {
 } from '$lib/server/discord-webhook';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { touchGameUpdatedToday } from '$lib/server/game-updates';
+import {
+	assertDirectGameWriteAllowed,
+	assertGameManageAccess,
+	loadCurrentUserOrThrow,
+	parseRequestDirectMode,
+	resolveGameWriteMode
+} from '$lib/server/game-manage-guard';
 import {
 	deleteTranslationFromGoogleSheet,
-	syncTranslationToGoogleSheet,
-	syncTranslatorToGoogleSheet
+	voidSyncTranslationToGoogleSheet,
+	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { hasPermission } from '$lib/server/permissions';
+import {
+	hasGameTranslationGameTypeColumn,
+	publicErrorFromUnknown
+} from '$lib/server/schema-column-compat';
 import {
 	createTranslationDeleteSubmission,
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '$lib/utils/link-validation';
+import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 // PUT - Modifier une traduction
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const { id: gameId, translationId } = params;
 
@@ -50,8 +61,12 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			silentMode,
 			ac,
 			translatorId,
-			proofreaderId
+			proofreaderId,
+			pendingNewTranslators,
+			f95VersionRefresh
 		} = body;
+
+		const isF95VersionRefresh = Boolean(f95VersionRefresh);
 
 		const beforeRows = await db
 			.select()
@@ -66,8 +81,22 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const before = beforeRows[0];
-		const normalizedVersion =
-			typeof version === 'string' ? version.trim() || null : (before.version ?? null);
+		const normalizedVersion = isF95VersionRefresh
+			? typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null)
+			: typeof version === 'string'
+				? version.trim() || null
+				: (before.version ?? null);
+
+		const resolvedTranslatorId =
+			'translatorId' in body ? (translatorId ? String(translatorId) : null) : before.translatorId;
+		const resolvedProofreaderId =
+			'proofreaderId' in body
+				? proofreaderId
+					? String(proofreaderId)
+					: null
+				: before.proofreaderId;
 
 		const TNAMES = [
 			'no_translation',
@@ -81,71 +110,95 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		const linkNotRequired = effectiveTname === 'integrated' || effectiveTname === 'no_translation';
 		const requiresTranslationVersion = effectiveTname !== 'no_translation';
-		const tlinkStored = linkNotRequired ? '' : typeof tlink === 'string' ? tlink : '';
-		if (
-			(requiresTranslationVersion && !tversion) ||
-			!status ||
-			!ttype ||
-			(!linkNotRequired && !tlinkStored.trim())
-		) {
-			return json(
-				{
-					error: linkNotRequired
-						? requiresTranslationVersion
-							? 'Version de traduction, statut et type sont requis'
-							: 'Statut et type sont requis'
-						: 'Tous les champs sont requis (y compris le lien de traduction)'
-				},
-				{ status: 400 }
-			);
+		const tlinkStored = linkNotRequired
+			? ''
+			: typeof tlink === 'string'
+				? tlink
+				: (before.tlink ?? '');
+		const effectiveTversion = isF95VersionRefresh ? before.tversion : tversion;
+		const effectiveStatus = isF95VersionRefresh ? before.status : status;
+		const effectiveTtype = isF95VersionRefresh ? before.ttype : ttype;
+
+		if (!isF95VersionRefresh) {
+			if (
+				(requiresTranslationVersion && !effectiveTversion) ||
+				!effectiveStatus ||
+				!effectiveTtype ||
+				(!linkNotRequired && !tlinkStored.trim())
+			) {
+				return json(
+					{
+						error: linkNotRequired
+							? requiresTranslationVersion
+								? 'Version de traduction, statut et type sont requis'
+								: 'Statut et type sont requis'
+							: 'Tous les champs sont requis (y compris le lien de traduction)'
+					},
+					{ status: 400 }
+				);
+			}
+
+			const translationLinkError = validateTranslationLinkField({
+				tlink: tlinkStored,
+				tname: effectiveTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
+			}
 		}
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
-		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		const canUseSilentMode = userRole === 'admin' || userRole === 'superadmin';
-		const canManuallyEditTranslationAc = userRole === 'admin' || userRole === 'superadmin';
+		const canUseSilentMode = hasPermission(locals, 'games.silent_mode');
+		const canManuallyEditTranslationAc = hasPermission(locals, 'games.auto_check');
 		const acRequested = typeof ac === 'boolean' ? ac : undefined;
 		// Règle métier: si l'auto-check jeu est false, la traduction doit être false.
 		// Sinon, admin/superadmin peuvent choisir la valeur ; sinon on conserve l'existante.
 		const gameAllowsTranslationAc = await getGameAllowsTranslationAutoCheck(gameId);
-		const acValue = !gameAllowsTranslationAc
-			? false
-			: canManuallyEditTranslationAc && acRequested !== undefined
-				? acRequested
-				: (before.ac ?? false);
+		const acValue = isF95VersionRefresh
+			? (before.ac ?? false)
+			: !gameAllowsTranslationAc
+				? false
+				: canManuallyEditTranslationAc && acRequested !== undefined
+					? acRequested
+					: (before.ac ?? false);
 		const isSilentMode = canUseSilentMode && Boolean(silentMode);
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const writeModeParams = {
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: parseRequestDirectMode(directMode)
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
-			await createTranslationUpdateSubmission(currentUser.id, gameId, translationId, {
-				translationName: translationName || null,
-				version: normalizedVersion,
-				tversion,
-				status,
-				ttype,
-				tlink: tlinkStored,
-				tname: effectiveTname,
-				...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
-					? { gameType: gameTypeBody.trim() }
-					: {}),
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
-				ac: acValue
-			});
-			// La table update/MAJ doit refléter l'action dès la modification (sauf mode silencieux).
-			if (!isSilentMode) {
-				await touchGameUpdatedToday(gameId);
-			}
+		if (writeMode === 'submission') {
+			const pendingNames = Array.isArray(pendingNewTranslators)
+				? pendingNewTranslators
+						.filter((n): n is string => typeof n === 'string')
+						.map((n) => n.trim())
+						.filter((n) => n.length > 0)
+				: [];
+
+			await createTranslationUpdateSubmission(
+				currentUser.id,
+				gameId,
+				translationId,
+				{
+					translationName: normalizeNullableHistoryString(translationName),
+					version: normalizedVersion,
+					tversion,
+					status,
+					ttype,
+					tlink: tlinkStored,
+					tname: effectiveTname,
+					...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
+						? { gameType: gameTypeBody.trim() }
+						: {}),
+					translatorId: resolvedTranslatorId,
+					proofreaderId: resolvedProofreaderId,
+					ac: acValue
+				},
+				pendingNames.length > 0 ? pendingNames : undefined
+			);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
 				gameId
@@ -157,8 +210,25 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
-		// Mettre à jour la traduction
+		const pendingNamesDirect = Array.isArray(pendingNewTranslators)
+			? pendingNewTranslators
+					.filter((n): n is string => typeof n === 'string')
+					.map((n) => n.trim())
+					.filter((n) => n.length > 0)
+			: [];
+		if (pendingNamesDirect.length > 0) {
+			return json(
+				{
+					error:
+						'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
+				},
+				{ status: 400 }
+			);
+		}
+
+		await assertDirectGameWriteAllowed(writeModeParams);
+
+		// Mode direct (rôle vérifié côté serveur)
 		const directSet: {
 			translationName: string | null;
 			version: string | null;
@@ -169,34 +239,48 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			tname: (typeof before)['tname'];
 			translatorId: string | null;
 			proofreaderId: string | null;
+			translatorAlertsEnabled: boolean;
 			ac: boolean;
 			updatedAt: Date;
 			gameType?: (typeof before)['gameType'];
 		} = {
-			translationName: translationName || null,
+			translationName: isF95VersionRefresh
+				? before.translationName
+				: normalizeNullableHistoryString(translationName),
 			version: normalizedVersion,
-			tversion,
-			status,
-			ttype,
-			tlink: tlinkStored,
+			tversion: effectiveTversion,
+			status: effectiveStatus,
+			ttype: effectiveTtype,
+			tlink: isF95VersionRefresh ? before.tlink : tlinkStored,
 			tname: effectiveTname,
-			translatorId: translatorId || null,
-			proofreaderId: proofreaderId || null,
+			translatorId: resolvedTranslatorId,
+			proofreaderId: resolvedProofreaderId,
+			translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
+				beforeTranslatorId: before.translatorId,
+				afterTranslatorId: resolvedTranslatorId,
+				currentTranslatorAlertsEnabled: before.translatorAlertsEnabled
+			}),
 			ac: acValue,
 			updatedAt: new Date()
 		};
-		if (typeof gameTypeBody === 'string' && gameTypeBody.trim()) {
+		if (
+			typeof gameTypeBody === 'string' &&
+			gameTypeBody.trim() &&
+			(await hasGameTranslationGameTypeColumn())
+		) {
 			directSet.gameType = coerceGameEngineType(gameTypeBody);
 		}
 		await db
 			.update(table.gameTranslation)
 			.set(directSet)
-			.where(eq(table.gameTranslation.id, translationId));
+			.where(
+				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
+			);
 
 		const dataJson = JSON.stringify({
 			gameId,
 			translation: {
-				translationName: translationName || null,
+				translationName: normalizeNullableHistoryString(translationName),
 				version: normalizedVersion,
 				tversion,
 				status,
@@ -209,7 +293,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			},
 			originalTranslation: {
 				translationName: before.translationName,
-				version: before.version,
+				version: before.version ?? null,
 				tversion: before.tversion,
 				status: before.status,
 				ttype: before.ttype,
@@ -230,37 +314,28 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				adminNotes: null
 			});
 		}
-		void syncTranslationToGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] update translation failed:', err);
-		});
-		if (translatorId) {
-			void syncTranslatorToGoogleSheet(String(translatorId)).catch((err) => {
-				console.warn('[google-sheets-sync] update translator failed:', err);
-			});
-		}
-		if (proofreaderId) {
-			void syncTranslatorToGoogleSheet(String(proofreaderId)).catch((err) => {
-				console.warn('[google-sheets-sync] update proofreader failed:', err);
-			});
-		}
-		if (!isSilentMode) {
-			await touchGameUpdatedToday(gameId);
-		}
+		voidSyncTranslationToGoogleSheet(translationId, 'dashboard/update-translation');
+		voidSyncTranslatorActivityCountsToGoogleSheet(
+			before.translatorId,
+			before.proofreaderId,
+			resolvedTranslatorId,
+			resolvedProofreaderId
+		);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 
 		return json({ message: 'Traduction modifiée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la modification de la traduction:', error);
-		return json({ error: 'Erreur serveur' }, { status: 500 });
+		appLogError('system', 'Modification traduction dashboard échouée', error);
+		return json(
+			{ error: publicErrorFromUnknown(error, 'Erreur lors de la modification de la traduction') },
+			{ status: 500 }
+		);
 	}
 };
 
 // DELETE - Supprimer une traduction
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		return json({ error: 'Non authentifié' }, { status: 401 });
-	}
+	await assertGameManageAccess(locals);
 
 	const { id: gameId, translationId } = params;
 
@@ -300,21 +375,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const tr = trRows[0];
 
-		// Recharger l'utilisateur depuis la base de données pour avoir la valeur à jour de directMode
-		const currentUser = await getUserById(locals.user.id);
-		if (!currentUser) {
-			return json({ error: 'Utilisateur non trouvé' }, { status: 404 });
-		}
-
-		// Déterminer le mode d'action selon le rôle de l'utilisateur
+		const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
 		const userRole = currentUser.role;
-		// Utiliser directMode de la requête si fourni, sinon utiliser la préférence de l'utilisateur
-		const useDirectMode = directMode !== undefined ? directMode : (currentUser.directMode ?? true);
-		const shouldCreateSubmission =
-			userRole === 'translator' || (userRole === 'superadmin' && !useDirectMode);
+		const writeModeParams = {
+			roleSlug: userRole,
+			userDirectMode: currentUser.directMode ?? true,
+			requestDirectMode: parseRequestDirectMode(directMode)
+		};
+		const writeMode = await resolveGameWriteMode(writeModeParams);
 
-		if (shouldCreateSubmission) {
-			// Créer une soumission pour les traducteurs ou superadmins en mode soumission
+		if (writeMode === 'submission') {
 			await createTranslationDeleteSubmission(currentUser.id, gameId, translationId, reason);
 			void sendDiscordWebhookAdminNewSubmission({
 				submitterName: currentUser.username,
@@ -328,7 +398,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
-		// Mode direct pour les admins ou superadmins en mode direct
+		await assertDirectGameWriteAllowed(writeModeParams);
+
 		const dataJson = JSON.stringify({
 			gameId,
 			reason,
@@ -353,12 +424,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
-			console.warn('[google-sheets-sync] delete translation row failed:', err);
+			appLogWarn('sheets-sync', 'delete translation row failed', err);
 		});
+		voidSyncTranslatorActivityCountsToGoogleSheet(tr.translatorId, tr.proofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 		return json({ message: 'Traduction supprimée avec succès' });
 	} catch (error) {
-		console.error('Erreur lors de la suppression de la traduction:', error);
-		return json({ error: 'Erreur serveur' }, { status: 500 });
+		appLogError('system', 'Suppression traduction dashboard échouée', error);
+		return json(
+			{ error: publicErrorFromUnknown(error, 'Erreur lors de la suppression de la traduction') },
+			{ status: 500 }
+		);
 	}
 };

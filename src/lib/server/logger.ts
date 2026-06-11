@@ -1,11 +1,17 @@
+import type { LiveLogEntry } from '$lib/logs/live-log-entry';
+import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
-import { apiLog } from '$lib/server/db/schema';
+import { apiLog, user } from '$lib/server/db/schema';
+import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
+import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 
 type LogPayload = {
 	method: string;
 	route: string;
 	status: number;
 	userId?: string | null;
+	ipAddress?: string | null;
 	payload?: string | null;
 	errorMessage?: string | null;
 };
@@ -24,27 +30,64 @@ export const logApiAction = async ({
 	route,
 	status,
 	userId,
+	ipAddress,
 	payload,
 	errorMessage
 }: LogPayload) => {
 	try {
+		const id = randomUUID();
+		const createdAt = new Date();
 		await db.insert(apiLog).values({
+			id,
 			method,
 			route,
 			status,
 			userId: userId ?? null,
+			ipAddress: ipAddress ?? null,
 			payload: payload ?? null,
-			errorMessage: errorMessage
-				? errorMessage.length > 10000
-					? `${errorMessage.slice(0, 10000)}…`
-					: errorMessage
-				: null
+			errorMessage: errorMessage ?? null,
+			createdAt
 		});
+
+		if (!route.startsWith('/api/extension-api')) {
+			const inserted = { id, createdAt };
+			let logUser: LiveLogEntry['user'] = null;
+			if (userId) {
+				const [row] = await db
+					.select({
+						id: user.id,
+						username: user.username,
+						role: user.role
+					})
+					.from(user)
+					.where(eq(user.id, userId))
+					.limit(1);
+				if (row?.username) {
+					logUser = {
+						id: row.id,
+						username: row.username,
+						role: row.role
+					};
+				}
+			}
+
+			broadcastLiveLogEntry({
+				id: inserted.id,
+				method,
+				route,
+				status,
+				ipAddress: ipAddress ?? null,
+				payload: payload ?? null,
+				errorMessage: errorMessage ?? null,
+				createdAt: inserted.createdAt.toISOString(),
+				user: logUser
+			});
+		}
 	} catch (error) {
 		if (isDbTimeoutError(error)) {
 			// Avoid flooding logs when DB is temporarily unreachable.
 			return;
 		}
-		console.error('Erreur lors de la création du log API:', error);
+		appLogError('db', 'Création log API échouée', error, { route, method, status });
 	}
 };

@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { hasPermission } from '$lib/permissions/client';
 	import type { User } from '$lib/server/db/schema';
-	import { loadUserData, user } from '$lib/stores';
-	import { checkRole } from '$lib/utils';
+	import { loadUserData, updateUserData, user } from '$lib/stores';
 	import { startRegistration } from '@simplewebauthn/browser';
 	import { themeChange } from 'theme-change';
 	import type { PageData } from './$types';
@@ -12,15 +13,11 @@
 
 	type DevUserLite = Pick<User, 'id' | 'username' | 'role'>;
 	let users = $state<DevUserLite[]>([]);
-	let profileError = $state<string | null>(null);
-	let translatorPagesError = $state<string | null>(null);
-	let translatorPagesInfo = $state<string | null>(null);
 	let discordError = $state<string | null>(null);
 	let discordInfo = $state<string | null>(null);
 	let themeError = $state<string | null>(null);
 	let directModeError = $state<string | null>(null);
 	let switchUserError = $state<string | null>(null);
-	let returnUserError = $state<string | null>(null);
 	let passwordError = $state<string | null>(null);
 	let passwordInfo = $state<string | null>(null);
 	let twoFactorError = $state<string | null>(null);
@@ -36,10 +33,8 @@
 	let selectedTheme = $state($user?.theme || 'system');
 	let targetUserId = $state('');
 	let oauthDiscordFeedbackApplied = $state(false);
-	let translatorPages = $state<Array<{ name: string; link: string }>>([{ name: '', link: '' }]);
-
 	$effect(() => {
-		if ($user && checkRole(['superadmin'])) {
+		if ($user && $hasPermission('dev.impersonate')) {
 			const nextUsers = (data.devUsers ?? []) as DevUserLite[];
 			users = nextUsers;
 			targetUserId = nextUsers.some((u) => u.id === $user?.id)
@@ -49,12 +44,6 @@
 		if ($user?.theme) {
 			// Eviter une réaffectation inutile (réduit le risque de rerenders en boucle).
 			if (selectedTheme !== $user.theme) selectedTheme = $user.theme;
-		}
-	});
-
-	$effect(() => {
-		if (data.linkedTranslator?.pages?.length) {
-			translatorPages = data.linkedTranslator.pages;
 		}
 	});
 
@@ -147,130 +136,78 @@
 			passkeyBusy = false;
 		}
 	};
-
-	const addTranslatorPage = () => {
-		translatorPages = [...translatorPages, { name: '', link: '' }];
-	};
-
-	const removeTranslatorPage = (index: number) => {
-		translatorPages = translatorPages.filter((_, i) => i !== index);
-	};
 </script>
 
 <section class="flex flex-col gap-8">
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-base-content">Informations de profil</h2>
+		<h2 class="text-lg font-semibold text-base-content">Discord</h2>
 
-		<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
-			{#if profileError}
-				<div class="mb-4 alert alert-error">
-					<span>{profileError}</span>
-				</div>
-			{/if}
+		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+			<div class="card-body gap-6 sm:py-8">
+				<p class="text-sm text-base-content/70">
+					Liez votre compte Discord pour les fonctionnalités qui en dépendent. Le pseudo et la photo
+					de profil se modifient dans
+					<a href="/dashboard/profile" class="link link-hover">Personnaliser le profil</a>.
+				</p>
 
-			<form
-				method="POST"
-				action="?/updateProfile"
-				use:enhance={() => {
-					profileError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							await loadUserData(); // Recharger les données utilisateur
-							profileError = null;
-						} else if (result.type === 'failure' && result.data) {
-							const message =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
-							profileError = message;
-						}
-					};
-				}}
-			>
-				<div class="mb-4 flex w-full items-center justify-between gap-4">
-					<span class="opacity-70"
-						>Les informations dans cette section sont affichées sur votre page de profil.</span
-					>
-				</div>
-				<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
-					<label class="input flex w-full">
-						Pseudo
-						<input
-							type="text"
-							name="username"
-							class="grow ring-0"
-							placeholder="Pseudo"
-							value={$user?.username || ''}
-							required
-						/>
-					</label>
-					<label class="input flex w-full">
-						Photo de profil
-						<input
-							type="url"
-							name="avatar"
-							class="grow ring-0"
-							placeholder="monlien.com/photo.jpg"
-							value={$user?.avatar || ''}
-						/>
-					</label>
-				</div>
-				<div class="mt-4 flex justify-end">
-					<button type="submit" class="btn btn-primary"> Enregistrer </button>
-				</div>
-			</form>
-
-			<div class="divider my-2">Discord</div>
-
-			{#if discordError}
-				<div class="alert w-full alert-error">
-					<span>{discordError}</span>
-				</div>
-			{/if}
-			{#if discordInfo}
-				<div class="alert w-full alert-success">
-					<span>{discordInfo}</span>
-				</div>
-			{/if}
-
-			<div
-				class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
-			>
-				<a href="/api/discord-oauth/authorize" class="btn btn-primary">Connexion Discord</a>
-				{#if $user?.discordId}
-					<div class="text-sm opacity-80">Discord actuel: <strong>{$user.discordId}</strong></div>
+				{#if discordError}
+					<div class="alert alert-error">
+						<span>{discordError}</span>
+					</div>
 				{/if}
-			</div>
+				{#if discordInfo}
+					<div class="alert alert-success">
+						<span>{discordInfo}</span>
+					</div>
+				{/if}
 
-			{#if $user?.discordId}
-				<form
-					class="w-full"
-					method="POST"
-					action="?/unlinkDiscord"
-					use:enhance={() => {
-						discordError = null;
-						discordInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								await loadUserData();
-								discordInfo = 'Compte Discord délié avec succès.';
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors du déliage Discord';
-								discordError = message;
-							}
-						};
-					}}
+				<div
+					class="flex w-full flex-col items-start justify-between gap-3 md:flex-row md:items-center"
 				>
 					<div class="flex justify-end">
-						<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+						{#if $user?.discordId}
+							{#if data.hasPassword}
+								<form
+									class="w-full"
+									method="POST"
+									action="?/unlinkDiscord"
+									use:enhance={createFormEnhance({
+										onStart: () => {
+											discordError = null;
+											discordInfo = null;
+										},
+										onFailure: (message) => {
+											discordError = message;
+										},
+										onSuccess: async () => {
+											await loadUserData();
+											discordInfo = 'Compte Discord délié avec succès.';
+										}
+									})}
+								>
+									<button type="submit" class="btn btn-outline btn-error">Délier Discord</button>
+								</form>
+							{:else}
+								<div class="flex w-full flex-col gap-2">
+									<button type="button" class="btn btn-outline btn-error btn-disabled" disabled>
+										Délier Discord
+									</button>
+									<p class="text-xs text-base-content/60">
+										Définissez un mot de passe ci-dessous avant de délier Discord.
+									</p>
+								</div>
+							{/if}
+						{:else}
+							<a href="/api/discord-oauth/authorize" class="btn btn-primary">Lier mon Discord</a>
+						{/if}
 					</div>
-				</form>
-			{/if}
+					{#if $user?.discordId}
+						<div class="text-sm text-base-content/80">
+							Discord actuel : <strong>{$user.discordId}</strong>
+						</div>
+					{/if}
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -289,23 +226,18 @@
 					class="w-full"
 					method="POST"
 					action="?/updateTheme"
-					use:enhance={() => {
-						themeError = null;
-						return async function ({ result, update }) {
-							if (result.type === 'success') {
-								await update();
-								await loadUserData(); // Recharger les données utilisateur
-								applyTheme(selectedTheme);
-								themeError = null;
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour';
-								themeError = message;
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							themeError = null;
+						},
+						onFailure: (message) => {
+							themeError = message;
+						},
+						onSuccess: async () => {
+							await loadUserData();
+							applyTheme(selectedTheme);
+						}
+					})}
 				>
 					<div class="flex w-full flex-col items-center justify-between gap-4">
 						<label class="input box-content flex w-full">
@@ -339,100 +271,21 @@
 		</div>
 	</div>
 
-	{#if data.linkedTranslator}
-		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Mes pages traducteur</h2>
-
-			<div class="card w-full items-center justify-between gap-4 bg-base-100 p-8 shadow-sm">
-				{#if translatorPagesError}
-					<div class="mb-4 alert w-full alert-error">
-						<span>{translatorPagesError}</span>
-					</div>
-				{/if}
-				{#if translatorPagesInfo}
-					<div class="mb-4 alert w-full alert-success">
-						<span>{translatorPagesInfo}</span>
-					</div>
-				{/if}
-
-				<form
-					method="POST"
-					action="?/requestTranslatorPagesUpdate"
-					class="w-full"
-					use:enhance={() => {
-						translatorPagesError = null;
-						translatorPagesInfo = null;
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update();
-								translatorPagesInfo = 'Demande envoyée. En attente de validation admin.';
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: "Erreur lors de l'envoi de la demande";
-								translatorPagesError = message;
-							}
-						};
-					}}
-				>
-					<input type="hidden" name="translatorId" value={data.linkedTranslator.id} />
-					<div class="mb-3 text-sm opacity-80">
-						Traducteur lié: <strong>{data.linkedTranslator.name}</strong>
-					</div>
-					<div class="space-y-2">
-						{#each translatorPages as pageEntry, index (index)}
-							<div class="flex items-center gap-2">
-								<input
-									type="text"
-									placeholder="Nom de la page"
-									class="input-bordered input flex-1"
-									bind:value={pageEntry.name}
-								/>
-								<input
-									type="url"
-									placeholder="Lien"
-									class="input-bordered input flex-1"
-									bind:value={pageEntry.link}
-								/>
-								<button
-									type="button"
-									class="btn btn-sm btn-error"
-									onclick={() => removeTranslatorPage(index)}
-								>
-									✕
-								</button>
-							</div>
-						{/each}
-						{#if translatorPages.length === 0}
-							<div class="text-sm opacity-70">
-								Aucune page (la liste sera vide après validation).
-							</div>
-						{/if}
-						<button type="button" class="btn btn-outline btn-sm" onclick={addTranslatorPage}>
-							+ Ajouter une page
-						</button>
-					</div>
-					<input
-						type="hidden"
-						name="pages"
-						value={JSON.stringify(
-							translatorPages.filter((p) => p.name.trim() !== '' || p.link.trim() !== '')
-						)}
-					/>
-					<div class="mt-4 flex justify-end">
-						<button type="submit" class="btn btn-primary">Soumettre pour validation</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	{/if}
-
 	<div class="flex flex-col gap-4">
-		<h2 class="text-lg font-semibold text-base-content">Changer le mot de passe</h2>
+		<h2 class="text-lg font-semibold text-base-content">
+			{data.hasPassword ? 'Changer le mot de passe' : 'Définir un mot de passe'}
+		</h2>
 
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:py-8">
+				{#if !data.hasPassword}
+					<div role="alert" class="alert alert-soft text-sm alert-warning">
+						<span>
+							Votre compte a été créé via Discord. Définissez un mot de passe pour pouvoir vous
+							connecter sans Discord ou délier votre compte Discord.
+						</span>
+					</div>
+				{/if}
 				{#if passwordError}
 					<div class="mb-4 alert w-full alert-error">
 						<span>{passwordError}</span>
@@ -446,35 +299,40 @@
 
 				<form
 					method="POST"
-					action="?/changePassword"
+					action={data.hasPassword ? '?/changePassword' : '?/setInitialPassword'}
 					class="w-full"
-					use:enhance={() => {
-						passwordError = null;
-						passwordInfo = null;
-						return async ({ result, update, formElement }) => {
-							if (result.type === 'success') {
-								await update();
-								passwordInfo = 'Mot de passe mis à jour avec succès.';
-								if (formElement) formElement.reset();
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour du mot de passe';
-								passwordError = message;
+					use:enhance={createFormEnhance({
+						updateOnlyOnSuccess: true,
+						invalidateAll: true,
+						onStart: () => {
+							passwordError = null;
+							passwordInfo = null;
+						},
+						onFailure: (message) => {
+							passwordError = message;
+						},
+						onSuccess: async (_result, { formElement }) => {
+							passwordInfo = data.hasPassword
+								? 'Mot de passe mis à jour avec succès.'
+								: 'Mot de passe défini avec succès.';
+							formElement?.reset();
+							if (!data.hasPassword) {
+								await loadUserData();
 							}
-						};
-					}}
+						}
+					})}
 				>
 					<div class="flex w-full flex-col gap-3">
-						<input
-							type="password"
-							name="currentPassword"
-							placeholder="Mot de passe actuel"
-							class="input-bordered input w-full"
-							autocomplete="current-password"
-							required
-						/>
+						{#if data.hasPassword}
+							<input
+								type="password"
+								name="currentPassword"
+								placeholder="Mot de passe actuel"
+								class="input-bordered input w-full"
+								autocomplete="current-password"
+								required
+							/>
+						{/if}
 						<input
 							type="password"
 							name="newPassword"
@@ -496,7 +354,9 @@
 					</div>
 
 					<div class="mt-4 flex justify-end">
-						<button type="submit" class="btn btn-primary">Mettre à jour</button>
+						<button type="submit" class="btn btn-primary">
+							{data.hasPassword ? 'Mettre à jour' : 'Définir le mot de passe'}
+						</button>
 					</div>
 				</form>
 			</div>
@@ -528,26 +388,25 @@
 						method="POST"
 						action="?/start2FASetup"
 						class="w-full"
-						use:enhance={() => {
-							twoFactorError = null;
-							twoFactorInfo = null;
-							return async ({ result, update }) => {
-								if (result.type === 'success') {
-									await update();
-									const dataResult = result.data as {
-										message?: string;
-										qrCodeDataUrl?: string;
-										manualEntryKey?: string;
-									};
-									qrCodeDataUrl = dataResult.qrCodeDataUrl ?? null;
-									manualEntryKey = dataResult.manualEntryKey ?? null;
-									twoFactorInfo = dataResult.message ?? null;
-								} else if (result.type === 'failure') {
-									const dataResult = result.data as { message?: string };
-									twoFactorError = dataResult.message ?? "Erreur lors de l'activation de la 2FA";
-								}
-							};
-						}}
+						use:enhance={createFormEnhance({
+							onStart: () => {
+								twoFactorError = null;
+								twoFactorInfo = null;
+							},
+							onFailure: (message) => {
+								twoFactorError = message;
+							},
+							onSuccess: (result) => {
+								const dataResult = result.data as {
+									message?: string;
+									qrCodeDataUrl?: string;
+									manualEntryKey?: string;
+								};
+								qrCodeDataUrl = dataResult.qrCodeDataUrl ?? null;
+								manualEntryKey = dataResult.manualEntryKey ?? null;
+								twoFactorInfo = dataResult.message ?? null;
+							}
+						})}
 					>
 						<button class="btn btn-primary" type="submit">Configurer la 2FA</button>
 					</form>
@@ -567,24 +426,23 @@
 								method="POST"
 								action="?/confirm2FASetup"
 								class="flex w-full items-end gap-2"
-								use:enhance={() => {
-									twoFactorError = null;
-									twoFactorInfo = null;
-									return async ({ result, update }) => {
-										if (result.type === 'success') {
-											await update();
-											await loadUserData();
-											qrCodeDataUrl = null;
-											manualEntryKey = null;
-											verificationCode = '';
-											const dataResult = result.data as { message?: string };
-											twoFactorInfo = dataResult.message ?? '2FA activée';
-										} else if (result.type === 'failure') {
-											const dataResult = result.data as { message?: string };
-											twoFactorError = dataResult.message ?? 'Code 2FA invalide';
-										}
-									};
-								}}
+								use:enhance={createFormEnhance({
+									onStart: () => {
+										twoFactorError = null;
+										twoFactorInfo = null;
+									},
+									onFailure: (message) => {
+										twoFactorError = message;
+									},
+									onSuccess: async (result) => {
+										await loadUserData();
+										qrCodeDataUrl = null;
+										manualEntryKey = null;
+										verificationCode = '';
+										const dataResult = result.data as { message?: string };
+										twoFactorInfo = dataResult.message ?? '2FA activée';
+									}
+								})}
 							>
 								<label class="form-control grow">
 									<span class="label-text mb-1">Code 2FA (6 chiffres)</span>
@@ -607,23 +465,22 @@
 						method="POST"
 						action="?/disable2FA"
 						class="w-full rounded-box border border-base-300 p-4"
-						use:enhance={() => {
-							twoFactorError = null;
-							twoFactorInfo = null;
-							return async ({ result, update }) => {
-								if (result.type === 'success') {
-									await update();
-									await loadUserData();
-									disableCode = '';
-									disablePassword = '';
-									const dataResult = result.data as { message?: string };
-									twoFactorInfo = dataResult.message ?? '2FA désactivée';
-								} else if (result.type === 'failure') {
-									const dataResult = result.data as { message?: string };
-									twoFactorError = dataResult.message ?? 'Impossible de désactiver la 2FA';
-								}
-							};
-						}}
+						use:enhance={createFormEnhance({
+							onStart: () => {
+								twoFactorError = null;
+								twoFactorInfo = null;
+							},
+							onFailure: (message) => {
+								twoFactorError = message;
+							},
+							onSuccess: async (result) => {
+								await loadUserData();
+								disableCode = '';
+								disablePassword = '';
+								const dataResult = result.data as { message?: string };
+								twoFactorInfo = dataResult.message ?? '2FA désactivée';
+							}
+						})}
 					>
 						<div class="mb-2 opacity-80">
 							Pour désactiver la 2FA, confirme ton mot de passe et un code 2FA valide.
@@ -707,21 +564,19 @@
 											<form
 												method="POST"
 												action="?/removePasskey"
-												use:enhance={() => {
-													passkeyError = null;
-													passkeyInfo = null;
-													return async ({ result, update }) => {
-														if (result.type === 'success') {
-															await update();
-															passkeyInfo = "Clé d'accès supprimée.";
-															window.location.reload();
-														} else if (result.type === 'failure') {
-															const dataResult = result.data as { message?: string };
-															passkeyError =
-																dataResult.message ?? "Impossible de supprimer la clé d'accès.";
-														}
-													};
-												}}
+												use:enhance={createFormEnhance({
+													onStart: () => {
+														passkeyError = null;
+														passkeyInfo = null;
+													},
+													onFailure: (message) => {
+														passkeyError = message;
+													},
+													onSuccess: () => {
+														passkeyInfo = "Clé d'accès supprimée.";
+														window.location.reload();
+													}
+												})}
 											>
 												<input type="hidden" name="passkeyId" value={pk.id} />
 												<button class="btn btn-sm btn-error" type="submit">Supprimer</button>
@@ -737,77 +592,70 @@
 		</div>
 	</div>
 
-	{#if $user && checkRole(['superadmin'])}
+	{#if $user && data.canEditDirectMode}
 		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Paramètres développeur</h2>
-
+			<h2 class="text-lg font-semibold text-base-content">Mode d'enregistrement</h2>
 			<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 				<div class="card-body gap-6 sm:p-8">
 					{#if directModeError}
-						<div class="mb-4 alert alert-error">
+						<div class="alert alert-error">
 							<span>{directModeError}</span>
 						</div>
 					{/if}
-
 					<form
 						method="POST"
 						action="?/updateDirectMode"
-						use:enhance={() => {
-							directModeError = null;
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update();
-									await loadUserData(); // Recharger les données utilisateur
-									directModeError = null;
-								} else if (result.type === 'failure' && result.data) {
-									const message =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: 'Erreur lors de la mise à jour';
-									directModeError = message;
+						use:enhance={createFormEnhance({
+							onStart: () => {
+								directModeError = null;
+							},
+							onFailure: (message) => {
+								directModeError = message;
+							},
+							onSuccess: async (_result, { formElement }) => {
+								const hidden = formElement?.querySelector(
+									'input[type="hidden"][name="directMode"]'
+								) as HTMLInputElement | null;
+								const enabled = hidden?.value === 'true';
+								if ($user) {
+									updateUserData({ ...$user, directMode: enabled });
 								}
-							};
-						}}
+								await loadUserData();
+								directModeError = null;
+							}
+						})}
 					>
-						<div class="mb-4 flex w-full items-center justify-between gap-4">
-							<span class="opacity-70"
-								>Mode direct : quand activé, les modifications sont appliquées directement sans
-								créer de soumission. Quand désactivé, les modifications créent des soumissions en
-								attente d'approbation.</span
-							>
-						</div>
-						<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
-							<label class="label cursor-pointer">
-								<span class="label-text">Mode direct</span>
-								<input
-									type="checkbox"
-									name="directMode"
-									class="toggle toggle-primary"
-									checked={$user?.directMode ?? true}
-									onchange={(e) => {
-										const form = e.currentTarget.closest('form');
-										if (form) {
-											// Mettre à jour la valeur du checkbox pour l'envoi
-											const hiddenInput = form.querySelector('input[type="hidden"]');
-											if (hiddenInput instanceof HTMLInputElement) {
-												hiddenInput.value = e.currentTarget.checked ? 'true' : 'false';
-											}
-											form.requestSubmit();
-										}
-									}}
-								/>
-								<input
-									type="hidden"
-									name="directMode"
-									value={$user?.directMode ? 'true' : 'false'}
-								/>
-							</label>
-						</div>
+						<p class="text-sm opacity-70">
+							Votre rôle utilise la préférence personnelle : activé, les ajouts et modifications
+							sont appliqués directement ; désactivé, ils passent par une soumission en attente de
+							validation.
+						</p>
+						<label class="label mt-4 cursor-pointer justify-start gap-4">
+							<input
+								type="checkbox"
+								class="toggle toggle-primary"
+								checked={$user?.directMode ?? true}
+								onchange={(e) => {
+									const form = e.currentTarget.closest('form');
+									const hiddenInput = form?.querySelector(
+										'input[type="hidden"][name="directMode"]'
+									);
+									if (hiddenInput instanceof HTMLInputElement) {
+										hiddenInput.value = e.currentTarget.checked ? 'true' : 'false';
+									}
+									form?.requestSubmit();
+								}}
+							/>
+							<span class="label-text">Mode direct</span>
+							<input type="hidden" name="directMode" value={$user?.directMode ? 'true' : 'false'} />
+						</label>
 					</form>
 				</div>
 			</div>
 		</div>
+	{/if}
 
+	{#if $user && $hasPermission('dev.impersonate')}
 		<div class="flex flex-col gap-4">
 			<h2 class="text-lg font-semibold text-base-content">Changer d'utilisateur (Dev)</h2>
 
@@ -820,29 +668,27 @@
 					{/if}
 					<div class="flex w-full items-center justify-between gap-4">
 						<span class="opacity-70"
-							>Fonctionnalité permettant d'utiliser un autre compte utilisateur.</span
+							>Basculer vers un autre compte. Seuls les utilisateurs avec au plus autant de droits
+							effectifs que votre session actuelle sont listés — les super administrateurs sont
+							exclus. Utilisez « Retour à mon compte » pour revenir au compte d’origine.</span
 						>
 					</div>
 					<form
 						method="POST"
 						action="?/switchDevUser"
 						class="w-full"
-						use:enhance={() => {
-							switchUserError = null;
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update();
-									window.location.href = '/dashboard';
-									return;
-								}
-								if (result.type === 'failure' && result.data) {
-									switchUserError =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: "Erreur lors du changement d'utilisateur";
-								}
-							};
-						}}
+						use:enhance={createFormEnhance({
+							updateOnlyOnSuccess: true,
+							onStart: () => {
+								switchUserError = null;
+							},
+							onFailure: (message) => {
+								switchUserError = message;
+							},
+							onSuccess: () => {
+								window.location.href = '/dashboard';
+							}
+						})}
 					>
 						<div class="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
 							<label class="input box-content flex w-full">
@@ -859,52 +705,6 @@
 							</label>
 							<button class="btn btn-primary" type="submit">Basculer</button>
 						</div>
-					</form>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if data.canReturnToOwnAccount}
-		<div class="flex flex-col gap-4">
-			<h2 class="text-lg font-semibold text-base-content">Retour au compte d'origine</h2>
-			<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
-				<div class="card-body gap-6 sm:p-8">
-					{#if returnUserError}
-						<div class="mb-4 alert alert-error">
-							<span>{returnUserError}</span>
-						</div>
-					{/if}
-					<div class="flex w-full items-center justify-between gap-4">
-						<span class="opacity-70">
-							Session actuellement en mode dev.
-							{#if data.devOriginUsername}
-								Retour possible vers <strong>{data.devOriginUsername}</strong>.
-							{/if}
-						</span>
-					</div>
-					<form
-						method="POST"
-						action="?/returnToOwnAccount"
-						class="w-full"
-						use:enhance={() => {
-							returnUserError = null;
-							return async function ({ result, update }) {
-								if (result.type === 'success') {
-									await update();
-									window.location.href = '/dashboard';
-									return;
-								}
-								if (result.type === 'failure' && result.data) {
-									returnUserError =
-										typeof result.data === 'object' && 'message' in result.data
-											? String(result.data.message)
-											: 'Erreur lors du retour au compte';
-								}
-							};
-						}}
-					>
-						<button class="btn btn-secondary" type="submit">Revenir à mon compte</button>
 					</form>
 				</div>
 			</div>

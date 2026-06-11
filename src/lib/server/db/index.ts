@@ -1,57 +1,65 @@
-import { env } from '$env/dynamic/private';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { getPostgresConfig, type PostgresConfig } from './connection';
+import { privateEnv } from '$lib/server/private-env';
+import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
+import mysql from 'mysql2/promise';
+import { getMariadbConfigFromEnv, type MariadbConfig } from './connection';
 import * as schema from './schema';
 
-/**
- * Pendant `vite build`, `$env/dynamic/private` peut être vide avant que SvelteKit
- * appelle `set_private_env` ; on retombe sur `process.env` (ex. `ENV` dans le Dockerfile).
- */
-function privateEnv(key: string): string | undefined {
-	const fromKit = env[key as keyof typeof env];
-	if (typeof fromKit === 'string') return fromKit;
-	return process.env[key];
+type AppDatabase = MySql2Database<typeof schema>;
+
+function loadDbEnv(): Record<string, string | undefined> {
+	return {
+		MARIADB_HOST: privateEnv('MARIADB_HOST'),
+		MARIADB_PORT: privateEnv('MARIADB_PORT'),
+		MARIADB_DATABASE: privateEnv('MARIADB_DATABASE'),
+		MARIADB_USER: privateEnv('MARIADB_USER'),
+		MARIADB_PASSWORD: privateEnv('MARIADB_PASSWORD') ?? process.env.MARIADB_PASSWORD,
+		MARIADB_SSL_MODE: privateEnv('MARIADB_SSL_MODE')
+	};
 }
 
-const envForDb = new Proxy({} as Record<string, string | undefined>, {
-	get(_, prop: string | symbol) {
-		if (typeof prop !== 'string') return undefined;
-		return privateEnv(prop);
-	}
-});
-
-/**
- * Sur Vercel / serverless, le client `postgres` ne doit presque jamais ouvrir plusieurs
- * connexions simultanées : la valeur par défaut (max 10) saturerait vite le pool Neon
- * (erreur EMAXCONNSESSION / pool_size limité).
- */
 function getPoolMax(): number {
 	const raw = privateEnv('DATABASE_POOL_MAX');
-	if (raw !== undefined && raw !== '') {
-		const n = parseInt(raw, 10);
+	if (raw !== undefined) {
+		const n = Number.parseInt(raw, 10);
 		if (!Number.isNaN(n) && n >= 1) return Math.min(n, 32);
 	}
-	return process.env.VERCEL === '1' ? 1 : 10;
+	return 10;
 }
 
-function createPostgresClient(config: PostgresConfig) {
+function createMysqlPool(config: MariadbConfig) {
 	const max = getPoolMax();
-	const options = {
-		prepare: false,
-		max,
-		connect_timeout: 20
-	} as const;
-
-	return typeof config === 'string'
-		? postgres(config, options)
-		: postgres({ ...config, ...options });
+	return mysql.createPool({
+		host: config.host,
+		port: config.port,
+		database: config.database,
+		user: config.user,
+		password: config.password,
+		ssl: config.ssl ? {} : undefined,
+		waitForConnections: true,
+		connectionLimit: max,
+		connectTimeout: 20_000
+	});
 }
 
-const globalForDb = globalThis as unknown as { __f95PostgresClient?: ReturnType<typeof postgres> };
+const globalForDb = globalThis as unknown as {
+	__f95MysqlPool?: mysql.Pool;
+	__f95DrizzleDb?: AppDatabase;
+};
 
-const config = getPostgresConfig(envForDb);
-const client = globalForDb.__f95PostgresClient ?? createPostgresClient(config);
-globalForDb.__f95PostgresClient = client;
+function getOrCreateDb(): AppDatabase {
+	if (!globalForDb.__f95DrizzleDb) {
+		const config = getMariadbConfigFromEnv(loadDbEnv());
+		const pool = globalForDb.__f95MysqlPool ?? createMysqlPool(config);
+		globalForDb.__f95MysqlPool = pool;
+		globalForDb.__f95DrizzleDb = drizzle(pool, { schema, mode: 'default' });
+	}
+	return globalForDb.__f95DrizzleDb;
+}
 
-export const db = drizzle(client, { schema });
+export const db = new Proxy({} as AppDatabase, {
+	get(_target, prop, receiver) {
+		const instance = getOrCreateDb();
+		const value = Reflect.get(instance as object, prop, receiver);
+		return typeof value === 'function' ? value.bind(instance) : value;
+	}
+});

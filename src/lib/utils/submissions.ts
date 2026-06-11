@@ -2,6 +2,13 @@ import CircleCheck from '@lucide/svelte/icons/circle-check';
 import CircleX from '@lucide/svelte/icons/circle-x';
 import Clock from '@lucide/svelte/icons/clock';
 
+/** Statuts encore en cours de traitement (comptés comme « en attente » sur le profil). */
+export const SUBMISSION_IN_PROGRESS_STATUSES = ['pending', 'opened', 'to_fix'] as const;
+
+export function isSubmissionInProgress(status: string): boolean {
+	return (SUBMISSION_IN_PROGRESS_STATUSES as readonly string[]).includes(status);
+}
+
 export const getStatusBadge = (status: string) => {
 	switch (status) {
 		case 'pending':

@@ -1,3 +1,9 @@
+import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
+import { permissionGranted } from '$lib/permissions/check';
+import {
+	USER_API_KEY_MAX_COUNT_DEFAULT,
+	resolveRoleMaxApiKeys
+} from '$lib/permissions/role-api-keys';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
@@ -9,10 +15,43 @@ const RATE_WINDOW_MS = 60_000;
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
 export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
-const EXTENSION_ONLY_LABEL_TOKEN = '[extension-only]';
+export { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
+const EXTENSION_ONLY_LABEL_TOKEN = API_KEY_EXTENSION_ONLY_LABEL_TOKEN;
 
-/** Nombre maximal de clés actives par compte utilisateur (hors révoquées). */
-export const USER_API_KEY_MAX_COUNT = 3;
+const API_KEY_LABEL_BRACKETS_RE = /[[\]]/;
+
+export function apiKeyLabelUsesBrackets(label: string): boolean {
+	return API_KEY_LABEL_BRACKETS_RE.test(label);
+}
+
+export function canUseApiKeyLabelBrackets(actor: {
+	role: string | undefined;
+	permissions?: readonly string[] | undefined;
+}): boolean {
+	return (
+		permissionGranted(actor.role, actor.permissions, 'api.management') ||
+		permissionGranted(actor.role, actor.permissions, 'api_keys.label_brackets')
+	);
+}
+
+export function validateApiKeyLabelForActor(
+	label: string,
+	actor: { role: string | undefined; permissions?: readonly string[] | undefined }
+): { ok: true } | { ok: false; message: string } {
+	if (!apiKeyLabelUsesBrackets(label)) {
+		return { ok: true };
+	}
+	if (canUseApiKeyLabelBrackets(actor)) {
+		return { ok: true };
+	}
+	return {
+		ok: false,
+		message: `Les crochets [ ] dans le libellé sont réservés (ex. ${API_KEY_EXTENSION_ONLY_LABEL_TOKEN} pour l’extension). Demandez la permission « Libellés avec crochets » à un administrateur.`
+	};
+}
+
+/** @deprecated Utiliser `USER_API_KEY_MAX_COUNT_DEFAULT` ou `getMaxApiKeysForRole`. */
+export const USER_API_KEY_MAX_COUNT = USER_API_KEY_MAX_COUNT_DEFAULT;
 /** Valeur par défaut (req/min) pour une nouvelle clé côté utilisateur. */
 export const USER_API_KEY_DEFAULT_RPM = 30;
 /** Plafond de requêtes/minute pour une clé créée par l’utilisateur lui-même. */
@@ -21,14 +60,6 @@ export const USER_API_KEY_MAX_RPM = 60;
 export function hashApiKeySecret(rawKey: string): string {
 	return encodeHexLowerCase(sha256(new TextEncoder().encode(rawKey)));
 }
-
-/** Hash synthétique pour la ligne `kind=session` (jamais égal à un vrai secret Bearer). */
-export function syntheticSessionKeyHash(ownerUserId: string): string {
-	return encodeHexLowerCase(
-		sha256(new TextEncoder().encode(`f95fr_session_synthetic_v1:${ownerUserId}`))
-	);
-}
-
 export function generateApiKeyPlaintext(): { rawKey: string; keyPrefix: string } {
 	const bytes = new Uint8Array(24);
 	crypto.getRandomValues(bytes);
@@ -168,8 +199,7 @@ const FAILURE_SPEC: Record<
 	missing: {
 		status: 401,
 		body: {
-			error:
-				'Authentification requise : session (cookie) ou clé API (Authorization: Bearer … / X-Api-Key).'
+			error: 'Authentification requise : clé API (Authorization: Bearer … / X-Api-Key).'
 		}
 	},
 	invalid: { status: 401, body: { error: 'Clé API invalide ou révoquée.' } },
@@ -178,7 +208,7 @@ const FAILURE_SPEC: Record<
 		status: 429,
 		body: {
 			error:
-				'Limite de fréquence atteinte : vous avez dépassé le nombre de requêtes autorisées par minute pour cette session ou cette clé API. Réessayez dans environ une minute.'
+				'Limite de fréquence atteinte : vous avez dépassé le nombre de requêtes autorisées par minute pour cette clé API. Réessayez dans environ une minute.'
 		},
 		extraHeaders: { 'retry-after': '60' }
 	},
@@ -241,6 +271,16 @@ export async function countActiveApiKeysForOwner(ownerUserId: string): Promise<n
 	return row?.count ?? 0;
 }
 
+export async function getMaxApiKeysForRole(roleSlug: string): Promise<number> {
+	const [row] = await db
+		.select({ maxApiKeys: table.appRole.maxApiKeys })
+		.from(table.appRole)
+		.where(eq(table.appRole.slug, roleSlug))
+		.limit(1);
+
+	return resolveRoleMaxApiKeys(roleSlug, row?.maxApiKeys);
+}
+
 export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyListRow[]> {
 	return db
 		.select({
@@ -259,114 +299,6 @@ export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyLi
 			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_BEARER))
 		)
 		.orderBy(desc(table.apiKey.createdAt));
-}
-
-/** Crée la ligne `session` si absente (quota cookie /api/). Idempotent. */
-export async function ensureSessionApiKey(ownerUserId: string): Promise<void> {
-	const [existing] = await db
-		.select({ id: table.apiKey.id })
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-	if (existing) return;
-
-	const id = crypto.randomUUID();
-	const keyHash = syntheticSessionKeyHash(ownerUserId);
-	const now = new Date();
-	try {
-		await db.insert(table.apiKey).values({
-			id,
-			keyHash,
-			keyPrefix: 'session',
-			label: 'Session',
-			kind: API_KEY_KIND_SESSION,
-			requestsPerMinute: USER_API_KEY_DEFAULT_RPM,
-			expiresAt: null,
-			revokedAt: null,
-			lastUsedAt: null,
-			ownerUserId,
-			createdByUserId: null,
-			createdAt: now,
-			updatedAt: now
-		});
-	} catch {
-		const [again] = await db
-			.select({ id: table.apiKey.id })
-			.from(table.apiKey)
-			.where(
-				and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-			)
-			.limit(1);
-		if (!again) throw new Error('ensureSessionApiKey: échec insertion ligne session');
-	}
-}
-
-export async function getSessionApiKeyRowForOwner(
-	ownerUserId: string
-): Promise<ApiKeyListRow | null> {
-	await ensureSessionApiKey(ownerUserId);
-	const [row] = await db
-		.select({
-			id: table.apiKey.id,
-			keyPrefix: table.apiKey.keyPrefix,
-			label: table.apiKey.label,
-			requestsPerMinute: table.apiKey.requestsPerMinute,
-			expiresAt: table.apiKey.expiresAt,
-			revokedAt: table.apiKey.revokedAt,
-			lastUsedAt: table.apiKey.lastUsedAt,
-			totalRequestCount: table.apiKey.totalRequestCount,
-			createdAt: table.apiKey.createdAt
-		})
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-	return row ?? null;
-}
-
-/** Quota pour les requêtes /api/ authentifiées par cookie (pas par clé). */
-export async function consumeSessionApiKeyRateForUser(
-	ownerUserId: string
-): Promise<{ ok: true } | { ok: false; failure: ApiKeyValidateFailure }> {
-	await ensureSessionApiKey(ownerUserId);
-	const [row] = await db
-		.select({
-			id: table.apiKey.id,
-			requestsPerMinute: table.apiKey.requestsPerMinute,
-			revokedAt: table.apiKey.revokedAt
-		})
-		.from(table.apiKey)
-		.where(
-			and(eq(table.apiKey.ownerUserId, ownerUserId), eq(table.apiKey.kind, API_KEY_KIND_SESSION))
-		)
-		.limit(1);
-
-	if (!row || row.revokedAt) {
-		return { ok: false, failure: 'rate_limited' };
-	}
-
-	const rate = await consumeApiKeyRate(row.id, row.requestsPerMinute);
-	if (rate === 'quota_disabled') {
-		return { ok: false, failure: 'quota_disabled' };
-	}
-	if (rate === 'rate_limited') {
-		return { ok: false, failure: 'rate_limited' };
-	}
-
-	const touch = new Date();
-	await db
-		.update(table.apiKey)
-		.set({
-			lastUsedAt: touch,
-			updatedAt: touch,
-			totalRequestCount: sql`${table.apiKey.totalRequestCount} + 1`
-		})
-		.where(eq(table.apiKey.id, row.id));
-
-	return { ok: true };
 }
 
 export type ApiKeyAdminRow = ApiKeyListRow & {
@@ -430,13 +362,16 @@ export async function createApiKey(input: {
 	return { id, rawKey, keyPrefix };
 }
 
-export function canManageAllApiKeys(role: string | undefined): boolean {
-	return role === 'admin' || role === 'superadmin';
+export function canManageAllApiKeys(actor: {
+	role: string | undefined;
+	permissions?: readonly string[] | undefined;
+}): boolean {
+	return permissionGranted(actor.role, actor.permissions, 'api.management');
 }
 
 export async function revokeApiKeyForActor(
 	keyId: string,
-	actor: { userId: string; role: string | undefined }
+	actor: { userId: string; role: string | undefined; permissions?: readonly string[] }
 ): Promise<boolean> {
 	const [meta] = await db
 		.select({ kind: table.apiKey.kind })
@@ -447,7 +382,7 @@ export async function revokeApiKeyForActor(
 		return false;
 	}
 
-	if (canManageAllApiKeys(actor.role)) {
+	if (canManageAllApiKeys(actor)) {
 		return revokeApiKey(keyId);
 	}
 
@@ -462,10 +397,9 @@ export async function revokeApiKeyForActor(
 				eq(table.apiKey.ownerUserId, actor.userId),
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 async function revokeApiKey(id: string): Promise<boolean> {
@@ -488,10 +422,9 @@ async function revokeApiKey(id: string): Promise<boolean> {
 				isNull(table.apiKey.revokedAt),
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 /** Rétablit une clé Bearer révoquée (superadmin uniquement — contrôle côté route). */
@@ -506,10 +439,9 @@ export async function restoreRevokedApiKeyAdmin(keyId: string): Promise<boolean>
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER),
 				isNotNull(table.apiKey.revokedAt)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 export async function updateApiKeyLimitsAdmin(
@@ -531,8 +463,7 @@ export async function updateApiKeyLimitsAdmin(
 			expiresAt,
 			updatedAt: touch
 		})
-		.where(and(eq(table.apiKey.id, keyId), isNull(table.apiKey.revokedAt)))
-		.returning({ id: table.apiKey.id });
+		.where(and(eq(table.apiKey.id, keyId), isNull(table.apiKey.revokedAt)));
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }

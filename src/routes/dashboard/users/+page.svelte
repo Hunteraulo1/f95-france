@@ -1,8 +1,18 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+	import { newToast, roleBadgeStyles } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
+	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	import KeyRound from '@lucide/svelte/icons/key-round';
+	import Mail from '@lucide/svelte/icons/mail';
 	import User from '@lucide/svelte/icons/user';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -11,16 +21,19 @@
 
 	let { data }: Props = $props();
 
+	let searchQuery = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
 	let showEditUserModal = $state(false);
 	let selectedUser: (typeof data.users)[0] | null = $state(null);
 	let userError = $state<string | null>(null);
 
-	const roles = [
-		{ value: 'user', label: 'Utilisateur' },
-		{ value: 'translator', label: 'Traducteur' },
-		{ value: 'admin', label: 'Administrateur' },
-		{ value: 'superadmin', label: 'Super Administrateur' }
-	];
+	let showPasswordResetModal = $state(false);
+	let passwordResetUser: (typeof data.users)[0] | null = $state(null);
+	let passwordResetSending = $state(false);
+	let passwordResetError = $state<string | null>(null);
+
+	const roles = $derived(data.roles);
 
 	const openEditUserModal = (user: (typeof data.users)[0]) => {
 		selectedUser = user;
@@ -34,49 +47,170 @@
 		userError = null;
 	};
 
-	const buildQuery = (overrides: { page?: number }) => {
-		const page = overrides.page ?? data.page;
-		return page > 1 ? `?page=${page}` : '';
+	const openPasswordResetModal = (user: (typeof data.users)[0]) => {
+		passwordResetUser = user;
+		passwordResetError = null;
+		passwordResetSending = false;
+		showPasswordResetModal = true;
 	};
 
-	const buildHref = (overrides: { page?: number }) =>
+	const closePasswordResetModal = () => {
+		if (passwordResetSending) return;
+		showPasswordResetModal = false;
+		passwordResetUser = null;
+		passwordResetError = null;
+	};
+
+	const passwordResetEnhance = createFormEnhance({
+		updateOnlyOnSuccess: true,
+		onStart: () => {
+			passwordResetError = null;
+			passwordResetSending = true;
+		},
+		onFailure: (message) => {
+			passwordResetSending = false;
+			passwordResetError = message;
+			newToast({ alertType: 'error', message });
+		},
+		onSuccess: (result) => {
+			passwordResetSending = false;
+			const message =
+				(result.data as { message?: string } | undefined)?.message ??
+				'Email de réinitialisation envoyé.';
+			newToast({ alertType: 'success', message });
+			closePasswordResetModal();
+		}
+	});
+
+	const buildQuery = (overrides: { q?: string; page?: number }) => {
+		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
+		const page = overrides.page ?? data.page;
+		const params: string[] = [];
+		if (qVal) params.push(`q=${encodeURIComponent(qVal)}`);
+		if (page > 1) params.push(`page=${page}`);
+		return params.length ? `?${params.join('&')}` : '';
+	};
+
+	const buildHref = (overrides: { q?: string; page?: number }) =>
 		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
 
 	const hrefForPage = (p: number) => buildHref({ page: p });
+
+	const navigateSearch = (value: string) => {
+		goto(resolve(`/dashboard/users${buildQuery({ q: value, page: 1 })}` as '/dashboard/users'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
+	};
+
+	const onSearchInput = (value: string) => {
+		searchQuery = value;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigateSearch(value), 300);
+	};
+
+	const clearSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchQuery = '';
+		navigateSearch('');
+	};
+
+	$effect(() => {
+		const incoming = data.q ?? '';
+		untrack(() => {
+			if (incoming !== searchQuery) {
+				searchQuery = incoming;
+			}
+		});
+	});
+
+	const formatDateTime = (value: Date | string) =>
+		new Intl.DateTimeFormat('fr-FR', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		}).format(value instanceof Date ? value : new Date(value));
+
+	const formatRelativeTime = (value: Date | string) => {
+		const date = value instanceof Date ? value : new Date(value);
+		const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+		if (seconds < 10) return "à l'instant";
+		if (seconds < 60) return `il y a ${seconds} s`;
+		const minutes = Math.floor(seconds / 60);
+		if (minutes < 60) return `il y a ${minutes} min`;
+		const hours = Math.floor(minutes / 60);
+		if (hours < 24) return `il y a ${hours} h`;
+		const days = Math.floor(hours / 24);
+		if (days < 30) return `il y a ${days} j`;
+		const months = Math.floor(days / 30);
+		if (months < 12) return `il y a ${months} mois`;
+		const years = Math.floor(months / 12);
+		return `il y a ${years} an${years > 1 ? 's' : ''}`;
+	};
 </script>
 
 <section class="flex flex-col gap-4">
-	<h2 class="text-lg font-semibold text-base-content">
-		Gestion des utilisateurs
-		<span class="text-sm font-normal opacity-70"
-			>({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''})</span
-		>
-	</h2>
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<h2 class="text-lg font-semibold text-base-content">
+			Gestion des utilisateurs
+			<span class="text-sm font-normal opacity-70"
+				>({data.totalUsers} utilisateur{data.totalUsers > 1 ? 's' : ''}{data.q
+					? ' trouvé' + (data.totalUsers > 1 ? 's' : '')
+					: ''})</span
+			>
+		</h2>
+		<label class="input flex max-w-md min-w-48 items-center gap-2">
+			<span class="sr-only">Rechercher un utilisateur</span>
+			<input
+				type="search"
+				class="grow"
+				placeholder={data.canViewUserEmails
+					? 'Rechercher (pseudo, email)…'
+					: 'Rechercher (pseudo)…'}
+				value={searchQuery}
+				oninput={(e) => onSearchInput(e.currentTarget.value)}
+			/>
+			{#if searchQuery}
+				<button
+					type="button"
+					class="btn btn-square btn-ghost btn-sm"
+					onclick={clearSearch}
+					aria-label="Effacer la recherche"
+				>
+					✕
+				</button>
+			{/if}
+		</label>
+	</div>
 
 	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 overflow-x-auto sm:p-8">
 			<table class="table">
 				<thead>
 					<tr>
-						<th></th>
 						<th>Nom d'utilisateur</th>
 						<th>Email</th>
 						<th>Rôle</th>
 						<th>Profil traducteur</th>
 						<th>Date de création</th>
+						<th>Dernière connexion</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.users as user, index (user.id)}
+					{#each data.users as user (user.id)}
 						<tr>
-							<td class="font-bold">{(data.page - 1) * data.pageSize + index + 1}</td>
 							<td>
 								<div class="flex items-center gap-3">
 									<div class="avatar">
 										<div class="mask flex h-10 w-10 items-center justify-center mask-squircle">
 											{#if user?.avatar && user.avatar !== ''}
-												<img alt="avatar" src={user.avatar} />
+												<img alt="avatar" src={resolveDiscordAvatarDisplayUrl(user.avatar)} />
 											{:else}
 												<User size={24} />
 											{/if}
@@ -84,15 +218,23 @@
 									</div>
 									<a
 										href={resolve(`/dashboard/profile/${user.username}`)}
-										class="link font-bold text-nowrap link-hover"
+										class="link font-bold text-nowrap link-hover {roleUsernameClass(
+											user.role,
+											$roleBadgeStyles[user.role]
+										)}"
 									>
 										{user.username}
 									</a>
 								</div>
 							</td>
-							<td>{user.email}</td>
+							<td>{formatUserEmailForDisplay(user.email, data.canViewUserEmails)}</td>
 							<td>
-								<div class="badge badge-outline text-nowrap">
+								<div
+									class="badge badge-outline text-nowrap {roleBadgeClass(
+										user.role,
+										$roleBadgeStyles[user.role]
+									)}"
+								>
 									{roles.find((r) => r.value === user.role)?.label || user.role}
 								</div>
 							</td>
@@ -108,10 +250,28 @@
 									day: 'numeric'
 								})}
 							</td>
+							<td class="text-sm">
+								{#if user.lastConnectionAt}
+									<span title={formatDateTime(user.lastConnectionAt)}>
+										{formatRelativeTime(user.lastConnectionAt)}
+									</span>
+								{:else}
+									<span class="text-base-content/60">Jamais</span>
+								{/if}
+							</td>
 							<td>
-								<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
-									Modifier
-								</button>
+								<div class="flex flex-wrap items-center gap-2">
+									<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
+										Modifier
+									</button>
+									<button
+										type="button"
+										class="btn btn-outline btn-sm"
+										onclick={() => openPasswordResetModal(user)}
+									>
+										Réinitialiser par email
+									</button>
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -130,34 +290,34 @@
 </section>
 
 {#if showEditUserModal && selectedUser}
-	<div class="modal-open modal">
-		<div class="modal-box">
-			<h3 class="text-lg font-bold">Modifier l'utilisateur</h3>
-
+	<DaisyDashboardModal
+		open={showEditUserModal}
+		title="Modifier l'utilisateur"
+		onClose={closeEditUserModal}
+	>
+		{#if selectedUser}
 			{#if userError}
-				<div class="mt-4 alert alert-error">
+				<div class="alert alert-error">
 					<span>{userError}</span>
 				</div>
 			{/if}
 
 			<form
+				id="edit-user-form"
 				method="POST"
 				action="?/updateUser"
-				use:enhance={() => {
-					userError = null;
-					return async function ({ result, update }) {
-						if (result.type === 'success') {
-							await update();
-							closeEditUserModal();
-						} else if (result.type === 'failure' && result.data) {
-							const message =
-								typeof result.data === 'object' && 'message' in result.data
-									? String(result.data.message)
-									: 'Erreur lors de la mise à jour';
-							userError = message;
-						}
-					};
-				}}
+				use:enhance={createFormEnhance({
+					updateOnlyOnSuccess: true,
+					onStart: () => {
+						userError = null;
+					},
+					onFailure: (message) => {
+						userError = message;
+					},
+					onSuccess: () => {
+						closeEditUserModal();
+					}
+				})}
 			>
 				<input type="hidden" name="userId" value={selectedUser.id} />
 
@@ -176,20 +336,22 @@
 					/>
 				</div>
 
-				<div class="form-control mt-4 w-full">
-					<label for="edit-email" class="label">
-						<span class="label-text">Email</span>
-					</label>
-					<input
-						id="edit-email"
-						name="email"
-						type="email"
-						class="input-bordered input w-full"
-						class:input-error={userError}
-						value={selectedUser.email}
-						required
-					/>
-				</div>
+				{#if data.canViewUserEmails}
+					<div class="form-control mt-4 w-full">
+						<label for="edit-email" class="label">
+							<span class="label-text">Email</span>
+						</label>
+						<input
+							id="edit-email"
+							name="email"
+							type="email"
+							class="input-bordered input w-full"
+							class:input-error={userError}
+							value={selectedUser.email}
+							required
+						/>
+					</div>
+				{/if}
 
 				<div class="form-control mt-4 w-full">
 					<label for="edit-avatar" class="label">
@@ -219,7 +381,11 @@
 						required
 					>
 						{#each roles as role (role.value)}
-							<option value={role.value}>{role.label}</option>
+							{#if role.assignable || role.value === selectedUser.role}
+								<option value={role.value} disabled={!role.assignable}>
+									{role.label}{role.assignable ? '' : ' (non attribuable)'}
+								</option>
+							{/if}
 						{/each}
 					</select>
 				</div>
@@ -250,12 +416,118 @@
 						Lie ce compte à une fiche traducteur/relecteur (même choix que sur la page Traducteurs).
 					</p>
 				</div>
-
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={closeEditUserModal}> Annuler </button>
-					<button type="submit" class="btn btn-primary"> Enregistrer </button>
-				</div>
 			</form>
+		{/if}
+		{#snippet footer()}
+			<button type="button" class="btn" onclick={closeEditUserModal}>Annuler</button>
+			<button type="submit" form="edit-user-form" class="btn btn-primary">Enregistrer</button>
+		{/snippet}
+	</DaisyDashboardModal>
+{/if}
+
+{#if showPasswordResetModal && passwordResetUser}
+	<DaisyDashboardModal
+		open={showPasswordResetModal}
+		title="Réinitialiser le mot de passe"
+		description="Un email avec un lien sécurisé sera envoyé à l’adresse du compte."
+		maxWidthClass="max-w-md"
+		onClose={closePasswordResetModal}
+	>
+		{#if passwordResetError}
+			<div role="alert" class="alert alert-error text-sm">
+				<span>{passwordResetError}</span>
+			</div>
+		{/if}
+
+		<div class="flex flex-col gap-4">
+			<div class="flex justify-center">
+				<div
+					class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+				>
+					<KeyRound size={28} strokeWidth={1.75} aria-hidden="true" />
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 rounded-box border border-base-300 bg-base-200/50 p-4">
+				<div class="avatar">
+					<div class="mask flex h-12 w-12 items-center justify-center mask-squircle">
+						{#if passwordResetUser.avatar}
+							<img alt="" src={resolveDiscordAvatarDisplayUrl(passwordResetUser.avatar)} />
+						{:else}
+							<User size={24} />
+						{/if}
+					</div>
+				</div>
+				<div class="min-w-0 flex-1">
+					<p
+						class="truncate font-semibold {roleUsernameClass(
+							passwordResetUser.role,
+							$roleBadgeStyles[passwordResetUser.role]
+						)}"
+					>
+						{passwordResetUser.username}
+					</p>
+					<p class="truncate text-sm text-base-content/70">
+						{formatUserEmailForDisplay(passwordResetUser.email, data.canViewUserEmails)}
+					</p>
+					<div
+						class="badge mt-1 badge-outline badge-sm {roleBadgeClass(
+							passwordResetUser.role,
+							$roleBadgeStyles[passwordResetUser.role]
+						)}"
+					>
+						{roles.find((r) => r.value === passwordResetUser?.role)?.label ||
+							passwordResetUser.role}
+					</div>
+				</div>
+			</div>
+
+			<div role="alert" class="alert alert-info text-sm">
+				<span>
+					L’utilisateur pourra choisir un nouveau mot de passe via le lien reçu par email. Son mot
+					de passe actuel reste valide tant que le lien n’a pas été utilisé.
+				</span>
+			</div>
+
+			<ul class="list-disc space-y-1.5 pl-5 text-sm text-base-content/70">
+				<li>Le lien expire dans <strong>1 heure</strong>.</li>
+				<li>Les sessions actives seront fermées après la réinitialisation.</li>
+				<li>Un nouvel envoi est bloqué pendant <strong>2 minutes</strong>.</li>
+			</ul>
 		</div>
-	</div>
+
+		<form
+			id="password-reset-form"
+			method="POST"
+			action="?/sendPasswordReset"
+			use:enhance={passwordResetEnhance}
+		>
+			<input type="hidden" name="userId" value={passwordResetUser.id} />
+		</form>
+
+		{#snippet footer()}
+			<button
+				type="button"
+				class="btn"
+				onclick={closePasswordResetModal}
+				disabled={passwordResetSending}
+			>
+				Annuler
+			</button>
+			<button
+				type="submit"
+				form="password-reset-form"
+				class="btn gap-2 btn-primary"
+				disabled={passwordResetSending}
+			>
+				{#if passwordResetSending}
+					<span class="loading loading-sm loading-spinner" aria-hidden="true"></span>
+					Envoi en cours…
+				{:else}
+					<Mail size={16} aria-hidden="true" />
+					Envoyer l’email
+				{/if}
+			</button>
+		{/snippet}
+	</DaisyDashboardModal>
 {/if}

@@ -12,6 +12,7 @@
 		game: FormGameType;
 		invalid?: boolean;
 		warn?: boolean;
+		readonly?: boolean;
 	}
 
 	const {
@@ -21,7 +22,8 @@
 		name,
 		game = $bindable(),
 		invalid = false,
-		warn = false
+		warn = false,
+		readonly = false
 	}: Props = $props();
 
 	if (!game) throw new Error('no game data');
@@ -29,23 +31,22 @@
 	const previewSrc = $derived(resolveGameImageSrc(game.image, { website: game.website }));
 
 	const handleImageError = (e: Event): void => {
-		const target = e.currentTarget as HTMLImageElement;
-		const base = previewSrc;
-
-		if (base.startsWith('https://attachments.f95zone.to/')) {
-			target.src = base.replace('attachments', 'preview');
-		} else {
-			target.classList.add('hidden');
-		}
+		(e.currentTarget as HTMLImageElement).classList.add('hidden');
 	};
 
-	const attributes: HTMLInputAttributes = {
-		onfocusin: (e: FocusEvent) =>
-			(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.remove('hidden'),
-		onfocusout: (e: FocusEvent) =>
-			(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.add('hidden'),
-		required: true
-	};
+	const inputAttributes = $derived.by(
+		(): HTMLInputAttributes => ({
+			onfocusin: (e: FocusEvent) => {
+				if (readonly) return;
+				(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.remove('hidden');
+			},
+			onfocusout: (e: FocusEvent) =>
+				(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.add('hidden'),
+			required: !readonly,
+			readonly,
+			disabled: readonly
+		})
+	);
 </script>
 
 <Input
@@ -54,18 +55,20 @@
 	className="imgHint relative"
 	{title}
 	{name}
-	{attributes}
+	attributes={inputAttributes}
 	{game}
 	{invalid}
 	{warn}
 	type="text"
 >
-	<img
-		src={previewSrc}
-		alt="bannière du jeu 2"
-		class="absolute top-20 z-10 hidden w-full max-w-md rounded-md"
-		loading="lazy"
-		referrerpolicy="no-referrer"
-		onerror={handleImageError}
-	/>
+	{#if previewSrc}
+		<img
+			src={previewSrc}
+			alt="bannière du jeu 2"
+			class="absolute top-20 z-10 hidden w-full max-w-md rounded-md"
+			loading="lazy"
+			referrerpolicy="no-referrer"
+			onerror={handleImageError}
+		/>
+	{/if}
 </Input>

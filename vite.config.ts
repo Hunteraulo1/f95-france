@@ -1,12 +1,19 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
-// import devtoolsJson from 'vite-plugin-devtools-json';
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
 	optimizeDeps: {
-		exclude: ['@lucide/svelte']
+		exclude: [
+			'@lucide/svelte',
+			'svelte-codemirror-editor',
+			'codemirror',
+			'@codemirror/lang-markdown',
+			'@codemirror/state',
+			'@codemirror/view',
+			'@codemirror/language'
+		]
 	},
 	server: {
 		fs: {
@@ -18,5 +25,6 @@ export default defineConfig({
 		headers: {
 			'Cache-Control': 'no-store'
 		}
-	}
+	},
+	logLevel: 'info'
 });

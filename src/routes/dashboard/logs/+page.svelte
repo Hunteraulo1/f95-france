@@ -1,7 +1,22 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
+	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
+	import type { LiveLogEntry } from '$lib/logs/live-log-entry';
+	import { roleBadgeStyles } from '$lib/stores';
+	import { roleUsernameClass } from '$lib/utils/role-display';
+	import Radio from '@lucide/svelte/icons/radio';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const LIVE_BUFFER = 80;
+
+	let liveEnabled = $state(false);
+	let liveStatus = $state<'off' | 'connecting' | 'on' | 'error'>('off');
+	let liveLogs = $state<LiveLogEntry[]>([]);
+	let liveSource: EventSource | null = null;
 	let methodFilter = $state('');
 	let search = $state('');
 	let userSearch = $state('');
@@ -9,6 +24,8 @@
 	let warningsOnly = $state(false);
 	let redirectsOnly = $state(false);
 	let limit = $state('50');
+	let fromDate = $state('');
+	let toDate = $state('');
 	let showPayloadModal = $state(false);
 	let formattedPayload = $state<string | null>(null);
 	let payloadFormat = $state<'json' | 'texte'>('texte');
@@ -25,6 +42,8 @@
 		warningsOnly = data.filters.warningsOnly ?? false;
 		redirectsOnly = data.filters.redirectsOnly ?? false;
 		limit = String(data.filters.limit);
+		fromDate = data.filters.from ?? '';
+		toDate = data.filters.to ?? '';
 		filtersInitialized = true;
 	});
 
@@ -88,23 +107,190 @@
 		showErrorModal = false;
 		errorMessage = null;
 	};
+
+	const matchesLiveFilters = (entry: LiveLogEntry) => {
+		if (methodFilter && entry.method !== methodFilter) return false;
+		const q = search.trim().toLowerCase();
+		if (q) {
+			const haystack = [entry.route, entry.payload ?? '', entry.ipAddress ?? '']
+				.join(' ')
+				.toLowerCase();
+			if (!haystack.includes(q)) return false;
+		}
+		const u = userSearch.trim().toLowerCase();
+		if (u) {
+			const name = entry.user?.username?.toLowerCase() ?? '';
+			if (!name.includes(u)) return false;
+		}
+		if (errorsOnly && entry.status < 500) return false;
+		if (warningsOnly && (entry.status < 400 || entry.status >= 500)) return false;
+		if (redirectsOnly && (entry.status < 300 || entry.status >= 400)) return false;
+		if (fromDate) {
+			const fromMs = Date.parse(`${fromDate}T00:00:00.000Z`);
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(fromMs) && !Number.isNaN(createdMs) && createdMs < fromMs) return false;
+		}
+		if (toDate) {
+			const toStartMs = Date.parse(`${toDate}T00:00:00.000Z`);
+			const toExclusiveMs = toStartMs + 86_400_000;
+			const createdMs = Date.parse(entry.createdAt);
+			if (!Number.isNaN(toStartMs) && !Number.isNaN(createdMs) && createdMs >= toExclusiveMs) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	const displayedLogs = $derived.by(() => {
+		if (!liveEnabled) return data.logs;
+		const liveIds = new Set(liveLogs.map((entry) => entry.id));
+		return [
+			...liveLogs.filter(matchesLiveFilters),
+			...data.logs.filter((log) => !liveIds.has(log.id))
+		];
+	});
+
+	const disconnectLive = () => {
+		if (liveSource) {
+			liveSource.close();
+			liveSource = null;
+		}
+		if (!liveEnabled) liveStatus = 'off';
+	};
+
+	const connectLive = () => {
+		if (!browser || liveSource) return;
+		liveStatus = 'connecting';
+
+		const source = new EventSource('/api/logs/live');
+		liveSource = source;
+
+		source.addEventListener('connected', () => {
+			liveStatus = 'on';
+		});
+
+		source.addEventListener('log', (event) => {
+			try {
+				const payload = JSON.parse(event.data) as { entry: LiveLogEntry };
+				liveStatus = 'on';
+				liveLogs = [payload.entry, ...liveLogs.filter((e) => e.id !== payload.entry.id)].slice(
+					0,
+					LIVE_BUFFER
+				);
+			} catch {
+				// ignore
+			}
+		});
+
+		source.onerror = () => {
+			if (!liveEnabled) {
+				liveStatus = 'off';
+				return;
+			}
+			liveStatus = source.readyState === EventSource.CONNECTING ? 'connecting' : 'error';
+		};
+	};
+
+	const toggleLive = () => {
+		liveEnabled = !liveEnabled;
+		if (liveEnabled) {
+			connectLive();
+		} else {
+			disconnectLive();
+			liveStatus = 'off';
+			liveLogs = [];
+		}
+	};
+
+	onMount(() => () => {
+		liveEnabled = false;
+		disconnectLive();
+	});
+
+	const buildPageHref = (targetPage: number) => {
+		const pairs: Array<[string, string]> = [];
+		if (data.filters.method) pairs.push(['method', data.filters.method]);
+		if (data.filters.search) pairs.push(['q', data.filters.search]);
+		if (data.filters.user) pairs.push(['user', data.filters.user]);
+		if (data.filters.errorsOnly) pairs.push(['errors', 'true']);
+		if (data.filters.warningsOnly) pairs.push(['warnings', 'true']);
+		if (data.filters.redirectsOnly) pairs.push(['redirects', 'true']);
+		if (data.filters.from) pairs.push(['from', data.filters.from]);
+		if (data.filters.to) pairs.push(['to', data.filters.to]);
+		pairs.push(['limit', String(data.pagination.limit)]);
+		pairs.push(['page', String(targetPage)]);
+		const query = pairs
+			.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+			.join('&');
+		return `/dashboard/logs?${query}`;
+	};
 </script>
 
 <svelte:head>
-	<title>Logs API - Tableau de bord</title>
+	<title>Logs des requêtes - Tableau de bord</title>
 </svelte:head>
 
 <div class="space-y-6">
+	<LogsModeNav mode="http" />
+
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<div>
-			<h1 class="text-3xl font-bold text-base-content">Logs de l'API</h1>
-			<p class="text-base-content/70">Historique des appels effectués vers les routes /api.</p>
+			<h1 class="text-3xl font-bold text-base-content">Logs des requêtes</h1>
+			<p class="text-base-content/70">
+				Historique des routes API, du tableau de bord et de la maintenance (hors polling
+				notifications et appels extension-api).
+			</p>
+			{#if liveEnabled && liveStatus === 'on'}
+				<p class="mt-1 text-sm text-success">Mode Live — nouveaux logs en temps réel</p>
+			{:else if liveEnabled && liveStatus === 'connecting'}
+				<p class="mt-1 text-sm text-base-content/60">Connexion au flux live…</p>
+			{:else if liveEnabled && liveStatus === 'error'}
+				<p class="mt-1 text-sm text-warning">Flux interrompu — reconnexion automatique en cours…</p>
+			{/if}
+		</div>
+		<button
+			type="button"
+			class="btn btn-sm gap-2 {liveEnabled ? 'btn-success' : 'btn-outline'}"
+			aria-pressed={liveEnabled}
+			title="Afficher les nouveaux logs en temps réel"
+			onclick={toggleLive}
+		>
+			<Radio class="size-4 {liveEnabled && liveStatus === 'on' ? 'animate-pulse' : ''}" />
+			Live
+		</button>
+	</div>
+
+	<div
+		class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
+	>
+		<div class="stat">
+			<div class="stat-title">Total</div>
+			<div class="stat-value text-base-content">{data.pagination.totalCount}</div>
+			<div class="stat-desc">
+				Page {data.pagination.page} / {data.pagination.totalPages}
+			</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">2xx</div>
+			<div class="stat-value text-success">{data.statusCounts.s2xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">3xx</div>
+			<div class="stat-value text-info">{data.statusCounts.s3xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">4xx</div>
+			<div class="stat-value text-warning">{data.statusCounts.s4xx}</div>
+		</div>
+		<div class="stat">
+			<div class="stat-title">5xx</div>
+			<div class="stat-value text-error">{data.statusCounts.s5xx}</div>
 		</div>
 	</div>
 
 	<form method="GET" class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
-			<div class="grid grid-cols-1 gap-4 xs:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<label class="form-control flex flex-col">
 					<span class="label-text">Méthode</span>
 					<select class="select-bordered select" name="method" bind:value={methodFilter}>
@@ -115,7 +301,9 @@
 					</select>
 				</label>
 				<label class="form-control flex flex-col">
-					<span class="label-text">Recherche <span class="text-sm">(route ou payload)</span></span>
+					<span class="label-text"
+						>Recherche <span class="text-sm">(route, IP ou payload)</span></span
+					>
 					<input
 						type="text"
 						name="q"
@@ -135,8 +323,27 @@
 					/>
 				</label>
 				<label class="form-control flex flex-col">
-					<span class="label-text">Filtres de statut</span>
-					<div class="m-2 mb-0 flex flex-col space-y-2">
+					<span class="label-text">Du</span>
+					<input type="date" name="from" class="input-bordered input" bind:value={fromDate} />
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Au</span>
+					<input type="date" name="to" class="input-bordered input" bind:value={toDate} />
+				</label>
+				<label class="form-control flex flex-col">
+					<span class="label-text">Limite</span>
+					<select class="select-bordered select" name="limit" bind:value={limit}>
+						{#each [25, 50, 100, 200, 500] as option (option)}
+							<option value={option}>{option} lignes</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+
+			<div class="rounded-box border border-base-300 bg-base-200/30 p-4">
+				<label class="form-control flex flex-col">
+					<span class="label-text mb-2">Filtres de statut</span>
+					<div class="flex flex-wrap gap-3">
 						<label class="label cursor-pointer">
 							<input
 								type="checkbox"
@@ -194,17 +401,19 @@
 					{/if}
 				</label>
 			</div>
-			<label class="form-control flex flex-col">
-				<span class="label-text">Limite</span>
-				<select class="select-bordered select" name="limit" bind:value={limit}>
-					{#each [25, 50, 100, 200, 500] as option (option)}
-						<option value={option}>{option} lignes</option>
-					{/each}
-				</select>
-			</label>
-			<div class="flex justify-end gap-2 md:col-span-6">
-				<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
-				<button type="submit" class="btn btn-primary">Actualiser</button>
+
+			<div class="flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-4">
+				<p class="text-sm text-base-content/70">
+					Affichage : {displayedLogs.length} ligne{displayedLogs.length > 1 ? 's' : ''}
+					{#if liveEnabled && liveLogs.length > 0}
+						· {liveLogs.length} en direct
+					{/if}
+					· {data.pagination.totalCount} au total
+				</p>
+				<div class="flex gap-2">
+					<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
+					<button type="submit" class="btn btn-primary">Actualiser</button>
+				</div>
 			</div>
 		</div>
 	</form>
@@ -217,36 +426,53 @@
 						<tr>
 							<th>Date</th>
 							<th>Méthode</th>
-							<th>Route</th>
+							<th class="max-w-sm">Route</th>
 							<th>Statut</th>
 							<th>Utilisateur</th>
+							<th>IP</th>
 							<th>Payload</th>
 							<th>Erreur</th>
 						</tr>
 					</thead>
 					<tbody>
-						{#if data.logs.length === 0}
+						{#if displayedLogs.length === 0}
 							<tr>
 								<td colspan="8" class="py-10 text-center text-base-content/60">
 									Aucun log disponible pour ces critères.
 								</td>
 							</tr>
 						{:else}
-							{#each data.logs as log (log.id)}
+							{#each displayedLogs as log (log.id)}
 								<tr>
 									<td class="whitespace-nowrap">{formatDate(log.createdAt)}</td>
 									<td>
 										<span class={`badge ${methodBadge(log.method)}`}>{log.method}</span>
 									</td>
-									<td class="font-mono text-sm">{log.route}</td>
+									<td class="max-w-sm">
+										<span class="block truncate font-mono text-sm" title={log.route}
+											>{log.route}</span
+										>
+									</td>
 									<td>
 										<span class={`badge ${statusBadge(log.status)}`}>{log.status}</span>
 									</td>
 									<td>
 										{#if log.user?.username}
-											<span class="font-semibold">{log.user.username}</span>
+											<span
+												class="font-semibold {roleUsernameClass(
+													log.user.role,
+													$roleBadgeStyles[log.user.role]
+												)}">{log.user.username}</span
+											>
 										{:else}
 											<span class="text-base-content/60">Anonyme</span>
+										{/if}
+									</td>
+									<td class="font-mono text-xs whitespace-nowrap">
+										{#if log.ipAddress}
+											{log.ipAddress}
+										{:else}
+											<span class="text-base-content/60">—</span>
 										{/if}
 									</td>
 									<td class="max-w-xs">
@@ -286,49 +512,63 @@
 			</div>
 		</div>
 	</div>
+
+	<div class="flex items-center justify-center">
+		<div class="join">
+			{#if data.pagination.page > 1}
+				<a class="join-item btn" href={buildPageHref(data.pagination.page - 1)}>Précédent</a>
+			{:else}
+				<button class="join-item btn btn-disabled" type="button">Précédent</button>
+			{/if}
+			<button class="join-item btn btn-active" type="button">
+				Page {data.pagination.page} / {data.pagination.totalPages}
+			</button>
+			{#if data.pagination.page < data.pagination.totalPages}
+				<a class="join-item btn" href={buildPageHref(data.pagination.page + 1)}>Suivant</a>
+			{:else}
+				<button class="join-item btn btn-disabled" type="button">Suivant</button>
+			{/if}
+		</div>
+	</div>
 </div>
 
-{#if showPayloadModal && formattedPayload}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold">Payload de la requête</h3>
-					<p class="text-sm text-base-content/60">Aperçu brut limité à 4000 caractères.</p>
-				</div>
-				<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
-					{payloadFormat === 'json' ? 'JSON' : 'Texte'}
-				</span>
-			</div>
-			<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
+<DaisyDashboardModal
+	open={showPayloadModal && formattedPayload !== null}
+	title="Payload de la requête"
+	description="Aperçu brut limité à 4000 caractères."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closePayloadModal}
+>
+	{#if formattedPayload}
+		<span class={`badge ${payloadFormat === 'json' ? 'badge-success' : 'badge-neutral'}`}>
+			{payloadFormat === 'json' ? 'JSON' : 'Texte'}
+		</span>
+		<pre class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs">
 {formattedPayload}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closePayloadModal}> Fermer </button>
-	</div>
-{/if}
+	{/if}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closePayloadModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>
 
-{#if showErrorModal && errorMessage}
-	<div class="modal-open modal">
-		<div class="modal-box max-w-4xl">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div>
-					<h3 class="text-lg font-bold text-error">Détails de l'erreur</h3>
-					<p class="text-sm text-base-content/60">Message d'erreur et stack trace.</p>
-				</div>
-				<span class="badge badge-error">Erreur</span>
-			</div>
-			<pre
-				class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
+<DaisyDashboardModal
+	open={showErrorModal && errorMessage !== null}
+	title="Détails de l'erreur"
+	description="Message d'erreur et stack trace."
+	maxWidthClass="max-w-4xl"
+	scrollBody={true}
+	onClose={closeErrorModal}
+>
+	{#if errorMessage}
+		<span class="badge badge-error">Erreur</span>
+		<pre
+			class="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap">
 {errorMessage}
 </pre>
-			<div class="modal-action">
-				<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
-			</div>
-		</div>
-		<button class="modal-backdrop" onclick={closeErrorModal}> Fermer </button>
-	</div>
-{/if}
+	{/if}
+	{#snippet footer()}
+		<button type="button" class="btn btn-primary" onclick={closeErrorModal}>Fermer</button>
+	{/snippet}
+</DaisyDashboardModal>

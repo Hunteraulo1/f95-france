@@ -2,6 +2,7 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
@@ -10,17 +11,24 @@
 	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { newToast } from '$lib/stores';
+	import { hasPermission } from '$lib/permissions/client';
+	import { newToast, user } from '$lib/stores';
 	import type { FormGameType, GameEngineType } from '$lib/types';
-	import { checkRole } from '$lib/utils';
-	import { computeGameFormFieldState } from '$lib/utils/game-form-validation';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+	import {
+		computeGameFormFieldState,
+		gameImageRequiredForWebsite,
+		isNoTranslation,
+		normalizeTranslationTversion
+	} from '$lib/utils/game-form-validation';
+	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import {
 		formHasTranslatorInputIssue,
 		getTranslatorFieldErrors
 	} from '$lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { onMount, untrack } from 'svelte';
+	import { get, writable } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -31,6 +39,7 @@
 
 	let { data }: Props = $props();
 	let step = $state(0);
+	let translatorsList = $state(untrack(() => [...data.translators]));
 
 	// State locale pour le jeu
 	let game = $state<FormGameType>({
@@ -38,12 +47,13 @@
 		id: '',
 		name: '',
 		tags: '',
-		gameType: 'other',
+		gameType: 'renpy',
 		image: '',
 		website: 'f95z',
 		threadId: null,
 		link: '',
 		description: null,
+		descriptionFr: null,
 		gameAutoCheck: true,
 		gameVersion: null,
 		createdAt: new Date(),
@@ -60,7 +70,8 @@
 		translatorId: null,
 		proofreaderId: null,
 		ttype: 'auto',
-		ac: false
+		ac: false,
+		translatorAlertsEnabled: true
 	});
 
 	let scraping = $state(false);
@@ -76,8 +87,25 @@
 		description: string;
 	};
 	let scrapeBaseline = $state<ScrapeBaseline | null>(null);
+	/** LC : état du scrape image (idle = pas encore tenté sur ce thread). */
+	let lcScrapeStatus = $state<'idle' | 'ok' | 'no_image' | 'failed'>('idle');
+	let f95ScrapeFailed = $state(false);
+
+	const F95_SCRAPE_FAIL_MESSAGE =
+		'Impossible de récupérer ce thread F95Zone : le jeu n’existe peut-être pas (vérifiez l’ID) ou le forum est temporairement indisponible. Réessayez dans quelques minutes.';
+
+	const lcScrapeFailed = $derived(game.website === 'lc' && lcScrapeStatus === 'failed');
+	const f95ScrapeFailedActive = $derived(game.website === 'f95z' && f95ScrapeFailed);
+	const lcImageLocked = $derived(
+		game.website === 'lc' && (lcScrapeStatus === 'failed' || lcScrapeStatus === 'no_image')
+	);
+	const lcShowImageField = $derived(
+		game.website === 'lc' && lcScrapeStatus === 'ok' && !!game.image?.trim()
+	);
+	const lcImageReadOnly = $derived(game.website === 'lc' && lcScrapeStatus === 'ok');
 
 	const normScrapeField = (v: unknown): string => (v == null ? '' : String(v).trim());
+	const supportsThreadScrape = $derived(game.website === 'f95z' || game.website === 'lc');
 
 	let threadDuplicateCheck = $state<{
 		gameExists: boolean;
@@ -91,23 +119,30 @@
 	let skipThreadStepFromQueryParam = $state(false);
 	let prefilledTranslatorApplied = $state(false);
 
-	const safeCheckRole = (roles: Parameters<typeof checkRole>[0]): boolean => {
-		try {
-			return checkRole(roles);
-		} catch {
-			return false;
-		}
-	};
+	const canManageUsers = $derived($hasPermission('users.manage'));
+	const canUseDevTools = $derived($hasPermission('dev.panel'));
 
-	const isAdmin = safeCheckRole(['admin', 'superadmin']);
-	const maxStep = $derived(isAdmin ? 5 : 3);
+	let pendingNewTranslators = $state<string[]>([]);
+
+	const addTranslatorMode = $derived(data.addTranslatorMode);
+	const canManageGameAutoCheck = $derived($hasPermission('games.auto_check'));
+	const maxStep = $derived(canManageGameAutoCheck ? 5 : 3);
 	let stepLabels = $derived(
-		isAdmin
+		canManageGameAutoCheck
 			? ['Site', 'Thread', 'Infos jeu', 'Traduction', 'Auto-check', 'Validation']
 			: ['Site', 'Thread', 'Infos jeu', 'Traduction']
 	);
 
-	let fieldFormState = $derived(computeGameFormFieldState(game));
+	/** LC sans image scrape (échec ou absent) : vignette optionnelle. */
+	const requireGameImage = $derived(
+		gameImageRequiredForWebsite(game.website, { lcScrapeProvidedImage: lcShowImageField })
+	);
+
+	let fieldFormState = $derived(
+		computeGameFormFieldState(game, {
+			requireImage: requireGameImage
+		})
+	);
 	let translatorFieldErrors = $derived(
 		getTranslatorFieldErrors(game, data.translators, data.warnUnknownTranslators)
 	);
@@ -128,7 +163,35 @@
 		return '';
 	};
 
+	const applyExtractDraft = (draft: NonNullable<PageData['extractDraft']>) => {
+		game.website = draft.website;
+		game.threadId = draft.threadId;
+		game.name = draft.name;
+		game.tags = draft.tags;
+		game.gameType = draft.gameType;
+		game.image = draft.image;
+		game.link = draft.link;
+		game.description = draft.description;
+		game.gameVersion = draft.gameVersion;
+		game.gameAutoCheck = draft.gameAutoCheck;
+		game.ac = false;
+		skipThreadStepFromQueryParam = true;
+		if (draft.website === 'f95z') {
+			f95ScrapeFailed = true;
+			step = 1;
+		} else if (draft.website === 'lc') {
+			lcScrapeStatus = 'failed';
+			step = 2;
+		}
+		void runThreadDuplicateCheckForTid(draft.threadId);
+	};
+
 	onMount(() => {
+		if (data.extractDraft) {
+			applyExtractDraft(data.extractDraft);
+			return;
+		}
+
 		const threadIdRaw = new URLSearchParams(window.location.search).get('threadId');
 		if (!threadIdRaw) return;
 		const parsed = Number.parseInt(threadIdRaw, 10);
@@ -138,11 +201,21 @@
 		}
 		game.link = buildGameLinkFromThread(game.website, game.threadId);
 		skipThreadStepFromQueryParam = true;
-		// Ne pas scraper avant l'étape 3 quand l'ID vient du query param.
-		// On garde le déclenchement automatique pour plus tard.
 		pendingQueryThreadIdAutoScrape = true;
-		void runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
 		replaceState(resolve('/dashboard/manager/add'), page.state);
+
+		void (async () => {
+			try {
+				if (game.website === 'f95z' || game.website === 'lc') {
+					await handleThreadIdFieldBlur();
+					applyStepAfterQueryThreadScrape();
+				} else {
+					await runThreadDuplicateCheckForTid(threadIdForDuplicateCheck(game.threadId));
+				}
+			} finally {
+				pendingQueryThreadIdAutoScrape = false;
+			}
+		})();
 	});
 
 	const threadIdForDuplicateCheck = (v: FormGameType['threadId']): number | null => {
@@ -156,7 +229,7 @@
 		if (prefilledTranslatorApplied) return;
 		const prefilled = data.prefilledTranslatorName;
 		if (
-			!isAdmin &&
+			!canManageUsers &&
 			typeof prefilled === 'string' &&
 			prefilled.trim().length > 0 &&
 			!game.translatorId
@@ -182,8 +255,29 @@
 		}
 	});
 
-	/** Auto-check traduction seulement si auto-check jeu (F95) ; pas l’inverse : on peut désactiver `ac`. */
 	$effect(() => {
+		if (game.website !== 'lc') {
+			lcScrapeStatus = 'idle';
+		}
+		if (game.website !== 'f95z') {
+			f95ScrapeFailed = false;
+		}
+	});
+
+	$effect(() => {
+		if (game.website !== 'lc') return;
+		if (lcImageLocked) {
+			game.image = '';
+		}
+	});
+
+	/** Auto-check : uniquement F95Zone ; traduction seulement si auto-check jeu actif. */
+	$effect(() => {
+		if (!gameAutoCheckEnabledForWebsite(game.website)) {
+			game.gameAutoCheck = false;
+			game.ac = false;
+			return;
+		}
 		if (game.gameAutoCheck === false) {
 			game.ac = false;
 		}
@@ -220,31 +314,62 @@
 	const changeStep = async (amount: number): Promise<void> => {
 		if (!game) throw new Error('no game data');
 		const previousStep = step;
+		let targetStep = step + amount;
 
-		if (step + amount >= 0 && step + amount <= maxStep) step += amount;
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
 		if (
-			step === 1 &&
+			targetStep === 1 &&
 			(game.website === 'other' || (game.website === 'f95z' && skipThreadStepFromQueryParam))
-		)
-			step += amount;
-		if (step === 2 && game.website === 'f95z') step += amount;
-
-		// Clamp final après sauts conditionnels
-		if (step < 0) step = 0;
-		if (step > maxStep) step = maxStep;
-
-		// Lancer le scrape une seule fois au passage à l'étape suivante (depuis l'étape Thread).
-		const movedForwardFromThreadStep =
-			amount > 0 && previousStep === 1 && step > previousStep && game.website === 'f95z';
-
-		// Compat query param: garder le déclenchement différé si nécessaire.
-		if (
-			(pendingQueryThreadIdAutoScrape && step >= 3 && game.website === 'f95z') ||
-			movedForwardFromThreadStep
 		) {
+			targetStep += amount;
+		}
+
+		const movingForwardFromThread =
+			amount > 0 && previousStep === 1 && targetStep >= 2 && supportsThreadScrape;
+		const deferredAutoScrape =
+			amount > 0 && pendingQueryThreadIdAutoScrape && targetStep >= 3 && supportsThreadScrape;
+
+		if (movingForwardFromThread || deferredAutoScrape) {
 			pendingQueryThreadIdAutoScrape = false;
 			await handleThreadIdFieldBlur();
 		}
+
+		if (targetStep === 2 && infosStepFilledByScrape) {
+			targetStep += amount;
+		}
+
+		if (targetStep === 4 && !gameAutoCheckEnabledForWebsite(game.website)) {
+			targetStep += amount;
+		}
+
+		// Scrape en échec ou pas encore tenté : depuis Traduction+, « Précédent » doit pouvoir revenir aux infos.
+		if (
+			amount < 0 &&
+			(game.website === 'f95z' || game.website === 'lc') &&
+			!infosStepFilledByScrape &&
+			previousStep >= 3 &&
+			targetStep === 1
+		) {
+			targetStep = 2;
+		}
+
+		// Scrape F95/LC en échec ou manuel : obliger l’étape « Infos jeu » avant la traduction.
+		if (
+			amount > 0 &&
+			(game.website === 'f95z' || game.website === 'lc') &&
+			!infosStepFilledByScrape &&
+			previousStep < 2 &&
+			targetStep > 2
+		) {
+			targetStep = 2;
+		}
+
+		if (targetStep < 0) targetStep = 0;
+		if (targetStep > maxStep) targetStep = maxStep;
+
+		step = targetStep;
 	};
 
 	const requiresThreadIdForNextStep = $derived(
@@ -255,14 +380,20 @@
 		requiresThreadIdForNextStep && !hasValidThreadIdForNextStep
 	);
 
+	/** Infos jeu déjà remplies par un scrape réussi — on peut sauter l’étape 2. */
+	const infosStepFilledByScrape = $derived(
+		(game.website === 'f95z' && scrapeBaseline !== null && !f95ScrapeFailed) ||
+			(game.website === 'lc' && (lcScrapeStatus === 'ok' || lcScrapeStatus === 'no_image'))
+	);
+
 	const scrapeData = async ({
 		threadId,
 		website
 	}: {
 		threadId: number | null;
 		website: FormGameType['website'];
-	}): Promise<void> => {
-		if (!threadId || threadId === 0 || website !== 'f95z') return;
+	}): Promise<boolean> => {
+		if (!threadId || threadId === 0 || (website !== 'f95z' && website !== 'lc')) return false;
 
 		try {
 			scraping = true;
@@ -290,12 +421,20 @@
 				description: string | null;
 			};
 
+			const scrapedImage = data.image?.trim() ?? '';
+			if (website === 'lc') {
+				lcScrapeStatus = scrapedImage ? 'ok' : 'no_image';
+			}
+			if (website === 'f95z') {
+				f95ScrapeFailed = false;
+			}
+
 			game = {
 				...game,
 				name: data.name ?? game.name,
 				tags: data.tags ?? game.tags,
 				gameType: data.gameType ?? game.gameType,
-				image: data.image ?? game.image,
+				image: website === 'lc' ? scrapedImage : (data.image ?? game.image),
 				gameVersion: data.version ?? game.gameVersion,
 				description: data.description ?? game.description
 			};
@@ -309,12 +448,39 @@
 				description: normScrapeField(game.description)
 			};
 			savedId = threadId;
+			return true;
 		} catch (error) {
 			console.warn('Erreur lors du scraping', error);
+			if (website === 'lc') {
+				lcScrapeStatus = 'failed';
+				game = {
+					...game,
+					name: '',
+					tags: '',
+					gameType: 'renpy',
+					image: '',
+					gameVersion: null,
+					description: null,
+					link: buildGameLinkFromThread('lc', threadId),
+					gameAutoCheck: false
+				};
+				scrapeBaseline = null;
+				savedId = threadId;
+				newToast({
+					alertType: 'warning',
+					message:
+						'Scrape LewdCorner impossible — renseignez les informations du jeu à l’étape suivante (sans vignette).'
+				});
+				return false;
+			}
+			f95ScrapeFailed = true;
+			scrapeBaseline = null;
+			savedId = null;
 			newToast({
 				alertType: 'error',
-				message: 'Impossible de récupérer les informations du jeu'
+				message: F95_SCRAPE_FAIL_MESSAGE
 			});
+			return false;
 		} finally {
 			scraping = false;
 		}
@@ -360,14 +526,65 @@
 		const tid = threadIdForDuplicateCheck(game.threadId);
 		await runThreadDuplicateCheckForTid(tid);
 
-		if (!tid || game.website !== 'f95z') {
-			if (!tid) savedId = null;
+		if (!tid || !supportsThreadScrape) {
+			if (!tid) {
+				savedId = null;
+				if (game.website === 'lc') {
+					lcScrapeStatus = 'idle';
+					game.image = '';
+				}
+				if (game.website === 'f95z') {
+					f95ScrapeFailed = false;
+				}
+			}
 			return;
+		}
+
+		if (game.website === 'lc' && tid !== savedId) {
+			lcScrapeStatus = 'idle';
+			game.image = '';
+		}
+		if (game.website === 'f95z' && tid !== savedId) {
+			f95ScrapeFailed = false;
 		}
 
 		if (savedId === tid) return;
 
 		await scrapeData({ threadId: tid, website: game.website });
+	};
+
+	/** Superadmin : relance le scrape forum (étape Infos jeu et suivantes). */
+	const runForceScrape = async (): Promise<void> => {
+		const tid = threadIdForDuplicateCheck(game.threadId);
+		if (!tid || !supportsThreadScrape) {
+			newToast({
+				alertType: 'warning',
+				message: 'Renseignez un ID de thread valide avant le scrape.'
+			});
+			return;
+		}
+		savedId = null;
+		await scrapeData({ threadId: tid, website: game.website });
+	};
+
+	/** Après scrape auto depuis ?threadId= : sauter thread/infos ou rester sur l’étape à corriger. */
+	const applyStepAfterQueryThreadScrape = () => {
+		if (game.website === 'f95z') {
+			if (f95ScrapeFailed) {
+				skipThreadStepFromQueryParam = false;
+				step = 2;
+				return;
+			}
+			step = 3;
+			return;
+		}
+		if (game.website === 'lc') {
+			if (lcScrapeStatus === 'failed') {
+				step = 2;
+				return;
+			}
+			step = 3;
+		}
 	};
 
 	const onInputBlurCommit = async (field: keyof FormGameType) => {
@@ -388,11 +605,20 @@
 			return;
 		}
 
-		const fieldState = computeGameFormFieldState(game);
+		const fieldState = computeGameFormFieldState(game, {
+			requireImage: requireGameImage
+		});
 		if (fieldState.hasBlockingError) {
+			const linkError =
+				validateGameLinkFields({
+					link: game.link,
+					image: game.image,
+					requireLink: true,
+					requireImage: requireGameImage
+				}) ?? validateTranslationLinkField({ tlink: game.tlink, tname: game.tname });
 			newToast({
 				alertType: 'error',
-				message: 'Corrigez les champs obligatoires en erreur (bordure rouge).'
+				message: linkError ?? 'Corrigez les champs obligatoires en erreur (bordure rouge).'
 			});
 			return;
 		}
@@ -419,19 +645,22 @@
 				link: string | null;
 				image: string;
 				gameVersion: string | null;
+				gameAutoCheck: boolean;
 				scrapeUnchanged: boolean;
 			};
 
 			type TranslationPayload = {
-				translationName: string;
+				translationName: string | null;
 				version: string | null;
 				tversion: string;
 				status: FormGameType['status'];
 				ttype: FormGameType['ttype'];
 				tlink: string | null;
 				tname: FormGameType['tname'];
+				gameType: GameEngineType;
 				translatorId: string | null;
 				proofreaderId: string | null;
+				ac: boolean;
 			};
 
 			const payload: { game: GamePayload; translation?: TranslationPayload } = {
@@ -443,46 +672,48 @@
 					threadId: game.website === 'other' ? null : (game.threadId ?? null),
 					tags: game.tags?.trim() || null,
 					link: game.link?.trim() || null,
-					image: game.image.trim(),
+					image: game.image.trim() || '',
 					gameVersion: game.gameVersion?.trim() || null,
+					gameAutoCheck: Boolean(game.gameAutoCheck),
 					scrapeUnchanged: isScrapeUnchanged()
 				}
 			};
 
-			const hasTranslationData =
-				(game.translationName && game.translationName.trim().length > 0) ||
-				(game.version && game.version.trim().length > 0) ||
-				(game.tversion && game.tversion.trim().length > 0) ||
-				(game.tlink && game.tlink.trim().length > 0) ||
-				(game.translatorId && game.translatorId.trim().length > 0) ||
-				(game.proofreaderId && game.proofreaderId.trim().length > 0) ||
-				game.tname !== 'no_translation';
+			const includeTranslation = !isNoTranslation(game.tname);
 
-			if (hasTranslationData) {
-				const translationName =
-					game.translationName?.trim().length && game.translationName?.trim().length > 0
-						? game.translationName.trim()
-						: `${payload.game.name} - traduction`;
+			if (includeTranslation) {
+				const translationName = game.translationName?.trim() ? game.translationName.trim() : null;
 
 				payload.translation = {
 					translationName,
 					version: game.version?.trim() || null,
-					tversion: game.tversion?.trim() || '',
+					tversion: normalizeTranslationTversion(game.tname, game.tversion),
 					status: game.status,
 					ttype: game.ttype,
 					tlink: game.tlink?.trim() || null,
 					tname: game.tname,
+					gameType: game.gameType,
 					translatorId: game.translatorId?.trim() || null,
-					proofreaderId: game.proofreaderId?.trim() || null
+					proofreaderId: game.proofreaderId?.trim() || null,
+					ac: Boolean(game.ac)
 				};
 			}
+
+			const currentUser = get(user);
+			const requestBody = {
+				...payload,
+				directMode:
+					data.addTranslatorMode === 'submission' ? false : (currentUser?.directMode ?? true),
+				pendingNewTranslators:
+					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined
+			};
 
 			const response = await fetch('/dashboard/manager', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(payload)
+				body: JSON.stringify(requestBody)
 			});
 
 			const result = await response.json();
@@ -493,7 +724,11 @@
 
 			newToast({
 				alertType: 'success',
-				message: result.message || 'Le jeu a bien été ajouté'
+				message:
+					result.message ||
+					(result.translationId
+						? 'Le jeu et la traduction ont bien été ajoutés'
+						: 'Le jeu a bien été ajouté')
 			});
 
 			// eslint-disable-next-line svelte/no-navigation-without-resolve
@@ -564,22 +799,6 @@
 			name: 'tags'
 		},
 		{
-			Component: Select,
-			active: [2, 5],
-			title: 'Moteur du jeu',
-			name: 'gameType',
-			selectOptions: [
-				{ value: 'renpy', label: 'RenPy' },
-				{ value: 'rpgm', label: 'RPGM' },
-				{ value: 'unity', label: 'Unity' },
-				{ value: 'unreal', label: 'Unreal' },
-				{ value: 'flash', label: 'Flash' },
-				{ value: 'html', label: 'HTML' },
-				{ value: 'qsp', label: 'QSP' },
-				{ value: 'other', label: 'Autre' }
-			]
-		},
-		{
 			Component: InputImage,
 			active: [2, 5],
 			title: "Lien de l'image du jeu",
@@ -604,6 +823,22 @@
 			title: 'Nom de la traduction',
 			name: 'translationName',
 			type: 'text'
+		},
+		{
+			Component: Select,
+			active: [3, 5],
+			title: 'Moteur',
+			name: 'gameType',
+			selectOptions: [
+				{ value: 'renpy', label: 'RenPy' },
+				{ value: 'rpgm', label: 'RPGM' },
+				{ value: 'unity', label: 'Unity' },
+				{ value: 'unreal', label: 'Unreal' },
+				{ value: 'flash', label: 'Flash' },
+				{ value: 'html', label: 'HTML' },
+				{ value: 'qsp', label: 'QSP' },
+				{ value: 'other', label: 'Autre' }
+			]
 		},
 		{
 			Component: Input,
@@ -717,15 +952,30 @@
 			onsubmit={handleSubmit}
 			autocomplete="off"
 		>
-			{#if scraping}
-				<div class="alert flex items-center gap-2 alert-soft text-sm alert-info">
-					<LoaderCircle />
-					Chargement des données en cours
-				</div>
-			{/if}
 			{#if checkingDuplicateThread && threadIdForDuplicateCheck(game.threadId) !== null}
 				<div class="w-full text-sm text-base-content/60">Vérification du thread…</div>
 			{/if}
+			{#if f95ScrapeFailedActive}
+				<div class="alert text-sm alert-error" role="alert">
+					<span>{F95_SCRAPE_FAIL_MESSAGE}</span>
+				</div>
+			{/if}
+			{#if lcScrapeFailed}
+				<div class="alert text-sm alert-warning" role="status">
+					<span>
+						Scrape LewdCorner impossible — complétez le nom, les tags, la version et la description
+						du jeu (étape Infos jeu). Aucune vignette ne sera ajoutée.
+					</span>
+				</div>
+			{:else if lcImageLocked}
+				<div class="alert text-sm alert-warning" role="status">
+					<span>
+						Scrape LewdCorner sans image — la vignette reste vide et ne peut pas être modifiée
+						manuellement.
+					</span>
+				</div>
+			{/if}
+			<OtherSiteImageWarning website={game.website} />
 			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
 					<div class="flex flex-col gap-1 text-sm">
@@ -742,12 +992,20 @@
 				</div>
 			{/if}
 
-			<div
-				class="flex w-full flex-wrap items-center justify-between gap-3 rounded-box bg-base-200/60 px-4 py-3"
-			>
-				<div class="text-sm text-base-content/80">
-					<span class="font-medium">Section active :</span>
-					{stepLabels[step]}
+			<div class="flex h-11 flex-col gap-2 md:flex-row">
+				{#if scraping}
+					<div class="alert flex items-center alert-soft text-sm text-nowrap alert-info">
+						<LoaderCircle class="animate-spin" />
+						Chargement des données en cours
+					</div>
+				{/if}
+				<div
+					class="flex w-full flex-wrap items-center justify-between rounded-box bg-base-200/60 px-4 py-3"
+				>
+					<div class="text-sm text-base-content/80">
+						<span class="font-medium">Section active :</span>
+						{stepLabels[step]}
+					</div>
 				</div>
 			</div>
 
@@ -779,10 +1037,14 @@
 			</div>
 
 			<div
-				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4"
+				class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 			>
 				{#each elements as { Component, name, title, active, className, values, selectOptions, type, needsTranslators, adminOnly } (name)}
-					{#if !adminOnly || isAdmin}
+					{#if name === 'image' && game.website === 'lc' && !lcShowImageField}
+						<!-- LC : pas de champ image tant que le scrape n’a pas fourni d’URL -->
+					{:else if (name === 'gameAutoCheck' || name === 'ac') && !gameAutoCheckEnabledForWebsite(game.website)}
+						<!-- Auto-check réservé à F95Zone -->
+					{:else if !adminOnly || canManageGameAutoCheck}
 						{#if needsTranslators && Component === Datalist}
 							<Datalist
 								{step}
@@ -791,7 +1053,9 @@
 								{active}
 								{className}
 								bind:game
-								translators={data.translators}
+								bind:translators={translatorsList}
+								{addTranslatorMode}
+								bind:pendingNewTranslators
 								invalid={name === 'translatorId'
 									? translatorFieldErrors.translatorId
 									: translatorFieldErrors.proofreaderId}
@@ -809,6 +1073,7 @@
 								bind:game
 								invalid={fieldFormState.fieldErrors[name] ?? false}
 								warn={fieldFormState.fieldWarns[name] ?? false}
+								readonly={name === 'image' && lcImageReadOnly}
 								onBlurCommit={Component === Input ? onInputBlurCommit : undefined}
 							/>
 						{/if}
@@ -819,17 +1084,57 @@
 			<div
 				class="flex w-full flex-row flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-4 sm:px-4"
 			>
-				{#if step < maxStep}
+				{#if step > 0}
 					<button
 						class="btn w-full btn-outline btn-primary md:w-38"
 						type="button"
 						onclick={() => changeStep(-1)}
-						disabled={step <= 0}
 					>
 						Précédent
 					</button>
+				{/if}
+				{#if canUseDevTools && supportsThreadScrape && step >= 2}
 					<button
-						class="btn w-full btn-primary md:w-38"
+						type="button"
+						class="btn w-full btn-outline btn-secondary md:w-38"
+						disabled={scraping}
+						onclick={() => void runForceScrape()}
+					>
+						Force scrape
+					</button>
+				{/if}
+				{#if (game.website === 'lc' || game.website === 'f95z') && step === 2}
+					<Insert
+						bind:game
+						onApplied={({ hasImage }) => {
+							if (game.website === 'lc') {
+								lcScrapeStatus = hasImage ? 'ok' : 'no_image';
+							}
+							if (game.website === 'f95z') {
+								f95ScrapeFailed = false;
+								scrapeBaseline = {
+									name: normScrapeField(game.name),
+									tags: normScrapeField(game.tags),
+									gameType: normScrapeField(game.gameType),
+									image: normScrapeField(game.image),
+									gameVersion: normScrapeField(game.gameVersion),
+									description: normScrapeField(game.description)
+								};
+							}
+						}}
+					/>
+				{/if}
+				{#if canUseDevTools}
+					<Dev
+						bind:game
+						onDevDataApplied={() => {
+							step = maxStep;
+						}}
+					/>
+				{/if}
+				{#if step < maxStep}
+					<button
+						class="btn w-full btn-primary md:w-38 only:ml-auto"
 						type="button"
 						onclick={() => changeStep(1)}
 						disabled={blockNextStepForMissingThread}
@@ -848,17 +1153,6 @@
 					>
 						Ajouter le jeu
 					</button>
-				{/if}
-				{#if safeCheckRole(['superadmin'])}
-					<Dev
-						bind:game
-						onDevDataApplied={() => {
-							step = maxStep;
-						}}
-					/>
-				{/if}
-				{#if game.website === 'lc' || game.website === 'f95z'}
-					<Insert bind:game />
 				{/if}
 			</div>
 		</form>

@@ -1,9 +1,45 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<script>
+		<link rel="preconnect" href="https://preview.f95zone.to" />
+		<style>
+			/* CSS critique : premier paint du hero avant la feuille Tailwind/daisyUI. */
+			html {
+				-webkit-text-size-adjust: 100%;
+			}
+			body {
+				margin: 0;
+				line-height: 1.5;
+				font-family:
+					ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+					'Segoe UI Symbol', 'Noto Color Emoji';
+			}
+			#home-hero-title {
+				margin: 0;
+				font-size: clamp(1.5rem, 4vw + 0.5rem, 3rem);
+				font-weight: 700;
+				line-height: 1.25;
+			}
+			html[data-theme='light'] #home-hero-title {
+				color: #1e293b;
+			}
+			html[data-theme='dark'] #home-hero-title {
+				color: #f5f5f5;
+			}
+			html[data-theme='light'] .home-hero-lead {
+				color: rgb(30 41 59 / 0.9);
+			}
+			html[data-theme='dark'] .home-hero-lead {
+				color: rgb(245 245 245 / 0.9);
+			}
+			/* Évite le flash de la modale d'âge si localStorage dit déjà « vérifié » (avant hydratation). */
+			html[data-age-verified='1'] .age-verification-modal {
+				display: none !important;
+			}
+		</style>
+		<script nonce="%sveltekit.nonce%">
 			(function () {
 				var theme = 'system';
 				try {
@@ -16,14 +52,24 @@
 					var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 					document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
 				}
+
+				var ageVerified = false;
+				try {
+					ageVerified = localStorage.getItem('f95-france-age-verified') === 'true';
+				} catch (e) {}
+
+				document.documentElement.dataset.ageVerified = ageVerified ? '1' : '0';
+				if (ageVerified) {
+					if (document.cookie.indexOf('f95-france-age-verified=1') === -1) {
+						document.cookie = 'f95-france-age-verified=1; path=/; max-age=31536000; SameSite=Lax';
+					}
+				} else {
+					document.documentElement.classList.add('overflow-hidden');
+				}
 			})();
 		</script>
 		%sveltekit.head%
 	</head>
-	<!--
-		`off` : en dev, le HMR régénère les chunks (nodes/*.js) et les survols déclenchaient des précharges
-		qui échouent (NetworkError, « Preloading data failed »). En prod, tu peux repasser à `hover` si tu veux.
-	-->
 	<body data-sveltekit-preload-data="off">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>

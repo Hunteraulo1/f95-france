@@ -1,11 +1,11 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { hasGameAutoCheckColumn } from '$lib/server/schema-column-compat';
+import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 import { eq } from 'drizzle-orm';
 
-/** L’auto-check jeu (et donc sur les traductions) n’a de sens que pour les jeux F95Zone. */
-export function gameAutoCheckEnabledForWebsite(website: string): boolean {
-	return website === 'f95z';
-}
+export { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 
 /**
  * Valeur à persister pour `game.game_auto_check` : forcée à `false` si le site n’est pas F95Zone.
@@ -26,15 +26,31 @@ export function resolveGameAutoCheckForWebsite(
  * activé n’impose pas `ac` sur les traductions.
  */
 export async function getGameAllowsTranslationAutoCheck(gameId: string): Promise<boolean> {
-	const rows = await db
-		.select({ gameAutoCheck: table.game.gameAutoCheck, website: table.game.website })
-		.from(table.game)
-		.where(eq(table.game.id, gameId))
-		.limit(1);
-	const r = rows[0];
-	if (!r) return false;
-	if (!gameAutoCheckEnabledForWebsite(r.website)) return false;
-	return r.gameAutoCheck !== false;
+	try {
+		if (!(await hasGameAutoCheckColumn())) {
+			const rows = await db
+				.select({ website: table.game.website })
+				.from(table.game)
+				.where(eq(table.game.id, gameId))
+				.limit(1);
+			const r = rows[0];
+			if (!r) return false;
+			return gameAutoCheckEnabledForWebsite(r.website);
+		}
+
+		const rows = await db
+			.select({ gameAutoCheck: table.game.gameAutoCheck, website: table.game.website })
+			.from(table.game)
+			.where(eq(table.game.id, gameId))
+			.limit(1);
+		const r = rows[0];
+		if (!r) return false;
+		if (!gameAutoCheckEnabledForWebsite(r.website)) return false;
+		return r.gameAutoCheck !== false;
+	} catch (error) {
+		appLogWarn('worker', 'getGameAllowsTranslationAutoCheck fallback', error, { gameId });
+		return false;
+	}
 }
 
 /** Si l’auto-check traduction n’est pas autorisé, force `false` ; sinon conserve la demande. */
@@ -51,4 +67,13 @@ export async function clearAllTranslationAutoCheckForGame(gameId: string): Promi
 		.update(table.gameTranslation)
 		.set({ ac: false, updatedAt: new Date() })
 		.where(eq(table.gameTranslation.gameId, gameId));
+}
+
+/** Version checker inconnue (Unknown) : désactive l’auto-check jeu et sur toutes les traductions. */
+export async function disableGameAndTranslationAutoCheck(gameId: string): Promise<void> {
+	await db
+		.update(table.game)
+		.set({ gameAutoCheck: false, updatedAt: new Date() })
+		.where(eq(table.game.id, gameId));
+	await clearAllTranslationAutoCheckForGame(gameId);
 }

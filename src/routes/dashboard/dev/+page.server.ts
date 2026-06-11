@@ -12,8 +12,9 @@ import {
 	deleteGameTranslationsFromGoogleSheet,
 	syncDbToSpreadsheetBulk
 } from '$lib/server/google-sheets-sync';
-import { scrapeF95Thread } from '$lib/server/scrape/f95';
 // import type { Config } from '@sveltejs/adapter-vercel';
+import { assertPermission } from '$lib/server/permissions';
+import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -123,8 +124,6 @@ type LegacyTranslator = {
 	name?: string | number | null;
 	discordId?: string | number | null;
 	pages?: string[] | string | LegacyTranslatorPage[] | null;
-	tradCount?: number | string | null;
-	readCount?: number | string | null;
 };
 
 const normalizeLegacyText = (value: string | null | undefined): string =>
@@ -219,19 +218,6 @@ const parseLegacyBoolean = (value: unknown): boolean => {
 	return false;
 };
 
-const parseLegacyGames = (input: unknown): LegacyGame[] | null => {
-	if (Array.isArray(input)) return input as LegacyGame[];
-	if (
-		typeof input === 'object' &&
-		input !== null &&
-		'games' in input &&
-		Array.isArray((input as { games?: unknown }).games)
-	) {
-		return (input as { games: LegacyGame[] }).games;
-	}
-	return null;
-};
-
 const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
 	if (
 		typeof input === 'object' &&
@@ -243,15 +229,6 @@ const parseLegacyTranslators = (input: unknown): LegacyTranslator[] | null => {
 		Array.isArray((input as { data: { traductors?: unknown[] } }).data.traductors)
 	) {
 		return (input as { data: { traductors: LegacyTranslator[] } }).data.traductors;
-	}
-	return null;
-};
-
-const safeNumber = (value: unknown): number | null => {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string') {
-		const parsed = Number.parseInt(value, 10);
-		return Number.isFinite(parsed) ? parsed : null;
 	}
 	return null;
 };
@@ -326,9 +303,7 @@ const upsertLegacyTranslators = async (
 			id: table.translator.id,
 			name: table.translator.name,
 			discordId: table.translator.discordId,
-			pages: table.translator.pages,
-			tradCount: table.translator.tradCount,
-			readCount: table.translator.readCount
+			pages: table.translator.pages
 		})
 		.from(table.translator);
 
@@ -359,8 +334,6 @@ const upsertLegacyTranslators = async (
 					? String(item.discordId)
 					: null;
 		const pages = parsePages(item.pages);
-		const tradCount = safeNumber(item.tradCount) ?? 0;
-		const readCount = safeNumber(item.readCount) ?? 0;
 
 		let current =
 			(discordId ? byDiscordId.get(discordId) : undefined) ??
@@ -374,12 +347,10 @@ const upsertLegacyTranslators = async (
 					id,
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				});
 			}
-			const created = { id, name, discordId, pages, tradCount, readCount };
+			const created = { id, name, discordId, pages };
 			byName.set(name.toLowerCase(), created);
 			if (discordId) byDiscordId.set(discordId, created);
 			inserted++;
@@ -387,11 +358,7 @@ const upsertLegacyTranslators = async (
 		}
 
 		const shouldUpdate =
-			current.name !== name ||
-			(current.discordId ?? null) !== discordId ||
-			current.pages !== pages ||
-			current.tradCount !== tradCount ||
-			current.readCount !== readCount;
+			current.name !== name || (current.discordId ?? null) !== discordId || current.pages !== pages;
 
 		if (!shouldUpdate) continue;
 
@@ -401,14 +368,12 @@ const upsertLegacyTranslators = async (
 				.set({
 					name,
 					discordId,
-					pages,
-					tradCount,
-					readCount
+					pages
 				})
 				.where(eq(table.translator.id, current.id));
 		}
 
-		current = { ...current, name, discordId, pages, tradCount, readCount };
+		current = { ...current, name, discordId, pages };
 		byName.set(name.toLowerCase(), current);
 		if (discordId) byDiscordId.set(discordId, current);
 		updated++;
@@ -610,15 +575,25 @@ const upsertLegacyGames = async (
 			id: table.gameTranslation.id,
 			gameId: table.gameTranslation.gameId,
 			tversion: table.gameTranslation.tversion,
-			tlink: table.gameTranslation.tlink
+			tlink: table.gameTranslation.tlink,
+			translatorId: table.gameTranslation.translatorId,
+			translatorAlertsEnabled: table.gameTranslation.translatorAlertsEnabled
 		})
 		.from(table.gameTranslation);
 	const translationByStrictKey = new Map<string, string>();
+	const translationMetaById = new Map<
+		string,
+		{ translatorId: string | null; translatorAlertsEnabled: boolean }
+	>();
 	for (const row of existingTranslations) {
 		translationByStrictKey.set(
 			translationStrictKeyFromLegacy(row.gameId, row.tversion, row.tlink),
 			row.id
 		);
+		translationMetaById.set(row.id, {
+			translatorId: row.translatorId,
+			translatorAlertsEnabled: row.translatorAlertsEnabled
+		});
 	}
 	const gameAcStats = new Map<string, { total: number; hasAcTrue: boolean }>();
 	/** Clés strictes présentes dans le payload legacy (aligné sur upsert : tversion + tlink). */
@@ -864,6 +839,16 @@ const upsertLegacyGames = async (
 		} else {
 			if (!dryRun) {
 				await flushBeforeTranslationWrite();
+				const previousMeta = translationMetaById.get(existingTranslationId);
+				const translatorAlertsEnabled = resolveTranslatorAlertsEnabledOnWrite({
+					beforeTranslatorId: previousMeta?.translatorId,
+					afterTranslatorId: translatorId,
+					currentTranslatorAlertsEnabled: previousMeta?.translatorAlertsEnabled ?? true
+				});
+				translationMetaById.set(existingTranslationId, {
+					translatorId,
+					translatorAlertsEnabled
+				});
 				pendingTransUpdates.push(
 					db
 						.update(table.gameTranslation)
@@ -881,7 +866,8 @@ const upsertLegacyGames = async (
 							proofreaderId,
 							ttype: mappedTType ?? sql`${table.gameTranslation.ttype}`,
 							gameType: rowGameType,
-							ac: acValue
+							ac: acValue,
+							translatorAlertsEnabled
 						})
 						.where(eq(table.gameTranslation.id, existingTranslationId))
 				);
@@ -1033,9 +1019,7 @@ type LegacySyncMilestone = { atMs: number; message: string };
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Vérifier que l'utilisateur est admin
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+	await assertPermission(locals, 'dev.panel');
 
 	let configRow;
 	try {
@@ -1056,7 +1040,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const webhookStatus = {
 		updates: Boolean(effective?.discordWebhookUpdates?.trim()),
 		translators: Boolean(effective?.discordWebhookTranslators?.trim()),
-		admin: Boolean(effective?.discordWebhookProofreaders?.trim())
+		admin: Boolean(effective?.discordWebhookAdmin?.trim())
 	};
 
 	return {
@@ -1067,12 +1051,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		try {
-			const result = await runAutoCheckVersions();
+			const result = await runAutoCheckVersions({
+				refreshWebhookUrls: true,
+				logSource: 'worker'
+			});
 			await db
 				.update(table.config)
 				.set({
@@ -1083,7 +1067,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check lancé: ${result.updatedGames} jeu(x) mis à jour`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} déjà aligné(s), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
 				details: result
 			};
 		} catch (error: unknown) {
@@ -1096,14 +1080,7 @@ export const actions: Actions = {
 	},
 	testGoogleSheets: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est admin
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const spreadsheetId = (formData.get('spreadsheetId') as string)?.trim();
 
@@ -1165,7 +1142,7 @@ export const actions: Actions = {
 							success: false,
 							message: 'Authentification requise',
 							details:
-								"Une clé API Google ou une authentification OAuth2 est nécessaire pour accéder aux spreadsheets via l'API. Veuillez configurer l'une des deux méthodes dans les paramètres."
+								'Une clé API Google (GOOGLE_API_KEY) ou une authentification OAuth2 est nécessaire. Définissez les variables d’environnement côté serveur.'
 						};
 					}
 					return {
@@ -1182,7 +1159,7 @@ export const actions: Actions = {
 						success: false,
 						message: 'Clé API invalide',
 						details:
-							'La clé API configurée est invalide ou a expiré. Veuillez vérifier votre clé API dans les paramètres.'
+							'La clé API (GOOGLE_API_KEY) est invalide ou a expiré. Vérifiez la variable d’environnement sur le serveur.'
 					};
 				}
 
@@ -1220,14 +1197,7 @@ export const actions: Actions = {
 		}
 	},
 	testScrape: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const threadIdRaw = formData.get('threadId');
 		const website = (formData.get('website') as 'f95z' | 'lc' | 'other' | null) ?? null;
@@ -1242,16 +1212,17 @@ export const actions: Actions = {
 			};
 		}
 
-		if (!website || website !== 'f95z') {
+		if (!website || (website !== 'f95z' && website !== 'lc')) {
 			return {
 				success: false,
-				message: 'Le scraping de test ne supporte actuellement que les threads F95',
+				message: 'Le scraping de test ne supporte que F95Zone et LewdCorner',
 				details: null
 			};
 		}
 
 		try {
-			const data = await scrapeF95Thread(threadId);
+			const { scrapeThread } = await import('$lib/server/scrape');
+			const data = await scrapeThread(website, threadId);
 			return {
 				success: true,
 				message: 'Scrape réussi',
@@ -1266,56 +1237,8 @@ export const actions: Actions = {
 			};
 		}
 	},
-	importLegacyGamesJson: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null
-			};
-		}
-
-		const formData = await request.formData();
-		const payload = String(formData.get('legacyJson') ?? '').trim();
-
-		if (!payload) {
-			return {
-				success: false,
-				message: 'JSON requis',
-				details: 'Collez un JSON contenant un tableau "games".'
-			};
-		}
-
-		try {
-			const parsed = JSON.parse(payload) as unknown;
-			const games = parseLegacyGames(parsed);
-
-			if (!games || games.length === 0) {
-				return {
-					success: false,
-					message: 'Aucun jeu trouvé',
-					details: 'Le JSON doit être un tableau ou contenir { "games": [...] }.'
-				};
-			}
-
-			return {
-				success: true,
-				message: 'Import terminé',
-				details: await upsertLegacyGames(games)
-			};
-		} catch (error: unknown) {
-			return {
-				success: false,
-				message: "Erreur lors de l'import",
-				details: error instanceof Error ? error.message : 'Erreur inconnue'
-			};
-		}
-	},
 	syncLegacyApiTranslators: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1345,9 +1268,7 @@ export const actions: Actions = {
 		}
 	},
 	checkLegacyApiGames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1407,10 +1328,7 @@ export const actions: Actions = {
 		}
 	},
 	syncLegacyApiGames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		const t0 = Date.now();
@@ -1495,17 +1413,14 @@ export const actions: Actions = {
 		}
 	},
 	cleanupDuplicateTranslations: async ({ locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		try {
 			const before = (await db.execute(
-				sql`select count(*)::int as count from game_translation`
+				sql`select count(*) as count from game_translation`
 			)) as unknown as Array<{
-				count: number;
+				count: number | string;
 			}>;
-			const beforeCount = before[0]?.count ?? 0;
+			const beforeCount = Number(before[0]?.count ?? 0);
 
 			const { removed, duplicateIds } = await dedupeStrictDuplicateTranslations();
 			if (duplicateIds.length === 0) {
@@ -1542,10 +1457,7 @@ export const actions: Actions = {
 		}
 	},
 	clearAllTranslationNames: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1555,13 +1467,14 @@ export const actions: Actions = {
 					translationName: null,
 					updatedAt: new Date()
 				})
-				.where(sql`${table.gameTranslation.translationName} is not null`)
-				.returning({ id: table.gameTranslation.id });
+				.where(sql`${table.gameTranslation.translationName} is not null`);
 
 			return {
 				success: true,
 				message: 'Nom de traduction vidé pour toutes les traductions',
-				details: { updated: updated.length }
+				details: {
+					updated: (updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0
+				}
 			};
 		} catch (error: unknown) {
 			return {
@@ -1572,10 +1485,7 @@ export const actions: Actions = {
 		}
 	},
 	syncDbToSpreadsheet: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return { success: false, message: 'Accès non autorisé', details: null };
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		await request.formData();
 
 		try {
@@ -1598,16 +1508,7 @@ export const actions: Actions = {
 		}
 	},
 	testDiscordWebhook: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return {
-				success: false,
-				message: 'Accès non autorisé',
-				details: null,
-				channel: null,
-				httpStatus: null as number | null
-			};
-		}
-
+		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();
 		const raw = formData.get('channel');
 		const channel = raw === 'updates' || raw === 'translators' || raw === 'admin' ? raw : null;
@@ -1626,14 +1527,15 @@ export const actions: Actions = {
 		const urlByChannel = {
 			updates: cfg?.discordWebhookUpdates,
 			translators: cfg?.discordWebhookTranslators,
-			admin: cfg?.discordWebhookProofreaders
+			admin: cfg?.discordWebhookAdmin
 		} as const;
 
 		const url = urlByChannel[channel]?.trim();
 		if (!url) {
 			return {
 				success: false,
-				message: 'Aucune URL enregistrée pour ce canal (paramètres).',
+				message:
+					'Aucune URL pour ce canal : définissez la variable d’environnement correspondante (voir /dashboard/config).',
 				details: null,
 				channel,
 				httpStatus: null

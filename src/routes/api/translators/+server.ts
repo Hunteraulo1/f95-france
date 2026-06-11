@@ -1,6 +1,11 @@
 import { parseTranslatorCountFilters } from '$lib/server/api/translator-count-filters';
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
+import { pruneInactiveTranslatorsFromGoogleSheet } from '$lib/server/google-sheets-sync';
+import {
+	translatorReadCountExpr,
+	translatorTradCountExpr
+} from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -23,6 +28,14 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: filters.message }, { status: 400, headers: corsHeaders });
 		}
 
+		if (filters.activeOnly) {
+			try {
+				await pruneInactiveTranslatorsFromGoogleSheet();
+			} catch (err) {
+				console.error('Error pruning inactive translators from Google Sheet:', err);
+			}
+		}
+
 		const selectTranslators = () =>
 			db
 				.select({
@@ -30,8 +43,8 @@ export const GET: RequestHandler = async ({ url }) => {
 					name: translator.name,
 					discordId: translator.discordId,
 					pages: translator.pages,
-					tradCount: translator.tradCount,
-					readCount: translator.readCount,
+					tradCount: translatorTradCountExpr().as('tradCount'),
+					readCount: translatorReadCountExpr().as('readCount'),
 					createdAt: translator.createdAt,
 					updatedAt: translator.updatedAt
 				})

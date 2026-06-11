@@ -1,0 +1,140 @@
+# Ouvre ou met à jour une PR `ptb` → `main` quand une PR `dev` → `ptb` est fusionnée (sans fusion auto).
+#
+# Prérequis : création de PR par GITHUB_TOKEN (Settings → Actions → Workflow permissions).
+
+name: Release promote ptb → main
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - ptb
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Forcer l'ouverture de la PR (sans PR dev→ptb)
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-promote-ptb-to-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  SOURCE_BRANCH: ptb
+  TARGET_BRANCH: main
+
+jobs:
+  open-pr:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.ref == 'dev'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || 'ptb' }}
+          fetch-depth: 0
+
+      - name: Détecter version release
+        id: gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          if [ "$FORCE" = "true" ]; then
+            VERSION="v$(node -p "require('./package.json').version")"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Promotion forcée: $VERSION"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "PR fusionnée sur ptb: #${{ github.event.pull_request.number }} — ${PR_TITLE}"
+          VERSION="$(printf '%s\n%s' "$PR_TITLE" "$PR_BODY" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+          if [ -z "$VERSION" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "PR sans version semver (titre/corps) — ignorée."
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release détectée: $VERSION"
+
+      - name: Créer ou mettre à jour la PR (revue manuelle)
+        if: steps.gate.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          pr_number() {
+            gh pr list \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty'
+          }
+
+          EXISTING="$(pr_number)"
+          PTB_SHA="$(git rev-parse HEAD)"
+
+          TITLE=":bookmark: ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          BODY="PR ouverte après fusion de la PR dev→ptb (#${{ github.event.pull_request.number || 'manuel' }}).
+
+          - **Version** : \`${{ steps.gate.outputs.version }}\`
+          - **Source** : \`${SOURCE_BRANCH}\`
+          - **Cible** : \`${TARGET_BRANCH}\`
+          - **Commit ptb** : \`${PTB_SHA}\`
+          - **PR source** : \`${{ github.event.pull_request.html_url }}\`
+
+          **Fusion manuelle requise** — cette PR n'est ni approuvée ni fusionnée par Actions."
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR existante #$EXISTING — mise à jour"
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
+            echo "https://github.com/${{ github.repository }}/pull/$EXISTING"
+          else
+            set +e
+            CREATE_OUT="$(gh pr create \
+              --base "$TARGET_BRANCH" \
+              --head "$SOURCE_BRANCH" \
+              --title "$TITLE" \
+              --body "$BODY" 2>&1)"
+            CREATE_STATUS=$?
+            set -e
+            if [ "$CREATE_STATUS" -ne 0 ]; then
+              printf '%s\n' "$CREATE_OUT" >&2
+              if printf '%s' "$CREATE_OUT" | grep -q 'not permitted to create or approve pull requests'; then
+                echo "::error::Activez la creation de PR par Actions (Settings → Actions → Workflow permissions)."
+              fi
+              exit "$CREATE_STATUS"
+            fi
+            printf '%s\n' "$CREATE_OUT"
+            NUMBER="$(pr_number)"
+            if [ -z "$NUMBER" ]; then
+              echo "::error::PR créée mais numéro introuvable"
+              exit 1
+            fi
+            echo "https://github.com/${{ github.repository }}/pull/$NUMBER"
+          fi

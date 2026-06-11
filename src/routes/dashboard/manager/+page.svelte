@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { newToast, user } from '$lib/stores';
+	import { permissionGranted } from '$lib/permissions/check';
+	import { newToast } from '$lib/stores';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -31,8 +32,19 @@
 	/** Incrémenté à chaque recherche lancée : ignore les réponses d’une requête plus ancienne. */
 	let searchGeneration = 0;
 
+	interface PageData {
+		user: { role: string } | null;
+		permissions: string[];
+	}
+
+	let { data }: { data: PageData } = $props();
+
+	const canViewGameIds = $derived(
+		permissionGranted(data.user?.role, data.permissions, 'content.view_ids')
+	);
+
 	const searchGames = async (query: string, generation: number) => {
-		if (!query || query.trim().length < 1) {
+		if (!query || query.length < 1) {
 			searchResults = [];
 			showResults = false;
 			return;
@@ -70,8 +82,7 @@
 
 		debounceTimer = setTimeout(() => {
 			debounceTimer = null;
-			const trimmed = query.trim();
-			if (trimmed.length < 1) {
+			if (query.length < 1) {
 				searchResults = [];
 				showResults = false;
 				isLoading = false;
@@ -96,16 +107,17 @@
 
 	const handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement;
-		searchQuery = target.value;
+		searchQuery = target.value.trim();
 		debouncedSearch(searchQuery);
 	};
 
 	const getAddGameHref = () => {
-		const q = searchQuery.trim();
-		const maybeThreadId = Number.parseInt(q, 10);
-		const isNumericId = q.length > 0 && !Number.isNaN(maybeThreadId) && maybeThreadId > 0;
-		if (isNumericId) {
-			return `/dashboard/manager/add?threadId=${encodeURIComponent(String(maybeThreadId))}`;
+		const q = searchQuery;
+		if (/^\d+$/.test(q)) {
+			const threadId = Number.parseInt(q, 10);
+			if (threadId > 0) {
+				return `/dashboard/manager/add?threadId=${encodeURIComponent(String(threadId))}`;
+			}
 		}
 		return '/dashboard/manager/add';
 	};
@@ -126,6 +138,7 @@
 						class="input-ghost"
 						placeholder="Rechercher un jeu par nom ou threadId..."
 						oninput={handleInput}
+						value={searchQuery}
 					/>
 					{#if searchQuery}
 						<button type="button" class="btn btn-ghost btn-sm" onclick={clearSearch}>
@@ -149,6 +162,9 @@
 							<div class="p-4 text-center text-base-content/60">Aucun jeu trouvé</div>
 						{:else}
 							{#each searchResults as game (game.id)}
+								{@const gameImageSrc = resolveGameImageSrc(game.image, {
+									website: game.website
+								})}
 								<div
 									class="flex items-stretch border-b border-base-300 last:border-b-0 hover:bg-base-200"
 								>
@@ -156,13 +172,15 @@
 										href="/dashboard/game/{game.id}"
 										class="flex min-w-0 flex-1 cursor-pointer items-start gap-3 p-4"
 									>
-										<img
-											src={resolveGameImageSrc(game.image, { website: game.website })}
-											alt={game.name}
-											class="h-12 w-12 rounded object-cover"
-											loading="lazy"
-											referrerpolicy="no-referrer"
-										/>
+										{#if gameImageSrc}
+											<img
+												src={gameImageSrc}
+												alt={game.name}
+												class="h-12 w-12 rounded object-cover"
+												loading="lazy"
+												referrerpolicy="no-referrer"
+											/>
+										{/if}
 										<div class="min-w-0 flex-1">
 											<h3 class="truncate text-base font-semibold">{game.name}</h3>
 											<p class="truncate text-sm text-base-content/70">
@@ -186,7 +204,7 @@
 											</div>
 										</div>
 									</a>
-									{#if $user?.role === 'superadmin'}
+									{#if canViewGameIds}
 										<button
 											type="button"
 											class="absolute right-0 mt-3 mr-2 badge shrink-0 self-start overflow-hidden badge-outline badge-sm text-nowrap hover:bg-base-200"

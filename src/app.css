@@ -1,13 +1,200 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
-@plugin 'daisyui/index.js' {
-	themes:
-		light --default,
-		dark --prefersdark;
+@plugin 'daisyui';
+
+@plugin 'daisyui/theme' {
+	name: 'light';
+	default: true;
+
+	--color-base-content: var(--color-slate-800);
+}
+
+@plugin 'daisyui/theme' {
+	name: 'dark';
+	prefersdark: true;
+
+	--color-ext-background: hsl(222.2 84% 7%);
+	--color-ext-foreground: hsl(210 40% 98%);
+	--color-ext-card: hsl(222.2 47.4% 11.2%);
+	--color-ext-border: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary: hsl(217.2 32.6% 17.5%);
+	--color-ext-secondary-foreground: hsl(210 40% 98%);
 }
 
 @theme {
 	--breakpoint-xs: 30rem;
+	--animate-text: text 5s ease infinite;
+	--animate-drift: drift 6s ease-in-out infinite;
+	--animate-float-sheet: floatSheet 8s ease-in-out infinite;
+	--animate-float-sheet-reverse: floatSheetReverse 8s ease-in-out infinite;
+	--animate-neon-glow: neon-glow 2s ease-in-out infinite alternate;
+
+	--color-ext-background: hsl(0 0% 87%);
+	--color-ext-foreground: hsl(222.2 84% 4.9%);
+	--color-ext-card: hsl(0 0% 95%);
+	--color-ext-border: hsl(214.3 31.8% 81.4%);
+	--color-ext-secondary: hsl(210 20% 80%);
+	--color-ext-secondary-foreground: hsl(222.2 47.4% 11.2%);
+
+	@keyframes text {
+		0%,
+		100% {
+			background-size: 200% 200%;
+			background-position: left center;
+		}
+		50% {
+			background-size: 200% 200%;
+			background-position: right center;
+		}
+	}
+
+	@keyframes drift {
+		0%,
+		100% {
+			transform: translateX(0);
+		}
+		50% {
+			transform: translateX(160%);
+		}
+	}
+
+	@keyframes floatSheet {
+		0%,
+		100% {
+			transform: rotateX(14deg) rotateY(-16deg) rotateZ(3deg) translateY(0);
+		}
+		50% {
+			transform: rotateX(12deg) rotateY(-12deg) rotateZ(2deg) translateY(-8px);
+		}
+	}
+
+	@keyframes floatSheetReverse {
+		0%,
+		100% {
+			transform: rotateX(14deg) rotateY(16deg) rotateZ(-3deg) translateY(0);
+		}
+		50% {
+			transform: rotateX(12deg) rotateY(12deg) rotateZ(-2deg) translateY(8px);
+		}
+	}
+
+	@keyframes neon-glow {
+		0% {
+			text-shadow:
+				0 0 5px color-mix(in oklab, #ff005e 52%, transparent),
+				0 0 12px color-mix(in oklab, #ff005e 38%, transparent),
+				0 0 24px color-mix(in oklab, #ff005e 22%, transparent),
+				0 0 48px color-mix(in oklab, #ff005e 8%, transparent);
+		}
+		100% {
+			text-shadow:
+				0 0 8px color-mix(in oklab, #00d4ff 52%, transparent),
+				0 0 16px color-mix(in oklab, #00d4ff 38%, transparent),
+				0 0 32px color-mix(in oklab, #00d4ff 22%, transparent),
+				0 0 64px color-mix(in oklab, #00d4ff 8%, transparent);
+		}
+	}
+
+	@keyframes animStar {
+		from {
+			transform: translateY(0);
+		}
+		to {
+			transform: translateY(calc(var(--star-travel) * -1));
+		}
+	}
+}
+
+.username-superadmin {
+	background-image: linear-gradient(
+		90deg,
+		var(--color-primary),
+		var(--color-secondary),
+		var(--color-accent),
+		var(--color-primary)
+	);
+	background-size: 200% auto;
+	-moz-background-clip: text;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.badge.username-superadmin {
+	border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-base-100) 88%, transparent);
+}
+
+.username-role-primary {
+	color: var(--color-primary);
+}
+.badge.username-role-primary {
+	border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
+	color: var(--color-primary);
+}
+
+.username-role-secondary {
+	color: var(--color-secondary);
+}
+.badge.username-role-secondary {
+	border-color: color-mix(in oklch, var(--color-secondary) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-secondary) 12%, var(--color-base-100));
+	color: var(--color-secondary);
+}
+
+.username-role-accent {
+	color: var(--color-accent);
+}
+.badge.username-role-accent {
+	border-color: color-mix(in oklch, var(--color-accent) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-accent) 12%, var(--color-base-100));
+	color: var(--color-accent);
+}
+
+.username-role-info {
+	color: var(--color-info);
+}
+.badge.username-role-info {
+	border-color: color-mix(in oklch, var(--color-info) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-info) 12%, var(--color-base-100));
+	color: var(--color-info);
+}
+
+.username-role-success {
+	color: var(--color-success);
+}
+.badge.username-role-success {
+	border-color: color-mix(in oklch, var(--color-success) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-success) 12%, var(--color-base-100));
+	color: var(--color-success);
+}
+
+.username-role-warning {
+	color: var(--color-warning);
+}
+.badge.username-role-warning {
+	border-color: color-mix(in oklch, var(--color-warning) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-warning) 12%, var(--color-base-100));
+	color: var(--color-warning);
+}
+
+.username-role-error {
+	color: var(--color-error);
+}
+.badge.username-role-error {
+	border-color: color-mix(in oklch, var(--color-error) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-error) 12%, var(--color-base-100));
+	color: var(--color-error);
+}
+
+.username-role-neutral {
+	color: var(--color-neutral);
+}
+.badge.username-role-neutral {
+	border-color: color-mix(in oklch, var(--color-neutral) 45%, var(--color-base-300));
+	background-color: color-mix(in oklch, var(--color-neutral) 12%, var(--color-base-100));
+	color: var(--color-neutral);
 }
 
 /*

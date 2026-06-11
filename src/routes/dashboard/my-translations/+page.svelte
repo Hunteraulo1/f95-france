@@ -1,7 +1,14 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import AbandonTranslationModal from '$lib/components/dashboard/AbandonTranslationModal.svelte';
+	import FixedDropdownMenu from '$lib/components/dashboard/FixedDropdownMenu.svelte';
+	import ResumeTranslationModal from '$lib/components/dashboard/ResumeTranslationModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import { createFormEnhance } from '$lib/forms/enhance';
+	import { newToast } from '$lib/stores';
+	import EllipsisVertical from '@lucide/svelte/icons/ellipsis-vertical';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
@@ -12,6 +19,12 @@
 
 	let searchQuery = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	let abandonTarget = $state<(typeof data.translations)[number] | null>(null);
+	let resumeTarget = $state<(typeof data.translations)[number] | null>(null);
+	let abandoning = $state(false);
+	let resuming = $state(false);
+	let abandonForm = $state<HTMLFormElement | undefined>(undefined);
+	let resumeForm = $state<HTMLFormElement | undefined>(undefined);
 
 	const roleOptions = [
 		{ value: 'all', label: 'Toutes' },
@@ -113,6 +126,77 @@
 		if (!id) return null;
 		return data.staffById?.[id] ?? { name: id, username: null };
 	};
+
+	const openAbandonModal = (t: (typeof data.translations)[number]) => {
+		abandonTarget = t;
+	};
+
+	const closeAbandonModal = () => {
+		if (abandoning) return;
+		abandonTarget = null;
+	};
+
+	const openResumeModal = (t: (typeof data.translations)[number]) => {
+		resumeTarget = t;
+	};
+
+	const closeResumeModal = () => {
+		if (resuming) return;
+		resumeTarget = null;
+	};
+
+	const confirmAbandonTranslation = () => {
+		abandonForm?.requestSubmit();
+	};
+
+	const confirmResumeTranslation = () => {
+		resumeForm?.requestSubmit();
+	};
+
+	const abandonTranslationEnhance = createFormEnhance({
+		updateOnlyOnSuccess: true,
+		invalidateAll: true,
+		onStart: () => {
+			abandoning = true;
+		},
+		onFailure: (message) => {
+			abandoning = false;
+			newToast({ alertType: 'error', message });
+		},
+		onSuccess: (result) => {
+			abandoning = false;
+			abandonTarget = null;
+			const message =
+				(result.data as { message?: string } | undefined)?.message ??
+				'Traduction abandonnée pour vous.';
+			newToast({ alertType: 'success', message });
+		}
+	});
+
+	const resumeTranslationEnhance = createFormEnhance({
+		updateOnlyOnSuccess: true,
+		invalidateAll: true,
+		onStart: () => {
+			resuming = true;
+		},
+		onFailure: (message) => {
+			resuming = false;
+			newToast({ alertType: 'error', message });
+		},
+		onSuccess: (result) => {
+			resuming = false;
+			resumeTarget = null;
+			const message =
+				(result.data as { message?: string } | undefined)?.message ??
+				'Suivi de la traduction repris.';
+			newToast({ alertType: 'success', message });
+		}
+	});
+
+	const rowHasMenuActions = (t: (typeof data.translations)[number]) =>
+		Boolean(
+			(t.tlink && t.tlink.trim()) || t.canMuteTranslatorAlerts || t.canResumeTranslatorAlerts
+		);
 </script>
 
 <div class="space-y-6">
@@ -223,10 +307,10 @@
 						<th>Jeu</th>
 						<th>Traduction</th>
 						<th>Mise à jour</th>
-						<th>Statut</th>
+						<th>Statut traduction</th>
 						<th>Versions</th>
 						<th>Rôle</th>
-						<th class="text-right">Lien de traduction</th>
+						<th class="text-right">Actions</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -247,7 +331,9 @@
 								</div>
 							</td>
 							<td class="text-center text-nowrap">
-								{#if t.isOutdated}
+								{#if t.isFollowAbandoned}
+									<span class="badge badge-sm badge-error">Abandonnée</span>
+								{:else if t.isOutdated}
 									<span class="badge badge-sm badge-warning">Pas à jour</span>
 								{:else}
 									<span class="badge badge-sm badge-success">À jour</span>
@@ -262,7 +348,7 @@
 								class="max-w-40 overflow-hidden text-sm text-nowrap text-ellipsis hover:overflow-visible"
 							>
 								<div class="flex flex-col">
-									<span>Ref: {t.version || '—'}</span>
+									<span>Ref: {t.referenceVersion || '—'}</span>
 									<span>Trad: {t.tversion || '—'}</span>
 									<span class="text-xs opacity-70">Jeu: {t.game.gameVersion || '—'}</span>
 								</div>
@@ -300,16 +386,47 @@
 								{/if}
 							</td>
 							<td class="text-right">
-								{#if t.tlink && t.tlink.trim().length > 0}
-									<a
-										class="btn btn-ghost btn-sm"
-										href={t.tlink}
-										target="_blank"
-										rel="noopener noreferrer"
-										aria-label="Ouvrir le lien"
-									>
-										<ExternalLink size={16} />
-									</a>
+								{#if rowHasMenuActions(t)}
+									<FixedDropdownMenu label="Actions pour {t.game.name}">
+										{#snippet trigger()}
+											<EllipsisVertical size={18} />
+										{/snippet}
+										{#if t.tlink && t.tlink.trim().length > 0}
+											<li>
+												<a
+													href={t.tlink}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="flex items-center gap-2"
+												>
+													<ExternalLink size={16} />
+													Ouvrir le lien de téléchargement
+												</a>
+											</li>
+										{/if}
+										{#if t.canResumeTranslatorAlerts}
+											<li>
+												<button
+													type="button"
+													class="text-primary"
+													onclick={() => openResumeModal(t)}
+												>
+													Reprendre la traduction
+												</button>
+											</li>
+										{/if}
+										{#if t.canMuteTranslatorAlerts}
+											<li>
+												<button
+													type="button"
+													class="text-error"
+													onclick={() => openAbandonModal(t)}
+												>
+													Abandonner la traduction
+												</button>
+											</li>
+										{/if}
+									</FixedDropdownMenu>
 								{:else}
 									<span class="text-sm opacity-60">—</span>
 								{/if}
@@ -328,3 +445,43 @@
 		/>
 	{/if}
 </div>
+
+{#if abandonTarget}
+	<form
+		bind:this={abandonForm}
+		method="POST"
+		action="?/abandonTranslation"
+		use:enhance={abandonTranslationEnhance}
+		class="hidden"
+		aria-hidden="true"
+	>
+		<input type="hidden" name="translationId" value={abandonTarget.id} />
+	</form>
+	<AbandonTranslationModal
+		gameName={abandonTarget.game.name}
+		translationName={abandonTarget.translationName}
+		confirming={abandoning}
+		onClose={closeAbandonModal}
+		onConfirm={confirmAbandonTranslation}
+	/>
+{/if}
+
+{#if resumeTarget}
+	<form
+		bind:this={resumeForm}
+		method="POST"
+		action="?/resumeTranslation"
+		use:enhance={resumeTranslationEnhance}
+		class="hidden"
+		aria-hidden="true"
+	>
+		<input type="hidden" name="translationId" value={resumeTarget.id} />
+	</form>
+	<ResumeTranslationModal
+		gameName={resumeTarget.game.name}
+		translationName={resumeTarget.translationName}
+		confirming={resuming}
+		onClose={closeResumeModal}
+		onConfirm={confirmResumeTranslation}
+	/>
+{/if}

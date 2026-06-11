@@ -1,6 +1,12 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import {
+	checkLoginThrottle,
+	loginRequiresCaptcha,
+	recordLoginFailure
+} from '$lib/server/login-throttle';
 import { getRpID, savePasskeyChallenge } from '$lib/server/passkeys';
+import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '$lib/server/turnstile';
 import {
 	generateAuthenticationOptions,
 	type PublicKeyCredentialRequestOptionsJSON
@@ -8,6 +14,8 @@ import {
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
+
+const PASSKEY_LOGIN_FAILURE_MESSAGE = 'Connexion par clé d’accès impossible avec ces informations.';
 
 const serviceUnavailable = () =>
 	json(
@@ -18,12 +26,24 @@ const serviceUnavailable = () =>
 		{ status: 503 }
 	);
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+	const throttle = await checkLoginThrottle(event);
+	if (!throttle.ok) {
+		return json({ error: throttle.message }, { status: 429 });
+	}
+
 	let body: { username?: string };
 	try {
-		body = (await request.json()) as { username?: string };
+		body = (await event.request.json()) as { username?: string } & Record<string, unknown>;
 	} catch {
 		return json({ error: 'Requête JSON invalide.' }, { status: 400 });
+	}
+
+	if (await loginRequiresCaptcha(event)) {
+		const captcha = await verifyTurnstileFromForm(event, extractTurnstileTokenFromJson(body));
+		if (!captcha.ok) {
+			return json({ error: captcha.message, requiresCaptcha: true }, { status: 400 });
+		}
 	}
 
 	try {
@@ -36,7 +56,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				.limit(1);
 
 			if (!user) {
-				return json({ error: 'Utilisateur introuvable.' }, { status: 404 });
+				await recordLoginFailure(event);
+				return json(
+					{ error: PASSKEY_LOGIN_FAILURE_MESSAGE, requiresCaptcha: true },
+					{ status: 400 }
+				);
 			}
 
 			const passkeys = await db
@@ -47,11 +71,15 @@ export const POST: RequestHandler = async ({ request }) => {
 				.where(eq(table.passkey.userId, user.id));
 
 			if (passkeys.length === 0) {
-				return json({ error: "Aucune clé d'accès enregistrée pour ce compte." }, { status: 400 });
+				await recordLoginFailure(event);
+				return json(
+					{ error: PASSKEY_LOGIN_FAILURE_MESSAGE, requiresCaptcha: true },
+					{ status: 400 }
+				);
 			}
 
 			const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
-				rpID: getRpID(request.url),
+				rpID: getRpID(event.request.url),
 				userVerification: 'preferred',
 				allowCredentials: passkeys.map((p) => ({
 					id: p.credentialId
@@ -67,9 +95,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ options });
 		}
 
-		// Username optionnel: support des passkeys discoverable (resident credentials).
 		const options: PublicKeyCredentialRequestOptionsJSON = await generateAuthenticationOptions({
-			rpID: getRpID(request.url),
+			rpID: getRpID(event.request.url),
 			userVerification: 'preferred'
 		});
 		await savePasskeyChallenge({

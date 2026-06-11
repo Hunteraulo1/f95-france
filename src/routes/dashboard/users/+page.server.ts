@@ -1,53 +1,117 @@
+import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
+import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
+import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
 import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
+import {
+	fetchLastApiActivityByUserIds,
+	resolveLastConnectionAt
+} from '$lib/server/user-last-connection';
+import {
+	assertCanAssignUserRole,
+	assertCanManageUserWithRole,
+	listRolesAssignableToUsers
+} from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, like, ne, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
 
-export const load: PageServerLoad = async ({ locals, url }) => {
-	if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-		throw new Error('Accès non autorisé');
-	}
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 
+export const load: PageServerLoad = async ({ locals, url }) => {
+	await assertPermission(locals, 'users.manage');
+
+	const canViewUserEmails = hasPermission(locals, 'users.view_email');
+
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
 	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
 	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-	const [totalUsersResult, translatorsList] = await Promise.all([
-		db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user),
-		db
-			.select({
-				id: table.translator.id,
-				name: table.translator.name,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.orderBy(table.translator.name)
+	const searchWhere = q
+		? or(
+				like(table.user.username, `%${escapeLike(q)}%`),
+				...(canViewUserEmails ? [like(table.user.email, `%${escapeLike(q)}%`)] : [])
+			)
+		: undefined;
+
+	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user);
+	const translatorsListPromise = db
+		.select({
+			id: table.translator.id,
+			name: table.translator.name,
+			userId: table.translator.userId
+		})
+		.from(table.translator)
+		.orderBy(table.translator.name);
+
+	const [[totalUsersResult], translatorsList] = await Promise.all([
+		searchWhere ? countBase.where(searchWhere) : countBase,
+		translatorsListPromise
 	]);
 
-	const totalUsers = Number(totalUsersResult[0]?.count ?? 0);
+	const totalUsers = Number(totalUsersResult?.count ?? 0);
 	const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
 	const page = Math.min(requestedPage, totalPages);
+	const offset = (page - 1) * PAGE_SIZE;
 
-	const users = await db
+	const listBase = db
 		.select({
 			id: table.user.id,
 			username: table.user.username,
 			email: table.user.email,
 			role: table.user.role,
 			avatar: table.user.avatar,
-			createdAt: table.user.createdAt
+			createdAt: table.user.createdAt,
+			lastSeenAt: table.user.lastSeenAt
 		})
-		.from(table.user)
+		.from(table.user);
+
+	const users = await (searchWhere ? listBase.where(searchWhere) : listBase)
 		.orderBy(table.user.createdAt)
 		.limit(PAGE_SIZE)
-		.offset((page - 1) * PAGE_SIZE);
+		.offset(offset);
+
+	const lastApiActivityByUserId = await fetchLastApiActivityByUserIds(users.map((u) => u.id));
+	const now = new Date();
+	const usersWithLiveLastConnection = users.map((u) => ({
+		id: u.id,
+		username: u.username,
+		email: u.email,
+		role: u.role,
+		avatar: u.avatar,
+		createdAt: u.createdAt,
+		lastConnectionAt:
+			u.id === locals.user?.id
+				? now
+				: resolveLastConnectionAt(u.lastSeenAt, lastApiActivityByUserId.get(u.id))
+	}));
+
+	const appRoles = await listAppRoles();
+	const roles = await listRolesAssignableToUsers(
+		locals,
+		appRoles.map((r) => ({
+			slug: r.slug,
+			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
+			isSystem: r.isSystem
+		}))
+	);
+
+	const usersForClient = usersWithLiveLastConnection.map((u) => ({
+		...u,
+		email: formatUserEmailForDisplay(u.email, canViewUserEmails)
+	}));
 
 	return {
-		users,
+		users: usersForClient,
 		translators: translatorsList,
+		roles,
+		canViewUserEmails,
+		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
+		q,
 		totalUsers,
 		page,
 		pageSize: PAGE_SIZE,
@@ -57,14 +121,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	updateUser: async ({ request, locals }) => {
-		if (!locals.user || (locals.user.role !== 'admin' && locals.user.role !== 'superadmin')) {
-			return fail(403, { message: 'Accès non autorisé' });
-		}
+		await assertPermission(locals, 'users.manage');
+
+		const canViewUserEmails = hasPermission(locals, 'users.view_email');
 
 		const formData = await request.formData();
 		const userId = formData.get('userId') as string;
 		const username = formData.get('username') as string;
-		const email = formData.get('email') as string;
+		const emailRaw = formData.get('email');
+		const email = typeof emailRaw === 'string' ? emailRaw.trim() : '';
 		const role = formData.get('role') as string;
 		const avatar = formData.get('avatar') as string;
 		const linkedTranslatorRaw = formData.get('linkedTranslatorId');
@@ -73,11 +138,15 @@ export const actions: Actions = {
 				? linkedTranslatorRaw.trim()
 				: '';
 
-		if (!userId || !username || !email || !role) {
-			return fail(400, { message: 'Tous les champs sont requis' });
+		if (!userId || !username || !role) {
+			return fail(400, { message: 'Tous les champs requis sont manquants' });
 		}
 
-		if (!['user', 'translator', 'admin', 'superadmin'].includes(role)) {
+		if (canViewUserEmails && !email) {
+			return fail(400, { message: 'L’adresse email est requise' });
+		}
+
+		if (!(await roleExists(role))) {
 			return fail(400, { message: 'Rôle invalide' });
 		}
 
@@ -93,7 +162,8 @@ export const actions: Actions = {
 
 			const currentUser = await db
 				.select({
-					role: table.user.role
+					role: table.user.role,
+					email: table.user.email
 				})
 				.from(table.user)
 				.where(eq(table.user.id, userId))
@@ -104,42 +174,38 @@ export const actions: Actions = {
 			}
 
 			const currentUserRole = currentUser[0].role;
+			const emailToSave = canViewUserEmails ? email : currentUser[0].email;
+			const emailChanged = canViewUserEmails && emailToSave !== currentUser[0].email;
 
-			if ((role === 'admin' || role === 'superadmin') && locals.user.role !== 'superadmin') {
-				return fail(403, {
-					message:
-						role === 'admin'
-							? "Vous n'avez pas les permissions pour définir un admin"
-							: "Vous n'avez pas les permissions pour définir un superadmin"
-				});
+			const manageCheck = await assertCanManageUserWithRole(locals, currentUserRole, userId);
+			if (!manageCheck.allowed) {
+				return fail(403, { message: manageCheck.message });
 			}
 
-			if (currentUserRole === 'superadmin' && locals.user.role !== 'superadmin') {
-				return fail(403, {
-					message: "Vous n'avez pas les permissions pour modifier un superadmin"
-				});
-			}
-
-			// Un admin ne peut pas modifier un autre admin (sauf lui-même).
-			if (
-				currentUserRole === 'admin' &&
-				locals.user.role === 'admin' &&
-				locals.user.id !== userId
-			) {
-				return fail(403, {
-					message: 'Un admin ne peut pas modifier un autre admin'
-				});
+			if (role !== currentUserRole) {
+				const assignCheck = await assertCanAssignUserRole(locals, role);
+				if (!assignCheck.allowed) {
+					return fail(403, { message: assignCheck.message });
+				}
 			}
 
 			await db
 				.update(table.user)
 				.set({
 					username,
-					email,
+					email: emailToSave,
 					role,
-					avatar: avatar || ''
+					avatar: avatar || '',
+					...(emailChanged ? { emailVerifiedAt: null } : {})
 				})
 				.where(eq(table.user.id, userId));
+
+			if (emailChanged) {
+				const { sendVerificationEmailForUser } = await import('$lib/server/email-verification');
+				await sendVerificationEmailForUser(userId).catch((error) => {
+					console.error('Erreur envoi email de vérification après changement email:', error);
+				});
+			}
 
 			if (linkedTranslatorId) {
 				const tr = await db
@@ -175,6 +241,64 @@ export const actions: Actions = {
 			}
 
 			return fail(500, { message: "Erreur lors de la mise à jour de l'utilisateur" });
+		}
+	},
+
+	sendPasswordReset: async ({ request, locals, url }) => {
+		await assertPermission(locals, 'users.manage');
+
+		const formData = await request.formData();
+		const userId = formData.get('userId') as string;
+
+		if (!userId) {
+			return fail(400, { message: 'Utilisateur manquant' });
+		}
+
+		const [user] = await db
+			.select({
+				id: table.user.id,
+				role: table.user.role,
+				username: table.user.username
+			})
+			.from(table.user)
+			.where(eq(table.user.id, userId))
+			.limit(1);
+
+		if (!user) {
+			return fail(404, { message: 'Utilisateur non trouvé' });
+		}
+
+		const manageCheck = await assertCanManageUserWithRole(locals, user.role, userId);
+		if (!manageCheck.allowed) {
+			return fail(403, { message: manageCheck.message });
+		}
+
+		const result = await sendPasswordResetEmailForUser(userId, {
+			requestOrigin: url.origin
+		});
+
+		if (result.ok) {
+			return {
+				success: true,
+				message: `Un email de réinitialisation a été envoyé à ${user.username}.`
+			};
+		}
+
+		switch (result.reason) {
+			case 'cooldown':
+				return fail(429, {
+					message:
+						'Un email de réinitialisation a déjà été envoyé récemment. Veuillez patienter 2 minutes.'
+				});
+			case 'send_failed':
+				return fail(502, {
+					message:
+						'Impossible d’envoyer l’email pour le moment. Vérifiez la configuration SMTP ou réessayez plus tard.'
+				});
+			case 'user_not_found':
+				return fail(404, { message: 'Utilisateur non trouvé' });
+			default:
+				return fail(500, { message: 'Erreur lors de l’envoi de l’email de réinitialisation' });
 		}
 	}
 };

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
+	import { isValidRequiredHttpUrl } from '$lib/utils/link-validation';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import Link2Off from '@lucide/svelte/icons/link-2-off';
@@ -97,7 +99,7 @@
 </script>
 
 <div class={className} class:hidden={!step || !active?.includes(step)}>
-	<div class="mb-1 flex items-center gap-2">
+	<div class="flex items-center gap-2">
 		<label for={name}>{title}:</label>
 		{#if name === 'translationName'}
 			<div class="tooltip tooltip-right" data-tip="Exemple : Saison 1">
@@ -135,18 +137,19 @@
 			onblur={handleBlur}
 			disabled={(name === 'link' && gameLinkLocked) ||
 				(name === 'tlink' && tlinkLocked) ||
-				(name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)) ||
+				(name === 'ac' &&
+					(!gameAutoCheckEnabledForWebsite(game.website) || game.gameAutoCheck === false)) ||
 				(name === 'threadId' && game.website === 'other') ||
 				(name === 'tversion' && tversionLocked)}
 			bind:value={game[name]}
 			{type}
-			class={type === 'checkbox' ? 'checkbox checkbox-lg' : 'input-bordered input w-full'}
+			class={type === 'checkbox' ? 'checkbox checkbox-lg' : 'input-bordered input mt-1 w-full'}
 			class:input-error={invalid}
 			class:input-warning={warn}
 		/>
 		{#if name === 'tversion'}
 			<button
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.gameVersion}
 				class:btn-primary={!!game.gameVersion}
 				disabled={tversionLocked}
@@ -160,7 +163,7 @@
 			</button>
 		{:else if name === 'version'}
 			<button
-				class="btn w-min"
+				class="btn mt-1 w-min"
 				class:btn-disable={!game.gameVersion}
 				class:btn-primary={!!game.gameVersion}
 				type="button"
@@ -173,33 +176,49 @@
 				<Copy size="1rem" />
 			</button>
 		{:else if name === 'link'}
-			<a
-				href={game.link}
-				target="_blank"
-				class="btn w-min"
-				class:btn-disable={!game.link}
-				class:btn-primary={game.link}
-			>
-				{#if game.link}
+			{@const gameLinkHref = typeof game.link === 'string' ? game.link.trim() : ''}
+			{#if gameLinkHref && isValidRequiredHttpUrl(gameLinkHref)}
+				<a
+					href={gameLinkHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn mt-1 w-min btn-primary"
+					aria-label="Ouvrir le lien du jeu"
+				>
 					<Link2 size="1rem" />
-				{:else}
+				</a>
+			{:else}
+				<button
+					type="button"
+					class="btn mt-1 w-min btn-disable"
+					disabled
+					aria-label="Lien du jeu indisponible"
+				>
 					<Link2Off size="1rem" />
-				{/if}
-			</a>
+				</button>
+			{/if}
 		{:else if name === 'tlink'}
-			<a
-				href={game.tlink}
-				target="_blank"
-				class="btn w-min"
-				class:btn-disable={!game.tlink}
-				class:btn-primary={game.tlink}
-			>
-				{#if game.tlink}
+			{@const translationLinkHref = typeof game.tlink === 'string' ? game.tlink.trim() : ''}
+			{#if translationLinkHref && isValidRequiredHttpUrl(translationLinkHref)}
+				<a
+					href={translationLinkHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn mt-1 w-min btn-primary"
+					aria-label="Ouvrir le lien de traduction"
+				>
 					<Link2 size="1rem" />
-				{:else}
+				</a>
+			{:else}
+				<button
+					type="button"
+					class="btn mt-1 w-min btn-disable"
+					disabled
+					aria-label="Lien de traduction indisponible"
+				>
 					<Link2Off size="1rem" />
-				{/if}
-			</a>
+				</button>
+			{/if}
 		{/if}
 		{@render children?.()}
 	</div>

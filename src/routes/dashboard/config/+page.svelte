@@ -3,6 +3,7 @@
 	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
@@ -13,8 +14,22 @@
 
 	let { data }: Props = $props();
 
+	const canEditConfig = $derived(data.canEditConfig);
+	const canManageMaintenance = $derived(data.canManageMaintenance);
+	const canSave = $derived(data.canSave);
+
 	let configError = $state<string | null>(null);
 	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
+
+	let appName = $state('');
+	let googleSpreadsheetId = $state('');
+	let maintenanceMode = $state(false);
+
+	$effect(() => {
+		appName = data.config?.appName ?? 'F95 France';
+		googleSpreadsheetId = data.config?.googleSpreadsheetId ?? '';
+		maintenanceMode = Boolean(data.config?.maintenanceMode);
+	});
 
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
@@ -40,6 +55,13 @@
 	<!-- Configuration de l'application -->
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Configuration de l'application</h2>
+		{#if !canSave}
+			<div role="alert" class="alert alert-info">
+				<span
+					>Accès en lecture seule — les modifications nécessitent les droits d’écriture appropriés.</span
+				>
+			</div>
+		{/if}
 
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 			<div class="card-body gap-6 sm:p-8">
@@ -51,21 +73,16 @@
 				<form
 					method="POST"
 					action="?/updateConfig"
-					use:enhance={() => {
-						configError = null;
-						return async function ({ result, update }) {
-							if (result.type === 'success') {
-								await update();
-								configError = null;
-							} else if (result.type === 'failure' && result.data) {
-								const message =
-									typeof result.data === 'object' && 'message' in result.data
-										? String(result.data.message)
-										: 'Erreur lors de la mise à jour';
-								configError = message;
-							}
-						};
-					}}
+					use:enhance={createFormEnhance({
+						locked: !canSave,
+						invalidateAll: true,
+						onStart: () => {
+							configError = null;
+						},
+						onFailure: (message) => {
+							configError = message;
+						}
+					})}
 				>
 					<div class="flex flex-col gap-4">
 						<div class="form-control w-full">
@@ -78,65 +95,35 @@
 								type="text"
 								class="input-bordered input w-full"
 								class:input-error={configError}
-								value={data.config?.appName || 'F95 France'}
-								required
+								bind:value={appName}
+								required={canEditConfig}
+								disabled={!canEditConfig}
+								readonly={!canEditConfig}
 							/>
 						</div>
 						<div class="divider">Sécurité / Accès</div>
 						<div class="form-control w-full">
-							<label for="maintenanceMode" class="label cursor-pointer justify-start gap-3">
+							<label
+								for="maintenanceMode"
+								class="label {canManageMaintenance ? 'cursor-pointer' : ''} justify-start gap-3"
+							>
 								<input
 									id="maintenanceMode"
 									name="maintenanceMode"
 									type="checkbox"
 									class="checkbox checkbox-sm"
-									checked={Boolean(data.config?.maintenanceMode)}
+									bind:checked={maintenanceMode}
+									disabled={!canManageMaintenance}
 								/>
 								<span class="label-text text-wrap">
-									Mode maintenance (bloque tous les utilisateurs sauf superadmin)
+									Mode maintenance (bloque les utilisateurs sans « Contourner la maintenance »)
 								</span>
 							</label>
-						</div>
-						<div class="divider">Auto-check F95</div>
-						<div class="form-control w-full">
-							<label for="autoCheckIntervalMinutes" class="label">
-								<span class="label-text text-wrap">Délai entre 2 vérifications (minutes)</span>
-							</label>
-							<input
-								id="autoCheckIntervalMinutes"
-								name="autoCheckIntervalMinutes"
-								type="number"
-								min="5"
-								max="1440"
-								step="1"
-								class="input-bordered input w-full"
-								value={String(data.config?.autoCheckIntervalMinutes ?? 360)}
-							/>
-							<label class="label" for="autoCheckIntervalMinutes">
-								<span class="label-text-alt text-base-content/60">
-									Entre 5 min et 24h. Le cron passe régulièrement, mais n'exécute l'auto-check que
-									si ce délai est écoulé.
-								</span>
-							</label>
-						</div>
-						<div class="form-control w-full">
-							<label for="autoCheckReferenceTime" class="label">
-								<span class="label-text text-wrap">Heure de référence (HH:mm)</span>
-							</label>
-							<input
-								id="autoCheckReferenceTime"
-								name="autoCheckReferenceTime"
-								type="time"
-								step="60"
-								class="input-bordered input w-full"
-								value={data.config?.autoCheckReferenceTime || '00:00'}
-							/>
-							<label class="label" for="autoCheckReferenceTime">
-								<span class="label-text-alt text-base-content/60">
-									L'intervalle démarre à partir de cette heure (ex: 03:00 avec 360 min => 03:00,
-									09:00, 15:00, 21:00).
-								</span>
-							</label>
+							{#if !canManageMaintenance}
+								<p class="label-text-alt text-base-content/60">
+									Droit « Activer la maintenance » requis pour modifier ce réglage.
+								</p>
+							{/if}
 						</div>
 						<div class="divider">Secrets (variables d’environnement)</div>
 						<div class="alert text-sm alert-info">
@@ -149,8 +136,7 @@
 								<ul class="list-inside list-disc text-xs opacity-90">
 									<li><code>DISCORD_WEBHOOK_UPDATES</code></li>
 									<li><code>DISCORD_WEBHOOK_TRANSLATORS</code></li>
-									<li><code>DISCORD_WEBHOOK_PROOFREADERS</code> (canal admin)</li>
-									<li><code>DISCORD_WEBHOOK_LOGS</code> (optionnel)</li>
+									<li><code>DISCORD_WEBHOOK_ADMIN</code></li>
 									<li><code>GOOGLE_API_KEY</code> (si pas uniquement OAuth)</li>
 									<li>
 										<code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code>
@@ -164,7 +150,7 @@
 									</li>
 								</ul>
 								<p class="text-xs opacity-80">
-									Source actuelle (indicatif) — Updates :
+									Variables d’environnement (indicatif) — Updates :
 									<span class="badge badge-ghost badge-sm"
 										>{data.config?.secretSources.discordUpdates}</span
 									>
@@ -174,7 +160,7 @@
 									>
 									· Admin :
 									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.discordProofreaders}</span
+										>{data.config?.secretSources.discordAdmin}</span
 									>
 									· Clé API :
 									<span class="badge badge-ghost badge-sm"
@@ -184,6 +170,7 @@
 									<span class="badge badge-ghost badge-sm"
 										>{data.config?.secretSources.googleOAuthClient}</span
 									>
+									<span class="ml-1 opacity-70">(env = défini, none = absent)</span>
 								</p>
 								<p class="text-xs opacity-90">
 									<span class="font-medium">Google OAuth (session)</span> —
@@ -216,11 +203,13 @@
 								name="googleSpreadsheetId"
 								type="text"
 								class="input-bordered input w-full"
-								value={data.config?.googleSpreadsheetId || ''}
+								bind:value={googleSpreadsheetId}
 								placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+								disabled={!canEditConfig}
+								readonly={!canEditConfig}
 							/>
 						</div>
-						{#if data.config?.canUseGoogleOAuth}
+						{#if data.config?.canUseGoogleOAuth && canEditConfig}
 							<div class="mb-4 rounded-lg bg-base-200 p-4">
 								<p class="mb-2 text-sm font-semibold text-wrap">
 									URI de redirection à configurer dans Google Cloud Console :
@@ -237,15 +226,19 @@
 							</div>
 							<div class="form-control w-full">
 								<a href="/api/google-oauth/authorize" class="btn btn-outline btn-primary">
-									Autoriser avec Google
+									{data.config?.hasGoogleOAuthToken
+										? 'Reconnecter Google OAuth'
+										: 'Autoriser avec Google'}
 								</a>
 								<div class="label">
 									<span class="label-text-alt text-wrap text-base-content/50">
 										{#if data.config?.hasGoogleOAuthToken}
-											<span class="text-success">✓ Jetons OAuth présents (voir serveur / base)</span
-											>
+											<span class="text-success">✓ Jetons OAuth présents</span>
+											— synchronisation Google Sheets.
 										{:else}
-											Cliquez pour autoriser l'accès à Google Sheets
+											Accès Google Sheets (OAuth). Traduction auto des descriptions :
+											LibreTranslate, voir <code class="text-xs">LIBRETRANSLATE_URL</code> dans
+											<code class="text-xs">.env</code>.
 										{/if}
 									</span>
 								</div>
@@ -257,8 +250,9 @@
 										>GOOGLE_OAUTH_CLIENT_ID</code
 									>
 									et
-									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis (variables d’environnement
-									sur Vercel ou valeurs encore présentes en base). Redéploie après les avoir ajoutées.
+									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis sur le
+									serveur (Vercel ou <code class="text-xs">.env</code>). Redéployez après les avoir
+									ajoutées.
 								</span>
 							</div>
 						{/if}
@@ -269,9 +263,13 @@
 								<span>{oauthMessage.text}</span>
 							</div>
 						{/if}
-						<div class="form-control mt-4">
-							<button type="submit" class="btn btn-primary"> Enregistrer la configuration </button>
-						</div>
+						{#if canSave}
+							<div class="form-control mt-4">
+								<button type="submit" class="btn btn-primary">
+									Enregistrer la configuration
+								</button>
+							</div>
+						{/if}
 					</div>
 				</form>
 			</div>

@@ -1,27 +1,45 @@
+import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
+import {
+	emailVerificationRequired,
+	ensureEmailVerifiedOrRedirect,
+	isUserEmailVerified
+} from '$lib/server/email-verification';
+import { getMaintenanceMode } from '$lib/server/maintenance-mode';
+import { hasPermission } from '$lib/server/permissions';
+import { isRegistrationEnabled } from '$lib/server/registration-policy';
+import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
+import { redirect } from '@sveltejs/kit';
+import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
-	// Retourner les données utilisateur complètes pour le layout
-	console.log(
-		'🔍 Layout Server - locals.user:',
-		locals.user
-			? {
-					id: locals.user.id,
-					username: locals.user.username,
-					email: locals.user.email
-				}
-			: 'null'
-	);
+export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) => {
+	depends('app:dashboard-layout');
+
+	// Ne lire `url` que si nécessaire : sinon SvelteKit relance ce load à chaque changement de page.
+	if (!locals.user) {
+		const pathname = url.pathname;
+		if (!isPublicDashboardPath(pathname)) {
+			const redirectTo = encodeURIComponent(pathname + url.search);
+			redirect(303, `/dashboard/login?redirectTo=${redirectTo}`);
+		}
+	} else if (emailVerificationRequired() && !isUserEmailVerified(locals.user)) {
+		ensureEmailVerifiedOrRedirect(locals.user, url.pathname);
+	}
 
 	let pendingSubmissionsCount = 0;
+	let permissions: string[] = [];
+	let canManageConfig = false;
 
 	// Charger le nombre de soumissions en attente
 	if (locals.user) {
+		permissions = locals.permissions ?? [];
+		canManageConfig = hasPermission(locals, 'config.view');
+
 		try {
-			if (locals.user.role === 'admin' || locals.user.role === 'superadmin') {
+			if (hasPermission(locals, 'submissions.review')) {
 				// Pour les admins, compter toutes les soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -29,7 +47,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 					.where(eq(table.submission.status, 'pending'));
 
 				pendingSubmissionsCount = result[0]?.count || 0;
-			} else if (locals.user.role === 'translator') {
+			} else if (hasPermission(locals, 'submissions.own')) {
 				// Pour les traducteurs, compter leurs propres soumissions en attente
 				const result = await db
 					.select({ count: sql<number>`count(*)`.as('count') })
@@ -46,8 +64,41 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	const maintenanceMode = await getMaintenanceMode();
+
+	let hasLinkedTranslator = false;
+
+	if (locals.user) {
+		try {
+			const [linkedTranslator] = await db
+				.select({ id: table.translator.id })
+				.from(table.translator)
+				.where(eq(table.translator.userId, locals.user.id))
+				.limit(1);
+
+			hasLinkedTranslator = Boolean(linkedTranslator);
+
+			if (hasPermission(locals, 'roles.manage')) {
+				hasLinkedTranslator = true;
+			}
+		} catch (error) {
+			console.warn('Erreur lors du chargement du traducteur lié:', error);
+		}
+	}
+
+	const devOriginUser = locals.user ? await getDevImpersonationOriginUser(cookies) : null;
+	const roleBadgeStyles = await listRoleBadgeStylesMap();
+
 	return {
 		user: locals.user,
-		pendingSubmissionsCount
+		permissions,
+		roleBadgeStyles,
+		pendingSubmissionsCount,
+		hasLinkedTranslator,
+		maintenanceMode,
+		canManageConfig,
+		canReturnToOwnAccount: Boolean(devOriginUser),
+		devOriginUsername: devOriginUser?.username ?? null,
+		registrationEnabled: isRegistrationEnabled()
 	};
 };

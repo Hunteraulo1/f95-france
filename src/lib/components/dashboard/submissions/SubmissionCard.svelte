@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { newToast, user } from '$lib/stores';
+	import { hasPermission } from '$lib/permissions/client';
+	import { newToast, roleBadgeStyles } from '$lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import { roleUsernameClass } from '$lib/utils/role-display';
 	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
@@ -39,7 +42,14 @@
 		user?: {
 			id: string;
 			username: string;
-			avatar: string;
+			avatar: string | null;
+			role: string;
+		} | null;
+		openedByUser?: {
+			id: string;
+			username: string;
+			avatar: string | null;
+			role: string;
 		} | null;
 	}
 
@@ -57,12 +67,13 @@
 			<div class="flex-1">
 				<div class="mb-2 flex flex-wrap items-center gap-3">
 					{#if submission.user}
-						<div class="mb-2 flex items-center justify-center gap-2">
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">Soumission créée par :</span>
 							<div class="avatar">
 								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
 									{#if submission.user.avatar}
 										<img
-											src={submission.user.avatar}
+											src={resolveDiscordAvatarDisplayUrl(submission.user.avatar)}
 											alt={submission.user.username}
 											class="h-8 w-8 rounded-full object-cover"
 										/>
@@ -73,7 +84,10 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.user.role,
+									$roleBadgeStyles[submission.user.role]
+								)}"
 								onclick={() => {
 									if (submission.user?.username) {
 										goto(resolve(`/dashboard/profile/${submission.user.username}`));
@@ -81,6 +95,36 @@
 								}}
 							>
 								{submission.user.username}
+							</button>
+						</div>
+					{/if}
+					{#if submission.openedByUser?.username}
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">Ouverte par :</span>
+							<div class="avatar">
+								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
+									{#if submission.openedByUser.avatar}
+										<img
+											src={resolveDiscordAvatarDisplayUrl(submission.openedByUser.avatar)}
+											alt={submission.openedByUser.username}
+											class="h-8 w-8 rounded-full object-cover"
+										/>
+									{:else}
+										<User size={24} />
+									{/if}
+								</div>
+							</div>
+							<button
+								type="button"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.openedByUser.role,
+									$roleBadgeStyles[submission.openedByUser.role]
+								)}"
+								onclick={() => {
+									goto(resolve(`/dashboard/profile/${submission.openedByUser!.username}`));
+								}}
+							>
+								{submission.openedByUser.username}
 							</button>
 						</div>
 					{/if}
@@ -96,7 +140,7 @@
 								{statusBadge.label}
 							</div>
 						{/if}
-						{#if $user?.role === 'superadmin'}
+						{#if $hasPermission('content.view_ids')}
 							<button
 								class="badge max-w-52 overflow-hidden badge-outline badge-sm hover:bg-base-200 sm:max-w-none"
 								onclick={() => {
@@ -115,11 +159,12 @@
 
 				<div class="mt-2 flex items-center gap-2">
 					{#if submission.game}
-						{#if submission.game.image}
+						{@const gameImageSrc = resolveGameImageSrc(submission.game.image, {
+							website: submission.game.website
+						})}
+						{#if gameImageSrc}
 							<img
-								src={resolveGameImageSrc(submission.game.image, {
-									website: submission.game.website
-								})}
+								src={gameImageSrc}
 								alt={submission.game.name}
 								class="h-10 w-10 rounded object-cover"
 								referrerpolicy="no-referrer"

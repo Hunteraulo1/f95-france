@@ -4,8 +4,7 @@ build
 .env
 .env.*
 docker
-drizzle
-scripts
+# scripts/ requis au runtime (coolify-start.sh, sync prod → PTB)
 *.md
 .git
 .gitignore

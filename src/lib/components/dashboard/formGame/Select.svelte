@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { FormGameType } from '$lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+	import { isNoTranslation } from '$lib/utils/game-form-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface SelectOption {
@@ -63,7 +64,7 @@
 		(game[name] as FormGameType[keyof FormGameType]) = val;
 
 		if (name === 'website') {
-			if (game.website !== 'f95z') {
+			if (!gameAutoCheckEnabledForWebsite(game.website)) {
 				game.ac = false;
 				game.gameAutoCheck = false;
 			} else {
@@ -99,7 +100,7 @@
 		onchange={handleChange}
 		bind:value={game[name]}
 		disabled={ttypeLocked}
-		class="select-bordered select w-full"
+		class="select-bordered select mt-1 w-full"
 		class:select-error={invalid}
 		class:select-warning={warn}
 	>

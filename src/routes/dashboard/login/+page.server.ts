@@ -1,20 +1,77 @@
+import { discordLoginErrorMessage, discordOAuthAuthorizePath } from '$lib/discord-oauth-url';
 import * as auth from '$lib/server/auth';
+import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
+import { isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
+import {
+	dashboardVerifyEmailPath,
+	emailVerificationRequired,
+	isUserEmailVerified
+} from '$lib/server/email-verification';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
+	loginRequiresCaptcha,
 	recordLoginFailure
 } from '$lib/server/login-throttle';
+import { isRegistrationEnabled } from '$lib/server/registration-policy';
+import {
+	extractTurnstileTokenFromFormData,
+	getTurnstileSiteKey,
+	isTurnstileConfigured,
+	verifyTurnstileFromForm
+} from '$lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export type LoginPageLoadData = {
+	redirectTo: string;
+	registrationEnabled: boolean;
+	registrationNotice: string | null;
+	resetNotice: string | null;
+	discordNotice: string | null;
+	discordLoginEnabled: boolean;
+	discordLoginHref: string;
+	turnstileSiteKey: string;
+	turnstileEnabled: boolean;
+	requiresCaptcha: boolean;
+};
+
+export const load: PageServerLoad<LoginPageLoadData> = async (event) => {
+	const { locals, url } = event;
+
 	if (locals.user) {
-		throw redirect(302, '/dashboard');
+		throw redirect(302, safeDashboardRedirectPath(url.searchParams.get('redirectTo')));
 	}
 
-	return {};
+	const registrationParam = url.searchParams.get('registration');
+	let registrationNotice: string | null = null;
+	if (registrationParam === 'disabled') {
+		registrationNotice = 'Les inscriptions sont actuellement fermées.';
+	}
+
+	const resetNotice =
+		url.searchParams.get('reset') === '1'
+			? 'Votre mot de passe a été mis à jour. Vous pouvez vous connecter.'
+			: null;
+
+	const requiresCaptcha = await loginRequiresCaptcha(event);
+	const redirectTo = safeDashboardRedirectPath(url.searchParams.get('redirectTo'));
+	const discordLoginEnabled = isDiscordOAuthConfigured();
+
+	return {
+		redirectTo,
+		registrationEnabled: isRegistrationEnabled(),
+		registrationNotice,
+		resetNotice,
+		discordNotice: discordLoginErrorMessage(url.searchParams.get('discord_error')),
+		discordLoginEnabled,
+		discordLoginHref: discordOAuthAuthorizePath({ redirectTo }),
+		turnstileSiteKey: getTurnstileSiteKey(),
+		turnstileEnabled: isTurnstileConfigured(),
+		requiresCaptcha
+	};
 };
 
 export const actions: Actions = {
@@ -24,38 +81,63 @@ export const actions: Actions = {
 		const password = String(formData.get('password') ?? '');
 		const twoFactorCode = String(formData.get('twoFactorCode') ?? '').trim();
 
+		const needsCaptcha = await loginRequiresCaptcha(event);
+
 		if (!username && !password) {
-			return fail(400, { message: "Nom d'utilisateur et mot de passe requis." });
+			return fail(400, {
+				message: "Nom d'utilisateur et mot de passe requis.",
+				requiresCaptcha: needsCaptcha
+			});
 		}
 		if (!username) {
-			return fail(400, { message: "Le nom d'utilisateur est requis." });
+			return fail(400, {
+				message: "Le nom d'utilisateur est requis.",
+				requiresCaptcha: needsCaptcha
+			});
 		}
 		if (!password) {
-			return fail(400, { message: 'Le mot de passe est requis.' });
+			return fail(400, { message: 'Le mot de passe est requis.', requiresCaptcha: needsCaptcha });
 		}
 
 		const throttle = await checkLoginThrottle(event);
 		if (!throttle.ok) {
-			return fail(429, { message: throttle.message });
+			return fail(429, { message: throttle.message, requiresCaptcha: true });
+		}
+
+		if (needsCaptcha) {
+			const captcha = await verifyTurnstileFromForm(
+				event,
+				extractTurnstileTokenFromFormData(formData)
+			);
+			if (!captcha.ok) {
+				return fail(400, { message: captcha.message, requiresCaptcha: true });
+			}
 		}
 
 		try {
 			const user = await auth.getUserByUsername(username);
 			if (!user) {
 				await recordLoginFailure(event);
-				return fail(400, { message: "Aucun compte trouvé pour ce nom d'utilisateur." });
+				return fail(400, {
+					message: auth.INVALID_CREDENTIALS_MESSAGE,
+					requiresCaptcha: true
+				});
 			}
 
-			const validPassword = auth.verifyPassword(password, user.passwordHash);
-			if (!validPassword) {
+			const passwordCheck = await auth.verifyPassword(password, user.passwordHash);
+			if (!passwordCheck.valid) {
 				await recordLoginFailure(event);
-				return fail(400, { message: 'Mot de passe incorrect.' });
+				return fail(400, {
+					message: auth.INVALID_CREDENTIALS_MESSAGE,
+					requiresCaptcha: true
+				});
 			}
 
 			if (user.twoFactorEnabled && user.twoFactorSecret) {
 				if (!/^\d{6}$/.test(twoFactorCode)) {
 					return fail(400, {
-						message: 'La double authentification est active. Saisissez un code 2FA à 6 chiffres.'
+						message: 'La double authentification est active. Saisissez un code 2FA à 6 chiffres.',
+						requiresCaptcha: needsCaptcha
 					});
 				}
 
@@ -70,24 +152,44 @@ export const actions: Actions = {
 				const delta = totp.validate({ token: twoFactorCode, window: 1 });
 				if (delta === null) {
 					await recordLoginFailure(event);
-					return fail(400, { message: 'Code 2FA invalide ou expiré.' });
+					return fail(400, {
+						message: 'Code 2FA invalide ou expiré.',
+						requiresCaptcha: true
+					});
 				}
 			}
 
-			// Créer une session
+			if (passwordCheck.needsRehash) {
+				await auth.rehashPasswordIfNeeded(user.id, password);
+			}
+
 			const sessionToken = auth.generateSessionToken();
 			const session = await auth.createSession(sessionToken, user.id);
 			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 			await clearLoginThrottle(event);
 
-			throw redirect(302, '/dashboard');
+			const formRedirect = formData.get('redirectTo');
+			let destination = safeDashboardRedirectPath(
+				typeof formRedirect === 'string' ? formRedirect : null
+			);
+
+			if (
+				emailVerificationRequired() &&
+				!isUserEmailVerified(user) &&
+				destination !== dashboardVerifyEmailPath()
+			) {
+				destination = dashboardVerifyEmailPath();
+			}
+
+			throw redirect(302, destination);
 		} catch (error) {
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 				throw error;
 			}
 			console.error('[dashboard/login?/login]', error);
 			return fail(500, {
-				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).'
+				message: 'Impossible de finaliser la connexion pour le moment (erreur serveur).',
+				requiresCaptcha: needsCaptcha
 			});
 		}
 	}

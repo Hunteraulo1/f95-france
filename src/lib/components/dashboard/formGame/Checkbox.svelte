@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FormGameType } from '$lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface Props {
@@ -24,6 +25,8 @@
 
 	if (!game) throw new Error('no game data');
 
+	const autoCheckAllowed = $derived(gameAutoCheckEnabledForWebsite(game.website));
+
 	const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
 		(game[name] as boolean) = event.currentTarget.checked;
 	};
@@ -35,7 +38,7 @@
 		class:hidden={!step || !active?.includes(step)}
 	>
 		<div class="mb-1 flex items-center gap-2">
-			<label for={name}>{title}:</label>
+			<label for={name} class="mb-1">{title}:</label>
 			{#if name === 'gameAutoCheck'}
 				<div
 					class="tooltip tooltip-right"
@@ -70,7 +73,8 @@
 			id={name}
 			type="checkbox"
 			onchange={handleChange}
-			disabled={name === 'ac' && (game.website !== 'f95z' || game.gameAutoCheck === false)}
+			disabled={(name === 'gameAutoCheck' && !autoCheckAllowed) ||
+				(name === 'ac' && (!autoCheckAllowed || !game.gameAutoCheck))}
 			bind:checked={game[name]}
 			class="checkbox checkbox-lg"
 			class:border-error={invalid}

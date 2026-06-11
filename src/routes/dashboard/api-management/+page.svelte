@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { createFormEnhance } from '$lib/forms/enhance';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
 
@@ -89,13 +90,20 @@
 	<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
 		<div class="card-body gap-6 sm:p-8">
 			<h2 class="card-title text-lg">Créer une clé pour un utilisateur</h2>
-			<form method="post" action="?/create" use:enhance class="flex flex-col gap-3">
+			<form
+				method="post"
+				action="?/create"
+				use:enhance={createFormEnhance()}
+				class="flex flex-col gap-3"
+			>
 				<label class="flex max-w-md flex-col gap-1">
 					<span class="text-sm font-medium">Propriétaire</span>
 					<select class="select-bordered select w-full" name="ownerUserId" required>
 						<option value="" disabled selected>Choisir un compte</option>
 						{#each data.usersList as u (u.id)}
-							<option value={u.id}>{u.username} — {u.email}</option>
+							<option value={u.id}>
+								{data.canViewUserEmails ? `${u.username} — ${u.email}` : u.username}
+							</option>
 						{/each}
 					</select>
 				</label>
@@ -183,7 +191,7 @@
 											<form
 												method="post"
 												action="?/updateLimits"
-												use:enhance
+												use:enhance={createFormEnhance({ invalidateAll: true })}
 												class="flex flex-col gap-2"
 											>
 												<input type="hidden" name="id" value={row.id} />
@@ -210,7 +218,11 @@
 										</div>
 									</details>
 									{#if row.kind !== 'session'}
-										<form method="post" action="?/revoke" use:enhance>
+										<form
+											method="post"
+											action="?/revoke"
+											use:enhance={createFormEnhance({ invalidateAll: true })}
+										>
 											<input type="hidden" name="id" value={row.id} />
 											<button type="submit" class="btn w-fit text-error btn-ghost btn-xs"
 												>Révoquer</button
@@ -218,7 +230,11 @@
 										</form>
 									{/if}
 								{:else if row.kind !== 'session'}
-									<form method="post" action="?/restoreRevoked" use:enhance>
+									<form
+										method="post"
+										action="?/restoreRevoked"
+										use:enhance={createFormEnhance({ invalidateAll: true })}
+									>
 										<input type="hidden" name="id" value={row.id} />
 										<button
 											type="submit"

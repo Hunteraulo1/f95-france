@@ -1,40 +1,41 @@
 import * as auth from '$lib/server/auth';
+import { secureSessionCookieOptions } from '$lib/server/cookie-options';
+import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
+import {
+	assertDevImpersonationTargetAllowed,
+	DEV_IMPERSONATION_ORIGIN_COOKIE,
+	filterUsersForDevImpersonation,
+	getDevImpersonationActorUser,
+	returnToOwnAccount as returnToOwnAccountAction
+} from '$lib/server/dev-impersonation';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
+import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, cookies }) => {
-	// Vérifier que l'utilisateur est authentifié
-	if (!locals.user) {
-		throw new Error('Non authentifié');
+export const load: PageServerLoad = async ({ locals }) => {
+	assertDashboardAuthenticated(locals);
+
+	const canImpersonateUsers = hasPermission(locals, 'dev.impersonate');
+
+	let devUsers: { id: string; username: string; role: string }[] = [];
+	if (canImpersonateUsers) {
+		const actor = await getDevImpersonationActorUser(locals.user);
+		const candidates = await db
+			.select({
+				id: table.user.id,
+				username: table.user.username,
+				role: table.user.role
+			})
+			.from(table.user);
+		devUsers = actor ? await filterUsersForDevImpersonation(actor.role, candidates) : [];
 	}
 
-	const devUsers =
-		locals.user.role === 'superadmin'
-			? await db
-					.select({
-						id: table.user.id,
-						username: table.user.username,
-						role: table.user.role
-					})
-					.from(table.user)
-			: [];
-
-	const devOriginUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-	const canReturnToOwnAccount = Boolean(devOriginUserId);
-	const [devOriginUser] =
-		devOriginUserId && canReturnToOwnAccount
-			? await db
-					.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-					.from(table.user)
-					.where(eq(table.user.id, devOriginUserId))
-					.limit(1)
-			: [];
 	const passkeys = await db
 		.select({
 			id: table.passkey.id,
@@ -43,75 +44,18 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		})
 		.from(table.passkey)
 		.where(eq(table.passkey.userId, locals.user.id));
-	const [linkedTranslator] = await db
-		.select({
-			id: table.translator.id,
-			name: table.translator.name,
-			pages: table.translator.pages
-		})
-		.from(table.translator)
-		.where(eq(table.translator.userId, locals.user.id))
-		.limit(1);
+	const roleEditMode = await getRoleEditMode(locals.user.role);
+
 	return {
 		user: locals.user,
+		hasPassword: locals.user.hasPassword,
+		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
-		passkeys,
-		linkedTranslator: linkedTranslator
-			? {
-					id: linkedTranslator.id,
-					name: linkedTranslator.name,
-					pages: JSON.parse(linkedTranslator.pages || '[]') as Array<{ name: string; link: string }>
-				}
-			: null,
-		canReturnToOwnAccount: Boolean(canReturnToOwnAccount && devOriginUser),
-		devOriginUsername: devOriginUser?.username ?? null
+		passkeys
 	};
 };
 
 export const actions: Actions = {
-	updateProfile: async ({ request, locals }) => {
-		// Vérifier que l'utilisateur est authentifié
-		if (!locals.user) {
-			return fail(401, { message: 'Non authentifié' });
-		}
-
-		const formData = await request.formData();
-		const username = formData.get('username') as string;
-		const avatar = formData.get('avatar') as string;
-
-		if (!username) {
-			return fail(400, { message: "Le nom d'utilisateur est requis" });
-		}
-
-		try {
-			await db
-				.update(table.user)
-				.set({
-					username,
-					avatar: avatar || ''
-				})
-				.where(eq(table.user.id, locals.user.id));
-
-			return { success: true, message: 'Profil mis à jour avec succès' };
-		} catch (error: unknown) {
-			console.error('Erreur lors de la mise à jour du profil:', error);
-
-			const mysqlError =
-				error && typeof error === 'object' && 'cause' in error
-					? (error.cause as { code?: string; errno?: number; sqlMessage?: string })
-					: null;
-
-			if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
-				if (mysqlError.sqlMessage?.includes('username')) {
-					return fail(409, { message: `Un utilisateur avec le nom "${username}" existe déjà` });
-				}
-				return fail(409, { message: "Ce nom d'utilisateur existe déjà" });
-			}
-
-			return fail(500, { message: 'Erreur lors de la mise à jour du profil' });
-		}
-	},
-
 	updateTheme: async ({ request, locals }) => {
 		// Vérifier que l'utilisateur est authentifié
 		if (!locals.user) {
@@ -145,6 +89,19 @@ export const actions: Actions = {
 			return fail(401, { message: 'Non authentifié' });
 		}
 
+		const [dbUser] = await db
+			.select({ hasPassword: table.user.hasPassword })
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1);
+
+		if (!dbUser?.hasPassword) {
+			return fail(400, {
+				message:
+					'Définissez d’abord un mot de passe avant de délier Discord, sinon vous ne pourrez plus vous connecter.'
+			});
+		}
+
 		try {
 			await db.update(table.user).set({ discordId: null }).where(eq(table.user.id, locals.user.id));
 			return { success: true, message: 'Compte Discord délié.' };
@@ -154,58 +111,54 @@ export const actions: Actions = {
 		}
 	},
 
-	requestTranslatorPagesUpdate: async ({ request, locals }) => {
+	setInitialPassword: async ({ request, locals }) => {
 		if (!locals.user) {
 			return fail(401, { message: 'Non authentifié' });
 		}
 
-		const formData = await request.formData();
-		const translatorId = String(formData.get('translatorId') ?? '').trim();
-		const pagesRaw = String(formData.get('pages') ?? '');
-		if (!translatorId) {
-			return fail(400, { message: 'Traducteur introuvable' });
-		}
-
-		let pagesParsed: Array<{ name: string; link: string }> = [];
-		try {
-			const raw = JSON.parse(pagesRaw) as Array<{ name?: string; link?: string }>;
-			if (Array.isArray(raw)) {
-				pagesParsed = raw.map((p) => ({
-					name: String(p.name ?? '').trim(),
-					link: String(p.link ?? '').trim()
-				}));
-			}
-		} catch {
-			return fail(400, { message: 'Format des pages invalide' });
-		}
-		if (pagesParsed.some((p) => !p.name || !p.link)) {
-			return fail(400, { message: 'Chaque page doit avoir un nom et un lien.' });
-		}
-
-		const [translatorRow] = await db
-			.select({
-				id: table.translator.id,
-				userId: table.translator.userId
-			})
-			.from(table.translator)
-			.where(eq(table.translator.id, translatorId))
+		const [dbUser] = await db
+			.select({ id: table.user.id, hasPassword: table.user.hasPassword })
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
 			.limit(1);
 
-		if (!translatorRow || translatorRow.userId !== locals.user.id) {
-			return fail(403, { message: 'Vous pouvez modifier uniquement votre profil traducteur lié.' });
+		if (!dbUser) {
+			return fail(404, { message: 'Utilisateur introuvable.' });
 		}
 
-		await db.insert(table.submission).values({
-			userId: locals.user.id,
-			type: 'translator_pages',
-			status: 'pending',
-			data: JSON.stringify({
-				translatorId,
-				pages: pagesParsed
-			})
-		});
+		if (dbUser.hasPassword) {
+			return fail(400, {
+				message: 'Utilisez le formulaire de changement de mot de passe ci-dessous.'
+			});
+		}
 
-		return { success: true, message: 'Demande envoyée. Un admin doit la valider.' };
+		const formData = await request.formData();
+		const newPassword = String(formData.get('newPassword') ?? '');
+		const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
+		if (!newPassword || !confirmPassword) {
+			return fail(400, { message: 'Tous les champs mot de passe sont requis.' });
+		}
+
+		if (newPassword.length < 8) {
+			return fail(400, { message: 'Le mot de passe doit contenir au moins 8 caractères.' });
+		}
+
+		if (newPassword !== confirmPassword) {
+			return fail(400, { message: 'La confirmation ne correspond pas au mot de passe.' });
+		}
+
+		const nextHash = await auth.hashPassword(newPassword);
+		await db
+			.update(table.user)
+			.set({
+				passwordHash: nextHash,
+				hasPassword: true,
+				updatedAt: new Date()
+			})
+			.where(eq(table.user.id, dbUser.id));
+
+		return { success: true, message: 'Mot de passe défini avec succès.' };
 	},
 
 	changePassword: async ({ request, locals }) => {
@@ -243,21 +196,22 @@ export const actions: Actions = {
 			return fail(404, { message: 'Utilisateur introuvable.' });
 		}
 
-		const validCurrentPassword = auth.verifyPassword(currentPassword, dbUser.passwordHash);
-		if (!validCurrentPassword) {
+		const currentCheck = await auth.verifyPassword(currentPassword, dbUser.passwordHash);
+		if (!currentCheck.valid) {
 			return fail(400, { message: 'Le mot de passe actuel est incorrect.' });
 		}
 
-		const reusingSamePassword = auth.verifyPassword(newPassword, dbUser.passwordHash);
-		if (reusingSamePassword) {
+		const reuseCheck = await auth.verifyPassword(newPassword, dbUser.passwordHash);
+		if (reuseCheck.valid) {
 			return fail(400, { message: 'Le nouveau mot de passe doit être différent de l’actuel.' });
 		}
 
-		const nextHash = auth.hashPassword(newPassword);
+		const nextHash = await auth.hashPassword(newPassword);
 		await db
 			.update(table.user)
 			.set({
 				passwordHash: nextHash,
+				hasPassword: true,
 				updatedAt: new Date()
 			})
 			.where(eq(table.user.id, dbUser.id));
@@ -272,15 +226,26 @@ export const actions: Actions = {
 		return { success: true, message: 'Mot de passe mis à jour avec succès.' };
 	},
 
-	updateDirectMode: async ({ request, locals }) => {
-		// Vérifier que l'utilisateur est authentifié et est superadmin
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès non autorisé' });
+	updateDirectMode: async ({ request, locals, cookies }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+		if (cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE)) {
+			return fail(403, {
+				message: 'Revenez sur votre compte pour modifier le mode direct.'
+			});
+		}
+		const roleEditMode = await getRoleEditMode(locals.user.role);
+		if (roleEditMode !== 'user_direct_mode') {
+			return fail(403, {
+				message:
+					'Votre rôle n’utilise pas le mode direct personnel. Demandez à un administrateur de modifier le mode d’enregistrement du rôle.'
+			});
 		}
 
 		const formData = await request.formData();
-		// Les checkboxes n'envoient rien si elles ne sont pas cochées
-		const directMode = formData.has('directMode') && formData.get('directMode') !== 'false';
+		const raw = String(formData.get('directMode') ?? 'false');
+		const directMode = raw === 'true' || raw === 'on';
 
 		try {
 			await db
@@ -420,9 +385,9 @@ export const actions: Actions = {
 			return fail(400, { message: "La 2FA n'est pas active." });
 		}
 
-		const validPassword = auth.verifyPassword(password, user.passwordHash);
-		if (!validPassword) {
-			return fail(400, { message: 'Mot de passe incorrect.' });
+		const passwordCheck = await auth.verifyPassword(password, user.passwordHash);
+		if (!passwordCheck.valid) {
+			return fail(400, { message: auth.INVALID_CREDENTIALS_MESSAGE });
 		}
 
 		const totp = new OTPAuth.TOTP({
@@ -468,11 +433,17 @@ export const actions: Actions = {
 	},
 
 	switchDevUser: async ({ request, locals, cookies, url }) => {
-		if (!locals.user || locals.user.role !== 'superadmin') {
-			return fail(403, { message: 'Accès non autorisé' });
+		await assertPermission(locals, 'dev.impersonate');
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
 		}
 		if (!locals.session?.id) {
 			return fail(401, { message: 'Session introuvable' });
+		}
+
+		const actor = await getDevImpersonationActorUser(locals.user);
+		if (!actor) {
+			return fail(401, { message: 'Compte dev introuvable' });
 		}
 
 		const formData = await request.formData();
@@ -484,7 +455,8 @@ export const actions: Actions = {
 		const [targetUser] = await db
 			.select({
 				id: table.user.id,
-				username: table.user.username
+				username: table.user.username,
+				role: table.user.role
 			})
 			.from(table.user)
 			.where(eq(table.user.id, targetUserId))
@@ -494,22 +466,32 @@ export const actions: Actions = {
 			return fail(404, { message: 'Utilisateur introuvable' });
 		}
 
+		const impersonationCheck = await assertDevImpersonationTargetAllowed(
+			actor.role,
+			targetUser.role
+		);
+		if (!impersonationCheck.allowed) {
+			return fail(403, { message: impersonationCheck.message });
+		}
+
 		try {
 			const existingOrigin = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
 			if (!existingOrigin) {
-				cookies.set(DEV_IMPERSONATION_ORIGIN_COOKIE, locals.user.id, {
-					path: '/',
-					httpOnly: true,
-					sameSite: 'lax',
-					secure: url.protocol === 'https:',
-					maxAge: 60 * 60 * 24 * 30
-				});
+				cookies.set(
+					DEV_IMPERSONATION_ORIGIN_COOKIE,
+					locals.user.id,
+					secureSessionCookieOptions({ url, request }, { maxAge: 60 * 60 * 24 * 30 })
+				);
 			}
 
 			await db
 				.update(table.session)
 				.set({ userId: targetUser.id })
 				.where(eq(table.session.id, locals.session.id));
+
+			console.warn(
+				`[dev.impersonate] ${actor.username} (${actor.id}) → ${targetUser.username} (${targetUser.id})`
+			);
 
 			return {
 				success: true,
@@ -526,31 +508,6 @@ export const actions: Actions = {
 			return fail(401, { message: 'Session introuvable' });
 		}
 
-		const originUserId = cookies.get(DEV_IMPERSONATION_ORIGIN_COOKIE);
-		if (!originUserId) {
-			return fail(400, { message: "Aucun compte d'origine à restaurer" });
-		}
-
-		const [originUser] = await db
-			.select({ id: table.user.id, username: table.user.username, role: table.user.role })
-			.from(table.user)
-			.where(eq(table.user.id, originUserId))
-			.limit(1);
-
-		if (!originUser || originUser.role !== 'superadmin') {
-			return fail(403, { message: "Le compte d'origine est invalide ou n'est pas superadmin" });
-		}
-
-		try {
-			await db
-				.update(table.session)
-				.set({ userId: originUser.id })
-				.where(eq(table.session.id, locals.session.id));
-			cookies.delete(DEV_IMPERSONATION_ORIGIN_COOKIE, { path: '/' });
-			return { success: true, message: `Retour sur ${originUser.username}` };
-		} catch (error: unknown) {
-			console.error("Erreur lors du retour au compte d'origine:", error);
-			return fail(500, { message: "Erreur lors du retour au compte d'origine" });
-		}
+		return returnToOwnAccountAction(locals.session.id, cookies);
 	}
 };

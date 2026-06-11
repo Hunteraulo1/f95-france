@@ -5,6 +5,10 @@ import {
 	resolveUserForExtensionApiOriginGate
 } from '$lib/server/extension-api-access';
 import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
+import {
+	translatorReadCountExpr,
+	translatorTradCountExpr
+} from '$lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -179,9 +183,15 @@ const firstPageLink = (raw: string | null | undefined): string | null => {
 const mapUpdateType = (v: string | null | undefined): 'AJOUT DE JEU' | 'MISE À JOUR' =>
 	(v ?? '').trim().toLowerCase() === 'adding' ? 'AJOUT DE JEU' : 'MISE À JOUR';
 
-export const GET: RequestHandler = async ({ url, request, locals }) => {
-	const gateUser = await resolveUserForExtensionApiOriginGate(locals);
-	if (!isExtensionApiCallerAllowed(request, gateUser)) {
+export const GET: RequestHandler = async ({ url, request, locals, cookies }) => {
+	const gateUser = await resolveUserForExtensionApiOriginGate(locals, cookies);
+	if (
+		!isExtensionApiCallerAllowed(request, gateUser, {
+			authenticatedViaApiKey: locals.authenticatedViaApiKey,
+			apiKeyRouteScope: locals.apiKeyRouteScope ?? null,
+			permissions: locals.permissions
+		})
+	) {
 		return json(
 			{ error: "Accès interdit à l'API extension." },
 			{ status: 403, headers: corsHeaders }
@@ -271,7 +281,7 @@ export const GET: RequestHandler = async ({ url, request, locals }) => {
 				domain: mapDomain(row.game.website),
 				hostname: mapHostname(row.game.website),
 				name: row.game.name,
-				version: row.game.gameVersion ?? '',
+				version: row.translation.version ?? row.game.gameVersion ?? null,
 				tversion: row.translation.tversion,
 				tname: mapTName(row.translation.tname),
 				description: row.game.description ?? null,
@@ -319,8 +329,8 @@ export const GET: RequestHandler = async ({ url, request, locals }) => {
 				name: translator.name,
 				pages: translator.pages,
 				discordId: translator.discordId,
-				tradCount: translator.tradCount,
-				readCount: translator.readCount
+				tradCount: translatorTradCountExpr().as('tradCount'),
+				readCount: translatorReadCountExpr().as('readCount')
 			})
 			.from(translator)
 			.orderBy(translator.name);
