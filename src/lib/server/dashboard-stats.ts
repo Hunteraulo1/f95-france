@@ -48,15 +48,15 @@ export async function countTranslationStatsByStatus() {
 	const [row] = await db
 		.select({
 			inProgress:
-				sql<number>`count(*) filter (where ${table.gameTranslation.status} = 'in_progress')`.as(
+				sql<number>`sum(case when ${table.gameTranslation.status} = 'in_progress' then 1 else 0 end)`.as(
 					'in_progress'
 				),
 			completed:
-				sql<number>`count(*) filter (where ${table.gameTranslation.status} = 'completed')`.as(
+				sql<number>`sum(case when ${table.gameTranslation.status} = 'completed' then 1 else 0 end)`.as(
 					'completed'
 				),
 			abandoned:
-				sql<number>`count(*) filter (where ${table.gameTranslation.status} = 'abandoned')`.as(
+				sql<number>`sum(case when ${table.gameTranslation.status} = 'abandoned' then 1 else 0 end)`.as(
 					'abandoned'
 				),
 			total: sql<number>`count(*)`.as('total')
@@ -91,7 +91,7 @@ export async function countRecentWithinDays(
 	const [row] = await db
 		.select({ count: sql<number>`count(*)`.as('count') })
 		.from(fromTable)
-		.where(sql`${column} >= NOW() - make_interval(days => ${days})`);
+		.where(sql`${column} >= DATE_SUB(NOW(), INTERVAL ${days} DAY)`);
 
 	return toCount(row?.count);
 }
