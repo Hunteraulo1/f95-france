@@ -6,7 +6,7 @@
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
-	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import { SITE, siteOrigin } from '$lib/site';
 	import { applyFaviconEnvBadge } from '$lib/site-favicon';
 	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
@@ -45,7 +45,7 @@
 	});
 
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
-	const ogImage = $derived(absoluteUrl(SITE.ogImagePath, env.PUBLIC_APP_ORIGIN));
+	const ogImage = SITE.ogImageUrl;
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');
 	const isDashboardRoute = $derived(
