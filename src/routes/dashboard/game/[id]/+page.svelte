@@ -1018,7 +1018,7 @@
 							<ul class="mt-1 list-disc space-y-1 pl-5 text-sm opacity-90">
 								{#each pendingSubmissions.slice(0, 3) as sub (sub.id)}
 									<li>
-										{submissionTypeLabel(sub.type, sub.translationId)}
+										{submissionTypeLabel(sub.type as string, sub.translationId as string)}
 										{#if sub.userId === currentUser?.id}
 											· <span class="text-base-content/70">créée par</span>
 											<span class="font-semibold">toi</span>

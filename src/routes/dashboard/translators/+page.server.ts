@@ -2,6 +2,7 @@ import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 import { getDiscordAvatarUrl } from '$lib/server/discord-oauth';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
@@ -11,7 +12,7 @@ import {
 } from '$lib/server/translator-pages-write';
 import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, like, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
@@ -59,7 +60,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (q) {
 		const pattern = `%${escapeIlike(q)}%`;
 		conditions.push(
-			or(ilike(table.translator.name, pattern), ilike(table.translator.discordId, pattern))
+			or(like(table.translator.name, pattern), like(table.translator.discordId, pattern))
 		);
 	}
 	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -160,17 +161,16 @@ export const actions: Actions = {
 
 			const pagesArray = pages ? JSON.parse(pages) : [];
 
-			const [created] = await db
-				.insert(table.translator)
-				.values({
-					name,
-					discordId: discordId || null,
-					pages: JSON.stringify(pagesArray)
-				})
-				.returning({ id: table.translator.id });
+			const createdId = randomUUID();
+			await db.insert(table.translator).values({
+				id: createdId,
+				name,
+				discordId: discordId || null,
+				pages: JSON.stringify(pagesArray)
+			});
 
-			if (created && linkUserId) {
-				await assignTranslatorUser(created.id, linkUserId);
+			if (linkUserId) {
+				await assignTranslatorUser(createdId, linkUserId);
 				await setUserAvatarFromDiscordIdIfMissing(linkUserId, discordId || null);
 			}
 

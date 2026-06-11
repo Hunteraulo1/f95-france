@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "saved_updates_filters" text DEFAULT '[]' NOT NULL;

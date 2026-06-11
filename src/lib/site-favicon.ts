@@ -1,6 +1,7 @@
+import { SITE } from '$lib/site';
 import type { SiteEnvBadge } from '$lib/site-host';
 
-const DEFAULT_FAVICON = '/favicon.ico';
+const DEFAULT_FAVICON = SITE.faviconUrl;
 
 function drawRoundedRect(
 	ctx: CanvasRenderingContext2D,
@@ -36,6 +37,9 @@ export async function applyFaviconEnvBadge(
 	}
 
 	const img = new Image();
+	if (new URL(sourceIcon, window.location.origin).origin !== window.location.origin) {
+		img.crossOrigin = 'anonymous';
+	}
 	img.src = sourceIcon;
 
 	try {

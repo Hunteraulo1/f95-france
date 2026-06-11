@@ -1,6 +1,7 @@
 import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
@@ -172,25 +173,24 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			typeof gameTypeBody === 'string' && gameTypeBody.trim()
 				? coerceGameEngineType(gameTypeBody)
 				: await defaultGameTypeForGame(gameId);
-		const [created] = await db
-			.insert(table.gameTranslation)
-			.values({
-				gameId,
-				translationName,
-				version: typeof version === 'string' ? version.trim() || null : null,
-				tversion,
-				status,
-				ttype,
-				gameType: engineTr,
-				tlink: tlinkStored,
-				tname:
-					(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
-					'translation',
-				translatorId: translatorId || null,
-				proofreaderId: proofreaderId || null,
-				ac: acValue
-			})
-			.returning({ id: table.gameTranslation.id });
+		const createdId = randomUUID();
+		await db.insert(table.gameTranslation).values({
+			id: createdId,
+			gameId,
+			translationName,
+			version: typeof version === 'string' ? version.trim() || null : null,
+			tversion,
+			status,
+			ttype,
+			gameType: engineTr,
+			tlink: tlinkStored,
+			tname:
+				(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+				'translation',
+			translatorId: translatorId || null,
+			proofreaderId: proofreaderId || null,
+			ac: acValue
+		});
 
 		const dataJson = JSON.stringify({
 			gameId,
@@ -208,16 +208,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		});
 		if (!isSilentMode) {
 			void sendDiscordWebhookUpdatesSubmissionApplied({
-				submissionId: created?.id ?? 'direct-translation',
+				submissionId: createdId,
 				submissionType: 'translation',
 				dataJson,
 				translationWasUpdate: false,
 				adminNotes: null
 			});
 		}
-		if (created?.id) {
-			voidSyncTranslationToGoogleSheet(created.id, 'dashboard/add-translation');
-		}
+		voidSyncTranslationToGoogleSheet(createdId, 'dashboard/add-translation');
 		voidSyncTranslatorActivityCountsToGoogleSheet(translatorId, proofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'add', 1);
 

@@ -397,10 +397,9 @@ export async function revokeApiKeyForActor(
 				eq(table.apiKey.ownerUserId, actor.userId),
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 async function revokeApiKey(id: string): Promise<boolean> {
@@ -423,10 +422,9 @@ async function revokeApiKey(id: string): Promise<boolean> {
 				isNull(table.apiKey.revokedAt),
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 /** Rétablit une clé Bearer révoquée (superadmin uniquement — contrôle côté route). */
@@ -441,10 +439,9 @@ export async function restoreRevokedApiKeyAdmin(keyId: string): Promise<boolean>
 				eq(table.apiKey.kind, API_KEY_KIND_BEARER),
 				isNotNull(table.apiKey.revokedAt)
 			)
-		)
-		.returning({ id: table.apiKey.id });
+		);
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }
 
 export async function updateApiKeyLimitsAdmin(
@@ -466,8 +463,7 @@ export async function updateApiKeyLimitsAdmin(
 			expiresAt,
 			updatedAt: touch
 		})
-		.where(and(eq(table.apiKey.id, keyId), isNull(table.apiKey.revokedAt)))
-		.returning({ id: table.apiKey.id });
+		.where(and(eq(table.apiKey.id, keyId), isNull(table.apiKey.revokedAt)));
 
-	return updated.length > 0;
+	return ((updated as unknown as [{ affectedRows: number }])?.[0]?.affectedRows ?? 0) > 0;
 }

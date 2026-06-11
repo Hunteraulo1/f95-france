@@ -13,7 +13,7 @@ async function hasPublicColumn(tableName: string, columnName: string): Promise<b
 			.select({ one: sql<number>`1` })
 			.from(sql`information_schema.columns`)
 			.where(
-				sql`table_schema = 'public' AND table_name = ${tableName} AND column_name = ${columnName}`
+				sql`table_schema = DATABASE() AND table_name = ${tableName} AND column_name = ${columnName}`
 			)
 			.limit(1);
 		const exists = rows.length > 0;
@@ -45,7 +45,7 @@ export async function hasUpdateHistoryTable(): Promise<boolean> {
 	return hasPublicColumn('update_history', 'id');
 }
 
-/** Message Postgres exploitable côté client (sans fuite de détail interne). */
+/** Message DB exploitable côté client (sans fuite de détail interne). */
 export function publicErrorFromUnknown(error: unknown, fallback: string): string {
 	if (!error || typeof error !== 'object') return fallback;
 	const code = 'code' in error ? String((error as { code?: string }).code) : '';

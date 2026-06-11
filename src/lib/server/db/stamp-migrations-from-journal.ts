@@ -1,28 +1,34 @@
 import { config } from 'dotenv';
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/mysql2';
+import mysql from 'mysql2/promise';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import postgres from 'postgres';
-import { getPostgresConfig } from './connection';
+import { getMariadbConfig } from './connection';
 import { migrationFileHash } from './migration-hash';
 
 config({ path: resolve(process.cwd(), '.env') });
 config({ path: resolve(process.cwd(), '.env.local') });
 
-/** Aligné sur drizzle-orm/pg-core/dialect.js (défaut migrate). */
-const MIGRATIONS_SCHEMA = 'drizzle';
 const MIGRATIONS_TABLE = '__drizzle_migrations';
 
 type Journal = {
 	entries: { tag: string; when: number }[];
 };
 
-const clientConfig = getPostgresConfig();
-const client = postgres({ ...clientConfig, prepare: false, connect_timeout: 20 });
-const db = drizzle(client);
+const clientConfig = getMariadbConfig();
 
 async function stampMigrationsFromJournal() {
+	const connection = await mysql.createConnection({
+		host: clientConfig.host,
+		port: clientConfig.port,
+		database: clientConfig.database,
+		user: clientConfig.user,
+		password: clientConfig.password,
+		ssl: clientConfig.ssl ? {} : undefined,
+		connectTimeout: 20_000
+	});
+	const db = drizzle(connection);
+
 	const migrationsFolder = resolve(process.cwd(), 'drizzle');
 	const journalPath = resolve(process.cwd(), 'drizzle/meta/_journal.json');
 	const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as Journal;
@@ -31,45 +37,40 @@ async function stampMigrationsFromJournal() {
 		throw new Error('Journal Drizzle vide ou invalide');
 	}
 
-	await db.execute(sql.raw('DROP TABLE IF EXISTS public.__drizzle_migrations'));
-	await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${MIGRATIONS_SCHEMA}"`));
 	await db.execute(
-		sql.raw(`
-		CREATE TABLE IF NOT EXISTS "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}" (
-			"id" SERIAL PRIMARY KEY,
-			"hash" text NOT NULL,
-			"created_at" bigint
-		)
-	`)
+		mysql.format(`
+			CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
+				\`id\` int NOT NULL AUTO_INCREMENT,
+				\`hash\` varchar(256),
+				\`created_at\` bigint,
+				PRIMARY KEY (\`id\`)
+			)
+		`)
 	);
-	await db.execute(
-		sql.raw(`TRUNCATE TABLE "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}" RESTART IDENTITY`)
-	);
+	await db.execute(mysql.format(`TRUNCATE TABLE \`${MIGRATIONS_TABLE}\``));
 
 	for (const entry of journal.entries) {
 		const hash = migrationFileHash(migrationsFolder, entry.tag);
-		await db.execute(sql`
-			INSERT INTO ${sql.identifier(MIGRATIONS_SCHEMA)}.${sql.identifier(MIGRATIONS_TABLE)} ("hash", "created_at")
-			VALUES (${hash}, ${entry.when})
-		`);
+		await db.execute(
+			mysql.format(`INSERT INTO \`${MIGRATIONS_TABLE}\` (\`hash\`, \`created_at\`) VALUES (?, ?)`, [
+				hash,
+				entry.when
+			])
+		);
 	}
 
 	const latest = journal.entries.reduce(
 		(max, e) => (e.when > max.when ? e : max),
 		journal.entries[0]
 	);
-	console.log(
-		`Migrations marquées : ${journal.entries.length} (schéma ${MIGRATIONS_SCHEMA}, dernière : ${latest.tag}).`
-	);
+	console.log(`Migrations marquées : ${journal.entries.length} (dernière : ${latest.tag}).`);
+
+	await connection.end();
 }
 
 stampMigrationsFromJournal()
-	.then(async () => {
-		await client.end({ timeout: 5 });
-		process.exit(0);
-	})
+	.then(() => process.exit(0))
 	.catch(async (error) => {
 		console.error('Erreur lors du marquage des migrations:', error);
-		await client.end({ timeout: 5 });
 		process.exit(1);
 	});

@@ -1,6 +1,7 @@
 import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 import {
 	syncMajToGoogleSheet,
 	voidSyncGameTranslationsToGoogleSheet
@@ -24,30 +25,24 @@ export async function createGameUpdateRow(
 	status: 'adding' | 'update',
 	history?: UpdateHistoryContext
 ): Promise<string | null> {
-	let updateId: string | null;
+	const updateId = randomUUID();
 
 	if (await hasUpdateStatusColumn()) {
-		const [row] = await db
-			.insert(table.update)
-			.values({
-				gameId,
-				status,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			})
-			.returning({ id: table.update.id });
-		updateId = row?.id ?? null;
+		await db.insert(table.update).values({
+			id: updateId,
+			gameId,
+			status,
+			createdAt: new Date(),
+			updatedAt: new Date()
+		});
 	} else {
 		// Compat temporaire avant migration `update.status`
-		const [row] = await db
-			.insert(table.update)
-			.values({
-				gameId,
-				createdAt: new Date(),
-				updatedAt: new Date()
-			})
-			.returning({ id: table.update.id });
-		updateId = row?.id ?? null;
+		await db.insert(table.update).values({
+			id: updateId,
+			gameId,
+			createdAt: new Date(),
+			updatedAt: new Date()
+		});
 	}
 
 	if (updateId && history) {

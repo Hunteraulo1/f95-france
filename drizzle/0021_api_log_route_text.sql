@@ -1,1 +1,0 @@
-ALTER TABLE "api_log" ALTER COLUMN "route" SET DATA TYPE text;

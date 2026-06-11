@@ -25,7 +25,7 @@ async function selectAllAppRolesLegacy(): Promise<AppRoleRecord[]> {
 	const rows = (await db.execute(sql`
 		SELECT slug, label, description, edit_mode, is_system, created_at, updated_at
 		FROM app_role
-	`)) as Array<{
+	`)) as unknown as Array<{
 		slug: string;
 		label: string;
 		description: string | null;

@@ -1,1 +1,0 @@
-ALTER TABLE "game" ADD COLUMN "description_fr" text;

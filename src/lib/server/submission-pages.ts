@@ -137,21 +137,24 @@ export async function countSubmissionStatuses(options?: {
 
 	const [row] = await db
 		.select({
-			pendingCount: sql<number>`count(*) filter (where ${table.submission.status} = 'pending')`.as(
-				'pending_count'
-			),
-			openedCount: sql<number>`count(*) filter (where ${table.submission.status} = 'opened')`.as(
-				'opened_count'
-			),
-			toFixCount: sql<number>`count(*) filter (where ${table.submission.status} = 'to_fix')`.as(
-				'to_fix_count'
-			),
+			pendingCount:
+				sql<number>`sum(case when ${table.submission.status} = 'pending' then 1 else 0 end)`.as(
+					'pending_count'
+				),
+			openedCount:
+				sql<number>`sum(case when ${table.submission.status} = 'opened' then 1 else 0 end)`.as(
+					'opened_count'
+				),
+			toFixCount:
+				sql<number>`sum(case when ${table.submission.status} = 'to_fix' then 1 else 0 end)`.as(
+					'to_fix_count'
+				),
 			acceptedCount:
-				sql<number>`count(*) filter (where ${table.submission.status} = 'accepted')`.as(
+				sql<number>`sum(case when ${table.submission.status} = 'accepted' then 1 else 0 end)`.as(
 					'accepted_count'
 				),
 			rejectedCount:
-				sql<number>`count(*) filter (where ${table.submission.status} = 'rejected')`.as(
+				sql<number>`sum(case when ${table.submission.status} = 'rejected' then 1 else 0 end)`.as(
 					'rejected_count'
 				)
 		})

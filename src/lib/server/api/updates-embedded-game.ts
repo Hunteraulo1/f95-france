@@ -1,3 +1,5 @@
+import { parseEngineTypes } from '../db/engines-per-game-subquery';
+
 /** Ligne issue du join update + game (+ engines) pour construire l’objet `game` enrichi. */
 export type UpdateJoinGameRow = {
 	gameId: string;
@@ -12,7 +14,7 @@ export type UpdateJoinGameRow = {
 };
 
 export function embeddedGameFromRow(r: UpdateJoinGameRow) {
-	const engineTypes = Array.isArray(r.gameEngineTypes) ? r.gameEngineTypes : [];
+	const engineTypes = parseEngineTypes(r.gameEngineTypes);
 	return {
 		id: r.gameId,
 		name: r.gameName,

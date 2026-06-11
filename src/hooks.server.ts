@@ -202,8 +202,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 				const isStaticAsset =
 					path.startsWith('/_app/') ||
 					path.startsWith('/_svelte/') ||
-					path === '/favicon.ico' ||
-					path === '/opengraph.svg' ||
 					path.endsWith('.css') ||
 					path.endsWith('.js') ||
 					path.endsWith('.woff2');

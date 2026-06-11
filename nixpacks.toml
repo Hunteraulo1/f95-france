@@ -1,6 +1,6 @@
 [phases.setup]
-# Client PostgreSQL pour sync prod → PTB au démarrage (pg_dump / psql).
-nixPkgs = ["nodejs_24", "bun", "postgresql"]
+# Client MariaDB pour sync prod → PTB au démarrage (mysqldump / mysql).
+nixPkgs = ["nodejs_24", "bun", "mariadb"]
 
 [phases.install]
 cmds = [
