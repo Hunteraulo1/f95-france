@@ -15,6 +15,7 @@ export const SITE = {
 	/** Bannière logo (header public) — fond clair / fond sombre. */
 	bannerLogoLightUrl: 'https://cdn.f95france.site/u/banner-f95france-light.png',
 	bannerLogoDarkUrl: 'https://cdn.f95france.site/u/banner-f95france-dark.png',
+	faviconUrl: 'https://cdn.f95france.site/u/favicon.ico',
 	defaultSecurityContact: 'mailto:security@f95france.site'
 } as const;
 
