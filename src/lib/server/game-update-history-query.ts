@@ -26,7 +26,7 @@ function parseHistoryChanges(raw: string | null): TranslationUpdateHistoryChange
 
 async function countGameUpdateHistory(gameId: string): Promise<number> {
 	const rows = await db
-		.select({ count: sql<number>`count(*)::int`.as('count') })
+		.select({ count: sql<number>`count(*)`.as('count') })
 		.from(table.updateHistory)
 		.innerJoin(table.update, eq(table.updateHistory.updateId, table.update.id))
 		.where(eq(table.update.gameId, gameId));

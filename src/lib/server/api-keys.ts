@@ -258,7 +258,7 @@ export type ApiKeyListRow = {
 /** Clés actives (non révoquées) d’un utilisateur. */
 export async function countActiveApiKeysForOwner(ownerUserId: string): Promise<number> {
 	const [row] = await db
-		.select({ count: sql<number>`count(*)::int`.as('count') })
+		.select({ count: sql<number>`count(*)`.as('count') })
 		.from(table.apiKey)
 		.where(
 			and(

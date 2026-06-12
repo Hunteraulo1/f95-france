@@ -1787,7 +1787,7 @@ export async function syncMajToGoogleSheet(): Promise<void> {
 		// Compat si la colonne `update.status` n'est pas encore migrée:
 		// on considère temporairement tout en "update".
 		const fallback = (await db.execute(sql`
-			SELECT 'update'::varchar AS status, g.name AS game_name
+			SELECT 'update' AS status, g.name AS game_name
 			FROM "update" u
 			JOIN game g ON g.id = u.game_id
 			WHERE DATE(u.created_at) = CURRENT_DATE

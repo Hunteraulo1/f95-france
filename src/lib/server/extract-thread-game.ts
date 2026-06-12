@@ -406,8 +406,8 @@ export async function runExtractThreadGame(input: {
 			and(
 				eq(table.submission.type, 'game'),
 				eq(table.submission.status, 'pending'),
-				sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${threadIdParsed}`,
-				sql`(data::jsonb->'game'->>'website') = ${website}`
+				sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${threadIdParsed}`,
+				sql`JSON_VALUE(data, '$.game.website') = ${website}`
 			)
 		)
 		.limit(1);

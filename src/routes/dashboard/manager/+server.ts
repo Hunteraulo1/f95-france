@@ -241,7 +241,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${validThreadId}`
+						sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${validThreadId}`
 					)
 				)
 				.limit(1);
