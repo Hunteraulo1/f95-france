@@ -6,7 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    container_name: f96-trad-dash-app
     restart: unless-stopped
 
     environment:
@@ -14,8 +13,8 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
 
-    ports:
-      - '${APP_PORT:-3000}:3000'
+    expose:
+      - '3000'
 
     healthcheck:
       test:
@@ -24,6 +23,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=coolify'
+      - 'traefik.http.services.f95-ptb.loadbalancer.server.port=3000'
 
     networks:
       - coolify
