@@ -2,7 +2,6 @@ import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
-import { randomUUID } from 'node:crypto';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
@@ -36,6 +35,7 @@ import {
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq, like, or, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
