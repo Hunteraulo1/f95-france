@@ -8,55 +8,26 @@ services:
 
     container_name: f96-trad-dash-app
     restart: unless-stopped
-    env_file: .env
 
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      MARIADB_HOST: mariadb
-      MARIADB_PORT: 3306
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
-      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
 
     ports:
       - '${APP_PORT:-3000}:3000'
 
-    depends_on:
-      mariadb:
-        condition: service_healthy
-
-  mariadb:
-    image: mariadb:11.4
-    container_name: f96-trad-dash-mariadb
-    restart: unless-stopped
-    env_file: .env
-
-    environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
-
-    ports:
-      - '${TAILSCALE_IP:-127.0.0.1}:${MARIADB_PORT:-3306}:3306'
-
-    volumes:
-      - mariadb_data:/var/lib/mysql
-
     healthcheck:
-      test: ['CMD', 'healthcheck.sh', '--su-mysql', '--connect', '--innodb_initialized']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: '3'
+    networks:
+      - coolify
 
-volumes:
-  mariadb_data:
+networks:
+  coolify:
+    external: true
