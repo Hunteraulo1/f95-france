@@ -58,7 +58,7 @@
 			<li class="mt-1 border-t border-base-300 pt-1">
 				<form
 					method="POST"
-					action={resolve('/dashboard/logout?/logout')}
+					action={resolve('/dashboard/account/logout?/logout')}
 					use:enhance={() => {
 						return async ({ update }) => {
 							clearUserData();
@@ -66,7 +66,7 @@
 						};
 					}}
 				>
-					<a href={resolve('/dashboard/logout')} class="gap-2 text-error flex">
+					<a href={resolve('/dashboard/account/logout')} class="gap-2 text-error flex">
 						<LogOut class="h-4 w-4" />
 						Déconnexion
 					</a>

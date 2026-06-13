@@ -131,7 +131,7 @@
 						<RefreshCw size={18} aria-hidden="true" />
 						Réessayer
 					</button>
-					<a href={resolve('/dashboard/login')} class="btn gap-2 btn-ghost">
+					<a href={resolve('/dashboard/account/login')} class="btn gap-2 btn-ghost">
 						<LogIn size={18} aria-hidden="true" />
 						Espace staff
 					</a>

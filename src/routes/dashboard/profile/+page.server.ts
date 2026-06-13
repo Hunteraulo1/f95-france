@@ -30,7 +30,7 @@ const userProfileSelect = {
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
-		throw redirect(303, '/dashboard/login');
+		throw redirect(303, '/dashboard/account/login');
 	}
 
 	const userId = locals.user.id;
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.limit(1);
 
 	if (!row) {
-		throw redirect(303, '/dashboard/login');
+		throw redirect(303, '/dashboard/account/login');
 	}
 
 	const profileCustomize = resolveProfileCustomizeFlags(locals.user.role, locals.permissions);

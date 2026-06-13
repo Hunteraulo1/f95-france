@@ -197,7 +197,7 @@
 
 			<p class="text-center text-sm text-base-content/70">
 				Déjà un compte ?
-				<a href="/dashboard/login" class="link font-medium link-primary">Se connecter</a>
+				<a href="/dashboard/account/login" class="link font-medium link-primary">Se connecter</a>
 			</p>
 		</div>
 	</div>

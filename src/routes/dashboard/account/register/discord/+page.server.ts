@@ -29,12 +29,12 @@ export const load: PageServerLoad = async ({ locals, cookies, url }) => {
 	}
 
 	if (!isRegistrationEnabled()) {
-		throw redirect(303, '/dashboard/login?registration=disabled');
+		throw redirect(303, '/dashboard/account/login?registration=disabled');
 	}
 
 	const pending = readDiscordSignupPendingCookie(cookies);
 	if (!pending) {
-		throw redirect(303, '/dashboard/login?discord_error=signup_expired');
+		throw redirect(303, '/dashboard/account/login?discord_error=signup_expired');
 	}
 
 	return {

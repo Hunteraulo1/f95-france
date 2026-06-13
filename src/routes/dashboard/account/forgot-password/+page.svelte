@@ -87,7 +87,7 @@
 			</form>
 
 			<p class="text-center text-sm text-base-content/70">
-				<a href="/dashboard/login" class="link font-medium link-primary">Retour à la connexion</a>
+				<a href="/dashboard/account/login" class="link font-medium link-primary">Retour à la connexion</a>
 			</p>
 		</div>
 	</div>

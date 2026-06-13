@@ -23,7 +23,7 @@ function parseRevokedFilter(value: string | null): RevokedFilter {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
-		throw redirect(302, '/dashboard/login');
+		throw redirect(302, '/dashboard/account/login');
 	}
 
 	const revokedFilter = parseRevokedFilter(url.searchParams.get('revoked'));

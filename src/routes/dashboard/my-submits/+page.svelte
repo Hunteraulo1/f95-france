@@ -11,7 +11,7 @@
 
 <SubmissionsListPage
 	title="Mes soumissions"
-	basePath="/dashboard/submit"
+	basePath="/dashboard/my-submits"
 	{data}
 	canEditStatus={false}
 />

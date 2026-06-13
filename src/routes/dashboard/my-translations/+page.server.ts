@@ -15,7 +15,7 @@ const PAGE_SIZE = 20;
 
 export const load: PageServerLoad = async ({ locals, url, cookies }) => {
 	if (!locals.user) {
-		redirect(303, '/dashboard/login');
+		redirect(303, '/dashboard/account/login');
 	}
 
 	// Le compte doit être lié à un traducteur (translator.userId) pour que "Mes traductions" ait du sens.

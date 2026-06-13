@@ -253,7 +253,7 @@ function redirectToDiscordSignup(params: {
 		discordLabel: discordLabelFromIdentity(params.identity),
 		suggestedUsername: suggestUsernameFromDiscord(params.identity)
 	});
-	redirect(302, '/dashboard/register/discord');
+	redirect(302, '/dashboard/account/register/discord');
 }
 
 export async function finalizeDiscordSignup(params: {

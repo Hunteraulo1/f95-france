@@ -36,7 +36,7 @@
 					/>
 					<h1 class="mt-4 text-2xl font-bold">Mot de passe mis à jour</h1>
 					<p class="mt-2 text-sm text-base-content/70">{form.message}</p>
-					<a href="/dashboard/login?reset=1" class="btn btn-primary btn-block mt-6">Se connecter</a>
+					<a href="/dashboard/account/login?reset=1" class="btn btn-primary btn-block mt-6">Se connecter</a>
 				</div>
 			{:else if showForm}
 				<div class="text-center">
@@ -108,7 +108,7 @@
 					<p class="mt-2 text-sm text-base-content/70">
 						Ce lien de réinitialisation a expiré. Demandez-en un nouveau.
 					</p>
-					<a href="/dashboard/forgot-password" class="btn btn-primary btn-block mt-6">
+					<a href="/dashboard/account/forgot-password" class="btn btn-primary btn-block mt-6">
 						Mot de passe oublié
 					</a>
 				</div>
@@ -123,10 +123,10 @@
 							Ce lien n’est pas valide ou a déjà été utilisé.
 						{/if}
 					</p>
-					<a href="/dashboard/forgot-password" class="btn btn-ghost btn-block mt-4">
+					<a href="/dashboard/account/forgot-password" class="btn btn-ghost btn-block mt-4">
 						Demander un nouveau lien
 					</a>
-					<a href="/dashboard/login" class="link mt-2 text-sm link-primary">Retour à la connexion</a
+					<a href="/dashboard/account/login" class="link mt-2 text-sm link-primary">Retour à la connexion</a
 					>
 				</div>
 			{/if}

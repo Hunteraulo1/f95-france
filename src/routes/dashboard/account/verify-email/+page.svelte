@@ -65,7 +65,7 @@
 							Renvoyer l’email de vérification
 						</button>
 					</form>
-					<form method="post" action="/dashboard/logout" class="w-full">
+					<form method="post" action="/dashboard/account/logout" class="w-full">
 						<button type="submit" class="btn btn-block btn-ghost">Se déconnecter</button>
 					</form>
 				{/if}

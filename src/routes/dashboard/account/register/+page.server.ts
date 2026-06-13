@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	if (!isRegistrationEnabled()) {
-		throw redirect(303, '/dashboard/login?registration=disabled');
+		throw redirect(303, '/dashboard/account/login?registration=disabled');
 	}
 
 	return {

@@ -23,7 +23,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) 
 		const pathname = url.pathname;
 		if (!isPublicDashboardPath(pathname)) {
 			const redirectTo = encodeURIComponent(pathname + url.search);
-			redirect(303, `/dashboard/login?redirectTo=${redirectTo}`);
+			redirect(303, `/dashboard/account/login?redirectTo=${redirectTo}`);
 		}
 	} else if (emailVerificationRequired() && !isUserEmailVerified(locals.user)) {
 		ensureEmailVerifiedOrRedirect(locals.user, url.pathname);

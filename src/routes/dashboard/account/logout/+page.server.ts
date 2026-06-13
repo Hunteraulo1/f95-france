@@ -5,7 +5,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
-		throw redirect(302, '/dashboard/login');
+		throw redirect(302, '/dashboard/account/login');
 	}
 
 	return {
@@ -30,7 +30,7 @@ export const actions: Actions = {
 			auth.deleteSessionTokenCookie(event);
 
 			// Rediriger vers la page de login
-			throw redirect(302, '/dashboard/login');
+			throw redirect(302, '/dashboard/account/login');
 		} catch (error) {
 			// Si c'est une redirection, la laisser passer
 			if (error && typeof error === 'object' && 'status' in error && error.status === 302) {

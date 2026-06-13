@@ -215,7 +215,7 @@
 					</button>
 
 					<a
-						href="/dashboard/forgot-password"
+						href="/dashboard/account/forgot-password"
 						class="label-text-alt link link-hover link-primary mx-auto mt-2"
 					>
 						Mot de passe oublié ?
@@ -259,7 +259,7 @@
 			{#if data?.registrationEnabled}
 				<p class="text-center text-sm text-base-content/70">
 					Pas encore de compte ?
-					<a href="/dashboard/register" class="link font-medium link-primary">Créer un compte</a>
+					<a href="/dashboard/account/register" class="link font-medium link-primary">Créer un compte</a>
 				</p>
 			{/if}
 		</div>

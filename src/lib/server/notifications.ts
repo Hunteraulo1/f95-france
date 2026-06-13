@@ -112,7 +112,7 @@ export async function notifySubmissionStatusChange(
 						: 'submission_status_changed',
 		title,
 		message,
-		link: `/dashboard/submit`,
+		link: `/dashboard/my-submits`,
 		metadata: {
 			submissionId,
 			oldStatus,

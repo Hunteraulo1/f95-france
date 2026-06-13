@@ -82,10 +82,10 @@
 					{:else}
 						<li>
 							<a
-								aria-current={page.url.pathname === '/dashboard/login' ? 'page' : undefined}
-								href={resolve('/dashboard/login')}
+								aria-current={page.url.pathname === '/dashboard/account/login' ? 'page' : undefined}
+								href={resolve('/dashboard/account/login')}
 								class="btn w-28 rounded-md p-2 text-sm font-semibold shadow-lg {page.url
-									.pathname === '/dashboard/login'
+									.pathname === '/dashboard/account/login'
 									? 'btn-primary'
 									: 'btn-outline btn-primary'}"
 								draggable="false"
@@ -95,8 +95,8 @@
 						</li>
 						<li>
 							<a
-								aria-current={page.url.pathname === '/dashboard/register' ? 'page' : undefined}
-								href={resolve('/dashboard/register')}
+								aria-current={page.url.pathname === '/dashboard/account/register' ? 'page' : undefined}
+								href={resolve('/dashboard/account/register')}
 								class="btn btn-primary w-28 rounded-md border-base-content/10 p-2 text-sm font-semibold shadow-lg hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
 								draggable="false"
 							>
@@ -185,7 +185,7 @@
 					</a>
 					<form
 						method="POST"
-						action={resolve('/dashboard/logout?/logout')}
+						action={resolve('/dashboard/account/logout?/logout')}
 						use:enhance={() => {
 							return async ({ update }) => {
 								clearUserData();
@@ -201,8 +201,8 @@
 					</form>
 				{:else}
 					<a
-						href={resolve('/dashboard/login')}
-						class="btn w-full {page.url.pathname === '/dashboard/login'
+						href={resolve('/dashboard/account/login')}
+						class="btn w-full {page.url.pathname === '/dashboard/account/login'
 							? 'btn-primary'
 							: 'btn-outline btn-primary'}"
 						onclick={closeNavDrawer}
@@ -210,7 +210,7 @@
 						Connexion
 					</a>
 					<a
-						href={resolve('/dashboard/register')}
+						href={resolve('/dashboard/account/register')}
 						class="btn btn-primary w-full"
 						onclick={closeNavDrawer}
 					>

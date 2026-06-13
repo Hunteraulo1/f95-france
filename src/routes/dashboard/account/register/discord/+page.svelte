@@ -123,7 +123,7 @@
 
 				{#if form && 'redirectToLogin' in form && form.redirectToLogin}
 					<p class="text-center text-sm">
-						<a href="/dashboard/login" class="link link-primary">Retour à la connexion</a>
+						<a href="/dashboard/account/login" class="link link-primary">Retour à la connexion</a>
 					</p>
 				{/if}
 
@@ -132,7 +132,7 @@
 						<UserPlus size={18} aria-hidden="true" />
 						Créer mon compte
 					</button>
-					<a href="/dashboard/login" class="btn btn-ghost btn-block btn-sm">Annuler</a>
+					<a href="/dashboard/account/login" class="btn btn-ghost btn-block btn-sm">Annuler</a>
 				</div>
 			</form>
 		</div>
