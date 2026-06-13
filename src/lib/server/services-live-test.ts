@@ -6,10 +6,10 @@ import { getValidAccessToken } from '$lib/server/google-oauth';
 import { isSmtpConfigured, verifySmtpConnection } from '$lib/server/mail';
 import { privateEnv } from '$lib/server/private-env';
 import {
-    buildSecurityTxtContent,
-    getSecurityTxtPublicUrl,
-    parseSecurityTxt,
-    validateSecurityTxt
+	buildSecurityTxtContent,
+	getSecurityTxtPublicUrl,
+	parseSecurityTxt,
+	validateSecurityTxt
 } from '$lib/server/security-txt';
 import { isLibreTranslateConfigured } from '$lib/server/translate-libretranslate';
 

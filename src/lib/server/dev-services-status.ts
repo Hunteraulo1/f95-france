@@ -134,7 +134,6 @@ function buildMailStatus(): DevServiceCheck {
 }
 
 function buildLibreTranslateStatus(): DevServiceCheck {
-	const url = envDefined('LIBRETRANSLATE_URL');
 	const apiKey = envDefined('LIBRETRANSLATE_API_KEY');
 	const autoOff =
 		privateEnv('DESCRIPTION_AUTO_TRANSLATE')?.trim().toLowerCase() === 'false' ||
