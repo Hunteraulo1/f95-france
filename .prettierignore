@@ -1,10 +1,10 @@
-# Package Managers
-package-lock.json
-pnpm-lock.yaml
-yarn.lock
+# Lockfiles
 bun.lock
-bun.lockb
 
-# Miscellaneous
-/static/
-/drizzle/
+# Générés
+build/
+.svelte-kit/
+drizzle/
+
+# Assets statiques
+static/
