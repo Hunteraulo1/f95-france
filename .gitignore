@@ -20,7 +20,7 @@ node_modules
 _tmp_*
 
 # Docker
-docker/postgres/init/
+/docker
 *.dump
 
 # DB dumps locaux
