@@ -214,7 +214,7 @@
 		game.link = buildGameLinkFromThread(game.website, game.threadId);
 		skipThreadStepFromQueryParam = true;
 		pendingQueryThreadIdAutoScrape = true;
-		replaceState(resolve('/dashboard/manager/add'), page.state);
+		replaceState(resolve('/dashboard/manager/add-game'), page.state);
 
 		void (async () => {
 			try {

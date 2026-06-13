@@ -116,10 +116,10 @@
 		if (/^\d+$/.test(q)) {
 			const threadId = Number.parseInt(q, 10);
 			if (threadId > 0) {
-				return `/dashboard/manager/add?threadId=${encodeURIComponent(String(threadId))}`;
+				return `/dashboard/manager/add-game?threadId=${encodeURIComponent(String(threadId))}`;
 			}
 		}
-		return '/dashboard/manager/add';
+		return '/dashboard/manager/add-game';
 	};
 </script>
 

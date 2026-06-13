@@ -442,7 +442,7 @@ export async function runExtractThreadGame(input: {
 		return {
 			ok: true,
 			created: false,
-			redirectPath: '/dashboard/manager/add',
+			redirectPath: '/dashboard/manager/add-game',
 			redirectToAdd: true,
 			extractDraft: toManagerExtractDraft(payload, threadIdParsed, website)
 		};
