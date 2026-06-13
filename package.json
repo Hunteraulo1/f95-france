@@ -27,8 +27,8 @@
 		"db:migrate": "bun src/lib/server/db/migrate.ts",
 		"db:stamp-migrations": "bun src/lib/server/db/stamp-migrations-from-journal.ts",
 		"db:studio": "drizzle-kit studio",
-		"db:sync:prod-to-dev": "bash scripts/sync-prod-to-dev-db.sh --target dev",
-		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
+		"db:sync:prod-to-dev": "bash scripts/sync-db.sh --target dev",
+		"db:sync:prod-to-ptb": "bash scripts/sync-db.sh --target ptb",
 		"db:migrate:from-postgres": "bun scripts/migrate-postgres-to-mariadb.ts",
 		"cron:check-version": "node cron/check-version.mjs",
 		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
