@@ -1,11 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 
 const DASHBOARD_PUBLIC_EXACT = new Set([
-	'/dashboard/login',
-	'/dashboard/register',
-	'/dashboard/register/discord',
-	'/dashboard/logout',
-	'/dashboard/forgot-password'
+	'/dashboard/account/login',
+	'/dashboard/account/register',
+	'/dashboard/account/register/discord',
+	'/dashboard/account/logout',
+	'/dashboard/account/forgot-password'
 ]);
 
 /** Profil public canonique (`/profile/{pseudo}`). */
@@ -53,7 +53,7 @@ export function assertDashboardAuthenticated(
 	locals: App.Locals
 ): asserts locals is App.Locals & { user: NonNullable<App.Locals['user']> } {
 	if (!locals.user) {
-		redirect(303, '/dashboard/login');
+		redirect(303, '/dashboard/account/login');
 	}
 }
 

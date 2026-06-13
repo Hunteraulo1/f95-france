@@ -2,13 +2,13 @@ import { absoluteUrl, siteOrigin } from '$lib/site';
 
 const SITEMAP_BASE_PATHS = [
 	{ path: '/', changefreq: 'weekly' as const, priority: 1 },
-	{ path: '/legal-notice', changefreq: 'monthly' as const, priority: 0.3 },
-	{ path: '/privacy-policy', changefreq: 'monthly' as const, priority: 0.3 },
-	{ path: '/dashboard/login', changefreq: 'monthly' as const, priority: 0.4 }
+	{ path: '/legals/legal-notice', changefreq: 'monthly' as const, priority: 0.3 },
+	{ path: '/legals/privacy-policy', changefreq: 'monthly' as const, priority: 0.3 },
+	{ path: '/dashboard/account/login', changefreq: 'monthly' as const, priority: 0.4 }
 ] as const;
 
 const SITEMAP_REGISTER_PATH = {
-	path: '/dashboard/register',
+	path: '/dashboard/account/register',
 	changefreq: 'monthly' as const,
 	priority: 0.4
 } as const;

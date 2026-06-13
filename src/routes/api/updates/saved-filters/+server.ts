@@ -1,9 +1,6 @@
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema';
-import {
-	parseSavedUpdatesFilters,
-	serializeSavedUpdatesFilters
-} from '$lib/server/saved-updates-filters';
+import { parseSavedUpdatesFilters, serializeSavedUpdatesFilters } from '$lib/server/saved-filters';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

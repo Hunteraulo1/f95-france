@@ -4,7 +4,7 @@ export const EXTRACT_DRAFT_COOKIE = 'f95_extract_draft';
 
 export type ExtractDraftWebsite = 'f95z' | 'lc';
 
-/** Brouillon prérempli pour `/dashboard/manager/add` après extract en mode soumission. */
+/** Brouillon prérempli pour `/dashboard/manager/add-game` après extract en mode soumission. */
 export type ManagerExtractDraft = {
 	website: ExtractDraftWebsite;
 	threadId: number;

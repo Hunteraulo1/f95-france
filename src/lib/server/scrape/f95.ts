@@ -1,10 +1,8 @@
 import { appLogWarn } from '$lib/server/app-log-bridge';
 import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
-import type { ScrapedThreadGame } from './types';
+import type { ScrapedThreadGame } from '$lib/scrape/types';
 import { parseTitleTokens, SCRAPE_USER_AGENT, unescapeHtml } from './xenforo';
-
-export type { ScrapedThreadGame as ScrapedF95Game } from './types';
 
 interface F95CheckerResponse {
 	status: 'ok' | 'error' | string;

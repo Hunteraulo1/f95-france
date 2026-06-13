@@ -116,10 +116,10 @@
 		if (/^\d+$/.test(q)) {
 			const threadId = Number.parseInt(q, 10);
 			if (threadId > 0) {
-				return `/dashboard/manager/add?threadId=${encodeURIComponent(String(threadId))}`;
+				return `/dashboard/manager/add-game?threadId=${encodeURIComponent(String(threadId))}`;
 			}
 		}
-		return '/dashboard/manager/add';
+		return '/dashboard/manager/add-game';
 	};
 </script>
 
@@ -169,7 +169,7 @@
 									class="flex items-stretch border-b border-base-300 last:border-b-0 hover:bg-base-200"
 								>
 									<a
-										href="/dashboard/game/{game.id}"
+										href="/dashboard/manager/game/{game.id}"
 										class="flex min-w-0 flex-1 cursor-pointer items-start gap-3 p-4"
 									>
 										{#if gameImageSrc}

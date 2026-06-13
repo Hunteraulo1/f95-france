@@ -8,7 +8,7 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals, cookies, request }) => {
 	if (!locals.user) {
-		throw redirect(302, '/dashboard/login');
+		throw redirect(302, '/dashboard/account/login');
 	}
 	assertPermission(locals, 'config.edit', 'Accès non autorisé (configuration requise)');
 

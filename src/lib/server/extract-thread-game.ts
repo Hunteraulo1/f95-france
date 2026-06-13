@@ -395,7 +395,7 @@ export async function runExtractThreadGame(input: {
 			ok: true,
 			created: false,
 			gameId: existing[0].id,
-			redirectPath: `/dashboard/game/${existing[0].id}`
+			redirectPath: `/dashboard/manager/game/${existing[0].id}`
 		};
 	}
 
@@ -406,8 +406,8 @@ export async function runExtractThreadGame(input: {
 			and(
 				eq(table.submission.type, 'game'),
 				eq(table.submission.status, 'pending'),
-				sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${threadIdParsed}`,
-				sql`(data::jsonb->'game'->>'website') = ${website}`
+				sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${threadIdParsed}`,
+				sql`JSON_VALUE(data, '$.game.website') = ${website}`
 			)
 		)
 		.limit(1);
@@ -442,7 +442,7 @@ export async function runExtractThreadGame(input: {
 		return {
 			ok: true,
 			created: false,
-			redirectPath: '/dashboard/manager/add',
+			redirectPath: '/dashboard/manager/add-game',
 			redirectToAdd: true,
 			extractDraft: toManagerExtractDraft(payload, threadIdParsed, website)
 		};
@@ -474,6 +474,6 @@ export async function runExtractThreadGame(input: {
 		ok: true,
 		created: true,
 		gameId,
-		redirectPath: `/dashboard/game/${gameId}`
+		redirectPath: `/dashboard/manager/game/${gameId}`
 	};
 }

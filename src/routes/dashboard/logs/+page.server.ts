@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				and(
 					eq(apiLog.status, 500),
 					eq(apiLog.method, 'DELETE'),
-					sql`${apiLog.route} like '/dashboard/game/%'`
+					sql`${apiLog.route} like '/dashboard/manager/game/%'`
 				)
 			);
 			if (operationalNoise) {

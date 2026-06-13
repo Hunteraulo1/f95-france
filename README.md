@@ -1,94 +1,118 @@
-# sv
+# F95 France
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Plateforme communautaire de traduction de jeux F95Zone en français. Permet aux traducteurs de gérer et publier leurs traductions, et aux utilisateurs de les suivre et les télécharger.
 
-## Creating a project
+## Stack
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **[SvelteKit](https://kit.svelte.dev/)** — framework full-stack
+- **[MariaDB 11.4](https://mariadb.org/)** + **[Drizzle ORM](https://orm.drizzle.team/)** — base de données
+- **[Bun](https://bun.sh/)** — runtime & package manager
+- **[Tailwind CSS v4](https://tailwindcss.com/)** + **[DaisyUI 5](https://daisyui.com/)** — UI
+- **Docker** — dev local & déploiement
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Prérequis
 
-# create a new project in my-app
-npx sv create my-app
-```
+- [Bun](https://bun.sh/) ≥ 1.x
+- [Node.js](https://nodejs.org/) ≥ 24
+- [Docker](https://www.docker.com/) (pour la base de données de dev)
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
+## Installation (dev local)
 
 ```sh
-npm run build
+# 1. Cloner et installer les dépendances
+git clone https://github.com/Hunteraulo1/f95-france.git
+cd f95-france
+bun install
+
+# 2. Configurer l'environnement
+cp .env.example .env
+# Éditer .env avec vos valeurs (voir section Variables d'environnement)
+
+# 3. Démarrer MariaDB
+bun run dev:up
+
+# 4. Appliquer les migrations
+bun run db:migrate
+
+# 5. Lancer le serveur de développement
+bun run dev
 ```
 
-Preview du build de production (serveur **adapter-node**, pas `vite preview`) :
+L'app est disponible sur http://localhost:5173.
+
+## Variables d'environnement
+
+Copier `.env.example` en `.env`. Les variables essentielles pour démarrer :
+
+| Variable                      | Description                                            |
+| ----------------------------- | ------------------------------------------------------ |
+| `PUBLIC_APP_ORIGIN`           | URL publique du site (ex: `https://f95france.site`)    |
+| `MARIADB_HOST`                | Hôte MariaDB (`localhost` en dev)                      |
+| `MARIADB_DATABASE`            | Nom de la base                                         |
+| `MARIADB_USER`                | Utilisateur MariaDB                                    |
+| `MARIADB_PASSWORD`            | Mot de passe MariaDB                                   |
+| `DISCORD_WEBHOOK_UPDATES`     | Webhook Discord pour les mises à jour                  |
+| `DISCORD_OAUTH_CLIENT_ID`     | OAuth Discord (connexion)                              |
+| `DISCORD_OAUTH_CLIENT_SECRET` | OAuth Discord (connexion)                              |
+| `CRON_SECRET`                 | Secret pour sécuriser `/api/cron/check-version`        |
+| `CONFIG_TOKEN_ENCRYPTION_KEY` | Clé de chiffrement des tokens OAuth (prod obligatoire) |
+
+Voir `.env.example` pour la liste complète avec commentaires.
+
+## Scripts
+
+| Commande              | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `bun run dev`         | Serveur de développement                         |
+| `bun run build`       | Build de production                              |
+| `bun run preview`     | Prévisualiser le build (`http://localhost:4173`) |
+| `bun run dev:up`      | Démarrer MariaDB (Docker)                        |
+| `bun run dev:down`    | Arrêter MariaDB                                  |
+| `bun run dev:logs`    | Logs MariaDB                                     |
+| `bun run db:generate` | Générer une migration depuis le schéma           |
+| `bun run db:migrate`  | Appliquer les migrations                         |
+| `bun run db:studio`   | Interface Drizzle Studio                         |
+| `bun run lint`        | Formater + linter                                |
+| `bun run check`       | Vérification TypeScript                          |
+
+## Schéma de base de données
+
+La source de vérité est [`src/lib/server/db/schema.ts`](src/lib/server/db/schema.ts). **Ne pas** écrire de SQL à la main dans `drizzle/`.
+
+Workflow pour modifier le schéma :
 
 ```sh
-bun run build
-bun run preview
+# 1. Modifier src/lib/server/db/schema.ts
+# 2. Générer la migration
+bun run db:generate
+# 3. Relire le SQL généré dans drizzle/
+# 4. Appliquer
+bun run db:migrate
 ```
 
-Ouvre http://127.0.0.1:4173/ — `ORIGIN` est fixé pour le preview local. Après un rebuild, fais un rechargement forcé (Ctrl+Shift+R) pour éviter un vieux `app.*.js` en cache (erreur `__sveltekit_* is undefined`).
+## Déploiement
 
-Ne lance pas `vite preview` ni `bun run dev` en parallèle sur le même onglet.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-
-## Base de données de dev (Docker)
-
-Lancer Postgres local:
+### Docker (prod)
 
 ```sh
-npm run db:dev:up
+cp .env.example .env.prod
+# Remplir .env.prod avec les valeurs de production
+
+docker compose up -d
 ```
 
-Voir les logs:
+### Coolify
 
-```sh
-npm run db:dev:logs
-```
+1. Créer une ressource depuis ce dépôt
+2. Renseigner les variables d'environnement (voir `.env.example`)
+3. La commande de démarrage est `bun run start`
 
-Arrêter la DB:
-
-```sh
-npm run db:dev:down
-```
-
-### Évolution du schéma (obligatoire)
-
-La source de vérité est `src/lib/server/db/schema.ts`. **Ne pas** écrire de fichiers SQL à la main dans `drizzle/` ni utiliser `db:push`.
-
-1. Modifier `src/lib/server/db/schema.ts`
-2. Générer la migration : `bun run db:generate`
-3. Relire le SQL généré dans `drizzle/`
-4. Appliquer : `bun run db:migrate`
-
-Première install sur une base vide : `bun run db:migrate` applique tout le journal.
-
-Après sync prod → dev (`bun run db:sync:prod-to-dev`), le schéma `public` est copié puis stamp + migrate.
-
-**PTB (Coolify)** : pour repartir de la prod à chaque déploiement (données + journal `drizzle`) :
-
-1. Variables Coolify (ressource PTB uniquement) : `POSTGRES_PROD_*`, `POSTGRES_*` ou `POSTGRES_PTB_*`, `SYNC_PROD_TO_PTB_ON_DEPLOY=true`
-2. Laisser la commande de démarrage Coolify sur `bun run start` (déjà le cas avec Nixpacks)
-3. Sync manuelle : `bun run db:sync:prod-to-ptb`
-
-Le clone PTB inclut `public` et `drizzle` ; seules les migrations plus récentes que la prod sont ensuite appliquées.
-
-**Production :** après chaque déploiement qui modifie le schéma :
+Après chaque déploiement modifiant le schéma, appliquer les migrations :
 
 ```sh
 bun run db:migrate
 ```
+
+## Licence
+
+[MIT + Commons Clause](LICENSE) — libre d'utilisation, modification et distribution, mais interdit à des fins commerciales.

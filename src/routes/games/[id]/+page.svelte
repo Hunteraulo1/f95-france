@@ -158,7 +158,7 @@
 								</a>
 							{/if}
 							{#if data.canManageGame}
-								<a href="/dashboard/game/{game.id}" class="btn btn-outline gap-2">
+								<a href="/dashboard/manager/game/{game.id}" class="btn btn-outline gap-2">
 									<SquarePen class="h-4 w-4" />
 									Modifier le jeu
 								</a>

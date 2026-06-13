@@ -9,7 +9,7 @@ export function isRoutineApiError(method: string, route: string, status: number)
 		return true;
 	}
 
-	if (m === 'DELETE' && status === 500 && route.startsWith('/dashboard/game/')) {
+	if (m === 'DELETE' && status === 500 && route.startsWith('/dashboard/manager/game/')) {
 		return true;
 	}
 

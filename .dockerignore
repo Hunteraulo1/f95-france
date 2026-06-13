@@ -1,12 +1,34 @@
+# Dépendances et build local
 node_modules
 .svelte-kit
 build
+
+# Environnement
 .env
 .env.*
+
+# Docker
 docker
-# scripts/ requis au runtime (coolify-start.sh, sync prod → PTB)
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+.dockerignore
+
+# Drizzle
+drizzle.config.ts
+
+# Qualité de code
+eslint.config.js
+
+# Scripts dev-only
+scripts/migrate-postgres-to-mariadb.ts
+
+# Docs & meta
 *.md
+LICENSE
 .git
 .gitignore
+
+# IDE
 .cursor
 .vscode

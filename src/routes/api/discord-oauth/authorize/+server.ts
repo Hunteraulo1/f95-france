@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ locals, url, cookies, request }) => 
 	const context = buildDiscordOAuthContextFromUrl(url);
 
 	if (context.intent === 'link' && !locals.user) {
-		throw redirect(302, '/dashboard/login');
+		throw redirect(302, '/dashboard/account/login');
 	}
 
 	if (context.intent === 'login' && locals.user) {
@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ locals, url, cookies, request }) => 
 	if (!clientId || !clientSecret) {
 		const errorTarget =
 			context.intent === 'login'
-				? '/dashboard/login?discord_error=oauth_not_configured'
+				? '/dashboard/account/login?discord_error=oauth_not_configured'
 				: '/dashboard/settings?discord_error=oauth_not_configured';
 		throw redirect(302, errorTarget);
 	}

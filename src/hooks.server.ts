@@ -90,9 +90,9 @@ function getRequestLoggingDecision(
 		pathname.startsWith('/api/passkeys/');
 	const isSensitiveQueryRoute =
 		isSensitiveOAuthOrPasskeyRoute ||
-		pathname === '/dashboard/login' ||
-		pathname === '/dashboard/register' ||
-		pathname === '/dashboard/forgot-password' ||
+		pathname === '/dashboard/account/login' ||
+		pathname === '/dashboard/account/register' ||
+		pathname === '/dashboard/account/forgot-password' ||
 		pathname === '/email/reset-password' ||
 		pathname === '/dashboard/settings' ||
 		pathname.startsWith('/dashboard/api-keys') ||
@@ -101,11 +101,11 @@ function getRequestLoggingDecision(
 		pathname.startsWith('/dashboard/logs-app') ||
 		pathname === '/logs-app';
 	const isSensitiveBodyRoute =
-		pathname === '/dashboard/login' ||
-		pathname === '/dashboard/register' ||
-		pathname === '/dashboard/forgot-password' ||
+		pathname === '/dashboard/account/login' ||
+		pathname === '/dashboard/account/register' ||
+		pathname === '/dashboard/account/forgot-password' ||
 		pathname === '/email/reset-password' ||
-		pathname === '/dashboard/logout' ||
+		pathname === '/dashboard/account/logout' ||
 		isSensitiveSettingsAction ||
 		isSensitiveOAuthOrPasskeyRoute;
 
@@ -193,10 +193,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 			if (maintenanceEnabled) {
 				const path = event.url.pathname;
 				const isAuthException =
-					path === '/dashboard/login' ||
-					path === '/dashboard/register' ||
-					path === '/dashboard/forgot-password' ||
-					path === '/dashboard/logout' ||
+					path === '/dashboard/account/login' ||
+					path === '/dashboard/account/register' ||
+					path === '/dashboard/account/forgot-password' ||
+					path === '/dashboard/account/logout' ||
 					isPublicSitePath(path);
 				const isMaintenancePage = path === '/maintenance' || path.startsWith('/maintenance/');
 				const isStaticAsset =

@@ -17,7 +17,7 @@ sync_enabled="$(printf '%s' "${SYNC_PROD_TO_PTB_ON_DEPLOY:-}" | tr '[:upper:]' '
 
 if [[ "${sync_enabled}" == "true" || "${sync_enabled}" == "1" ]]; then
 	echo "[coolify] SYNC_PROD_TO_PTB_ON_DEPLOY activé — copie prod → PTB (public + drizzle)…"
-	bash "${ROOT_DIR}/scripts/sync-prod-to-dev-db.sh" --target ptb --yes
+	bash "${ROOT_DIR}/scripts/sync-db.sh" --target ptb --yes
 	ORIGIN="${ORIGIN:-${PUBLIC_APP_ORIGIN:-http://localhost:${PORT:-3000}}}"
 	export ORIGIN
 	exec bun build/index.js

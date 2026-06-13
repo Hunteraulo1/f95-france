@@ -8,14 +8,14 @@ export const load: LayoutServerLoad = async ({ url, locals, cookies }) => {
 	const registrationEnabled = isRegistrationEnabled();
 
 	if (pathname.startsWith('/dashboard')) {
-		if (pathname === '/dashboard/register' && !registrationEnabled) {
-			redirect(303, '/dashboard/login?registration=disabled');
+		if (pathname === '/dashboard/account/register' && !registrationEnabled) {
+			redirect(303, '/dashboard/account/login?registration=disabled');
 		}
 
 		const isAuthPage =
-			pathname === '/dashboard/login' ||
-			pathname === '/dashboard/register' ||
-			pathname === '/dashboard/forgot-password';
+			pathname === '/dashboard/account/login' ||
+			pathname === '/dashboard/account/register' ||
+			pathname === '/dashboard/account/forgot-password';
 		if (isAuthPage && locals.user) {
 			redirect(302, '/dashboard');
 		}

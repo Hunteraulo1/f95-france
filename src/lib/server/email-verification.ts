@@ -264,11 +264,11 @@ export async function purgeExpiredVerificationTokens(): Promise<void> {
 }
 
 export function dashboardVerifyEmailPath(): string {
-	return '/dashboard/verify-email';
+	return '/dashboard/account/verify-email';
 }
 
 export function isEmailVerificationExemptDashboardPath(pathname: string): boolean {
-	return pathname === dashboardVerifyEmailPath() || pathname === '/dashboard/logout';
+	return pathname === dashboardVerifyEmailPath() || pathname === '/dashboard/account/logout';
 }
 
 export function ensureEmailVerifiedOrRedirect(user: table.User, pathname: string): void {
