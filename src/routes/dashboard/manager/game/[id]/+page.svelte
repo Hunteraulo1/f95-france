@@ -428,7 +428,7 @@
 				checkerVersion !== null &&
 				isF95CheckerVersionAligned(checkerVersion, game.gameVersion, acTranslationRows);
 
-			const gameUpdateRes = await fetch(`/dashboard/game/${game.id}`, {
+			const gameUpdateRes = await fetch(`/dashboard/manager/game/${game.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
@@ -557,7 +557,7 @@
 					: {})
 			};
 
-			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
+			const response = await fetch(`/dashboard/manager/game/${game.id}/translations`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -717,7 +717,7 @@
 			};
 
 			const response = await fetch(
-				`/dashboard/game/${game.id}/translations/${editingTranslation.id}`,
+				`/dashboard/manager/game/${game.id}/translations/${editingTranslation.id}`,
 				{
 					method: 'PUT',
 					headers: {
@@ -783,7 +783,7 @@
 
 		try {
 			const response = await fetch(
-				`/dashboard/game/${game.id}/translations/${translationToDelete.id}`,
+				`/dashboard/manager/game/${game.id}/translations/${translationToDelete.id}`,
 				{
 					method: 'DELETE',
 					headers: { 'Content-Type': 'application/json' },
@@ -846,7 +846,7 @@
 		}
 
 		try {
-			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
+			const response = await fetch(`/dashboard/manager/game/${game.id}/translations`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ reason })
@@ -951,7 +951,7 @@
 		}
 
 		try {
-			const response = await fetch(`/dashboard/game/${game.id}`, {
+			const response = await fetch(`/dashboard/manager/game/${game.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'

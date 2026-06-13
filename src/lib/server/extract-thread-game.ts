@@ -395,7 +395,7 @@ export async function runExtractThreadGame(input: {
 			ok: true,
 			created: false,
 			gameId: existing[0].id,
-			redirectPath: `/dashboard/game/${existing[0].id}`
+			redirectPath: `/dashboard/manager/game/${existing[0].id}`
 		};
 	}
 
@@ -474,6 +474,6 @@ export async function runExtractThreadGame(input: {
 		ok: true,
 		created: true,
 		gameId,
-		redirectPath: `/dashboard/game/${gameId}`
+		redirectPath: `/dashboard/manager/game/${gameId}`
 	};
 }

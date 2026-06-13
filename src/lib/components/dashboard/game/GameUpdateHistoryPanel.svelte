@@ -41,7 +41,7 @@
 	} = $props();
 
 	const hrefForHistoryPage = (page: number) => {
-		const base = resolve(`/dashboard/game/${gameId}`);
+		const base = resolve(`/dashboard/manager/game/${gameId}`);
 		if (page <= 1) return base;
 		return `${base}?historyPage=${page}`;
 	};
@@ -70,7 +70,7 @@
 
 		revertingId = entry.id;
 		try {
-			const response = await fetch(`/dashboard/game/${gameId}/update-history/${entry.id}`, {
+			const response = await fetch(`/dashboard/manager/game/${gameId}/update-history/${entry.id}`, {
 				method: 'POST'
 			});
 			const body = (await response.json()) as { error?: string };
