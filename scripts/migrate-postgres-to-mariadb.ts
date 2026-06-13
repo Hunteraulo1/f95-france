@@ -17,6 +17,7 @@
 import pg from 'pg';
 import mysql from 'mysql2/promise';
 import readline from 'readline';
+import { spawnSync } from 'child_process';
 
 type Row = Record<string, unknown>;
 
@@ -83,6 +84,27 @@ function mysqlConfig(): mysql.PoolOptions {
 		ssl: sslMode === 'disable' ? undefined : { rejectUnauthorized: false },
 		waitForConnections: true
 	};
+}
+
+// ─── Migrations Drizzle sur la cible ─────────────────────────────────────────
+
+function runDbMigrate(cfg: mysql.PoolOptions): void {
+	console.log('Exécution des migrations MariaDB (bun src/lib/server/db/migrate.ts)…');
+	const env: Record<string, string> = {
+		...(process.env as Record<string, string>),
+		MARIADB_HOST: String(cfg.host),
+		MARIADB_PORT: String(cfg.port ?? 3306),
+		MARIADB_DATABASE: String(cfg.database),
+		MARIADB_USER: String(cfg.user),
+		MARIADB_PASSWORD: String(cfg.password ?? ''),
+		MARIADB_SSL_MODE: process.env.TO_MARIADB_SSL_MODE ?? 'disable'
+	};
+	const result = spawnSync('bun', ['src/lib/server/db/migrate.ts'], { env, stdio: 'inherit' });
+	if (result.status !== 0) {
+		console.error(`❌  db:migrate a échoué (code ${result.status})`);
+		process.exit(1);
+	}
+	console.log('✓ Migrations MariaDB OK\n');
 }
 
 // ─── Conversion de types PostgreSQL → MariaDB ─────────────────────────────────
@@ -298,6 +320,8 @@ async function main() {
 		}
 		console.log();
 	}
+
+	runDbMigrate(mqCfg);
 
 	// Désactiver les contraintes FK pour l'import
 	await conn.query('SET FOREIGN_KEY_CHECKS=0');
