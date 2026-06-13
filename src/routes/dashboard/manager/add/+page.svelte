@@ -107,10 +107,22 @@
 	const normScrapeField = (v: unknown): string => (v == null ? '' : String(v).trim());
 	const supportsThreadScrape = $derived(game.website === 'f95z' || game.website === 'lc');
 
+	type ExistingTranslation = {
+		id: string;
+		tname: string;
+		tversion: string;
+		status: string;
+		ttype: string;
+		translationName: string | null;
+	};
+
 	let threadDuplicateCheck = $state<{
 		gameExists: boolean;
 		pendingSubmission: boolean;
+		existingGameId?: string;
+		existingTranslations?: ExistingTranslation[];
 	} | null>(null);
+	let addToExistingMode = $state(false);
 	let hasThreadConflict = $derived(
 		Boolean(threadDuplicateCheck?.gameExists || threadDuplicateCheck?.pendingSubmission)
 	);
@@ -336,7 +348,7 @@
 			await handleThreadIdFieldBlur();
 		}
 
-		if (targetStep === 2 && infosStepFilledByScrape) {
+		if (targetStep === 2 && (infosStepFilledByScrape || addToExistingMode)) {
 			targetStep += amount;
 		}
 
@@ -376,8 +388,11 @@
 		step === 1 && (game.website === 'f95z' || game.website === 'lc')
 	);
 	const hasValidThreadIdForNextStep = $derived(threadIdForDuplicateCheck(game.threadId) !== null);
+	const blockNextStepGameConflict = $derived(
+		step === 1 && Boolean(threadDuplicateCheck?.gameExists) && !addToExistingMode
+	);
 	const blockNextStepForMissingThread = $derived(
-		requiresThreadIdForNextStep && !hasValidThreadIdForNextStep
+		(requiresThreadIdForNextStep && !hasValidThreadIdForNextStep) || blockNextStepGameConflict
 	);
 
 	/** Infos jeu déjà remplies par un scrape réussi — on peut sauter l’étape 2. */
@@ -501,6 +516,8 @@
 			const payload = (await response.json()) as {
 				gameExists?: boolean;
 				pendingSubmission?: boolean;
+				existingGameId?: string;
+				existingTranslations?: ExistingTranslation[];
 			};
 			if (
 				response.ok &&
@@ -509,10 +526,16 @@
 			) {
 				threadDuplicateCheck = {
 					gameExists: payload.gameExists,
-					pendingSubmission: payload.pendingSubmission
+					pendingSubmission: payload.pendingSubmission,
+					existingGameId: payload.existingGameId,
+					existingTranslations: payload.existingTranslations
 				};
+				if (!payload.gameExists) {
+					addToExistingMode = false;
+				}
 			} else {
 				threadDuplicateCheck = null;
+				addToExistingMode = false;
 			}
 		} catch {
 			threadDuplicateCheck = null;
@@ -705,7 +728,8 @@
 				directMode:
 					data.addTranslatorMode === 'submission' ? false : (currentUser?.directMode ?? true),
 				pendingNewTranslators:
-					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined
+					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined,
+				addTranslationToExistingGame: addToExistingMode ? true : undefined
 			};
 
 			const response = await fetch('/dashboard/manager', {
@@ -978,7 +1002,7 @@
 			<OtherSiteImageWarning website={game.website} />
 			{#if threadDuplicateCheck && hasThreadConflict}
 				<div class="mb-1 alert w-full alert-warning shadow-sm" role="alert">
-					<div class="flex flex-col gap-1 text-sm">
+					<div class="flex w-full flex-col gap-2 text-sm">
 						<span class="font-medium">Attention — conflit possible</span>
 						<ul class="list-inside list-disc space-y-0.5">
 							{#if threadDuplicateCheck.gameExists}
@@ -988,6 +1012,45 @@
 								<li>Une soumission pour ce thread est déjà en attente de validation.</li>
 							{/if}
 						</ul>
+						{#if threadDuplicateCheck.gameExists}
+							{#if threadDuplicateCheck.existingTranslations && threadDuplicateCheck.existingTranslations.length > 0}
+								<div class="mt-1">
+									<p class="mb-1 text-xs font-medium opacity-80">Traductions déjà enregistrées :</p>
+									<ul class="space-y-1">
+										{#each threadDuplicateCheck.existingTranslations as tr (tr.id)}
+											<li class="rounded bg-warning/20 px-2 py-1 text-xs">
+												<span class="font-medium">{tr.translationName ?? tr.tname}</span>
+												{#if tr.tversion}
+													— {tr.tversion}{/if}
+												<span class="opacity-70"> ({tr.status} / {tr.ttype})</span>
+											</li>
+										{/each}
+									</ul>
+								</div>
+							{:else}
+								<p class="text-xs opacity-70">Aucune traduction enregistrée pour ce jeu.</p>
+							{/if}
+							{#if !addToExistingMode}
+								<button
+									class="btn btn-sm btn-outline mt-1 self-start"
+									type="button"
+									onclick={() => (addToExistingMode = true)}
+								>
+									Ajouter une traduction à ce jeu quand même
+								</button>
+							{:else}
+								<p class="text-xs font-medium">
+									Mode actif : seule la traduction sera ajoutée au jeu existant.
+									<button
+										class="btn btn-xs btn-ghost ml-1"
+										type="button"
+										onclick={() => (addToExistingMode = false)}
+									>
+										Annuler
+									</button>
+								</p>
+							{/if}
+						{/if}
 					</div>
 				</div>
 			{/if}
@@ -1138,7 +1201,11 @@
 						type="button"
 						onclick={() => changeStep(1)}
 						disabled={blockNextStepForMissingThread}
-						title={blockNextStepForMissingThread ? 'Thread ID requis' : undefined}
+						title={blockNextStepGameConflict
+							? "Un jeu existe déjà — confirmez l'ajout de traduction avant de continuer"
+							: blockNextStepForMissingThread
+								? 'Thread ID requis'
+								: undefined}
 					>
 						Suivant
 					</button>
@@ -1151,7 +1218,7 @@
 							? 'Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas'
 							: undefined}
 					>
-						Ajouter le jeu
+						{addToExistingMode ? 'Ajouter la traduction' : 'Ajouter le jeu'}
 					</button>
 				{/if}
 			</div>
