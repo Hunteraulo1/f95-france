@@ -12,6 +12,7 @@ import {
 	validateSecurityTxt
 } from '$lib/server/security-txt';
 import { isLibreTranslateConfigured } from '$lib/server/translate-libretranslate';
+import { isTurnstileConfigured } from '$lib/server/turnstile';
 
 export type LiveServiceTestResult = {
 	id: string;
@@ -363,6 +364,74 @@ async function testDiscordOAuth(): Promise<LiveServiceTestResult> {
 	}
 }
 
+async function testTurnstile(): Promise<LiveServiceTestResult> {
+	const name = 'Turnstile';
+
+	if (!isTurnstileConfigured()) {
+		return result('turnstile', name, {
+			success: false,
+			skipped: true,
+			message: 'Ignoré — clés Turnstile absentes'
+		});
+	}
+
+	const secretKey = privateEnv('TURNSTILE_SECRET_KEY')?.trim() ?? '';
+
+	try {
+		const { durationMs } = await timed(async () => {
+			// Jeton volontairement invalide : invalid-input-response = secret accepté ; invalid-input-secret = secret incorrect.
+			const body = new URLSearchParams({
+				secret: secretKey,
+				response: 'f95-france-turnstile-config-test'
+			});
+
+			const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+				method: 'POST',
+				headers: { 'content-type': 'application/x-www-form-urlencoded' },
+				body,
+				signal: AbortSignal.timeout(15_000)
+			});
+
+			if (!res.ok) {
+				throw new Error(`HTTP ${res.status}`);
+			}
+
+			const data = (await res.json()) as {
+				success?: boolean;
+				'error-codes'?: string[];
+			};
+			const errorCodes = data['error-codes'] ?? [];
+
+			if (errorCodes.includes('invalid-input-secret')) {
+				throw new Error('TURNSTILE_SECRET_KEY invalide');
+			}
+
+			if (errorCodes.includes('invalid-input-response')) {
+				return;
+			}
+
+			if (data.success === true) {
+				return;
+			}
+
+			throw new Error(errorCodes.join(', ') || 'Réponse siteverify inattendue');
+		});
+
+		return result('turnstile', name, {
+			success: true,
+			message: 'API siteverify joignable (secret valide)',
+			durationMs
+		});
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : 'Erreur inconnue';
+		return result('turnstile', name, {
+			success: false,
+			message: 'Échec Turnstile',
+			detail: msg
+		});
+	}
+}
+
 async function testSecurityTxt(): Promise<LiveServiceTestResult> {
 	const name = 'Sécurité (RFC 9116)';
 
@@ -433,7 +502,8 @@ export async function runAllServicesLiveTests(): Promise<AllServicesTestReport> 
 			'Discord — Traducteurs',
 			cfg?.discordWebhookTranslators
 		),
-		testDiscordWebhook('discord-admin', 'Discord — Admin', cfg?.discordWebhookAdmin)
+		testDiscordWebhook('discord-admin', 'Discord — Admin', cfg?.discordWebhookAdmin),
+		testTurnstile()
 	]);
 
 	const success = results.every((r) => r.success || r.skipped);
