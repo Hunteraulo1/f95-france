@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
 	boolean,
 	datetime,
+	index,
 	int,
 	mysqlEnum,
 	mysqlTable,
@@ -256,29 +257,36 @@ export const config = mysqlTable('config', {
 		.default(sql`(NOW())`)
 });
 
-export const submission = mysqlTable('submission', {
-	id: varchar('id', { length: 255 })
-		.primaryKey()
-		.default(sql`(UUID())`),
-	userId: varchar('user_id', { length: 255 })
-		.notNull()
-		.references(() => user.id),
-	openedByUserId: varchar('opened_by_user_id', { length: 255 }).references(() => user.id, {
-		onDelete: 'set null'
-	}),
-	status: varchar('status', { length: 32 }).notNull().default('pending'),
-	gameId: varchar('game_id', { length: 255 }).references(() => game.id),
-	translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id),
-	type: varchar('type', { length: 32 }).notNull(),
-	data: text('data').notNull(),
-	adminNotes: text('admin_notes'),
-	createdAt: datetime('created_at')
-		.notNull()
-		.default(sql`(NOW())`),
-	updatedAt: datetime('updated_at')
-		.notNull()
-		.default(sql`(NOW())`)
-});
+export const submission = mysqlTable(
+	'submission',
+	{
+		id: varchar('id', { length: 255 })
+			.primaryKey()
+			.default(sql`(UUID())`),
+		userId: varchar('user_id', { length: 255 })
+			.notNull()
+			.references(() => user.id),
+		openedByUserId: varchar('opened_by_user_id', { length: 255 }).references(() => user.id, {
+			onDelete: 'set null'
+		}),
+		status: varchar('status', { length: 32 }).notNull().default('pending'),
+		gameId: varchar('game_id', { length: 255 }).references(() => game.id),
+		translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id),
+		type: varchar('type', { length: 32 }).notNull(),
+		data: text('data').notNull(),
+		adminNotes: text('admin_notes'),
+		createdAt: datetime('created_at')
+			.notNull()
+			.default(sql`(NOW())`),
+		updatedAt: datetime('updated_at')
+			.notNull()
+			.default(sql`(NOW())`)
+	},
+	(table) => [
+		index('submission_status_idx').on(table.status),
+		index('submission_user_id_status_idx').on(table.userId, table.status)
+	]
+);
 
 export const apiLog = mysqlTable('api_log', {
 	id: varchar('id', { length: 255 })
