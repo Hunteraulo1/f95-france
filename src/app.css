@@ -1,17 +1,23 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
-@plugin 'daisyui';
+@plugin 'daisyui' {
+	themes:
+		light --default,
+		dark --prefersdark;
+}
 
 @plugin 'daisyui/theme' {
 	name: 'light';
-	default: true;
+	prefersdark: false;
+	color-scheme: light;
 
-	--color-base-content: var(--color-slate-800);
+	--color-base-content: oklch(27.9% 0.041 260.031);
 }
 
 @plugin 'daisyui/theme' {
 	name: 'dark';
 	prefersdark: true;
+	color-scheme: dark;
 
 	--color-ext-background: hsl(222.2 84% 7%);
 	--color-ext-foreground: hsl(210 40% 98%);
