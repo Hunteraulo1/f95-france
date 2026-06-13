@@ -1117,7 +1117,7 @@
 								<p class="mb-4 leading-relaxed text-base-content/80">{game.descriptionFr}</p>
 							{/if}
 							{#if game.description && game.description !== game.descriptionFr}
-								<details class="mb-4 text-sm text-base-content/70">
+								<details class="mb-4 text-sm text-base-content/70" open={!game.descriptionFr}>
 									<summary class="cursor-pointer font-medium">Description originale</summary>
 									<p class="mt-2 leading-relaxed whitespace-pre-wrap">{game.description}</p>
 								</details>
