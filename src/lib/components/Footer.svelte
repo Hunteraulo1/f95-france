@@ -10,7 +10,7 @@
 		<ul class="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
 			<li>
 				<a
-					href="/legal-notice"
+					href="/legals/legal-notice"
 					target="_blank"
 					class="flex items-center gap-2 text-xs hover:text-primary"
 				>
@@ -20,7 +20,7 @@
 			</li>
 			<li>
 				<a
-					href="/privacy-policy"
+					href="/legals/privacy-policy"
 					target="_blank"
 					class="flex items-center gap-2 text-xs hover:text-primary"
 				>
