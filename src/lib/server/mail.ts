@@ -102,6 +102,14 @@ export async function sendMail(input: SendMailInput): Promise<void> {
 	});
 }
 
+/** Vérifie la connexion SMTP sans envoyer d’email. */
+export async function verifySmtpConnection(): Promise<void> {
+	if (!isSmtpConfigured()) {
+		throw new Error('Configuration SMTP incomplète (SMTP_HOST, SMTP_USER, SMTP_PASS).');
+	}
+	await getTransporter().verify();
+}
+
 export function getPublicAppOrigin(): string {
 	return siteOrigin(privateEnv('PUBLIC_APP_ORIGIN') ?? privateEnv('APP_ORIGIN'));
 }

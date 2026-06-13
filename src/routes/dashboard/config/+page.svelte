@@ -3,6 +3,7 @@
 	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import ServicesStatusCard from '$lib/components/dashboard/ServicesStatusCard.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
@@ -22,12 +23,10 @@
 	let oauthMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
 	let appName = $state('');
-	let googleSpreadsheetId = $state('');
 	let maintenanceMode = $state(false);
 
 	$effect(() => {
 		appName = data.config?.appName ?? 'F95 France';
-		googleSpreadsheetId = data.config?.googleSpreadsheetId ?? '';
 		maintenanceMode = Boolean(data.config?.maintenanceMode);
 	});
 
@@ -42,7 +41,6 @@
 			return;
 		}
 
-		// replaceState trop tôt pendant l’hydratation lève « router is not initialized » — différer.
 		void tick().then(() => {
 			setTimeout(() => {
 				replaceState(resolve('/dashboard/config'), get(page).state);
@@ -52,7 +50,6 @@
 </script>
 
 <section class="flex flex-col gap-8">
-	<!-- Configuration de l'application -->
 	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Configuration de l'application</h2>
 		{#if !canSave}
@@ -60,6 +57,19 @@
 				<span
 					>Accès en lecture seule — les modifications nécessitent les droits d’écriture appropriés.</span
 				>
+			</div>
+		{/if}
+
+		<ServicesStatusCard
+			servicesStatus={data.servicesStatus}
+			config={data.config}
+			{canEditConfig}
+			enableTestAll
+		/>
+
+		{#if oauthMessage}
+			<div class={`alert ${oauthMessage.type === 'success' ? 'alert-success' : 'alert-error'}`}>
+				<span>{oauthMessage.text}</span>
 			</div>
 		{/if}
 
@@ -125,144 +135,6 @@
 								</p>
 							{/if}
 						</div>
-						<div class="divider">Secrets (variables d’environnement)</div>
-						<div class="alert text-sm alert-info">
-							<div class="flex flex-col gap-2 text-wrap">
-								<p>
-									Les webhooks Discord, la clé API Google et les identifiants OAuth2 ne sont plus
-									enregistrés dans la base : définissez-les sur le serveur (Vercel → Settings →
-									Environment Variables) ou dans un fichier <code class="text-xs">.env</code> local.
-								</p>
-								<ul class="list-inside list-disc text-xs opacity-90">
-									<li><code>DISCORD_WEBHOOK_UPDATES</code></li>
-									<li><code>DISCORD_WEBHOOK_TRANSLATORS</code></li>
-									<li><code>DISCORD_WEBHOOK_ADMIN</code></li>
-									<li><code>GOOGLE_API_KEY</code> (si pas uniquement OAuth)</li>
-									<li>
-										<code>GOOGLE_OAUTH_CLIENT_ID</code> et <code>GOOGLE_OAUTH_CLIENT_SECRET</code>
-									</li>
-									<li>
-										<code>GOOGLE_SPREADSHEET_ID</code> (optionnel ; sinon l’ID ci-dessous en base)
-									</li>
-									<li>
-										<code>CONFIG_TOKEN_ENCRYPTION_KEY</code> — base64 de 32 octets ; chiffre les jetons
-										OAuth stockés en base
-									</li>
-								</ul>
-								<p class="text-xs opacity-80">
-									Variables d’environnement (indicatif) — Updates :
-									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.discordUpdates}</span
-									>
-									· Translators :
-									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.discordTranslators}</span
-									>
-									· Admin :
-									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.discordAdmin}</span
-									>
-									· Clé API :
-									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.googleApiKey}</span
-									>
-									· OAuth client :
-									<span class="badge badge-ghost badge-sm"
-										>{data.config?.secretSources.googleOAuthClient}</span
-									>
-									<span class="ml-1 opacity-70">(env = défini, none = absent)</span>
-								</p>
-								<p class="text-xs opacity-90">
-									<span class="font-medium">Google OAuth (session)</span> —
-									{#if data.config?.hasGoogleOAuthToken}
-										<span class="badge badge-sm badge-success">jetons enregistrés</span>
-									{:else}
-										<span class="badge badge-ghost badge-sm">pas encore d’autorisation</span>
-									{/if}
-									<span class="mx-1 opacity-50">·</span>
-									<span class="font-medium">Stockage en base</span> —
-									{#if data.config?.tokenEncryptionActive}
-										<span class="badge badge-sm badge-success"
-											>chiffré (CONFIG_TOKEN_ENCRYPTION_KEY)</span
-										>
-									{:else}
-										<span class="badge badge-ghost badge-sm"
-											>en clair — optionnel : définir la clé ci-dessus</span
-										>
-									{/if}
-								</p>
-							</div>
-						</div>
-						<div class="divider">Google Sheets</div>
-						<div class="form-control w-full">
-							<label for="googleSpreadsheetId" class="label">
-								<span class="label-text text-wrap">ID du Spreadsheet Google</span>
-							</label>
-							<input
-								id="googleSpreadsheetId"
-								name="googleSpreadsheetId"
-								type="text"
-								class="input-bordered input w-full"
-								bind:value={googleSpreadsheetId}
-								placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-								disabled={!canEditConfig}
-								readonly={!canEditConfig}
-							/>
-						</div>
-						{#if data.config?.canUseGoogleOAuth && canEditConfig}
-							<div class="mb-4 rounded-lg bg-base-200 p-4">
-								<p class="mb-2 text-sm font-semibold text-wrap">
-									URI de redirection à configurer dans Google Cloud Console :
-								</p>
-								<code class="rounded bg-base-300 px-2 py-1 text-xs break-all">
-									{typeof window !== 'undefined'
-										? `${window.location.origin}/api/google-oauth/callback`
-										: 'Chargement...'}
-								</code>
-								<p class="mt-2 text-xs text-wrap text-base-content/70">
-									⚠️ Cette URI doit être exactement la même dans Google Cloud Console → Identifiants
-									OAuth 2.0 → URI de redirection autorisées
-								</p>
-							</div>
-							<div class="form-control w-full">
-								<a href="/api/google-oauth/authorize" class="btn btn-outline btn-primary">
-									{data.config?.hasGoogleOAuthToken
-										? 'Reconnecter Google OAuth'
-										: 'Autoriser avec Google'}
-								</a>
-								<div class="label">
-									<span class="label-text-alt text-wrap text-base-content/50">
-										{#if data.config?.hasGoogleOAuthToken}
-											<span class="text-success">✓ Jetons OAuth présents</span>
-											— synchronisation Google Sheets.
-										{:else}
-											Accès Google Sheets (OAuth). Traduction auto des descriptions :
-											LibreTranslate, voir <code class="text-xs">LIBRETRANSLATE_URL</code> dans
-											<code class="text-xs">.env</code>.
-										{/if}
-									</span>
-								</div>
-							</div>
-						{:else}
-							<div class="alert text-sm text-wrap alert-warning">
-								<span>
-									Le bouton OAuth n’apparaît que si <code class="text-xs"
-										>GOOGLE_OAUTH_CLIENT_ID</code
-									>
-									et
-									<code class="text-xs">GOOGLE_OAUTH_CLIENT_SECRET</code> sont définis sur le
-									serveur (Vercel ou <code class="text-xs">.env</code>). Redéployez après les avoir
-									ajoutées.
-								</span>
-							</div>
-						{/if}
-						{#if oauthMessage}
-							<div
-								class={`alert ${oauthMessage.type === 'success' ? 'alert-success' : 'alert-error'}`}
-							>
-								<span>{oauthMessage.text}</span>
-							</div>
-						{/if}
 						{#if canSave}
 							<div class="form-control mt-4">
 								<button type="submit" class="btn btn-primary">
