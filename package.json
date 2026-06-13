@@ -31,8 +31,7 @@
 		"db:sync:prod-to-ptb": "bash scripts/sync-prod-to-dev-db.sh --target ptb",
 		"db:migrate:from-postgres": "bun scripts/migrate-postgres-to-mariadb.ts",
 		"cron:check-version": "node cron/check-version.mjs",
-		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts",
-		"lighthouse": "bun run build && bun scripts/lighthouse-prod.mjs"
+		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",

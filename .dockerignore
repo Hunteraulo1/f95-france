@@ -22,7 +22,6 @@ eslint.config.js
 
 # Scripts dev-only
 scripts/migrate-postgres-to-mariadb.ts
-scripts/lighthouse-prod.mjs
 
 # Docs & meta
 *.md

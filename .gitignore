@@ -15,7 +15,6 @@ node_modules
 # Debug
 /scripts/*.csv
 /scripts/*.md
-.lighthouse-report.json
 /.cache
 _tmp_*
 
