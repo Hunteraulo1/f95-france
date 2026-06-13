@@ -4,10 +4,10 @@
  *
  * Variables d'env source (PostgreSQL) :
  *   DATABASE_URL=postgresql://user:pass@host:port/db  (prioritaire)
- *   ou PG_HOST, PG_PORT (5432), PG_DATABASE, PG_USER, PG_PASSWORD, PG_SSL (require|disable)
+ *   ou PG_HOST, PG_PORT (5432), PG_DATABASE, PG_USER, PG_PASSWORD, PG_SSL_MODE (require|disable)
  *
  * Variables d'env cible (MariaDB) :
- *   MARIADB_HOST, MARIADB_PORT (3306), MARIADB_DATABASE, MARIADB_USER, MARIADB_PASSWORD
+ *   TO_MARIADB_HOST, TO_MARIADB_PORT (3306), TO_MARIADB_DATABASE, TO_MARIADB_USER, TO_MARIADB_PASSWORD, TO_MARIADB_SSL_MODE (require|disable)
  *
  * Usage :
  *   bun scripts/migrate-postgres-to-mariadb.ts [--yes] [--skip-ephemeral]
@@ -39,7 +39,7 @@ function pgConfig(): pg.PoolConfig {
 		process.env.PG_DATABASE ?? process.env.POSTGRES_DB ?? process.env.POSTGRES_DATABASE;
 	const user = process.env.PG_USER ?? process.env.POSTGRES_USER;
 	const password = process.env.PG_PASSWORD ?? process.env.POSTGRES_PASSWORD;
-	const sslMode = process.env.PG_SSL ?? process.env.POSTGRES_SSL ?? 'require';
+	const sslMode = process.env.PG_SSL_MODE ?? process.env.PG_SSL ?? process.env.POSTGRES_SSL ?? 'require';
 
 	if (!host || !database || !user) {
 		console.error('❌  Config PostgreSQL manquante.');
@@ -59,21 +59,30 @@ function pgConfig(): pg.PoolConfig {
 }
 
 function mysqlConfig(): mysql.PoolOptions {
-	const host = process.env.MARIADB_HOST;
-	const port = Number(process.env.MARIADB_PORT ?? 3306);
-	const database = process.env.MARIADB_DATABASE;
-	const user = process.env.MARIADB_USER;
-	const password = process.env.MARIADB_PASSWORD ?? '';
+	const host = process.env.TO_MARIADB_HOST;
+	const port = Number(process.env.TO_MARIADB_PORT ?? 3306);
+	const database = process.env.TO_MARIADB_DATABASE;
+	const user = process.env.TO_MARIADB_USER;
+	const password = process.env.TO_MARIADB_PASSWORD ?? '';
+	const sslMode = process.env.TO_MARIADB_SSL_MODE ?? 'require';
 
 	if (!host || !database || !user) {
 		console.error('❌  Config MariaDB manquante.');
 		console.error(
-			'   Définir dans .env : MARIADB_HOST, MARIADB_DATABASE, MARIADB_USER, MARIADB_PASSWORD'
+			'   Définir dans .env : TO_MARIADB_HOST, TO_MARIADB_DATABASE, TO_MARIADB_USER, TO_MARIADB_PASSWORD'
 		);
 		process.exit(1);
 	}
 
-	return { host, port, database, user, password, waitForConnections: true };
+	return {
+		host,
+		port,
+		database,
+		user,
+		password,
+		ssl: sslMode === 'disable' ? undefined : { rejectUnauthorized: false },
+		waitForConnections: true
+	};
 }
 
 // ─── Conversion de types PostgreSQL → MariaDB ─────────────────────────────────
