@@ -835,7 +835,7 @@
 		gameDeleteReason = '';
 	};
 
-	const deleteGame = async () => {
+	const deleteAllTranslations = async () => {
 		const reason = gameDeleteReason.trim();
 		if (!reason) {
 			newToast({
@@ -846,7 +846,7 @@
 		}
 
 		try {
-			const response = await fetch(`/dashboard/game/${game.id}`, {
+			const response = await fetch(`/dashboard/game/${game.id}/translations`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ reason })
@@ -862,24 +862,24 @@
 				if (data.submission) {
 					newToast({
 						alertType: 'success',
-						message: 'Soumission de suppression créée. Elle sera examinée par un administrateur.'
+						message: 'Soumissions de suppression créées. Elles seront examinées par un administrateur.'
 					});
 					cancelDeleteGame();
 				} else {
-					newToast({ alertType: 'success', message: 'Jeu supprimé' });
-					window.location.href = '/dashboard/manager';
+					newToast({ alertType: 'success', message: 'Toutes les traductions ont été supprimées' });
+					window.location.reload();
 				}
 			} else {
 				newToast({
 					alertType: 'error',
-					message: data.error || 'Erreur lors de la suppression du jeu'
+					message: data.error || 'Erreur lors de la suppression des traductions'
 				});
 			}
 		} catch (error) {
-			console.error('Erreur lors de la suppression du jeu:', error);
+			console.error('Erreur lors de la suppression des traductions:', error);
 			newToast({
 				alertType: 'error',
-				message: 'Erreur lors de la suppression du jeu'
+				message: 'Erreur lors de la suppression des traductions'
 			});
 		}
 	};
@@ -1104,7 +1104,7 @@
 						{/if}
 						<button class="btn btn-sm btn-error" onclick={confirmDeleteGame}>
 							<Trash2 size={16} />
-							Supprimer le jeu
+							Supprimer toutes les traductions
 						</button>
 					</div>
 
@@ -1474,5 +1474,5 @@
 	gameName={game.name}
 	bind:reason={gameDeleteReason}
 	onClose={cancelDeleteGame}
-	onConfirm={deleteGame}
+	onConfirm={deleteAllTranslations}
 />
