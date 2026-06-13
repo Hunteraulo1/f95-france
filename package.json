@@ -36,11 +36,9 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
-		"@puppeteer/browsers": "3.0.4",
 		"@sveltejs/vite-plugin-svelte": "7.1.2",
 		"@types/node": "25.9.3",
 		"@types/nodemailer": "8.0.1",
-		"@types/pg": "^8.20.0",
 		"@types/qrcode": "1.5.6",
 		"chrome-launcher": "1.2.1",
 		"commitizen": "4.3.2",
@@ -49,7 +47,7 @@
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "3.19.0",
 		"globals": "17.6.0",
-		"pg": "^8.21.0",
+		"pg": "8.21.0",
 		"prettier": "3.8.4",
 		"prettier-plugin-svelte": "4.1.0",
 		"prettier-plugin-tailwindcss": "0.8.0",
@@ -60,7 +58,7 @@
 		"typescript-eslint": "8.61.0"
 	},
 	"dependencies": {
-		"@codemirror/lang-markdown": "^6.5.0",
+		"@codemirror/lang-markdown": "6.5.0",
 		"@lucide/svelte": "1.18.0",
 		"@oslojs/crypto": "1.0.1",
 		"@oslojs/encoding": "1.1.0",
@@ -70,7 +68,7 @@
 		"@sveltejs/kit": "2.65.0",
 		"@tailwindcss/forms": "0.5.11",
 		"@tailwindcss/vite": "4.3.1",
-		"codemirror": "^6.0.2",
+		"codemirror": "6.0.2",
 		"daisyui": "5.5.23",
 		"dotenv": "17.4.2",
 		"drizzle-kit": "0.31.10",
@@ -82,7 +80,7 @@
 		"mysql2": "3.22.5",
 		"qrcode": "1.5.4",
 		"redoc": "2.5.3",
-		"svelte-codemirror-editor": "^2.1.0",
+		"svelte-codemirror-editor": "2.1.0",
 		"theme-change": "3.0.3",
 		"valibot": "1.4.1",
 		"vite": "8.0.16"
