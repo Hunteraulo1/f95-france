@@ -118,7 +118,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		countUsersWithRoles(roleSlugs),
 		getEffectivePermissionsByRoles(roleSlugs),
 		listStaffUsers(),
-		listStaffRoleConfigurationIssues()
+		listStaffRoleConfigurationIssues(rolesRaw)
 	]);
 	const roles = sortRolesByPriority(rolesRaw);
 	const defaultSlug = roles[0]?.slug ?? 'user';
