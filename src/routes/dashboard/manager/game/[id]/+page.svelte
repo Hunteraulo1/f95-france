@@ -1,9 +1,6 @@
 <script lang="ts">
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 	import DeleteGameModal from '$lib/components/dashboard/game/DeleteGameModal.svelte';
 	import DeleteTranslationModal from '$lib/components/dashboard/game/DeleteTranslationModal.svelte';
-	import EditGameModal from '$lib/components/dashboard/game/EditGameModal.svelte';
-	import EditTranslationModal from '$lib/components/dashboard/game/EditTranslationModal.svelte';
 	import GameImagePreviewModal from '$lib/components/dashboard/game/GameImagePreviewModal.svelte';
 	import GameUpdateHistoryPanel from '$lib/components/dashboard/game/GameUpdateHistoryPanel.svelte';
 	import { hasPermission } from '$lib/permissions/client';
@@ -14,16 +11,11 @@
 		normalizeCheckerVersion
 	} from '$lib/utils/f95-checker-alignment';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import {
-		gameImageRequiredForEdit,
-		normalizeGameImageForStorage
-	} from '$lib/utils/game-form-validation';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import {
 		getTranslationProgressLabel,
 		getTranslationTypeLabel
 	} from '$lib/utils/game-translation-labels';
-	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -57,30 +49,17 @@
 		data.canViewUpdateHistory === true || $hasPermission('games.view_history')
 	);
 	const canRevertUpdateHistory = $derived(data.canRevertUpdateHistory === true);
-	const hasGamesManage = $derived($hasPermission('games.manage'));
-
-	type FormTranslator = (typeof data.translators)[number];
-	let extraTranslators = $state<FormTranslator[]>([]);
-	let pendingNewTranslators = $state<string[]>([]);
-
-	const addContributorMode = $derived(
-		(data.addContributorMode ?? false) as AddTranslatorMode | false
-	);
-	const usesContributorSubmission = $derived(addContributorMode === 'submission');
 	const canManageGameAutoCheck = $derived(
 		data.canManageGameAutoCheck === true || $hasPermission('games.auto_check')
-	);
-	const canUseSilentMode = $derived(
-		data.canUseSilentMode === true || $hasPermission('games.silent_mode')
 	);
 	const pendingSubmissions = $derived(data.pendingSubmissions ?? []);
 
 	const submissionTypeLabel = (type: string, translationId: string | null): string => {
 		if (type === 'update') return 'Modification du jeu';
 		if (type === 'delete' && !translationId) return 'Suppression du jeu';
-		if (type === 'delete' && translationId) return 'Suppression d’une traduction';
-		if (type === 'translation' && translationId) return 'Modification d’une traduction';
-		if (type === 'translation') return 'Ajout d’une traduction';
+		if (type === 'delete' && translationId) return "Suppression d'une traduction";
+		if (type === 'translation' && translationId) return "Modification d'une traduction";
+		if (type === 'translation') return "Ajout d'une traduction";
 		return 'Soumission';
 	};
 
@@ -92,6 +71,7 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
+
 	/** Actualisation manuelle depuis le thread : F95Zone + auto-check jeu activé */
 	const refreshManualBlocked = $derived(game.website !== 'f95z' || game.gameAutoCheck === false);
 	const refreshManualBlockedReason = $derived(
@@ -102,75 +82,13 @@
 				: undefined
 	);
 
-	/**
-	 * Peut activer l’auto-check sur une traduction : F95 + auto-check jeu.
-	 * Si `ac` est true, l’auto-check jeu doit être actif ; l’inverse n’est pas vrai (traductions peuvent rester sans `ac`).
-	 */
-	const translationAcUiAllowed = $derived(game.website === 'f95z' && game.gameAutoCheck !== false);
-	const canManuallyEditTranslationAc = $derived(
-		canManageGameAutoCheck && game.gameAutoCheck === true
-	);
-	/** Droits auto-check : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
-	const canShowTranslationAcCheckbox = $derived(canManageGameAutoCheck && game.website === 'f95z');
-
-	// État pour le modal de modification de traduction
-	let showEditTranslationModal = $state(false);
-	let editTranslationSilentMode = $state(false);
-	let editingTranslation = $state({
-		translationName: '',
-		id: '',
-		version: '',
-		tversion: '',
-		status: 'in_progress',
-		ttype: 'auto',
-		gameType: 'other' as string,
-		tlink: '',
-		tname: 'translation' as
-			| 'no_translation'
-			| 'integrated'
-			| 'translation'
-			| 'translation_with_mods',
-		ac: false,
-		translatorId: '',
-		proofreaderId: ''
-	});
-
-	const editTranslationLinkNotRequired = $derived(
-		editingTranslation.tname === 'integrated' || editingTranslation.tname === 'no_translation'
-	);
-
-	/** Verrouillage des versions seulement pour les traductions intégrées en auto-check. */
-	const editTranslationVersionsLockedByAc = $derived(
-		Boolean(
-			editingTranslation.ac && translationAcUiAllowed && editingTranslation.tname === 'integrated'
-		)
-	);
-	const editTranslationReferenceVersionLockedByAc = $derived(
-		Boolean(editingTranslation.ac && translationAcUiAllowed)
-	);
-
 	// État pour la suppression
 	let translationToDelete = $state<(typeof translations)[number] | null>(null);
 	let translationDeleteReason = $state('');
 	let gameToDelete = $state<boolean>(false);
 	let gameDeleteReason = $state('');
 
-	// État pour le modal de modification du jeu
-	let showEditGameModal = $state(false);
-	let showEditGameImagePreview = $state(false);
 	let showGameImagePopup = $state(false);
-	let editingGame = $state({
-		name: '',
-		description: '',
-		descriptionFr: '',
-		website: '',
-		threadId: '',
-		tags: '',
-		link: '',
-		image: '',
-		gameAutoCheck: true,
-		gameVersion: ''
-	});
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -185,7 +103,7 @@
 		}
 	};
 
-	/** Valeur stockée en base : id traducteur, userId lié, ou legacy nom — pour affichage ou champs « nom ». */
+	/** Valeur stockée en base : id traducteur, userId lié, ou legacy nom — pour affichage. */
 	const getTranslatorDisplayName = (raw: string | null | undefined): string => {
 		const key = raw == null ? '' : String(raw).trim();
 		if (!key) return '';
@@ -210,83 +128,6 @@
 		if (byUserId?.username) return byUserId.username;
 		return null;
 	};
-
-	/** Saisie traducteur/relecteur (nom affiché, id ou userId) → id en base. */
-	const resolveTranslatorFormInputToId = (raw: string): string | null => {
-		const key = raw.trim();
-		if (!key) return null;
-		const byName = translators.find((t) => t.name === key);
-		if (byName) return byName.id;
-		const byId = translators.find((t) => t.id === key);
-		if (byId) return byId.id;
-		const byUserId = translators.find((t) => t.userId != null && t.userId === key);
-		if (byUserId) return byUserId.id;
-		return null;
-	};
-
-	/** Valeur par défaut du champ traducteur pour l'utilisateur connecté (nom affiché attendu par le formulaire). */
-	const getCurrentUserDefaultTranslatorInput = (): string => {
-		const currentUserId = currentUser?.id ?? null;
-		if (!currentUserId) return '';
-
-		// Cas principal : traducteur lié au user via translator.userId
-		const byUserId = translators.find((t) => t.userId != null && t.userId === currentUserId);
-		if (byUserId?.name) return byUserId.name;
-
-		// Compat legacy: si un champ translatorId/traductorId est présent sur l'objet user, l'accepter aussi.
-		const linkedTranslatorRaw =
-			(currentUser as { translatorId?: unknown; traductorId?: unknown })?.translatorId ??
-			(currentUser as { traductorId?: unknown })?.traductorId;
-		if (typeof linkedTranslatorRaw === 'string' && linkedTranslatorRaw.trim().length > 0) {
-			return getTranslatorDisplayName(linkedTranslatorRaw);
-		}
-
-		return '';
-	};
-
-	const normalizeTranslationProgressStatus = (
-		s: string | undefined | null
-	): 'in_progress' | 'completed' | 'abandoned' => {
-		if (s === 'completed' || s === 'abandoned' || s === 'in_progress') return s;
-		return 'in_progress';
-	};
-
-	$effect(() => {
-		if (!translationAcUiAllowed) {
-			if (editingTranslation.ac) editingTranslation.ac = false;
-		}
-	});
-
-	/** Même logique que l’ajout : lien vide si intégrée / pas de traduction ; type hs si pas de traduction ; intégrée → tversion */
-	$effect(() => {
-		if (!showEditTranslationModal) return;
-		if (
-			editingTranslation.tname === 'integrated' ||
-			editingTranslation.tname === 'no_translation'
-		) {
-			if (editingTranslation.tlink) editingTranslation.tlink = '';
-		}
-		if (editingTranslation.tname === 'integrated') {
-			if (editingTranslation.tversion !== 'Intégrée') editingTranslation.tversion = 'Intégrée';
-		} else if (editingTranslation.tname === 'no_translation') {
-			if (editingTranslation.ttype !== 'hs') editingTranslation.ttype = 'hs';
-			if (editingTranslation.tversion) editingTranslation.tversion = '';
-		} else if (editingTranslation.tversion === 'Intégrée') {
-			editingTranslation.tversion = '';
-		}
-	});
-
-	/** Auto-check traduction : alignement automatique uniquement pour les traductions intégrées. */
-	$effect(() => {
-		if (!showEditTranslationModal) return;
-		if (!editingTranslation.ac || !translationAcUiAllowed) return;
-		if (editingTranslation.tname === 'no_translation') return;
-		const gv = (game.gameVersion ?? '').trim();
-		if (editingTranslation.tname === 'integrated') {
-			if (editingTranslation.version !== gv) editingTranslation.version = gv;
-			if (editingTranslation.tversion !== 'Intégrée') editingTranslation.tversion = 'Intégrée';
-		}
-	});
 
 	const refreshGame = async () => {
 		if (game.website !== 'f95z') {
@@ -313,7 +154,6 @@
 			return;
 		}
 
-		/** Si une ligne a l’auto-check traduction, on la met à jour aussi ; sinon seule la fiche jeu est rafraîchie. */
 		const acTranslation = translations.find((translation) => translation.ac);
 
 		try {
@@ -331,9 +171,9 @@
 				throw new Error(payload.error ?? 'Erreur lors du rafraîchissement');
 			}
 
-			const data = payload.data as ScrapedThreadGame;
+			const scraped = payload.data as ScrapedThreadGame;
 
-			const checkerVersion = normalizeCheckerVersion(data.version);
+			const checkerVersion = normalizeCheckerVersion(scraped.version);
 			const checkerVersionUnknown = checkerVersion === null;
 			const acTranslationRows = translations.map((t) => ({
 				ac: t.ac,
@@ -350,15 +190,15 @@
 				},
 				body: JSON.stringify({
 					name: game.name,
-					description: data.description ?? game.description ?? '',
-					type: data.gameType ?? (translations[0]?.gameType as string | undefined) ?? 'other',
+					description: scraped.description ?? game.description ?? '',
+					type: scraped.gameType ?? (translations[0]?.gameType as string | undefined) ?? 'other',
 					website: game.website,
 					threadId: game.threadId ? String(game.threadId) : '',
-					tags: data.tags ?? game.tags ?? '',
+					tags: scraped.tags ?? game.tags ?? '',
 					link: game.link ?? '',
-					image: data.image ?? game.image ?? '',
+					image: scraped.image ?? game.image ?? '',
 					gameAutoCheck: game.gameAutoCheck ?? true,
-					gameVersion: checkerVersionUnknown ? (data.version ?? 'Unknown') : checkerVersion,
+					gameVersion: checkerVersionUnknown ? (scraped.version ?? 'Unknown') : checkerVersion,
 					f95VersionRefresh: true,
 					directMode: true
 				})
@@ -388,167 +228,6 @@
 			newToast({
 				alertType: 'error',
 				message: "Impossible d'actualiser ce jeu"
-			});
-		}
-	};
-
-	const openEditTranslationModal = (translation: (typeof translations)[number]) => {
-		editTranslationSilentMode = false;
-		editingTranslation = {
-			translationName: translation.translationName || '',
-			id: translation.id,
-			version: translation.version || '',
-			tversion: translation.tversion,
-			status: normalizeTranslationProgressStatus(translation.status),
-			ttype: translation.ttype,
-			gameType: translation.gameType,
-			tlink: translation.tlink,
-			tname: translation.tname as (typeof editingTranslation)['tname'],
-			translatorId: getTranslatorDisplayName(translation.translatorId),
-			proofreaderId: getTranslatorDisplayName(translation.proofreaderId),
-			ac: translation.ac ?? false
-		};
-		showEditTranslationModal = true;
-	};
-
-	const closeEditTranslationModal = () => {
-		showEditTranslationModal = false;
-		editTranslationSilentMode = false;
-		editingTranslation = {
-			translationName: '',
-			id: '',
-			version: '',
-			tversion: '',
-			status: 'in_progress',
-			ttype: 'manual',
-			gameType: 'other',
-			tlink: '',
-			tname: 'translation',
-			ac: false,
-			translatorId: '',
-			proofreaderId: ''
-		};
-	};
-
-	const editTranslation = async () => {
-		const linkNotRequired = editTranslationLinkNotRequired;
-		const requiresTranslationVersion = editingTranslation.tname !== 'no_translation';
-		if (
-			(requiresTranslationVersion && !editingTranslation.tversion) ||
-			!editingTranslation.status ||
-			!editingTranslation.ttype ||
-			(!linkNotRequired && !editingTranslation.tlink)
-		) {
-			newToast({
-				alertType: 'error',
-				message: linkNotRequired
-					? requiresTranslationVersion
-						? 'Veuillez remplir les champs requis (version de traduction, statut, type)'
-						: 'Veuillez remplir les champs requis (statut, type)'
-					: 'Veuillez remplir tous les champs requis (y compris le lien)'
-			});
-			return;
-		}
-
-		const editTlinkError = validateTranslationLinkField({
-			tlink: linkNotRequired ? '' : editingTranslation.tlink,
-			tname: editingTranslation.tname
-		});
-		if (editTlinkError) {
-			newToast({ alertType: 'error', message: editTlinkError });
-			return;
-		}
-
-		try {
-			let translatorIdValue: string | null = null;
-			let proofreaderIdValue: string | null = null;
-
-			if (usesContributorSubmission) {
-				translatorIdValue = editingTranslation.translatorId?.trim() || null;
-				proofreaderIdValue = editingTranslation.proofreaderId?.trim() || null;
-			} else {
-				if (editingTranslation.translatorId) {
-					translatorIdValue = resolveTranslatorFormInputToId(editingTranslation.translatorId);
-					if (!translatorIdValue) {
-						newToast({
-							alertType: 'error',
-							message: `Traducteur « ${editingTranslation.translatorId} » non trouvé`
-						});
-						return;
-					}
-				}
-
-				if (editingTranslation.proofreaderId) {
-					proofreaderIdValue = resolveTranslatorFormInputToId(editingTranslation.proofreaderId);
-					if (!proofreaderIdValue) {
-						newToast({
-							alertType: 'error',
-							message: `Relecteur « ${editingTranslation.proofreaderId} » non trouvé`
-						});
-						return;
-					}
-				}
-			}
-
-			const tlinkValue = linkNotRequired ? null : editingTranslation.tlink;
-
-			const payload = {
-				translationName: editingTranslation.translationName || null,
-				version: editingTranslation.version || null,
-				tversion: editingTranslation.tversion,
-				status: editingTranslation.status,
-				ttype: editingTranslation.ttype,
-				gameType: editingTranslation.gameType,
-				tlink: tlinkValue,
-				tname: editingTranslation.tname,
-				ac: canManuallyEditTranslationAc ? editingTranslation.ac : undefined,
-				translatorId: translatorIdValue,
-				proofreaderId: proofreaderIdValue,
-				silentMode: canUseSilentMode ? editTranslationSilentMode : false,
-				...(usesContributorSubmission && pendingNewTranslators.length > 0
-					? { pendingNewTranslators }
-					: {})
-			};
-
-			const response = await fetch(
-				`/dashboard/manager/game/${game.id}/translations/${editingTranslation.id}`,
-				{
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(payload)
-				}
-			);
-
-			const data = (await response.json().catch(() => ({}))) as {
-				error?: string;
-				message?: string;
-				submission?: boolean;
-			};
-
-			if (response.ok) {
-				if (data.submission) {
-					newToast({
-						alertType: 'success',
-						message: 'Soumission créée. Elle sera examinée par un administrateur.'
-					});
-				} else {
-					newToast({ alertType: 'success', message: 'Traduction modifiée avec succès' });
-				}
-				closeEditTranslationModal();
-				window.location.reload();
-			} else {
-				newToast({
-					alertType: 'error',
-					message: data.error || 'Erreur lors de la modification de la traduction'
-				});
-			}
-		} catch (error) {
-			console.error('Erreur lors de la modification de la traduction:', error);
-			newToast({
-				alertType: 'error',
-				message: 'Une erreur est survenue lors de la modification de la traduction'
 			});
 		}
 	};
@@ -585,14 +264,14 @@
 				}
 			);
 
-			const data = (await response.json().catch(() => ({}))) as {
+			const responseData = (await response.json().catch(() => ({}))) as {
 				error?: string;
 				message?: string;
 				submission?: boolean;
 			};
 
 			if (response.ok) {
-				if (data.submission) {
+				if (responseData.submission) {
 					newToast({
 						alertType: 'success',
 						message: 'Soumission de suppression créée. Elle sera examinée par un administrateur.'
@@ -607,7 +286,7 @@
 			} else {
 				newToast({
 					alertType: 'error',
-					message: data.error || 'Erreur lors de la suppression de la traduction'
+					message: responseData.error || 'Erreur lors de la suppression de la traduction'
 				});
 			}
 		} catch (error) {
@@ -646,14 +325,14 @@
 				body: JSON.stringify({ reason })
 			});
 
-			const data = (await response.json().catch(() => ({}))) as {
+			const responseData = (await response.json().catch(() => ({}))) as {
 				error?: string;
 				message?: string;
 				submission?: boolean;
 			};
 
 			if (response.ok) {
-				if (data.submission) {
+				if (responseData.submission) {
 					newToast({
 						alertType: 'success',
 						message: 'Soumissions de suppression créées. Elles seront examinées par un administrateur.'
@@ -666,7 +345,7 @@
 			} else {
 				newToast({
 					alertType: 'error',
-					message: data.error || 'Erreur lors de la suppression des traductions'
+					message: responseData.error || 'Erreur lors de la suppression des traductions'
 				});
 			}
 		} catch (error) {
@@ -674,108 +353,6 @@
 			newToast({
 				alertType: 'error',
 				message: 'Erreur lors de la suppression des traductions'
-			});
-		}
-	};
-
-	const editGameAutoCheckAllowed = $derived(game.website === 'f95z');
-	const requireEditGameImage = $derived(
-		gameImageRequiredForEdit(game.website, editingGame.website, {
-			gameAutoCheck: game.website === 'f95z' ? editingGame.gameAutoCheck : false
-		})
-	);
-
-	$effect(() => {
-		if (showEditGameModal && !editGameAutoCheckAllowed) {
-			editingGame.gameAutoCheck = false;
-		}
-	});
-
-	const openEditGameModal = () => {
-		showEditGameImagePreview = false;
-		const isF95 = game.website === 'f95z';
-		const gameAutoCheck = isF95 ? (game.gameAutoCheck ?? true) : (game.gameAutoCheck ?? false);
-		editingGame = {
-			name: game.name,
-			description: game.description || '',
-			descriptionFr: game.descriptionFr || '',
-			website: game.website,
-			threadId: game.threadId ? String(game.threadId) : '',
-			tags: game.tags || '',
-			link: game.link || '',
-			image: normalizeGameImageForStorage(game.website, game.image, { gameAutoCheck }),
-			gameAutoCheck,
-			gameVersion: game.gameVersion?.trim() || ''
-		};
-		showEditGameModal = true;
-	};
-
-	const closeEditGameModal = () => {
-		showEditGameModal = false;
-		showEditGameImagePreview = false;
-		editingGame = {
-			name: '',
-			description: '',
-			descriptionFr: '',
-			website: '',
-			threadId: '',
-			tags: '',
-			link: '',
-			image: '',
-			gameAutoCheck: true,
-			gameVersion: ''
-		};
-	};
-
-	const editGame = async () => {
-		const editGameAutoCheck = game.website === 'f95z' ? editingGame.gameAutoCheck : false;
-		const storedImage = normalizeGameImageForStorage(game.website, editingGame.image, {
-			gameAutoCheck: editGameAutoCheck
-		});
-		const { descriptionFr, ...editingGamePayload } = editingGame;
-		const gameLinkError = validateGameLinkFields({
-			link: editingGame.link,
-			image: storedImage,
-			requireLink: true,
-			requireImage: requireEditGameImage
-		});
-		if (gameLinkError) {
-			newToast({ alertType: 'error', message: gameLinkError });
-			return;
-		}
-
-		try {
-			const response = await fetch(`/dashboard/manager/game/${game.id}`, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					...editingGamePayload,
-					description_fr: descriptionFr,
-					website: game.website,
-					image: storedImage,
-					gameAutoCheck: Boolean(editGameAutoCheck)
-				})
-			});
-
-			if (response.ok) {
-				// Fermer le modal
-				closeEditGameModal();
-				// Recharger la page pour voir les modifications
-				window.location.reload();
-			} else {
-				const errorData = await response.json();
-				newToast({
-					alertType: 'error',
-					message: `Erreur lors de la modification du jeu: ${errorData.error || 'Erreur inconnue'}`
-				});
-			}
-		} catch (error) {
-			console.error('Erreur lors de la modification du jeu:', error);
-			newToast({
-				alertType: 'error',
-				message: 'Erreur de connexion lors de la modification du jeu'
 			});
 		}
 	};
@@ -881,10 +458,10 @@
 								Aucune vignette disponible
 							</div>
 						{/if}
-						<button class="btn btn-sm btn-primary" onclick={openEditGameModal}>
+						<a class="btn btn-sm btn-primary" href="/dashboard/manager/game/{game.id}/edit-game">
 							<SquarePen size={16} />
 							Modifier le jeu
-						</button>
+						</a>
 						{#if canManageGameAutoCheck}
 							<button
 								class="btn btn-sm btn-secondary"
@@ -923,7 +500,7 @@
 								<button
 									type="button"
 									class="badge max-w-52 overflow-hidden badge-outline badge-lg hover:bg-base-200 sm:max-w-none"
-									title="Copier l’ID du thread"
+									title="Copier l'ID du thread"
 									onclick={() => {
 										navigator.clipboard.writeText(String(game.threadId));
 										newToast({
@@ -970,7 +547,7 @@
 								<button
 									type="button"
 									class="badge max-w-52 overflow-hidden badge-outline badge-lg hover:bg-base-200 sm:max-w-none"
-									title="Copier l’ID du jeu"
+									title="Copier l'ID du jeu"
 									onclick={() => {
 										navigator.clipboard.writeText(game.id);
 										newToast({
@@ -1141,10 +718,12 @@
 										</td>
 										<td>
 											<div class="flex gap-2">
-												<button
+												<a
 													class="btn btn-sm btn-primary"
-													onclick={() => openEditTranslationModal(translation)}>Modifier</button
+													href="/dashboard/manager/game/{game.id}/edit-translation/{translation.id}"
 												>
+													Modifier
+												</a>
 												<button
 													class="btn btn-sm btn-error"
 													onclick={() => confirmDeleteTranslation(translation)}>Supprimer</button
@@ -1189,43 +768,6 @@
 		{/if}
 	</div>
 </div>
-
-<EditTranslationModal
-	open={showEditTranslationModal}
-	game={{
-		gameVersion: game.gameVersion,
-		website: game.website,
-		gameAutoCheck: game.gameAutoCheck
-	}}
-	translators={data.translators}
-	bind:editingTranslation
-	bind:editTranslationSilentMode
-	bind:extraTranslators
-	bind:pendingNewTranslators
-	{canShowInternalIds}
-	{canManageGameAutoCheck}
-	{canUseSilentMode}
-	{canManuallyEditTranslationAc}
-	{canShowTranslationAcCheckbox}
-	{editTranslationLinkNotRequired}
-	{editTranslationVersionsLockedByAc}
-	{editTranslationReferenceVersionLockedByAc}
-	{addContributorMode}
-	onClose={closeEditTranslationModal}
-	onSubmit={editTranslation}
-/>
-
-<EditGameModal
-	open={showEditGameModal}
-	gameWebsite={game.website}
-	bind:editingGame
-	bind:showImagePreview={showEditGameImagePreview}
-	{canManageGameAutoCheck}
-	{editGameAutoCheckAllowed}
-	requireImage={requireEditGameImage}
-	onClose={closeEditGameModal}
-	onSubmit={editGame}
-/>
 
 <GameImagePreviewModal
 	open={showGameImagePopup}
