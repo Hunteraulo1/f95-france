@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import AddTranslationModal from '$lib/components/dashboard/game/AddTranslationModal.svelte';
 	import DeleteGameModal from '$lib/components/dashboard/game/DeleteGameModal.svelte';
 	import DeleteTranslationModal from '$lib/components/dashboard/game/DeleteTranslationModal.svelte';
 	import EditGameModal from '$lib/components/dashboard/game/EditGameModal.svelte';
@@ -114,23 +113,6 @@
 	/** Droits auto-check : afficher la case AC sur une fiche F95 (désactivée si l’auto-check jeu est off). */
 	const canShowTranslationAcCheckbox = $derived(canManageGameAutoCheck && game.website === 'f95z');
 
-	// État pour le modal d'ajout de traduction
-	let showAddTranslationModal = $state(false);
-	let addTranslationSilentMode = $state(false);
-	let newTranslation = $state({
-		translationName: '',
-		version: '',
-		tversion: '',
-		status: 'in_progress',
-		ttype: 'auto',
-		gameType: 'other' as string,
-		tlink: '',
-		tname: 'translation',
-		ac: false,
-		translatorId: '',
-		proofreaderId: ''
-	});
-
 	// État pour le modal de modification de traduction
 	let showEditTranslationModal = $state(false);
 	let editTranslationSilentMode = $state(false);
@@ -166,19 +148,6 @@
 	const editTranslationReferenceVersionLockedByAc = $derived(
 		Boolean(editingTranslation.ac && translationAcUiAllowed)
 	);
-
-	const addTranslationTversionLocked = $derived(
-		newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation'
-	);
-	const addTranslationAutoCheckPreview = $derived.by(() => {
-		const gv = (game.gameVersion ?? '').trim();
-		const vv = (newTranslation.version ?? '').trim();
-		const tname = (newTranslation.tname ?? 'translation').trim();
-
-		if (game.website !== 'f95z' || game.gameAutoCheck === false) return false;
-
-		return tname === 'integrated' || tname === 'no_translation' || (gv.length > 0 && vv === gv);
-	});
 
 	// État pour la suppression
 	let translationToDelete = $state<(typeof translations)[number] | null>(null);
@@ -282,62 +251,8 @@
 		return 'in_progress';
 	};
 
-	const openAddTranslationModal = () => {
-		const defaultTranslatorInput = hasGamesManage ? '' : getCurrentUserDefaultTranslatorInput();
-		addTranslationSilentMode = false;
-		newTranslation = {
-			translationName: '',
-			version: '',
-			tversion: '',
-			status: 'in_progress',
-			ttype: 'auto',
-			gameType: translations[0]?.gameType ?? 'other',
-			tlink: '',
-			tname: 'translation',
-			ac: false,
-			translatorId: defaultTranslatorInput,
-			proofreaderId: ''
-		};
-		showAddTranslationModal = true;
-	};
-
-	const closeAddTranslationModal = () => {
-		showAddTranslationModal = false;
-		addTranslationSilentMode = false;
-		newTranslation = {
-			translationName: '',
-			version: '',
-			tversion: '',
-			status: 'in_progress',
-			ttype: 'auto',
-			gameType: 'other',
-			tlink: '',
-			tname: 'translation',
-			ac: false,
-			translatorId: '',
-			proofreaderId: ''
-		};
-	};
-
-	// Réinitialiser le lien lorsque le statut change vers intégrée ou pas de traduction ;
-	// « Pas de traduction » impose le type « hs » ; intégrée → version de traduction « Intégrée » (comme formulaire jeu)
-	$effect(() => {
-		if (newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation') {
-			if (newTranslation.tlink) newTranslation.tlink = '';
-		}
-		if (newTranslation.tname === 'integrated') {
-			if (newTranslation.tversion !== 'Intégrée') newTranslation.tversion = 'Intégrée';
-		} else if (newTranslation.tname === 'no_translation') {
-			if (newTranslation.ttype !== 'hs') newTranslation.ttype = 'hs';
-			if (newTranslation.tversion) newTranslation.tversion = '';
-		} else if (newTranslation.tversion === 'Intégrée') {
-			newTranslation.tversion = '';
-		}
-	});
-
 	$effect(() => {
 		if (!translationAcUiAllowed) {
-			if (newTranslation.ac) newTranslation.ac = false;
 			if (editingTranslation.ac) editingTranslation.ac = false;
 		}
 	});
@@ -473,127 +388,6 @@
 			newToast({
 				alertType: 'error',
 				message: "Impossible d'actualiser ce jeu"
-			});
-		}
-	};
-
-	const addTranslation = async () => {
-		// Validation des champs requis
-		// Le lien n'est pas requis pour les traductions intégrées ou "pas de traduction"
-		const linkNotRequired =
-			newTranslation.tname === 'integrated' || newTranslation.tname === 'no_translation';
-		const requiresTranslationVersion = newTranslation.tname !== 'no_translation';
-		if (
-			(requiresTranslationVersion && !newTranslation.tversion) ||
-			(!linkNotRequired && !newTranslation.tlink)
-		) {
-			newToast({
-				alertType: 'error',
-				message: linkNotRequired
-					? requiresTranslationVersion
-						? 'Veuillez remplir tous les champs requis (version de traduction, statut, type)'
-						: 'Veuillez remplir tous les champs requis (statut, type)'
-					: 'Veuillez remplir tous les champs requis (version de traduction, lien, etc.)'
-			});
-			return;
-		}
-
-		const tlinkError = validateTranslationLinkField({
-			tlink: linkNotRequired ? '' : newTranslation.tlink,
-			tname: newTranslation.tname
-		});
-		if (tlinkError) {
-			newToast({ alertType: 'error', message: tlinkError });
-			return;
-		}
-
-		try {
-			let translatorIdValue: string | null = null;
-			let proofreaderIdValue: string | null = null;
-
-			if (usesContributorSubmission) {
-				translatorIdValue = newTranslation.translatorId?.trim() || null;
-				proofreaderIdValue = newTranslation.proofreaderId?.trim() || null;
-			} else {
-				if (newTranslation.translatorId) {
-					translatorIdValue = resolveTranslatorFormInputToId(newTranslation.translatorId);
-					if (!translatorIdValue) {
-						newToast({
-							alertType: 'error',
-							message: `Traducteur "${newTranslation.translatorId}" non trouvé`
-						});
-						return;
-					}
-				}
-
-				if (newTranslation.proofreaderId) {
-					proofreaderIdValue = resolveTranslatorFormInputToId(newTranslation.proofreaderId);
-					if (!proofreaderIdValue) {
-						newToast({
-							alertType: 'error',
-							message: `Relecteur "${newTranslation.proofreaderId}" non trouvé`
-						});
-						return;
-					}
-				}
-			}
-
-			const tlinkValue = linkNotRequired ? null : newTranslation.tlink;
-
-			const payload = {
-				translationName: newTranslation.translationName || null,
-				version: newTranslation.version || null,
-				tversion: newTranslation.tversion,
-				status: newTranslation.status,
-				ttype: newTranslation.ttype,
-				gameType: newTranslation.gameType,
-				tlink: tlinkValue,
-				tname: newTranslation.tname,
-				translatorId: translatorIdValue,
-				proofreaderId: proofreaderIdValue,
-				silentMode: canUseSilentMode ? addTranslationSilentMode : false,
-				...(usesContributorSubmission && pendingNewTranslators.length > 0
-					? { pendingNewTranslators }
-					: {})
-			};
-
-			const response = await fetch(`/dashboard/manager/game/${game.id}/translations`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(payload)
-			});
-
-			const data = await response.json();
-
-			if (response.ok) {
-				if (data.submission) {
-					newToast({
-						alertType: 'success',
-						message: 'Soumission créée avec succès. Elle sera examinée par un administrateur.'
-					});
-				} else {
-					newToast({
-						alertType: 'success',
-						message: 'Traduction ajoutée avec succès'
-					});
-				}
-				pendingNewTranslators = [];
-				closeAddTranslationModal();
-				window.location.reload();
-			} else {
-				const errorMessage = data.error || "Erreur lors de l'ajout de la traduction";
-				newToast({
-					alertType: 'error',
-					message: errorMessage
-				});
-			}
-		} catch (error) {
-			console.error("Erreur lors de l'ajout de la traduction:", error);
-			newToast({
-				alertType: 'error',
-				message: "Une erreur est survenue lors de l'ajout de la traduction"
 			});
 		}
 	};
@@ -1237,10 +1031,10 @@
 							<Globe size={24} />
 							Traductions ({translations.length})
 						</h2>
-						<button class="btn btn-sm btn-primary" onclick={openAddTranslationModal}>
+						<a class="btn btn-sm btn-primary" href="/dashboard/manager/game/{game.id}/add-translation">
 							<Plus size={16} />
 							Ajouter une traduction
-						</button>
+						</a>
 					</div>
 
 					<div class="overflow-x-auto">
@@ -1370,10 +1164,10 @@
 					<Gamepad2 size={48} class="mx-auto mb-4 text-base-content/40" />
 					<h3 class="mb-2 text-xl font-semibold text-base-content">Aucune traduction</h3>
 					<p class="mb-4 text-base-content/60">Ce jeu n'a pas encore de traduction disponible.</p>
-					<button class="btn btn-primary" onclick={openAddTranslationModal}>
+					<a class="btn btn-primary" href="/dashboard/manager/game/{game.id}/add-translation">
 						<Plus size={16} />
 						Ajouter une traduction
-					</button>
+					</a>
 				</div>
 			</div>
 		{/if}
@@ -1395,28 +1189,6 @@
 		{/if}
 	</div>
 </div>
-
-<AddTranslationModal
-	open={showAddTranslationModal}
-	game={{
-		gameVersion: game.gameVersion,
-		website: game.website,
-		gameAutoCheck: game.gameAutoCheck
-	}}
-	translators={data.translators}
-	bind:newTranslation
-	bind:addTranslationSilentMode
-	bind:extraTranslators
-	bind:pendingNewTranslators
-	{canManageGameAutoCheck}
-	{canUseSilentMode}
-	{translationAcUiAllowed}
-	{addContributorMode}
-	{addTranslationAutoCheckPreview}
-	{addTranslationTversionLocked}
-	onClose={closeAddTranslationModal}
-	onSubmit={addTranslation}
-/>
 
 <EditTranslationModal
 	open={showEditTranslationModal}
