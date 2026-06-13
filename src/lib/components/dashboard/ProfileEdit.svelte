@@ -14,7 +14,6 @@
 		PROFILE_BIO_MAX_LENGTH,
 		PROFILE_CURSOR_DISPLAY_PX
 	} from '$lib/profile/custom-profile';
-	import { loadUserData } from '$lib/stores';
 	import '$lib/styles/profile-markdown.css';
 
 	type LinkedTranslator = {
@@ -152,7 +151,6 @@
 						profileInfoError = message;
 					},
 					onSuccess: async (result) => {
-						await loadUserData();
 						profileInfoSuccess =
 							typeof result.data === 'object' && result.data && 'message' in result.data
 								? String(result.data.message)

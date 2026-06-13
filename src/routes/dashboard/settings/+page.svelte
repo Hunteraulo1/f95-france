@@ -4,7 +4,7 @@
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { hasPermission } from '$lib/permissions/client';
 	import type { User } from '$lib/server/db/schema';
-	import { loadUserData, updateUserData, user } from '$lib/stores';
+	import { updateUserData, user } from '$lib/stores';
 	import { startRegistration } from '@simplewebauthn/browser';
 	import { themeChange } from 'theme-change';
 	import type { PageData } from './$types';
@@ -180,7 +180,6 @@
 											discordError = message;
 										},
 										onSuccess: async () => {
-											await loadUserData();
 											discordInfo = 'Compte Discord délié avec succès.';
 										}
 									})}
@@ -234,7 +233,6 @@
 							themeError = message;
 						},
 						onSuccess: async () => {
-							await loadUserData();
 							applyTheme(selectedTheme);
 						}
 					})}
@@ -317,7 +315,6 @@
 								: 'Mot de passe défini avec succès.';
 							formElement?.reset();
 							if (!data.hasPassword) {
-								await loadUserData();
 							}
 						}
 					})}
@@ -435,7 +432,6 @@
 										twoFactorError = message;
 									},
 									onSuccess: async (result) => {
-										await loadUserData();
 										qrCodeDataUrl = null;
 										manualEntryKey = null;
 										verificationCode = '';
@@ -474,7 +470,6 @@
 								twoFactorError = message;
 							},
 							onSuccess: async (result) => {
-								await loadUserData();
 								disableCode = '';
 								disablePassword = '';
 								const dataResult = result.data as { message?: string };
@@ -620,7 +615,6 @@
 								if ($user) {
 									updateUserData({ ...$user, directMode: enabled });
 								}
-								await loadUserData();
 								directModeError = null;
 							}
 						})}
