@@ -21,7 +21,6 @@
 	import { onMount, tick } from 'svelte';
 	import type CodeMirrorComponent from 'svelte-codemirror-editor';
 
-
 	interface Props {
 		value?: string;
 		name?: string;
@@ -85,7 +84,9 @@
 	}
 </script>
 
-<div class="editor-shell w-full overflow-hidden rounded border border-base-300 bg-base-100 text-base-content transition-[border-color,outline] duration-150">
+<div
+	class="editor-shell w-full overflow-hidden rounded border border-base-300 bg-base-100 text-base-content transition-[border-color,outline] duration-150"
+>
 	<div
 		class="profile-bio-toolbar flex flex-wrap gap-1 border-b border-base-300 bg-base-200/50 p-1"
 		role="toolbar"

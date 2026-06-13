@@ -44,36 +44,36 @@ L'app est disponible sur http://localhost:5173.
 
 Copier `.env.example` en `.env`. Les variables essentielles pour démarrer :
 
-| Variable | Description |
-|---|---|
-| `PUBLIC_APP_ORIGIN` | URL publique du site (ex: `https://f95france.site`) |
-| `MARIADB_HOST` | Hôte MariaDB (`localhost` en dev) |
-| `MARIADB_DATABASE` | Nom de la base |
-| `MARIADB_USER` | Utilisateur MariaDB |
-| `MARIADB_PASSWORD` | Mot de passe MariaDB |
-| `DISCORD_WEBHOOK_UPDATES` | Webhook Discord pour les mises à jour |
-| `DISCORD_OAUTH_CLIENT_ID` | OAuth Discord (connexion) |
-| `DISCORD_OAUTH_CLIENT_SECRET` | OAuth Discord (connexion) |
-| `CRON_SECRET` | Secret pour sécuriser `/api/cron/check-version` |
+| Variable                      | Description                                            |
+| ----------------------------- | ------------------------------------------------------ |
+| `PUBLIC_APP_ORIGIN`           | URL publique du site (ex: `https://f95france.site`)    |
+| `MARIADB_HOST`                | Hôte MariaDB (`localhost` en dev)                      |
+| `MARIADB_DATABASE`            | Nom de la base                                         |
+| `MARIADB_USER`                | Utilisateur MariaDB                                    |
+| `MARIADB_PASSWORD`            | Mot de passe MariaDB                                   |
+| `DISCORD_WEBHOOK_UPDATES`     | Webhook Discord pour les mises à jour                  |
+| `DISCORD_OAUTH_CLIENT_ID`     | OAuth Discord (connexion)                              |
+| `DISCORD_OAUTH_CLIENT_SECRET` | OAuth Discord (connexion)                              |
+| `CRON_SECRET`                 | Secret pour sécuriser `/api/cron/check-version`        |
 | `CONFIG_TOKEN_ENCRYPTION_KEY` | Clé de chiffrement des tokens OAuth (prod obligatoire) |
 
 Voir `.env.example` pour la liste complète avec commentaires.
 
 ## Scripts
 
-| Commande | Description |
-|---|---|
-| `bun run dev` | Serveur de développement |
-| `bun run build` | Build de production |
-| `bun run preview` | Prévisualiser le build (`http://localhost:4173`) |
-| `bun run dev:up` | Démarrer MariaDB (Docker) |
-| `bun run dev:down` | Arrêter MariaDB |
-| `bun run dev:logs` | Logs MariaDB |
-| `bun run db:generate` | Générer une migration depuis le schéma |
-| `bun run db:migrate` | Appliquer les migrations |
-| `bun run db:studio` | Interface Drizzle Studio |
-| `bun run lint` | Formater + linter |
-| `bun run check` | Vérification TypeScript |
+| Commande              | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `bun run dev`         | Serveur de développement                         |
+| `bun run build`       | Build de production                              |
+| `bun run preview`     | Prévisualiser le build (`http://localhost:4173`) |
+| `bun run dev:up`      | Démarrer MariaDB (Docker)                        |
+| `bun run dev:down`    | Arrêter MariaDB                                  |
+| `bun run dev:logs`    | Logs MariaDB                                     |
+| `bun run db:generate` | Générer une migration depuis le schéma           |
+| `bun run db:migrate`  | Appliquer les migrations                         |
+| `bun run db:studio`   | Interface Drizzle Studio                         |
+| `bun run lint`        | Formater + linter                                |
+| `bun run check`       | Vérification TypeScript                          |
 
 ## Schéma de base de données
 

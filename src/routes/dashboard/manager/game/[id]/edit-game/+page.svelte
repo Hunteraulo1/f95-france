@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
 	import Input from '$lib/components/dashboard/formGame/Input.svelte';
@@ -11,8 +13,7 @@
 	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
 	import { normalizeGameImageForStorage } from '$lib/utils/game-form-validation';
 	import { validateGameLinkFields } from '$lib/utils/link-validation';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -32,35 +33,39 @@
 	let submitting = $state(false);
 	let silentMode = $state(false);
 
-	let game = $state<FormGameType>({
-		id: data.game.id,
-		name: data.game.name,
-		website: data.game.website,
-		threadId: data.game.threadId,
-		link: data.game.link ?? '',
-		tags: data.game.tags ?? '',
-		image: data.game.image ?? '',
-		description: data.game.description,
-		descriptionFr: data.game.descriptionFr,
-		gameAutoCheck: data.game.gameAutoCheck ?? true,
-		gameVersion: data.game.gameVersion,
-		createdAt: data.game.createdAt,
-		updatedAt: data.game.updatedAt,
-		// Translation fields (unused)
-		gameId: data.game.id,
-		translationName: null,
-		version: null,
-		status: 'in_progress',
-		tversion: '',
-		tname: 'translation',
-		tlink: '',
-		ttype: 'auto',
-		gameType: 'other',
-		translatorId: null,
-		proofreaderId: null,
-		ac: false,
-		translatorAlertsEnabled: true
-	});
+	function initialGame(data: PageData): FormGameType {
+		return {
+			id: data.game.id,
+			name: data.game.name,
+			website: data.game.website,
+			threadId: data.game.threadId,
+			link: data.game.link ?? '',
+			tags: data.game.tags ?? '',
+			image: data.game.image ?? '',
+			description: data.game.description,
+			descriptionFr: data.game.descriptionFr,
+			gameAutoCheck: data.game.gameAutoCheck ?? true,
+			gameVersion: data.game.gameVersion,
+			createdAt: data.game.createdAt,
+			updatedAt: data.game.updatedAt,
+			// Translation fields (unused)
+			gameId: data.game.id,
+			translationName: null,
+			version: null,
+			status: 'in_progress',
+			tversion: '',
+			tname: 'translation',
+			tlink: '',
+			ttype: 'auto',
+			gameType: 'other',
+			translatorId: null,
+			proofreaderId: null,
+			ac: false,
+			translatorAlertsEnabled: true
+		};
+	}
+
+	let game = $state(untrack(() => initialGame(data)));
 
 	$effect(() => {
 		if (!gameAutoCheckEnabledForWebsite(game.website)) {
@@ -129,7 +134,6 @@
 					? 'Soumission créée avec succès. Elle sera examinée par un administrateur.'
 					: 'Jeu modifié avec succès'
 			});
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			await goto(resolve(`/dashboard/manager/game/${data.game.id}`), { invalidateAll: true });
 		} catch {
 			newToast({ alertType: 'error', message: 'Une erreur est survenue' });
@@ -155,7 +159,15 @@
 		<div
 			class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 		>
-			<Input step={STEP} active={ACTIVE} name="name" title="Nom du jeu" type="text" bind:game invalid={fieldErrors.name ?? false} />
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="name"
+				title="Nom du jeu"
+				type="text"
+				bind:game
+				invalid={fieldErrors.name ?? false}
+			/>
 			<Select
 				step={STEP}
 				active={ACTIVE}
@@ -168,15 +180,47 @@
 					{ value: 'other', label: 'Autre' }
 				]}
 			/>
-			<Input step={STEP} active={ACTIVE} name="threadId" title="ID du thread" type="number" bind:game />
-			<Input step={STEP} active={ACTIVE} name="gameVersion" title="Version du jeu" type="text" bind:game />
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="threadId"
+				title="ID du thread"
+				type="number"
+				bind:game
+			/>
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="gameVersion"
+				title="Version du jeu"
+				type="text"
+				bind:game
+			/>
 			<Input step={STEP} active={ACTIVE} name="link" title="Lien du thread" type="text" bind:game />
 			<InputImage step={STEP} active={ACTIVE} name="image" title="URL de l'image" bind:game />
 			<Textarea step={STEP} active={ACTIVE} name="tags" title="Tags" bind:game />
-			<Textarea step={STEP} active={ACTIVE} name="descriptionFr" title="Description (français)" bind:game />
-			<Textarea step={STEP} active={ACTIVE} name="description" title="Description (original)" bind:game />
+			<Textarea
+				step={STEP}
+				active={ACTIVE}
+				name="descriptionFr"
+				title="Description (français)"
+				bind:game
+			/>
+			<Textarea
+				step={STEP}
+				active={ACTIVE}
+				name="description"
+				title="Description (original)"
+				bind:game
+			/>
 			{#if canManageGameAutoCheck}
-				<Checkbox step={STEP} active={ACTIVE} name="gameAutoCheck" title="Auto-check jeu" bind:game />
+				<Checkbox
+					step={STEP}
+					active={ACTIVE}
+					name="gameAutoCheck"
+					title="Auto-check jeu"
+					bind:game
+				/>
 			{/if}
 		</div>
 
@@ -195,7 +239,11 @@
 			{#if canUseSilentMode}
 				<label class="flex cursor-pointer items-center gap-2">
 					<span class="label-text text-sm">Mode silencieux</span>
-					<input type="checkbox" class="toggle toggle-primary toggle-sm" bind:checked={silentMode} />
+					<input
+						type="checkbox"
+						class="toggle toggle-primary toggle-sm"
+						bind:checked={silentMode}
+					/>
 				</label>
 			{/if}
 			<button

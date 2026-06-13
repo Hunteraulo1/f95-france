@@ -347,7 +347,7 @@
 			await handleThreadIdFieldBlur();
 		}
 
-		if (targetStep === 2 && (infosStepFilledByScrape || addToExistingMode)) {
+		if (targetStep === 2 && infosStepFilledByScrape) {
 			targetStep += amount;
 		}
 
@@ -1197,7 +1197,7 @@
 						type="submit"
 						disabled={blockFinalSubmit}
 						title={blockFinalSubmit
-							? "Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas"
+							? 'Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas'
 							: undefined}
 					>
 						Ajouter le jeu

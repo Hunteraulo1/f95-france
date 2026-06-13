@@ -335,7 +335,8 @@
 				if (responseData.submission) {
 					newToast({
 						alertType: 'success',
-						message: 'Soumissions de suppression créées. Elles seront examinées par un administrateur.'
+						message:
+							'Soumissions de suppression créées. Elles seront examinées par un administrateur.'
 					});
 					cancelDeleteGame();
 				} else {
@@ -608,7 +609,10 @@
 							<Globe size={24} />
 							Traductions ({translations.length})
 						</h2>
-						<a class="btn btn-sm btn-primary" href="/dashboard/manager/game/{game.id}/add-translation">
+						<a
+							class="btn btn-sm btn-primary"
+							href="/dashboard/manager/game/{game.id}/add-translation"
+						>
 							<Plus size={16} />
 							Ajouter une traduction
 						</a>

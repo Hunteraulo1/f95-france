@@ -40,7 +40,8 @@ function pgConfig(): pg.PoolConfig {
 		process.env.PG_DATABASE ?? process.env.POSTGRES_DB ?? process.env.POSTGRES_DATABASE;
 	const user = process.env.PG_USER ?? process.env.POSTGRES_USER;
 	const password = process.env.PG_PASSWORD ?? process.env.POSTGRES_PASSWORD;
-	const sslMode = process.env.PG_SSL_MODE ?? process.env.PG_SSL ?? process.env.POSTGRES_SSL ?? 'require';
+	const sslMode =
+		process.env.PG_SSL_MODE ?? process.env.PG_SSL ?? process.env.POSTGRES_SSL ?? 'require';
 
 	if (!host || !database || !user) {
 		console.error('❌  Config PostgreSQL manquante.');

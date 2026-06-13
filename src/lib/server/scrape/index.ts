@@ -1,10 +1,10 @@
+import type { ScrapedThreadGame } from '$lib/scrape/types';
 import { scrapeF95Thread } from './f95';
 import { scrapeLcThread } from './lc';
-import type { ScrapedThreadGame } from '$lib/scrape/types';
 
+export type { ScrapedThreadGame as ScrapedF95Game, ScrapedThreadGame } from '$lib/scrape/types';
 export { scrapeF95Thread } from './f95';
 export { scrapeLcThread } from './lc';
-export type { ScrapedThreadGame as ScrapedF95Game, ScrapedThreadGame } from './types';
 
 export type ScrapeWebsite = 'f95z' | 'lc';
 

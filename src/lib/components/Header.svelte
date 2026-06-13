@@ -95,7 +95,9 @@
 						</li>
 						<li>
 							<a
-								aria-current={page.url.pathname === '/dashboard/account/register' ? 'page' : undefined}
+								aria-current={page.url.pathname === '/dashboard/account/register'
+									? 'page'
+									: undefined}
 								href={resolve('/dashboard/account/register')}
 								class="btn btn-primary w-28 rounded-md border-base-content/10 p-2 text-sm font-semibold shadow-lg hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
 								draggable="false"

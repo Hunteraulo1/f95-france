@@ -55,10 +55,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			})
 			.from(table.gameTranslation)
 			.where(
-				and(
-					eq(table.gameTranslation.id, translationId),
-					eq(table.gameTranslation.gameId, gameId)
-				)
+				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
 			)
 			.limit(1);
 

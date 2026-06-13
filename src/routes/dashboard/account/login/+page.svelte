@@ -259,7 +259,9 @@
 			{#if data?.registrationEnabled}
 				<p class="text-center text-sm text-base-content/70">
 					Pas encore de compte ?
-					<a href="/dashboard/account/register" class="link font-medium link-primary">Créer un compte</a>
+					<a href="/dashboard/account/register" class="link font-medium link-primary"
+						>Créer un compte</a
+					>
 				</p>
 			{/if}
 		</div>

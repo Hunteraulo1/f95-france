@@ -290,7 +290,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					gameImage: undefined
 				});
 				return json({
-					message: 'Soumission de traduction créée avec succès. Elle sera examinée par un administrateur.',
+					message:
+						'Soumission de traduction créée avec succès. Elle sera examinée par un administrateur.',
 					submission: true
 				});
 			}
@@ -298,7 +299,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (pendingTranslatorNamesExisting.length > 0) {
 				return json(
 					{
-						error: 'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
+						error:
+							'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
 					},
 					{ status: 400 }
 				);
@@ -580,7 +582,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					db.update(table.game)
 						.set({ descriptionFr: fr })
 						.where(eq(table.game.id, gameId))
-						.catch((err) => console.warn('[manager/add] background translation update failed', err));
+						.catch((err) =>
+							console.warn('[manager/add] background translation update failed', err)
+						);
 			});
 		}
 

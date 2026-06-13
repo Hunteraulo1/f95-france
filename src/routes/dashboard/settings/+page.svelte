@@ -314,8 +314,6 @@
 								? 'Mot de passe mis à jour avec succès.'
 								: 'Mot de passe défini avec succès.';
 							formElement?.reset();
-							if (!data.hasPassword) {
-							}
 						}
 					})}
 				>

@@ -9,7 +9,12 @@ export const GET: RequestHandler = () => {
 	const sitemapUrl = absoluteUrl('/sitemap.xml', origin);
 	const registrationEnabled = isRegistrationEnabled();
 
-	const lines = ['User-agent: *', 'Allow: /', 'Disallow: /dashboard/', 'Allow: /dashboard/account/login'];
+	const lines = [
+		'User-agent: *',
+		'Allow: /',
+		'Disallow: /dashboard/',
+		'Allow: /dashboard/account/login'
+	];
 
 	if (registrationEnabled) {
 		lines.push('Allow: /dashboard/account/register');

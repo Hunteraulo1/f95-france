@@ -1,17 +1,18 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
 	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
 	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
 	import Input from '$lib/components/dashboard/formGame/Input.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import { hasPermission } from '$lib/permissions/client';
-	import { newToast } from '$lib/stores';
 	import type { Translator } from '$lib/server/db/schema';
+	import { newToast } from '$lib/stores';
 	import type { FormGameType } from '$lib/types';
 	import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
 	import { validateTranslationLinkField } from '$lib/utils/link-validation';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -24,7 +25,7 @@
 	const canManageGameAutoCheck = $derived(data.canManageGameAutoCheck === true);
 	const canUseSilentMode = $derived(data.canUseSilentMode === true);
 	const canUseDevTools = $derived($hasPermission('dev.panel'));
-	const addTranslatorMode = $derived(data.addContributorMode);
+	const addTranslatorMode = $derived(data.addContributorMode as false | AddTranslatorMode);
 	const warnUnknownTranslators = $derived(data.warnUnknownTranslators === true);
 	const canManuallyEditAc = $derived(canManageGameAutoCheck && data.game.gameAutoCheck === true);
 
@@ -38,47 +39,53 @@
 	const STEP = 1;
 	const ACTIVE = [1];
 
-	/** Résout une valeur stockée (UUID, nom, userId) en nom d'affichage pour le datalist. */
-	const resolveDisplayName = (raw: string | null | undefined): string => {
+	function resolveDisplayName(
+		raw: string | null | undefined,
+		translators: PageData['translators']
+	): string {
 		const key = (raw ?? '').trim();
 		if (!key) return '';
-		const byId = data.translators.find((t) => t.id === key);
+		const byId = translators.find((t) => t.id === key);
 		if (byId) return byId.name;
-		const byName = data.translators.find((t) => t.name === key);
+		const byName = translators.find((t) => t.name === key);
 		if (byName) return byName.name;
-		const byUserId = data.translators.find((t) => t.userId != null && t.userId === key);
+		const byUserId = translators.find((t) => t.userId != null && t.userId === key);
 		if (byUserId) return byUserId.name;
 		return key;
-	};
+	}
 
-	let game = $state<FormGameType>({
-		id: data.game.id,
-		name: data.game.name,
-		website: data.game.website,
-		gameAutoCheck: data.game.gameAutoCheck ?? true,
-		gameVersion: data.game.gameVersion,
-		image: data.game.image ?? '',
-		tags: '',
-		threadId: null,
-		link: '',
-		description: null,
-		descriptionFr: null,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		gameId: data.game.id,
-		translationName: data.translation.translationName,
-		version: data.translation.version,
-		tversion: data.translation.tversion,
-		status: data.translation.status as FormGameType['status'],
-		tname: data.translation.tname as FormGameType['tname'],
-		tlink: data.translation.tlink ?? '',
-		ttype: data.translation.ttype as FormGameType['ttype'],
-		gameType: data.translation.gameType as FormGameType['gameType'],
-		ac: data.translation.ac ?? false,
-		translatorId: resolveDisplayName(data.translation.translatorId),
-		proofreaderId: resolveDisplayName(data.translation.proofreaderId),
-		translatorAlertsEnabled: true
-	});
+	function initialGame(data: PageData): FormGameType {
+		return {
+			id: data.game.id,
+			name: data.game.name,
+			website: data.game.website,
+			gameAutoCheck: data.game.gameAutoCheck ?? true,
+			gameVersion: data.game.gameVersion,
+			image: data.game.image ?? '',
+			tags: '',
+			threadId: null,
+			link: '',
+			description: null,
+			descriptionFr: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			gameId: data.game.id,
+			translationName: data.translation.translationName,
+			version: data.translation.version,
+			tversion: data.translation.tversion,
+			status: data.translation.status as FormGameType['status'],
+			tname: data.translation.tname as FormGameType['tname'],
+			tlink: data.translation.tlink ?? '',
+			ttype: data.translation.ttype as FormGameType['ttype'],
+			gameType: data.translation.gameType as FormGameType['gameType'],
+			ac: data.translation.ac ?? false,
+			translatorId: resolveDisplayName(data.translation.translatorId, data.translators),
+			proofreaderId: resolveDisplayName(data.translation.proofreaderId, data.translators),
+			translatorAlertsEnabled: true
+		};
+	}
+
+	let game = $state(untrack(() => initialGame(data)));
 
 	$effect(() => {
 		if (game.tname === 'no_translation') {
@@ -169,7 +176,6 @@
 					? 'Soumission créée avec succès. Elle sera examinée par un administrateur.'
 					: 'Traduction modifiée avec succès'
 			});
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			await goto(resolve(`/dashboard/manager/game/${data.game.id}`), { invalidateAll: true });
 		} catch {
 			newToast({ alertType: 'error', message: 'Une erreur est survenue' });
@@ -219,7 +225,14 @@
 		<div
 			class="grid w-full grid-cols-1 gap-5 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 		>
-			<Input step={STEP} active={ACTIVE} name="translationName" title="Nom de la traduction" type="text" bind:game />
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="translationName"
+				title="Nom de la traduction"
+				type="text"
+				bind:game
+			/>
 			<Select
 				step={STEP}
 				active={ACTIVE}
@@ -237,8 +250,23 @@
 					{ value: 'other', label: 'Autre' }
 				]}
 			/>
-			<Input step={STEP} active={ACTIVE} name="version" title="Version de référence" type="text" bind:game />
-			<Input step={STEP} active={ACTIVE} name="tversion" title="Version de la traduction" type="text" bind:game invalid={fieldErrors.tversion ?? false} />
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="version"
+				title="Version de référence"
+				type="text"
+				bind:game
+			/>
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="tversion"
+				title="Version de la traduction"
+				type="text"
+				bind:game
+				invalid={fieldErrors.tversion ?? false}
+			/>
 			<Select
 				step={STEP}
 				active={ACTIVE}
@@ -264,7 +292,15 @@
 					{ value: 'translation_with_mods', label: 'Traduction (avec mods)' }
 				]}
 			/>
-			<Input step={STEP} active={ACTIVE} name="tlink" title="Lien de la traduction" type="text" bind:game invalid={fieldErrors.tlink ?? false} />
+			<Input
+				step={STEP}
+				active={ACTIVE}
+				name="tlink"
+				title="Lien de la traduction"
+				type="text"
+				bind:game
+				invalid={fieldErrors.tlink ?? false}
+			/>
 			<Datalist
 				step={STEP}
 				active={ACTIVE}
@@ -272,7 +308,7 @@
 				title="Traducteur"
 				bind:game
 				bind:translators={translatorsList}
-				addTranslatorMode={addTranslatorMode}
+				{addTranslatorMode}
 				bind:pendingNewTranslators
 				invalid={translatorFieldErrors.translatorId}
 			/>
@@ -283,7 +319,7 @@
 				title="Relecteur"
 				bind:game
 				bind:translators={translatorsList}
-				addTranslatorMode={addTranslatorMode}
+				{addTranslatorMode}
 				bind:pendingNewTranslators
 				invalid={translatorFieldErrors.proofreaderId}
 			/>
@@ -322,7 +358,11 @@
 			{#if canUseSilentMode}
 				<label class="flex cursor-pointer items-center gap-2">
 					<span class="label-text text-sm">Mode silencieux</span>
-					<input type="checkbox" class="toggle toggle-primary toggle-sm" bind:checked={silentMode} />
+					<input
+						type="checkbox"
+						class="toggle toggle-primary toggle-sm"
+						bind:checked={silentMode}
+					/>
 				</label>
 			{/if}
 			<button

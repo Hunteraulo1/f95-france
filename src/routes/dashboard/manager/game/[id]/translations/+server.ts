@@ -20,7 +20,10 @@ import {
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
-import { createTranslationDeleteSubmission, createTranslationSubmission } from '$lib/server/submissions';
+import {
+	createTranslationDeleteSubmission,
+	createTranslationSubmission
+} from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
@@ -245,7 +248,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const reason = typeof deleteBody.reason === 'string' ? deleteBody.reason.trim() : '';
-		if (!reason) return json({ error: 'La raison de la suppression est obligatoire' }, { status: 400 });
+		if (!reason)
+			return json({ error: 'La raison de la suppression est obligatoire' }, { status: 400 });
 
 		const game = await db
 			.select({ id: table.game.id })

@@ -45,7 +45,9 @@
 				class="sticky right-0 bottom-0 left-0 modal-action mt-6 w-full border-t border-base-300 bg-base-100/95 p-4 pt-4 backdrop-blur"
 			>
 				<button type="button" class="btn btn-ghost" onclick={onClose}>Annuler</button>
-				<button type="button" class="btn btn-error" onclick={onConfirm}>Supprimer toutes les traductions</button>
+				<button type="button" class="btn btn-error" onclick={onConfirm}
+					>Supprimer toutes les traductions</button
+				>
 			</div>
 		</div>
 	</div>
