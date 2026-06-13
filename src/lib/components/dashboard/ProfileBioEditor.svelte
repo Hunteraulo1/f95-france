@@ -21,7 +21,6 @@
 	import { onMount, tick } from 'svelte';
 	import type CodeMirrorComponent from 'svelte-codemirror-editor';
 
-	import '$lib/styles/profile-bio-editor.css';
 
 	interface Props {
 		value?: string;
@@ -86,7 +85,7 @@
 	}
 </script>
 
-<div class="profile-bio-editor-shell">
+<div class="editor-shell w-full overflow-hidden rounded border border-base-300 bg-base-100 text-base-content transition-[border-color,outline] duration-150">
 	<div
 		class="profile-bio-toolbar flex flex-wrap gap-1 border-b border-base-300 bg-base-200/50 p-1"
 		role="toolbar"
@@ -107,7 +106,7 @@
 		{/each}
 	</div>
 
-	<div class="profile-bio-editor">
+	<div class="w-full overflow-hidden bg-base-100">
 		{#if Editor}
 			<Editor
 				bind:value
@@ -120,21 +119,19 @@
 				autocompletion={false}
 				onready={handleEditorReady}
 				styles={{
-					'&': {
-						width: '100%',
-						minHeight: '12rem'
-					},
+					'&': { width: '100%', minHeight: '12rem', backgroundColor: 'transparent' },
+					'&.cm-focused': { outline: 'none' },
 					'.cm-scroller': {
 						fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
 						fontSize: '0.875rem',
-						lineHeight: '1.5'
+						lineHeight: '1.5',
+						overflow: 'auto'
 					},
-					'.cm-content': {
-						padding: '0.75rem 1rem',
-						caretColor: 'var(--color-base-content)'
-					},
-					'.cm-gutters': {
-						display: 'none'
+					'.cm-content': { padding: '0.75rem 1rem', caretColor: 'var(--color-base-content)' },
+					'.cm-gutters': { display: 'none' },
+					'.cm-placeholder': {
+						color: 'color-mix(in oklch, var(--color-base-content) 50%, transparent)',
+						fontStyle: 'normal'
 					}
 				}}
 			/>
@@ -155,3 +152,11 @@
 {#if name}
 	<input type="hidden" {name} {value} />
 {/if}
+
+<style>
+	.editor-shell:focus-within {
+		border-color: color-mix(in oklch, var(--color-base-content) 20%, var(--color-base-300));
+		outline: 2px solid color-mix(in oklch, var(--color-base-content) 20%, transparent);
+		outline-offset: 2px;
+	}
+</style>

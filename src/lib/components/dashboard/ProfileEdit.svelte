@@ -14,7 +14,6 @@
 		PROFILE_BIO_MAX_LENGTH,
 		PROFILE_CURSOR_DISPLAY_PX
 	} from '$lib/profile/custom-profile';
-	import '$lib/styles/profile-markdown.css';
 
 	type LinkedTranslator = {
 		id: string;
@@ -318,7 +317,7 @@
 									<p class="mb-2 text-xs font-medium uppercase tracking-wide text-base-content/60">
 										Aperçu
 									</p>
-									<MarkdownContent document={bioPreviewDocument} class="profile-markdown" />
+									<MarkdownContent document={bioPreviewDocument} variant="profile" />
 								</div>
 							{/if}
 						</fieldset>
