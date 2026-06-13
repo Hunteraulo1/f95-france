@@ -1,24 +1,22 @@
 import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
 import {
 	emailVerificationRequired,
 	ensureEmailVerifiedOrRedirect,
 	isUserEmailVerified
 } from '$lib/server/email-verification';
+import { userHasLinkedTranslator } from '$lib/server/linked-translator';
 import { getMaintenanceMode } from '$lib/server/maintenance-mode';
+import { getPendingSubmissionsCountForUser } from '$lib/server/pending-submissions-count';
 import { hasPermission } from '$lib/server/permissions';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
 import { redirect } from '@sveltejs/kit';
-import { and, eq, sql } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) => {
 	depends('app:dashboard-layout');
 
-	// Ne lire `url` que si nécessaire : sinon SvelteKit relance ce load à chaque changement de page.
 	if (!locals.user) {
 		const pathname = url.pathname;
 		if (!isPublicDashboardPath(pathname)) {
@@ -29,65 +27,27 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) 
 		ensureEmailVerifiedOrRedirect(locals.user, url.pathname);
 	}
 
-	let pendingSubmissionsCount = 0;
-	let permissions: string[] = [];
-	let canManageConfig = false;
+	const permissions = locals.user ? (locals.permissions ?? []) : [];
+	const canManageConfig = locals.user ? hasPermission(locals, 'config.view') : false;
+	const skipLinkedTranslatorQuery = locals.user ? hasPermission(locals, 'roles.manage') : false;
 
-	// Charger le nombre de soumissions en attente
-	if (locals.user) {
-		permissions = locals.permissions ?? [];
-		canManageConfig = hasPermission(locals, 'config.view');
-
-		try {
-			if (hasPermission(locals, 'submissions.review')) {
-				// Pour les admins, compter toutes les soumissions en attente
-				const result = await db
-					.select({ count: sql<number>`count(*)`.as('count') })
-					.from(table.submission)
-					.where(eq(table.submission.status, 'pending'));
-
-				pendingSubmissionsCount = result[0]?.count || 0;
-			} else if (hasPermission(locals, 'submissions.own')) {
-				// Pour les traducteurs, compter leurs propres soumissions en attente
-				const result = await db
-					.select({ count: sql<number>`count(*)`.as('count') })
-					.from(table.submission)
-					.where(
-						and(eq(table.submission.userId, locals.user.id), eq(table.submission.status, 'pending'))
-					);
-
-				pendingSubmissionsCount = result[0]?.count || 0;
-			}
-		} catch (error) {
-			// Si la table n'existe pas encore, ignorer l'erreur
-			console.warn('Erreur lors du chargement des soumissions en attente:', error);
-		}
-	}
-
-	const maintenanceMode = await getMaintenanceMode();
-
-	let hasLinkedTranslator = false;
-
-	if (locals.user) {
-		try {
-			const [linkedTranslator] = await db
-				.select({ id: table.translator.id })
-				.from(table.translator)
-				.where(eq(table.translator.userId, locals.user.id))
-				.limit(1);
-
-			hasLinkedTranslator = Boolean(linkedTranslator);
-
-			if (hasPermission(locals, 'roles.manage')) {
-				hasLinkedTranslator = true;
-			}
-		} catch (error) {
-			console.warn('Erreur lors du chargement du traducteur lié:', error);
-		}
-	}
-
-	const devOriginUser = locals.user ? await getDevImpersonationOriginUser(cookies) : null;
-	const roleBadgeStyles = await listRoleBadgeStylesMap();
+	const [
+		pendingSubmissionsCount,
+		maintenanceMode,
+		hasLinkedTranslator,
+		devOriginUser,
+		roleBadgeStyles
+	] = await Promise.all([
+		locals.user ? getPendingSubmissionsCountForUser(locals) : Promise.resolve(0),
+		getMaintenanceMode(),
+		locals.user
+			? skipLinkedTranslatorQuery
+				? Promise.resolve(true)
+				: userHasLinkedTranslator(locals.user.id)
+			: Promise.resolve(false),
+		locals.user ? getDevImpersonationOriginUser(cookies) : Promise.resolve(null),
+		listRoleBadgeStylesMap()
+	]);
 
 	return {
 		user: locals.user,

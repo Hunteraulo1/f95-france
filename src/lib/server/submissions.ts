@@ -28,6 +28,7 @@ import {
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
+import { invalidatePendingSubmissionsCountCache } from '$lib/server/pending-submissions-count';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
 import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
 import {
@@ -98,6 +99,7 @@ export async function createGameSubmission(
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -134,6 +136,7 @@ export async function createGameUpdateSubmission(
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -173,6 +176,7 @@ export async function createTranslationSubmission(
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -215,6 +219,7 @@ export async function createTranslationUpdateSubmission(
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -239,6 +244,7 @@ export async function createGameDeleteSubmission(userId: string, gameId: string,
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -270,6 +276,7 @@ export async function createTranslationDeleteSubmission(
 		status: 'pending'
 	});
 
+	invalidatePendingSubmissionsCountCache();
 	return submission;
 }
 
@@ -277,6 +284,8 @@ export async function createTranslationDeleteSubmission(
  * Applique les changements d'une soumission acceptée
  */
 export async function applySubmission(submissionId: string) {
+	invalidatePendingSubmissionsCountCache();
+
 	// Récupérer la soumission
 	const submission = await db
 		.select()
@@ -1087,6 +1096,8 @@ export async function applySubmission(submissionId: string) {
  * Annule les changements d'une soumission acceptée (lorsqu'elle est refusée)
  */
 export async function revertSubmission(submissionId: string) {
+	invalidatePendingSubmissionsCountCache();
+
 	// Récupérer la soumission
 	const submission = await db
 		.select()
