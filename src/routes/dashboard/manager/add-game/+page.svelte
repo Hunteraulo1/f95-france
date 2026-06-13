@@ -122,7 +122,6 @@
 		existingGameId?: string;
 		existingTranslations?: ExistingTranslation[];
 	} | null>(null);
-	let addToExistingMode = $state(false);
 	let hasThreadConflict = $derived(
 		Boolean(threadDuplicateCheck?.gameExists || threadDuplicateCheck?.pendingSubmission)
 	);
@@ -389,7 +388,7 @@
 	);
 	const hasValidThreadIdForNextStep = $derived(threadIdForDuplicateCheck(game.threadId) !== null);
 	const blockNextStepGameConflict = $derived(
-		step === 1 && Boolean(threadDuplicateCheck?.gameExists) && !addToExistingMode
+		step === 1 && Boolean(threadDuplicateCheck?.gameExists)
 	);
 	const blockNextStepForMissingThread = $derived(
 		(requiresThreadIdForNextStep && !hasValidThreadIdForNextStep) || blockNextStepGameConflict
@@ -531,11 +530,10 @@
 					existingTranslations: payload.existingTranslations
 				};
 				if (!payload.gameExists) {
-					addToExistingMode = false;
+					// pas besoin de reset
 				}
 			} else {
 				threadDuplicateCheck = null;
-				addToExistingMode = false;
 			}
 		} catch {
 			threadDuplicateCheck = null;
@@ -728,8 +726,7 @@
 				directMode:
 					data.addTranslatorMode === 'submission' ? false : (currentUser?.directMode ?? true),
 				pendingNewTranslators:
-					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined,
-				addTranslationToExistingGame: addToExistingMode ? true : undefined
+					data.addTranslatorMode === 'submission' ? pendingNewTranslators : undefined
 			};
 
 			const response = await fetch('/dashboard/manager', {
@@ -1012,7 +1009,7 @@
 								<li>Une soumission pour ce thread est déjà en attente de validation.</li>
 							{/if}
 						</ul>
-						{#if threadDuplicateCheck.gameExists}
+						{#if threadDuplicateCheck.gameExists && threadDuplicateCheck.existingGameId}
 							{#if threadDuplicateCheck.existingTranslations && threadDuplicateCheck.existingTranslations.length > 0}
 								<div class="mt-1">
 									<p class="mb-1 text-xs font-medium opacity-80">Traductions déjà enregistrées :</p>
@@ -1020,8 +1017,7 @@
 										{#each threadDuplicateCheck.existingTranslations as tr (tr.id)}
 											<li class="rounded bg-warning/20 px-2 py-1 text-xs">
 												<span class="font-medium">{tr.translationName ?? tr.tname}</span>
-												{#if tr.tversion}
-													— {tr.tversion}{/if}
+												{#if tr.tversion}— {tr.tversion}{/if}
 												<span class="opacity-70"> ({tr.status} / {tr.ttype})</span>
 											</li>
 										{/each}
@@ -1030,26 +1026,12 @@
 							{:else}
 								<p class="text-xs opacity-70">Aucune traduction enregistrée pour ce jeu.</p>
 							{/if}
-							{#if !addToExistingMode}
-								<button
-									class="btn btn-sm btn-outline mt-1 self-start"
-									type="button"
-									onclick={() => (addToExistingMode = true)}
-								>
-									Ajouter une traduction à ce jeu quand même
-								</button>
-							{:else}
-								<p class="text-xs font-medium">
-									Mode actif : seule la traduction sera ajoutée au jeu existant.
-									<button
-										class="btn btn-xs btn-ghost ml-1"
-										type="button"
-										onclick={() => (addToExistingMode = false)}
-									>
-										Annuler
-									</button>
-								</p>
-							{/if}
+							<a
+								class="btn btn-sm btn-outline mt-1 self-start"
+								href="/dashboard/manager/game/{threadDuplicateCheck.existingGameId}"
+							>
+								Voir la fiche du jeu
+							</a>
 						{/if}
 					</div>
 				</div>
@@ -1215,10 +1197,10 @@
 						type="submit"
 						disabled={blockFinalSubmit}
 						title={blockFinalSubmit
-							? 'Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas'
+							? "Corrigez les champs en erreur (rouge) avant d’envoyer — les avertissements (jaune) ne bloquent pas"
 							: undefined}
 					>
-						{addToExistingMode ? 'Ajouter la traduction' : 'Ajouter le jeu'}
+						Ajouter le jeu
 					</button>
 				{/if}
 			</div>
