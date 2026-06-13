@@ -3,7 +3,7 @@ import { user } from '$lib/server/db/schema';
 import {
 	parseSavedGamesFilters,
 	serializeSavedGamesFilters
-} from '$lib/server/saved-games-filters';
+} from '$lib/server/saved-filters';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

@@ -15,25 +15,28 @@ function normalizePreset(value: unknown): SavedGamesFilterPreset | null {
 	return { query, sort, groups } as SavedGamesFilterPreset;
 }
 
-/** Parse une chaîne JSON depuis la DB vers des presets valides (page mises à jour). */
-export function parseSavedUpdatesFilters(raw: string | null | undefined): SavedGamesFilterPreset[] {
+function parsePresets(raw: string | null | undefined): SavedGamesFilterPreset[] {
 	if (!raw || !raw.trim()) return [];
 	try {
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed)) return [];
-		const normalized = parsed
+		return parsed
 			.map(normalizePreset)
-			.filter((v): v is SavedGamesFilterPreset => v !== null);
-		return normalized.slice(0, MAX_SAVED_GAMES_FILTERS);
+			.filter((v): v is SavedGamesFilterPreset => v !== null)
+			.slice(0, MAX_SAVED_GAMES_FILTERS);
 	} catch {
 		return [];
 	}
 }
 
-/** Nettoie puis sérialise les presets avant sauvegarde en base (page mises à jour). */
-export function serializeSavedUpdatesFilters(input: unknown): string {
+function serializePresets(input: unknown): string {
 	const presets = Array.isArray(input)
 		? input.map(normalizePreset).filter((v): v is SavedGamesFilterPreset => v !== null)
 		: [];
 	return JSON.stringify(presets.slice(0, MAX_SAVED_GAMES_FILTERS));
 }
+
+export const parseSavedGamesFilters = parsePresets;
+export const serializeSavedGamesFilters = serializePresets;
+export const parseSavedUpdatesFilters = parsePresets;
+export const serializeSavedUpdatesFilters = serializePresets;

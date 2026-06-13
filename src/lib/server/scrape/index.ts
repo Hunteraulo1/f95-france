@@ -1,6 +1,6 @@
 import { scrapeF95Thread } from './f95';
 import { scrapeLcThread } from './lc';
-import type { ScrapedThreadGame } from './types';
+import type { ScrapedThreadGame } from '$lib/scrape/types';
 
 export { scrapeF95Thread } from './f95';
 export { scrapeLcThread } from './lc';
