@@ -229,7 +229,6 @@
 							<a
 								class="flex h-8 items-center font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
 								class:text-red-400={item.href === '/dashboard/account/logout'}
-								data-sveltekit-preload-data="hover"
 								data-tip={item.label}
 								href={item.href}
 								onclick={closeDrawerOnMobile}

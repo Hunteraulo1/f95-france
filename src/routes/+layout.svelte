@@ -10,8 +10,15 @@
 	import { applyFaviconEnvBadge } from '$lib/site-favicon';
 	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
+	import {
+		applyAppTheme,
+		getThemePreference,
+		setupSystemThemeListener,
+		syncThemePreferenceFromUser,
+		themePreference
+	} from '$lib/theme';
 	import { onMount } from 'svelte';
-	import { themeChange } from 'theme-change';
+	import { get } from 'svelte/store';
 	import '../app.css';
 	import type { LayoutData } from './$types';
 
@@ -57,18 +64,45 @@
 		ageVerifiedLocal = true;
 	};
 
+	let syncedThemeUserId = $state<string | null>(null);
+
+	$effect(() => {
+		if (!browser) return;
+		const pref = $themePreference;
+		if (pref) applyAppTheme(pref);
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const userId = data.user?.id ?? null;
+		if (!userId) {
+			if (syncedThemeUserId !== null) {
+				syncedThemeUserId = null;
+				syncThemePreferenceFromUser(null);
+			}
+			return;
+		}
+		if (userId !== syncedThemeUserId) {
+			const isAccountSwitch = syncedThemeUserId !== null;
+			syncedThemeUserId = userId;
+			// Remontage SPA (update()) : ne pas écraser la préférence client déjà choisie.
+			if (isAccountSwitch || get(themePreference) === null) {
+				syncThemePreferenceFromUser(data.user?.theme);
+			}
+		}
+	});
+
 	onMount(() => {
 		if (!ageVerified && isAgeVerified()) {
 			setAgeVerified();
 			ageVerifiedLocal = true;
 		}
 
-		const run = () => themeChange(false);
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(run, { timeout: 2000 });
-		} else {
-			setTimeout(run, 0);
+		if (get(themePreference) === null) {
+			syncThemePreferenceFromUser(data.user?.theme);
 		}
+
+		return setupSystemThemeListener(getThemePreference);
 	});
 </script>
 

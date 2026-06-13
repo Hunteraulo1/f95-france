@@ -48,9 +48,12 @@
 
 				if (theme && theme !== 'system') {
 					document.documentElement.setAttribute('data-theme', theme);
+					document.documentElement.style.colorScheme = theme;
 				} else {
 					var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-					document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+					var effective = prefersDark ? 'dark' : 'light';
+					document.documentElement.setAttribute('data-theme', effective);
+					document.documentElement.style.colorScheme = effective;
 				}
 
 				var ageVerified = false;
@@ -70,7 +73,7 @@
 		</script>
 		%sveltekit.head%
 	</head>
-	<body data-sveltekit-preload-data="off">
+	<body data-sveltekit-preload-data="off" data-sveltekit-preload-code="off">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

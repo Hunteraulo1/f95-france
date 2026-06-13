@@ -5,6 +5,7 @@
 	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
 	import Input from '$lib/components/dashboard/formGame/Input.svelte';
 	import InputImage from '$lib/components/dashboard/formGame/InputImage.svelte';
+	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
 	import Select from '$lib/components/dashboard/formGame/Select.svelte';
 	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
 	import { hasPermission } from '$lib/permissions/client';
@@ -235,6 +236,9 @@
 			</a>
 			{#if canUseDevTools}
 				<Dev bind:game />
+			{/if}
+			{#if game.website === 'f95z' || game.website === 'lc'}
+				<Insert bind:game />
 			{/if}
 			{#if canUseSilentMode}
 				<label class="flex cursor-pointer items-center gap-2">

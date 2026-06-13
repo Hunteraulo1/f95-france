@@ -118,7 +118,8 @@
 			item.id === 'discord-oauth' ||
 			item.id === 'discord-webhook-updates' ||
 			item.id === 'discord-webhook-translators' ||
-			item.id === 'discord-webhook-admin';
+			item.id === 'discord-webhook-admin' ||
+			item.id === 'turnstile';
 
 		const liveId =
 			item.id === 'discord-webhook-updates'

@@ -5,8 +5,10 @@
 	import { hasPermission } from '$lib/permissions/client';
 	import type { User } from '$lib/server/db/schema';
 	import { updateUserData, user } from '$lib/stores';
+	import { isAppTheme, setThemePreference, type AppTheme } from '$lib/theme';
 	import { startRegistration } from '@simplewebauthn/browser';
-	import { themeChange } from 'theme-change';
+	import { untrack } from 'svelte';
+	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();
@@ -30,7 +32,9 @@
 	let passkeyError = $state<string | null>(null);
 	let passkeyInfo = $state<string | null>(null);
 	let passkeyBusy = $state(false);
-	let selectedTheme = $state($user?.theme || 'system');
+	let selectedTheme = $state<AppTheme>(
+		untrack(() => (isAppTheme(data.user?.theme) ? data.user.theme : 'system'))
+	);
 	let targetUserId = $state('');
 	let oauthDiscordFeedbackApplied = $state(false);
 	$effect(() => {
@@ -40,10 +44,6 @@
 			targetUserId = nextUsers.some((u) => u.id === $user?.id)
 				? ($user?.id ?? '')
 				: (nextUsers[0]?.id ?? '');
-		}
-		if ($user?.theme) {
-			// Eviter une réaffectation inutile (réduit le risque de rerenders en boucle).
-			if (selectedTheme !== $user.theme) selectedTheme = $user.theme;
 		}
 	});
 
@@ -78,16 +78,12 @@
 		dark: 'Sombre'
 	};
 
-	const applyTheme = (theme: 'system' | 'light' | 'dark') => {
-		if (theme === 'system') {
-			document.documentElement.removeAttribute('data-theme');
-			localStorage.removeItem('theme');
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-		} else {
-			document.documentElement.setAttribute('data-theme', theme);
-			localStorage.setItem('theme', theme);
-			themeChange(false);
+	const commitThemeChange = (theme: AppTheme) => {
+		selectedTheme = theme;
+		setThemePreference(theme);
+		const current = get(user);
+		if (current) {
+			updateUserData({ ...current, theme });
 		}
 	};
 
@@ -225,43 +221,58 @@
 					class="w-full"
 					method="POST"
 					action="?/updateTheme"
-					use:enhance={createFormEnhance({
-						onStart: () => {
+					use:enhance={() => {
+						return async ({ result }) => {
 							themeError = null;
-						},
-						onFailure: (message) => {
-							themeError = message;
-						},
-						onSuccess: async () => {
-							applyTheme(selectedTheme);
-						}
-					})}
+
+							if (result.type === 'failure') {
+								const message =
+									typeof result.data === 'object' &&
+									result.data &&
+									'message' in result.data &&
+									typeof result.data.message === 'string'
+										? result.data.message
+										: 'Erreur lors de la mise à jour du thème';
+								themeError = message;
+								const fallback = data.user?.theme;
+								if (isAppTheme(fallback)) {
+									commitThemeChange(fallback);
+								}
+								return;
+							}
+
+							if (result.type === 'success') {
+								const payload = result.data as { theme?: string } | undefined;
+								if (isAppTheme(payload?.theme)) {
+									commitThemeChange(payload.theme);
+								}
+								// Pas de update() : évite de réinjecter d’anciennes données layout qui annulent le thème.
+							}
+						};
+					}}
 				>
 					<div class="flex w-full flex-col items-center justify-between gap-4">
 						<label class="input box-content flex w-full">
 							Thème
 							<select
-								data-choose-theme
 								name="theme"
 								class="select grow select-ghost bg-base-100 py-1 text-base-content ring-0 outline-none"
 								bind:value={selectedTheme}
 								required
 								onchange={(e) => {
-									const newTheme = e.currentTarget.value as 'system' | 'light' | 'dark';
-									selectedTheme = newTheme;
-									applyTheme(newTheme);
-
-									// Envoyer la mise à jour au serveur
-									const form = e.currentTarget.closest('form');
-									if (form) {
-										form.requestSubmit();
-									}
+									const newTheme = e.currentTarget.value;
+									if (!isAppTheme(newTheme)) return;
+									commitThemeChange(newTheme);
+									e.currentTarget.closest('form')?.requestSubmit();
 								}}
 							>
 								{#each Object.keys(themes) as theme (theme)}
 									<option value={theme}>{themes[theme as keyof typeof themes]}</option>
 								{/each}
 							</select>
+							<button type="submit" class="hidden" tabindex="-1" aria-hidden="true"
+								>Enregistrer le thème</button
+							>
 						</label>
 					</div>
 				</form>
