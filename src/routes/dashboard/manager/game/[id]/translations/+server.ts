@@ -139,6 +139,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					status,
 					ttype,
 					tlink,
+					tname: tnameNorm,
 					...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
 						? { gameType: gameTypeBody.trim() }
 						: {}),

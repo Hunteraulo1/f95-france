@@ -150,6 +150,7 @@ export async function createTranslationSubmission(
 		status: string;
 		ttype: string;
 		tlink: string;
+		tname?: string | null;
 		gameType?: string;
 		translatorId?: string | null;
 		proofreaderId?: string | null;
