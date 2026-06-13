@@ -356,8 +356,6 @@ async function main() {
 		console.log(`\n⚠️  ${errors.length} table(s) en erreur :`);
 		for (const { table, error } of errors) console.log(`   ${table}: ${error}`);
 	}
-	console.log(`\n💡 Lance ensuite : bun run db:migrate`);
-	console.log(`   (pour appliquer les migrations MariaDB manquantes)\n`);
 }
 
 main().catch((e) => {
