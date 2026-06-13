@@ -13,8 +13,10 @@ export type StaffRoleConfigurationIssue = {
 	missingColor: boolean;
 };
 
-export async function listStaffRoleConfigurationIssues(): Promise<StaffRoleConfigurationIssue[]> {
-	const roles = await selectAllAppRoles();
+export async function listStaffRoleConfigurationIssues(
+	rolesInput?: Awaited<ReturnType<typeof selectAllAppRoles>>
+): Promise<StaffRoleConfigurationIssue[]> {
+	const roles = rolesInput ?? (await selectAllAppRoles());
 	const issues: StaffRoleConfigurationIssue[] = [];
 
 	for (const role of roles) {
