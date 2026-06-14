@@ -17,9 +17,8 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-COPY --chown=bun:bun package.json bun.lock ./
+COPY package.json bun.lock ./
 
-USER bun
 RUN bun install --production --frozen-lockfile
 
 COPY --from=builder --chown=bun:bun /app/build ./build
@@ -27,5 +26,8 @@ COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
 COPY --from=builder --chown=bun:bun /app/src/lib/server/db ./src/lib/server/db
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
 
+RUN chown -R bun:bun /app
+
 EXPOSE 3000
+USER bun
 CMD ["bash", "scripts/coolify-start.sh"]
