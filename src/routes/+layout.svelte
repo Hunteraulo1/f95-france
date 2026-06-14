@@ -56,7 +56,9 @@
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');
 	const isDashboardRoute = $derived(
-		page.url.pathname.startsWith('/dashboard') || page.url.pathname.startsWith('/dashbord')
+		page.url.pathname.startsWith('/dashboard') ||
+			page.url.pathname.startsWith('/dashbord') ||
+			page.url.pathname.startsWith('/maintenance')
 	);
 
 	const confirmAge = () => {

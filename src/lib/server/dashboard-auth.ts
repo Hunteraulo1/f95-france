@@ -40,12 +40,7 @@ export function isPublicEmailPath(pathname: string): boolean {
 
 /** Pages accessibles sans connexion (hors assets). */
 export function isPublicSitePath(pathname: string): boolean {
-	return (
-		isPublicProfilePath(pathname) ||
-		isPublicDashboardPath(pathname) ||
-		isPublicGamesPath(pathname) ||
-		isPublicEmailPath(pathname)
-	);
+	return isPublicDashboardPath(pathname);
 }
 
 /** Redirige vers la page de connexion si la session est absente (pages dashboard protégées). */
