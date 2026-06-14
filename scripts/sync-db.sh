@@ -5,6 +5,9 @@
 #
 # dev (défaut) : MARIADB_DEV_* ou MARIADB_* — puis stamp + migrate.
 # ptb          : MARIADB_PTB_* ou MARIADB_* — puis migrate seul.
+#
+# Les étapes Drizzle (stamp / migrate) utilisent MARIADB_* : le script les
+# surcharge avec la config de la cible (--target dev|ptb), pas celle du .env local.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -78,33 +81,135 @@ db_connection_label() {
 	printf '%s@%s:%s/%s' "${DB_USER}" "${DB_HOST}" "${DB_PORT}" "${DB_NAME}"
 }
 
+TARGET_CONFIG_PREFIX=""
+
+load_target_db_config() {
+	TARGET_CONFIG_PREFIX=""
+	if [[ "${TARGET}" == "ptb" ]]; then
+		if load_db_config "PTB"; then
+			TARGET_CONFIG_PREFIX="PTB"
+			return 0
+		fi
+		if load_db_config ""; then
+			return 0
+		fi
+		return 1
+	fi
+
+	if load_db_config "DEV"; then
+		TARGET_CONFIG_PREFIX="DEV"
+		return 0
+	fi
+	if load_db_config ""; then
+		return 0
+	fi
+	return 1
+}
+
+run_on_target_db() {
+	local ssl_mode="${MARIADB_SSL_MODE:-}"
+	local ssl_var
+
+	if [[ -n "${TARGET_CONFIG_PREFIX}" ]]; then
+		ssl_var="MARIADB_${TARGET_CONFIG_PREFIX}_SSL_MODE"
+		if [[ -n "${!ssl_var:-}" ]]; then
+			ssl_mode="${!ssl_var}"
+		fi
+	fi
+
+	echo "Connexion Drizzle: ${TARGET_USER}@${TARGET_HOST}:${TARGET_PORT}/${TARGET_DB}"
+	MARIADB_HOST="${TARGET_HOST}" \
+		MARIADB_PORT="${TARGET_PORT}" \
+		MARIADB_DATABASE="${TARGET_DB}" \
+		MARIADB_USER="${TARGET_USER}" \
+		MARIADB_PASSWORD="${TARGET_PASSWORD}" \
+		MARIADB_SSL_MODE="${ssl_mode}" \
+		"$@"
+}
+
+MARIADB_CLIENT_IMAGE="${MARIADB_CLIENT_IMAGE:-mariadb:11.4}"
+USE_DOCKER_MYSQL=0
+
+resolve_mysql_client() {
+	MYSQL_CLI=""
+	MYSQLDUMP_CLI=""
+
+	if command -v mysql >/dev/null 2>&1 && command -v mysqldump >/dev/null 2>&1; then
+		MYSQL_CLI="mysql"
+		MYSQLDUMP_CLI="mysqldump"
+	elif command -v mariadb >/dev/null 2>&1 && command -v mariadb-dump >/dev/null 2>&1; then
+		MYSQL_CLI="mariadb"
+		MYSQLDUMP_CLI="mariadb-dump"
+	fi
+
+	if [[ -n "${MYSQL_CLI}" ]]; then
+		return 0
+	fi
+
+	if command -v docker >/dev/null 2>&1; then
+		USE_DOCKER_MYSQL=1
+		echo "Client MariaDB local absent — utilisation de Docker (${MARIADB_CLIENT_IMAGE})."
+		return 0
+	fi
+
+	echo "Erreur: client MariaDB introuvable (mysql/mysqldump ou mariadb/mariadb-dump)."
+	echo "Installe le client MariaDB (ex. sudo apt install mariadb-client) ou installe Docker."
+	exit 1
+}
+
+docker_mysql() {
+	local docker_args=(--rm)
+	if [[ "${1:-}" == "--stdin" ]]; then
+		docker_args+=(-i)
+		shift
+	fi
+	docker run "${docker_args[@]}" --entrypoint mariadb "${MARIADB_CLIENT_IMAGE}" "$@"
+}
+
+docker_mysqldump() {
+	docker run --rm --entrypoint mariadb-dump "${MARIADB_CLIENT_IMAGE}" "$@"
+}
+
 mysql_cmd() {
-	mysql --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
-		--password="${DB_PASSWORD}" --database="${DB_NAME}" "$@"
+	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
+		docker_mysql --stdin \
+			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" --database="${DB_NAME}" "$@"
+	else
+		"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" --database="${DB_NAME}" "$@"
+	fi
 }
 
 mysqldump_cmd() {
-	mysqldump --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
-		--password="${DB_PASSWORD}" \
-		--single-transaction --skip-lock-tables --no-tablespaces \
-		"${DB_NAME}" "$@"
+	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
+		docker_mysqldump \
+			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" \
+			--single-transaction --skip-lock-tables --no-tablespaces \
+			"${DB_NAME}" "$@"
+	else
+		"${MYSQLDUMP_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" \
+			--single-transaction --skip-lock-tables --no-tablespaces \
+			"${DB_NAME}" "$@"
+	fi
 }
 
 wipe_target_database() {
-	mysql --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
-		--password="${DB_PASSWORD}" \
-		-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
+		docker_mysql \
+			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" \
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+	else
+		"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--password="${DB_PASSWORD}" \
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+	fi
 }
 
-if ! command -v mysqldump >/dev/null 2>&1; then
-	echo "Erreur: mysqldump introuvable. Installe le client MariaDB (nixpacks: mariadb)."
-	exit 1
-fi
-
-if ! command -v mysql >/dev/null 2>&1; then
-	echo "Erreur: mysql introuvable. Installe le client MariaDB."
-	exit 1
-fi
+resolve_mysql_client
 
 if ! load_db_config "PROD"; then
 	echo "Erreur: configuration prod incomplète."
@@ -118,14 +223,7 @@ PROD_DB="${DB_NAME}"
 PROD_USER="${DB_USER}"
 PROD_PASSWORD="${DB_PASSWORD}"
 
-TARGET_PREFIX=""
-if [[ "${TARGET}" == "ptb" ]]; then
-	TARGET_PREFIX="PTB"
-fi
-
-if load_db_config "${TARGET_PREFIX}"; then
-	:
-elif [[ "${TARGET}" == "dev" ]] && load_db_config ""; then
+if load_target_db_config; then
 	:
 else
 	echo "Erreur: configuration cible (${TARGET}) incomplète."
@@ -177,16 +275,22 @@ mysqldump_cmd |
 		DB_NAME="${TARGET_DB}"
 		DB_USER="${TARGET_USER}"
 		DB_PASSWORD="${TARGET_PASSWORD}"
-		mysql --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
-			--password="${DB_PASSWORD}" "${DB_NAME}"
+		if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
+			docker_mysql --stdin \
+				--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+				--password="${DB_PASSWORD}" "${DB_NAME}"
+		else
+			"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+				--password="${DB_PASSWORD}" "${DB_NAME}"
+		fi
 	}
 
 echo "Terminé: base ${TARGET} synchronisée depuis prod."
 
 if [[ "${TARGET}" == "dev" ]]; then
 	echo "Marquage des migrations Drizzle..."
-	(cd "${ROOT_DIR}" && bun run db:stamp-migrations)
+	(cd "${ROOT_DIR}" && run_on_target_db bun run db:stamp-migrations)
 fi
 
 echo "Application des migrations en attente..."
-(cd "${ROOT_DIR}" && bun run db:migrate)
+(cd "${ROOT_DIR}" && run_on_target_db bun run db:migrate)
