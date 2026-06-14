@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { translator } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 
 export function normalizePendingNewTranslatorNames(raw: unknown): string[] {
 	if (!Array.isArray(raw)) return [];
@@ -31,19 +32,10 @@ export async function ensureTranslatorByName(name: string): Promise<string> {
 
 	if (existing) return existing.id;
 
-	const [created] = await db
-		.insert(translator)
-		.values({
-			name: trimmed,
-			pages: '[]'
-		})
-		.returning({ id: translator.id });
+	const id = randomUUID();
+	await db.insert(translator).values({ id, name: trimmed, pages: '[]' });
 
-	if (!created?.id) {
-		throw new Error(`Impossible de créer le traducteur « ${trimmed} »`);
-	}
-
-	return created.id;
+	return id;
 }
 
 /** Crée les traducteurs proposés dans une soumission ; retourne nom → id. */

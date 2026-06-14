@@ -113,7 +113,9 @@
 							{#each translations as t (t.id)}
 								<tr>
 									<td class="font-medium">
-										<a class="link link-hover" href="/dashboard/game/{t.game.id}">{t.game.name}</a>
+										<a class="link link-hover" href="/dashboard/manager/game/{t.game.id}"
+											>{t.game.name}</a
+										>
 									</td>
 									<td>
 										<div class="flex flex-col">

@@ -29,7 +29,7 @@
 						<div class="flex items-center justify-between">
 							<div>
 								<a
-									href="/dashboard/submit"
+									href="/dashboard/my-submits"
 									class="card-title link text-base-content link-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 								>
 									Mes soumissions
@@ -40,14 +40,14 @@
 						</div>
 						<div class="mt-4 flex gap-4 text-sm">
 							<a
-								href="/dashboard/submit?status=pending"
+								href="/dashboard/my-submits?status=pending"
 								class="flex link items-center gap-2 text-base-content/70 link-hover"
 							>
 								<Clock class="h-4 w-4 text-warning" />
 								<span>{data.userStats.pendingSubmissions} en attente</span>
 							</a>
 							<a
-								href="/dashboard/submit?status=accepted"
+								href="/dashboard/my-submits?status=accepted"
 								class="flex link items-center gap-2 text-base-content/70 link-hover"
 							>
 								<CircleCheck class="h-4 w-4 text-success" />
@@ -97,7 +97,7 @@
 						<div class="flex items-center justify-between">
 							<div>
 								<a
-									href="/dashboard/submit?status=accepted"
+									href="/dashboard/my-submits?status=accepted"
 									class="card-title link text-base-content link-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 								>
 									Mes actions traduction
@@ -110,14 +110,14 @@
 						</div>
 						<div class="mt-4 flex flex-wrap gap-4 text-sm">
 							<a
-								href="/dashboard/submit?status=accepted"
+								href="/dashboard/my-submits?status=accepted"
 								class="flex link items-center gap-2 text-base-content/70 link-hover"
 							>
 								<CirclePlus class="h-4 w-4 text-success" />
 								<span>{data.userStats.gameAdd} ajoutées</span>
 							</a>
 							<a
-								href="/dashboard/submit?status=accepted"
+								href="/dashboard/my-submits?status=accepted"
 								class="flex link items-center gap-2 text-base-content/70 link-hover"
 							>
 								<Pencil class="h-4 w-4 text-info" />

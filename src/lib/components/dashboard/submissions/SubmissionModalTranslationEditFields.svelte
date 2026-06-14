@@ -34,6 +34,10 @@
 		translationVersionLocked?: boolean;
 		onEditTranslationTnameChange: () => void;
 	} = $props();
+
+	const translationLinkNotRequired = $derived(
+		editTranslationTname === 'integrated' || editTranslationTname === 'no_translation'
+	);
 </script>
 
 <div class="space-y-4">
@@ -163,12 +167,13 @@
 					class="input-bordered input join-item min-w-0 flex-1"
 					type="url"
 					placeholder="https://..."
+					disabled={translationLinkNotRequired}
 					bind:value={editTranslationTlink}
 				/>
 				<button
 					type="button"
 					class="btn join-item shrink-0 btn-outline"
-					disabled={!editTranslationTlink?.trim()}
+					disabled={translationLinkNotRequired || !editTranslationTlink?.trim()}
 					aria-label="Ouvrir le lien de traduction dans un nouvel onglet"
 					onclick={() => {
 						const u = editTranslationTlink?.trim();

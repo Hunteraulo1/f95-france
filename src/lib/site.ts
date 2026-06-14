@@ -10,8 +10,12 @@ export const SITE = {
 	wikiUrl: 'https://wiki.f95france.site',
 	/** Page de téléchargement de l’extension navigateur (releases GitHub). */
 	extensionDownloadUrl: 'https://extension.f95france.site',
-	/** Image Open Graph (chemin absolu sur le domaine, min. recommandé 1200×630 pour les réseaux). */
-	ogImagePath: '/opengraph.svg',
+	/** Image Open Graph pour les partages (réseaux sociaux, Discord, etc.) — 1200×630 recommandé. */
+	ogImageUrl: 'https://cdn.f95france.site/u/opengraph-f95france.png',
+	/** Bannière logo (header public) — fond clair / fond sombre. */
+	bannerLogoLightUrl: 'https://cdn.f95france.site/u/banner-f95france-light.png',
+	bannerLogoDarkUrl: 'https://cdn.f95france.site/u/banner-f95france-dark.png',
+	faviconUrl: 'https://cdn.f95france.site/u/favicon.ico',
 	defaultSecurityContact: 'mailto:security@f95france.site'
 } as const;
 

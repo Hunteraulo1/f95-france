@@ -2,7 +2,7 @@ import type { GamesFilterGroupName } from '$lib/games/games-filter-config';
 import type { FilterSelection } from '$lib/games/games-filter-url';
 import { db } from '$lib/server/db';
 import { game, gameTranslation } from '$lib/server/db/schema';
-import { and, eq, exists, ilike, not, or, sql, type SQL } from 'drizzle-orm';
+import { and, eq, exists, like, not, or, sql, type SQL } from 'drizzle-orm';
 
 export type GameCatalogFilters = Record<GamesFilterGroupName, FilterSelection>;
 
@@ -77,7 +77,7 @@ function buildTraductorMatch(value: string): SQL | undefined {
 }
 
 function buildTagInclude(tag: string): SQL {
-	return ilike(game.tags, `%${tag}%`);
+	return like(game.tags, `%${tag}%`);
 }
 
 function applyGroupFilter(
@@ -118,8 +118,8 @@ export function buildGameCatalogFilterParts(filters: GameCatalogFilters, query?:
 		const threadIdQuery = Number.parseInt(query, 10);
 		parts.push(
 			Number.isNaN(threadIdQuery)
-				? ilike(game.name, `%${query}%`)
-				: or(ilike(game.name, `%${query}%`), eq(game.threadId, threadIdQuery))!
+				? like(game.name, `%${query}%`)
+				: or(like(game.name, `%${query}%`), eq(game.threadId, threadIdQuery))!
 		);
 	}
 

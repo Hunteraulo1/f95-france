@@ -1,7 +1,11 @@
 import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import {
+	fetchLastApiActivityByUserIds,
+	resolveLastConnectionAt
+} from '$lib/server/user-last-connection';
+import { asc, desc, eq } from 'drizzle-orm';
 
 export type StaffUserListItem = {
 	id: string;
@@ -51,28 +55,24 @@ export async function listStaffUsers(): Promise<StaffUserListItem[]> {
 			badgeStyle: table.appRole.badgeStyle,
 			avatar: table.user.avatar,
 			createdAt: table.user.createdAt,
-			lastConnectionAt: sql<Date | null>`GREATEST(${table.user.lastSeenAt}, max(${table.apiLog.createdAt}))`
+			lastSeenAt: table.user.lastSeenAt
 		})
 		.from(table.user)
 		.innerJoin(table.appRole, eq(table.user.role, table.appRole.slug))
-		.leftJoin(table.apiLog, eq(table.apiLog.userId, table.user.id))
 		.where(eq(table.appRole.staff, true))
-		.groupBy(
-			table.user.id,
-			table.user.username,
-			table.user.email,
-			table.user.role,
-			table.appRole.label,
-			table.appRole.badgeStyle,
-			table.user.avatar,
-			table.user.createdAt,
-			table.user.lastSeenAt,
-			table.appRole.priority
-		)
 		.orderBy(desc(table.appRole.priority), asc(table.user.username));
 
+	const lastApiByUser = await fetchLastApiActivityByUserIds(rows.map((row) => row.id));
+
 	return rows.map((row) => ({
-		...row,
-		roleLabel: SYSTEM_ROLE_LABELS[row.role] ?? row.roleLabel
+		id: row.id,
+		username: row.username,
+		email: row.email,
+		role: row.role,
+		roleLabel: SYSTEM_ROLE_LABELS[row.role] ?? row.roleLabel,
+		badgeStyle: row.badgeStyle,
+		avatar: row.avatar,
+		createdAt: row.createdAt,
+		lastConnectionAt: resolveLastConnectionAt(row.lastSeenAt, lastApiByUser.get(row.id) ?? null)
 	}));
 }

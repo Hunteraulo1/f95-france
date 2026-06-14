@@ -116,7 +116,7 @@
 		},
 		{
 			label: 'Mes soumissions',
-			href: '/dashboard/submit',
+			href: '/dashboard/my-submits',
 			icon: Inbox,
 			access: 'submissions.own'
 		},
@@ -197,7 +197,7 @@
 		},
 		{
 			label: 'Déconnexion',
-			href: '/dashboard/logout',
+			href: '/dashboard/account/logout',
 			icon: LogOut,
 			access: 'all'
 		}
@@ -228,8 +228,7 @@
 						<li>
 							<a
 								class="flex h-8 items-center font-semibold is-drawer-close:tooltip is-drawer-close:tooltip-right"
-								class:text-red-400={item.href === '/dashboard/logout'}
-								data-sveltekit-preload-data="hover"
+								class:text-red-400={item.href === '/dashboard/account/logout'}
 								data-tip={item.label}
 								href={item.href}
 								onclick={closeDrawerOnMobile}

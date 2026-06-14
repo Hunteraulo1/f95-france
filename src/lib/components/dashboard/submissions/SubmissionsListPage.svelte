@@ -30,7 +30,7 @@
 
 	interface Props {
 		title: string;
-		basePath: '/dashboard/submit' | '/dashboard/submits';
+		basePath: '/dashboard/my-submits' | '/dashboard/submits';
 		data: PageDataShape;
 		canEditStatus: boolean;
 		reviewMode?: boolean;

@@ -1,6 +1,6 @@
 import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
+import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
 import * as table from '$lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
@@ -11,7 +11,7 @@ import {
 	gameAutoCheckEnabledForWebsite,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
+import { translateTextToFrench } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
 	assertDirectGameWriteAllowed,
@@ -25,7 +25,7 @@ import {
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
-import { createGameSubmission } from '$lib/server/submissions';
+import { createGameSubmission, createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
 	gameImageRequiredForWebsite,
@@ -34,7 +34,8 @@ import {
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
-import { and, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, like, or, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
@@ -64,7 +65,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		try {
 			const existingGame = await db
-				.select({ id: table.game.id })
+				.select({ id: table.game.id, name: table.game.name })
 				.from(table.game)
 				.where(eq(table.game.threadId, parsed))
 				.limit(1);
@@ -76,14 +77,39 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${parsed}`
+						sql`JSON_VALUE(${table.submission.data}, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(${table.submission.data}, '$.game.threadId') AS UNSIGNED) = ${parsed}`
 					)
 				)
 				.limit(1);
 
+			let existingTranslations: Array<{
+				id: string;
+				tname: string;
+				tversion: string;
+				status: string;
+				ttype: string;
+				translationName: string | null;
+			}> = [];
+
+			if (existingGame.length > 0) {
+				existingTranslations = await db
+					.select({
+						id: table.gameTranslation.id,
+						tname: table.gameTranslation.tname,
+						tversion: table.gameTranslation.tversion,
+						status: table.gameTranslation.status,
+						ttype: table.gameTranslation.ttype,
+						translationName: table.gameTranslation.translationName
+					})
+					.from(table.gameTranslation)
+					.where(eq(table.gameTranslation.gameId, existingGame[0].id));
+			}
+
 			return json({
 				gameExists: existingGame.length > 0,
-				pendingSubmission: pendingGameSubmission.length > 0
+				pendingSubmission: pendingGameSubmission.length > 0,
+				existingGameId: existingGame.length > 0 ? existingGame[0].id : undefined,
+				existingTranslations: existingGame.length > 0 ? existingTranslations : undefined
 			});
 		} catch (error) {
 			appLogError('scrape', 'Vérification thread manager échouée', error);
@@ -101,8 +127,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rechercher par nom de jeu (insensible à la casse) ou par threadId
 		const threadIdQuery = Number.parseInt(query, 10);
 		const whereClause = Number.isNaN(threadIdQuery)
-			? ilike(table.game.name, `%${query}%`)
-			: or(ilike(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
+			? like(table.game.name, `%${query}%`)
+			: or(like(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
 		const enginesSq = enginesPerGameSubquery();
 		const rawGames = await db
 			.select({
@@ -126,7 +152,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		const games = rawGames.map(({ engineTypes, ...rest }) => ({
 			...rest,
-			engineTypes: Array.isArray(engineTypes) ? engineTypes : []
+			engineTypes: parseEngineTypes(engineTypes)
 		}));
 
 		return json({ games });
@@ -142,6 +168,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = await request.json();
 		const { game, translation, directMode, pendingNewTranslators } = body;
+		const addTranslationToExistingGame = Boolean(body.addTranslationToExistingGame);
 
 		// Extraire les données du jeu
 		const { name, description, type, website, threadId, tags, link, image, gameVersion } = game;
@@ -167,6 +194,158 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			translation && canSetAutoCheck && requestedTranslationAc !== undefined
 				? clampTranslationAc(nextGameAutoCheck, requestedTranslationAc)
 				: inferredTranslationAc;
+
+		// Mode : ajouter une traduction à un jeu existant (ne pas recréer le jeu)
+		if (addTranslationToExistingGame) {
+			const parsedTid =
+				threadId !== null && threadId !== undefined && threadId !== ''
+					? Number.parseInt(String(threadId), 10)
+					: null;
+			const validTid =
+				parsedTid !== null && !Number.isNaN(parsedTid) && parsedTid > 0 ? parsedTid : null;
+
+			if (validTid === null) {
+				return json(
+					{ error: 'Thread ID requis pour ajouter une traduction à un jeu existant' },
+					{ status: 400 }
+				);
+			}
+
+			const existingGameRow = await db
+				.select({ id: table.game.id, name: table.game.name })
+				.from(table.game)
+				.where(eq(table.game.threadId, validTid))
+				.limit(1);
+
+			if (existingGameRow.length === 0) {
+				return json({ error: 'Aucun jeu trouvé avec cet ID de thread' }, { status: 404 });
+			}
+
+			if (!translation || translationIsNoTranslation) {
+				return json({ error: 'Données de traduction manquantes' }, { status: 400 });
+			}
+
+			const translationLinkError = validateTranslationLinkField({
+				tlink: translation.tlink,
+				tname: translationTname
+			});
+			if (translationLinkError) {
+				return json({ error: translationLinkError }, { status: 400 });
+			}
+
+			const normalizedTversionExisting = normalizeTranslationTversion(
+				translationTname,
+				translation.tversion
+			);
+			if (!isIntegratedTranslation && !normalizedTversionExisting) {
+				return json({ error: 'La version de traduction est obligatoire' }, { status: 400 });
+			}
+
+			const currentUserExisting = await loadCurrentUserOrThrow(locals.user!.id);
+			const writeModeParamsExisting = {
+				roleSlug: currentUserExisting.role,
+				userDirectMode: currentUserExisting.directMode ?? true,
+				requestDirectMode: parseRequestDirectMode(directMode)
+			};
+			const writeModeExisting = await resolveGameWriteMode(writeModeParamsExisting);
+
+			const pendingTranslatorNamesExisting = Array.isArray(pendingNewTranslators)
+				? pendingNewTranslators
+						.filter((n): n is string => typeof n === 'string')
+						.map((n) => n.trim())
+						.filter((n) => n.length > 0)
+				: [];
+
+			const targetGameId = existingGameRow[0].id;
+			const targetGameName = existingGameRow[0].name;
+			const resolvedGameType =
+				typeof translation.gameType === 'string' && translation.gameType.trim()
+					? translation.gameType.trim()
+					: typeof type === 'string' && type.trim()
+						? type.trim()
+						: 'other';
+
+			if (writeModeExisting === 'submission') {
+				await createTranslationSubmission(
+					currentUserExisting.id,
+					targetGameId,
+					{
+						translationName: normalizeTranslationName(translation.translationName),
+						version:
+							typeof translation.version === 'string' ? translation.version.trim() || null : null,
+						tversion: normalizedTversionExisting,
+						status: translation.status,
+						ttype: translation.ttype,
+						tlink: translation.tlink || '',
+						gameType: resolvedGameType,
+						translatorId: translation.translatorId || null,
+						proofreaderId: translation.proofreaderId || null,
+						ac: nextTranslationAc
+					},
+					pendingTranslatorNamesExisting.length > 0 ? pendingTranslatorNamesExisting : undefined
+				);
+				void sendDiscordWebhookAdminNewSubmission({
+					submitterName: currentUserExisting.username,
+					gameName: targetGameName,
+					gameImage: undefined
+				});
+				return json({
+					message:
+						'Soumission de traduction créée avec succès. Elle sera examinée par un administrateur.',
+					submission: true
+				});
+			}
+
+			if (pendingTranslatorNamesExisting.length > 0) {
+				return json(
+					{
+						error:
+							'Les nouveaux traducteurs proposés ne peuvent être enregistrés que via une soumission.'
+					},
+					{ status: 400 }
+				);
+			}
+
+			await assertDirectGameWriteAllowed(writeModeParamsExisting);
+
+			const newTranslationId = randomUUID();
+			await db.insert(table.gameTranslation).values({
+				id: newTranslationId,
+				gameId: targetGameId,
+				translationName: normalizeTranslationName(translation.translationName),
+				version:
+					typeof translation.version === 'string' ? translation.version.trim() || null : null,
+				tversion: normalizedTversionExisting,
+				status: translation.status,
+				ttype: translation.ttype,
+				tname:
+					(translation.tname as
+						| 'no_translation'
+						| 'integrated'
+						| 'translation'
+						| 'translation_with_mods') || 'translation',
+				gameType: coerceGameEngineType(resolvedGameType),
+				tlink: translation.tlink || '',
+				translatorId: translation.translatorId || null,
+				proofreaderId: translation.proofreaderId || null,
+				ac: nextTranslationAc,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
+
+			voidSyncTranslationToGoogleSheet(newTranslationId, 'manager/add-translation-to-existing');
+			voidSyncTranslatorActivityCountsToGoogleSheet(
+				translation?.translatorId,
+				translation?.proofreaderId
+			);
+			await incrementUserGameCounter(currentUserExisting.id, 'add', 1);
+
+			return json({
+				message: 'Traduction ajoutée avec succès',
+				gameId: targetGameId,
+				translationId: newTranslationId
+			});
+		}
 
 		// Valider les données requises
 		if (!name || !type || !website) {
@@ -240,7 +419,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`(data::jsonb->'game'->>'threadId') IS NOT NULL AND (data::jsonb->'game'->>'threadId')::int = ${validThreadId}`
+						sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${validThreadId}`
 					)
 				)
 				.limit(1);
@@ -334,10 +513,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await assertDirectGameWriteAllowed(writeModeParams);
 
-		const descFields = await resolveGameDescriptionFields({
-			description: description || null,
-			autoTranslate: true
-		});
+		const normalizedDescription =
+			typeof description === 'string' && description.trim() ? description.trim() : null;
 
 		// Mode direct (rôle + permission vérifiés côté serveur)
 		const shouldCreateTranslation = Boolean(translation) && !translationIsNoTranslation;
@@ -346,70 +523,70 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			: '';
 
 		const { gameId, createdTranslationId } = await db.transaction(async (tx) => {
-			const [insertedGame] = await tx
-				.insert(table.game)
-				.values({
-					name,
-					description: descFields.description,
-					descriptionFr: descFields.descriptionFr,
-					website,
-					threadId: validThreadId,
-					tags: typeof tags === 'string' ? tags.trim() || '' : '',
-					link: linkValue,
-					image: imageValue,
-					gameAutoCheck: nextGameAutoCheck,
-					gameVersion:
-						typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
-					createdAt: new Date(),
-					updatedAt: new Date()
-				})
-				.returning({ id: table.game.id });
-
-			const newGameId = insertedGame?.id;
-			if (!newGameId) {
-				throw new Error('GAME_INSERT_FAILED');
-			}
+			const newGameId = randomUUID();
+			await tx.insert(table.game).values({
+				id: newGameId,
+				name,
+				description: normalizedDescription,
+				descriptionFr: null,
+				website,
+				threadId: validThreadId,
+				tags: typeof tags === 'string' ? tags.trim() || '' : '',
+				link: linkValue,
+				image: imageValue,
+				gameAutoCheck: nextGameAutoCheck,
+				gameVersion:
+					typeof gameVersion === 'string' && gameVersion.trim() ? gameVersion.trim() : null,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
 
 			let newTranslationId: string | undefined;
 			if (shouldCreateTranslation && translation) {
-				const [createdTranslation] = await tx
-					.insert(table.gameTranslation)
-					.values({
-						gameId: newGameId,
-						translationName: normalizeTranslationName(translation.translationName),
-						version:
-							typeof translation.version === 'string' ? translation.version.trim() || null : null,
-						tversion: normalizedTranslationTversion,
-						status: translation.status,
-						ttype: translation.ttype,
-						tname:
-							(translation.tname as
-								| 'no_translation'
-								| 'integrated'
-								| 'translation'
-								| 'translation_with_mods') || 'translation',
-						gameType: coerceGameEngineType(
-							typeof translation.gameType === 'string' && translation.gameType.trim()
-								? translation.gameType
-								: type
-						),
-						tlink: translation.tlink || '',
-						translatorId: translation.translatorId || null,
-						proofreaderId: translation.proofreaderId || null,
-						ac: nextTranslationAc,
-						createdAt: new Date(),
-						updatedAt: new Date()
-					})
-					.returning({ id: table.gameTranslation.id });
-
-				newTranslationId = createdTranslation?.id;
-				if (!newTranslationId) {
-					throw new Error('TRANSLATION_INSERT_FAILED');
-				}
+				newTranslationId = randomUUID();
+				await tx.insert(table.gameTranslation).values({
+					id: newTranslationId,
+					gameId: newGameId,
+					translationName: normalizeTranslationName(translation.translationName),
+					version:
+						typeof translation.version === 'string' ? translation.version.trim() || null : null,
+					tversion: normalizedTranslationTversion,
+					status: translation.status,
+					ttype: translation.ttype,
+					tname:
+						(translation.tname as
+							| 'no_translation'
+							| 'integrated'
+							| 'translation'
+							| 'translation_with_mods') || 'translation',
+					gameType: coerceGameEngineType(
+						typeof translation.gameType === 'string' && translation.gameType.trim()
+							? translation.gameType
+							: type
+					),
+					tlink: translation.tlink || '',
+					translatorId: translation.translatorId || null,
+					proofreaderId: translation.proofreaderId || null,
+					ac: nextTranslationAc,
+					createdAt: new Date(),
+					updatedAt: new Date()
+				});
 			}
 
 			return { gameId: newGameId, createdTranslationId: newTranslationId };
 		});
+
+		if (normalizedDescription) {
+			void translateTextToFrench(normalizedDescription).then((fr) => {
+				if (fr)
+					db.update(table.game)
+						.set({ descriptionFr: fr })
+						.where(eq(table.game.id, gameId))
+						.catch((err) =>
+							console.warn('[manager/add] background translation update failed', err)
+						);
+			});
+		}
 
 		if (shouldCreateTranslation && createdTranslationId) {
 			voidSyncTranslationToGoogleSheet(createdTranslationId, 'manager/create-game');

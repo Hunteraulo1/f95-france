@@ -12,7 +12,7 @@ const emptyCounts = (): TranslatorActivityCounts => ({ tradCount: 0, readCount: 
 /** Nombre de traductions où le traducteur est `translator_id`. */
 export function translatorTradCountExpr(): SQL<number> {
 	return sql<number>`coalesce((
-		select count(*)::int
+		select count(*)
 		from ${table.gameTranslation}
 		where ${table.gameTranslation.translatorId} = ${table.translator.id}
 	), 0)`;
@@ -21,7 +21,7 @@ export function translatorTradCountExpr(): SQL<number> {
 /** Nombre de traductions où le traducteur est `proofreader_id`. */
 export function translatorReadCountExpr(): SQL<number> {
 	return sql<number>`coalesce((
-		select count(*)::int
+		select count(*)
 		from ${table.gameTranslation}
 		where ${table.gameTranslation.proofreaderId} = ${table.translator.id}
 	), 0)`;

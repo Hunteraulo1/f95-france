@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema';
 import { listPublicGames } from '$lib/server/public-games';
 import { listTranslatorFilterOptions } from '$lib/server/public-games-translators';
-import { parseSavedGamesFilters } from '$lib/server/saved-games-filters';
+import { parseSavedGamesFilters } from '$lib/server/saved-filters';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 

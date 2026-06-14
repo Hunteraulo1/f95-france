@@ -2,8 +2,10 @@ import { toConfigClientSafe } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import type { Config } from '$lib/server/db/schema';
 import * as table from '$lib/server/db/schema';
+import { getDevServicesStatus } from '$lib/server/dev-services-status';
 import { invalidateMaintenanceModeCache } from '$lib/server/maintenance-mode';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
+import { runAllServicesLiveTests } from '$lib/server/services-live-test';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -58,9 +60,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		config: {
 			...clientConfig,
-			// Valeur éditable en base (pas l’ID effectif issu de l’env pour l’affichage formulaire).
 			googleSpreadsheetId: row.googleSpreadsheetId?.trim() ?? ''
 		},
+		servicesStatus: getDevServicesStatus(row),
 		canEditConfig,
 		canManageMaintenance,
 		canSave: canEditConfig || canManageMaintenance
@@ -171,6 +173,30 @@ export const actions: Actions = {
 			}
 
 			return fail(500, { message: 'Erreur lors de la mise à jour de la configuration' });
+		}
+	},
+	testAllServices: async ({ locals }) => {
+		await assertPermission(locals, 'config.view');
+
+		try {
+			const report = await runAllServicesLiveTests();
+			const failed = report.results.filter((r) => !r.success && !r.skipped);
+			const passed = report.results.filter((r) => r.success && !r.skipped);
+
+			return {
+				success: report.success,
+				message:
+					failed.length === 0
+						? `Tests terminés — ${passed.length} service(s) OK`
+						: `${failed.length} test(s) en échec`,
+				details: report
+			};
+		} catch (error: unknown) {
+			return fail(500, {
+				success: false,
+				message: 'Erreur lors des tests',
+				details: error instanceof Error ? error.message : 'Erreur inconnue'
+			});
 		}
 	}
 };

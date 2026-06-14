@@ -149,7 +149,7 @@ function gameLinkEmbedField(gameLink: string | null | undefined) {
 function dashboardGameEmbedField(gameId: string | null | undefined) {
 	const id = gameId?.trim();
 	if (!id) return null;
-	const url = absoluteUrl(`/dashboard/game/${id}`, resolveAppOriginForWebhooks());
+	const url = absoluteUrl(`/dashboard/manager/game/${id}`, resolveAppOriginForWebhooks());
 	return {
 		name: 'Page du jeu',
 		value: `[Ouvrir dans le dashboard](${url})`,

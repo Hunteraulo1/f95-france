@@ -15,12 +15,12 @@ import {
 	listRolesAssignableToUsers
 } from '$lib/server/user-role-assignment-guard';
 import { fail } from '@sveltejs/kit';
-import { and, eq, ilike, ne, or, sql } from 'drizzle-orm';
+import { and, eq, like, ne, or, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
 
-const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'users.manage');
@@ -33,8 +33,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const searchWhere = q
 		? or(
-				ilike(table.user.username, `%${escapeIlike(q)}%`),
-				...(canViewUserEmails ? [ilike(table.user.email, `%${escapeIlike(q)}%`)] : [])
+				like(table.user.username, `%${escapeLike(q)}%`),
+				...(canViewUserEmails ? [like(table.user.email, `%${escapeLike(q)}%`)] : [])
 			)
 		: undefined;
 

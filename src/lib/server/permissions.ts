@@ -16,7 +16,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 const rolePermissionsCache = new Map<string, { permissions: string[]; expiresAt: number }>();
 const CACHE_TTL_MS = 30_000;
@@ -224,8 +224,8 @@ async function syncSystemRolePermissionLinks(): Promise<void> {
 
 		await db
 			.insert(table.appRolePermission)
-			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })))
-			.onConflictDoNothing();
+			.ignore()
+			.values(missing.map((permissionKey) => ({ roleSlug, permissionKey })));
 	}
 }
 
@@ -301,15 +301,20 @@ export async function countUsersWithRole(roleSlug: string): Promise<number> {
 
 export async function countUsersWithRoles(roleSlugs: string[]): Promise<Record<string, number>> {
 	if (roleSlugs.length === 0) return {};
+
 	const rows = await db
-		.select({ role: table.user.role })
+		.select({
+			role: table.user.role,
+			count: sql<number>`count(*)`.as('count')
+		})
 		.from(table.user)
-		.where(inArray(table.user.role, roleSlugs));
+		.where(inArray(table.user.role, roleSlugs))
+		.groupBy(table.user.role);
 
 	const counts: Record<string, number> = {};
 	for (const slug of roleSlugs) counts[slug] = 0;
 	for (const row of rows) {
-		counts[row.role] = (counts[row.role] ?? 0) + 1;
+		counts[row.role] = Number(row.count) || 0;
 	}
 	return counts;
 }

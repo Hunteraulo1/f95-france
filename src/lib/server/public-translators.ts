@@ -6,7 +6,7 @@ import {
 	translatorTradCountExpr
 } from '$lib/server/translator-activity-counts';
 import { profilePublicHref } from '$lib/utils/profile-url';
-import { count, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { count, desc, eq, like, or, sql } from 'drizzle-orm';
 
 export const PUBLIC_TRANSLATORS_PAGE_SIZE = 20;
 
@@ -30,7 +30,7 @@ function formatActivitySubtitle(tradCount: number, readCount: number): string {
 	return parts.length > 0 ? parts.join(' · ') : 'Traducteur';
 }
 
-function escapeIlike(value: string): string {
+function escapeLike(value: string): string {
 	return value.replace(/[\\%_]/g, (m) => `\\${m}`);
 }
 
@@ -42,7 +42,7 @@ export type PublicTranslatorsListParams = {
 export async function listPublicTranslators(params: PublicTranslatorsListParams = {}) {
 	const q = params.query?.trim().slice(0, 100) ?? '';
 	const page = Math.max(1, params.page ?? 1);
-	const where = q ? or(ilike(translator.name, `%${escapeIlike(q)}%`)) : undefined;
+	const where = q ? or(like(translator.name, `%${escapeLike(q)}%`)) : undefined;
 
 	const [{ total: totalRaw }] = await db.select({ total: count() }).from(translator).where(where);
 	const total = Number(totalRaw ?? 0);

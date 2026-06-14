@@ -1,14 +1,13 @@
 node_modules
 
 # IDE
-.cursor/
-.cursorignore
-.vscode/
+/.cursor
+/.cursorignore
+/.vscode
+/.claude
 
 # Output
-.output
-.vercel
-.netlify
+/.output
 .wrangler
 /.svelte-kit
 /build
@@ -16,15 +15,14 @@ node_modules
 # Debug
 /scripts/*.csv
 /scripts/*.md
-.lighthouse-report.json
-.cache/
+/.cache
 _tmp_*
 
 # Docker
-docker/postgres/init/
+/docker
 *.dump
 
-# DB dumps locaux (peuvent contenir des secrets OAuth, tokens, etc.)
+# DB dumps locaux
 dump-*.sql
 
 # OS
@@ -35,7 +33,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-!.env.test
+!.env.*.example
 
 # Vite
 vite.config.js.timestamp-*

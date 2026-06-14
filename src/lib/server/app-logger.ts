@@ -3,6 +3,7 @@ import type { LiveAppLogEntry } from '$lib/logs/live-app-log-entry';
 import { broadcastLiveAppLogEntry } from '$lib/server/app-logs-live-hub';
 import { db } from '$lib/server/db';
 import { appLog } from '$lib/server/db/schema';
+import { randomUUID } from 'node:crypto';
 
 const META_MAX = 8_000;
 
@@ -38,30 +39,26 @@ function serializeMeta(meta: LogAppPayload['meta']): string | null {
 async function persistAppLog({ level, source, message, meta }: LogAppPayload) {
 	try {
 		const metaText = serializeMeta(meta);
-		const [inserted] = await db
-			.insert(appLog)
-			.values({
-				level,
-				source,
-				message: message.length > 16_000 ? message.slice(0, 16_000) : message,
-				meta: metaText
-			})
-			.returning({
-				id: appLog.id,
-				createdAt: appLog.createdAt
-			});
+		const id = randomUUID();
+		const createdAt = new Date();
+		await db.insert(appLog).values({
+			id,
+			level,
+			source,
+			message: message.length > 16_000 ? message.slice(0, 16_000) : message,
+			meta: metaText,
+			createdAt
+		});
 
-		if (inserted) {
-			const entry: LiveAppLogEntry = {
-				id: inserted.id,
-				level,
-				source,
-				message,
-				meta: metaText,
-				createdAt: inserted.createdAt.toISOString()
-			};
-			broadcastLiveAppLogEntry(entry);
-		}
+		const entry: LiveAppLogEntry = {
+			id,
+			level,
+			source,
+			message,
+			meta: metaText,
+			createdAt: createdAt.toISOString()
+		};
+		broadcastLiveAppLogEntry(entry);
 	} catch (error) {
 		if (isDbTimeoutError(error)) return;
 		console.error('[app-logger] échec persistance:', error);

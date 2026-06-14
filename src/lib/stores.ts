@@ -29,26 +29,6 @@ export const newToast = (toast: {
 	}, 5000);
 };
 
-// Fonction pour charger les données utilisateur depuis le serveur
-export const loadUserData = async () => {
-	try {
-		const response = await fetch(`/dashboard/user`);
-		if (response.ok) {
-			const userData = await response.json();
-			user.set(userData);
-			return userData;
-		} else {
-			console.error('Erreur lors du chargement des données utilisateur');
-			user.set(null);
-			return null;
-		}
-	} catch (error) {
-		console.error('Erreur lors du chargement des données utilisateur:', error);
-		user.set(null);
-		return null;
-	}
-};
-
 // Fonction pour mettre à jour les données utilisateur
 export const updateUserData = (userData: User | null) => {
 	user.set(userData);

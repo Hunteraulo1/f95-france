@@ -9,7 +9,7 @@ import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 function loginErrorRedirect(code: string) {
-	return redirect(302, `/dashboard/login?discord_error=${encodeURIComponent(code)}`);
+	return redirect(302, `/dashboard/account/login?discord_error=${encodeURIComponent(code)}`);
 }
 
 function linkErrorRedirect(code: string) {
@@ -64,7 +64,7 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (!locals.user) {
-			throw redirect(302, '/dashboard/login');
+			throw redirect(302, '/dashboard/account/login');
 		}
 
 		const isStaffAccount = locals.permissions?.includes('users.manage') ?? false;

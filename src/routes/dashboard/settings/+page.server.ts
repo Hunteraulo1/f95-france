@@ -70,14 +70,17 @@ export const actions: Actions = {
 		}
 
 		try {
+			const themeValue = theme as 'system' | 'light' | 'dark';
 			await db
 				.update(table.user)
 				.set({
-					theme: theme as 'system' | 'light' | 'dark'
+					theme: themeValue
 				})
 				.where(eq(table.user.id, locals.user.id));
 
-			return { success: true, message: 'Thème mis à jour avec succès' };
+			locals.user = { ...locals.user, theme: themeValue };
+
+			return { success: true, message: 'Thème mis à jour avec succès', theme: themeValue };
 		} catch (error: unknown) {
 			console.error('Erreur lors de la mise à jour du thème:', error);
 			return fail(500, { message: 'Erreur lors de la mise à jour du thème' });

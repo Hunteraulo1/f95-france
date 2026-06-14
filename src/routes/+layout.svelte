@@ -6,12 +6,19 @@
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
-	import { SITE, absoluteUrl, siteOrigin } from '$lib/site';
+	import { SITE, siteOrigin } from '$lib/site';
 	import { applyFaviconEnvBadge } from '$lib/site-favicon';
 	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
+	import {
+		applyAppTheme,
+		getThemePreference,
+		setupSystemThemeListener,
+		syncThemePreferenceFromUser,
+		themePreference
+	} from '$lib/theme';
 	import { onMount } from 'svelte';
-	import { themeChange } from 'theme-change';
+	import { get } from 'svelte/store';
 	import '../app.css';
 	import type { LayoutData } from './$types';
 
@@ -45,11 +52,13 @@
 	});
 
 	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
-	const ogImage = $derived(absoluteUrl(SITE.ogImagePath, env.PUBLIC_APP_ORIGIN));
+	const ogImage = SITE.ogImageUrl;
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');
 	const isDashboardRoute = $derived(
-		page.url.pathname.startsWith('/dashboard') || page.url.pathname.startsWith('/dashbord')
+		page.url.pathname.startsWith('/dashboard') ||
+			page.url.pathname.startsWith('/dashbord') ||
+			page.url.pathname.startsWith('/maintenance')
 	);
 
 	const confirmAge = () => {
@@ -57,23 +66,50 @@
 		ageVerifiedLocal = true;
 	};
 
+	let syncedThemeUserId = $state<string | null>(null);
+
+	$effect(() => {
+		if (!browser) return;
+		const pref = $themePreference;
+		if (pref) applyAppTheme(pref);
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const userId = data.user?.id ?? null;
+		if (!userId) {
+			if (syncedThemeUserId !== null) {
+				syncedThemeUserId = null;
+				syncThemePreferenceFromUser(null);
+			}
+			return;
+		}
+		if (userId !== syncedThemeUserId) {
+			const isAccountSwitch = syncedThemeUserId !== null;
+			syncedThemeUserId = userId;
+			// Remontage SPA (update()) : ne pas écraser la préférence client déjà choisie.
+			if (isAccountSwitch || get(themePreference) === null) {
+				syncThemePreferenceFromUser(data.user?.theme);
+			}
+		}
+	});
+
 	onMount(() => {
 		if (!ageVerified && isAgeVerified()) {
 			setAgeVerified();
 			ageVerifiedLocal = true;
 		}
 
-		const run = () => themeChange(false);
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(run, { timeout: 2000 });
-		} else {
-			setTimeout(run, 0);
+		if (get(themePreference) === null) {
+			syncThemePreferenceFromUser(data.user?.theme);
 		}
+
+		return setupSystemThemeListener(getThemePreference);
 	});
 </script>
 
 <svelte:head>
-	<link rel="icon" href="/favicon.ico" sizes="any" />
+	<link rel="icon" href={SITE.faviconUrl} sizes="any" />
 	<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 	<title>{SITE.name}</title>
 	<meta name="description" content={SITE.description} />
