@@ -67,6 +67,11 @@ function isStaticAssetPath(pathname: string): boolean {
 	);
 }
 
+/** Sonde infra (Docker, Traefik, Coolify) — doit rester 200 même en maintenance. */
+function isHealthCheckPath(pathname: string): boolean {
+	return pathname === '/health' || pathname === '/api/health';
+}
+
 /** Routes à journaliser (API + dashboard + maintenance), hors assets et polling. */
 function getRequestLoggingDecision(
 	pathname: string,
@@ -222,7 +227,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 					);
 				}
 
-				if (!canBypassMaintenance && !isAuthException && !isMaintenancePage && !isStaticAsset) {
+				if (
+					!canBypassMaintenance &&
+					!isAuthException &&
+					!isMaintenancePage &&
+					!isStaticAsset &&
+					!isHealthCheckPath(path)
+				) {
 					const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
 					if (acceptsHtml) {
 						const maintenanceUrl = new URL('/maintenance', event.url.origin);
