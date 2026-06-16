@@ -18,10 +18,6 @@ services:
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
 
-      # ─── Variables ───────────────────────────────────────────────────────────────
-      - SERVICE_PASSWORD_64_APP
-      - SERVICE_PASSWORD_64_CRON
-
       # ─── Base de données PTB ─────────────────────────────────────────────────────
       - MARIADB_HOST=${MARIADB_HOST:?}
       - MARIADB_PORT=${MARIADB_PORT:?3306}
