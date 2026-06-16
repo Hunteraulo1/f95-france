@@ -1,10 +1,10 @@
-import { env } from '$env/dynamic/public';
+import { privateEnv } from '$lib/server/private-env';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { buildSitemapXml } from '$lib/sitemap';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = () => {
-	const body = buildSitemapXml(env.PUBLIC_APP_ORIGIN, {
+	const body = buildSitemapXml(privateEnv('SERVICE_URL_APP'), {
 		registrationEnabled: isRegistrationEnabled()
 	});
 

@@ -51,7 +51,7 @@
 		void applyFaviconEnvBadge(badge);
 	});
 
-	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
+	const origin = $derived(siteOrigin(env.SERVICE_URL_APP));
 	const ogImage = SITE.ogImageUrl;
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');

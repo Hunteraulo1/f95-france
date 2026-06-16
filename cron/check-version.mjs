@@ -5,22 +5,20 @@
  * Variables :
  * - CRON_SECRET (requis)
  * - CRON_BASE_URL (optionnel, prioritaire)
- * - sinon PUBLIC_APP_ORIGIN, APP_ORIGIN ou ORIGIN
+ * - sinon SERVICE_URL_APP
  * - sinon http://127.0.0.1:3000 (dev local uniquement)
  */
 
 const secret = process.env.CRON_SECRET?.trim();
 
 function resolveCronBaseUrl() {
-	const explicit = process.env.CRON_BASE_URL?.trim();
-	if (explicit) return explicit.replace(/\/$/, '');
+  const explicit = process.env.CRON_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, '');
 
-	for (const key of ['PUBLIC_APP_ORIGIN', 'APP_ORIGIN', 'ORIGIN']) {
-		const value = process.env[key]?.trim();
-		if (value) return value.replace(/\/$/, '');
-	}
+  const value = process.env['SERVICE_URL_APP']?.trim();
+  if (value) return value.replace(/\/$/, '');
 
-	return 'http://127.0.0.1:3000';
+  return 'http://127.0.0.1:3000';
 }
 
 const baseUrl = resolveCronBaseUrl();
@@ -28,36 +26,36 @@ const url = `${baseUrl}/api/cron/check-version`;
 const timeoutMs = Number.parseInt(process.env.CRON_HTTP_TIMEOUT_MS ?? '30000', 10);
 
 if (!secret) {
-	console.error('[cron-check-version] CRON_SECRET manquant');
-	process.exit(1);
+  console.error('[cron-check-version] CRON_SECRET manquant');
+  process.exit(1);
 }
 
 try {
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${secret}`,
-			'Content-Type': 'application/json'
-		},
-		signal: AbortSignal.timeout(Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30_000)
-	});
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      'Content-Type': 'application/json'
+    },
+    signal: AbortSignal.timeout(Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30_000)
+  });
 
-	const body = await response.text();
-	let parsed = body;
-	try {
-		parsed = JSON.parse(body);
-	} catch {
-		// corps non JSON
-	}
+  const body = await response.text();
+  let parsed = body;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // corps non JSON
+  }
 
-	if (response.ok) {
-		console.info('[cron-check-version] OK', response.status, url, parsed);
-		process.exit(0);
-	}
+  if (response.ok) {
+    console.info('[cron-check-version] OK', response.status, url, parsed);
+    process.exit(0);
+  }
 
-	console.error('[cron-check-version] échec HTTP', response.status, url, parsed);
-	process.exit(1);
+  console.error('[cron-check-version] échec HTTP', response.status, url, parsed);
+  process.exit(1);
 } catch (error) {
-	console.error('[cron-check-version] erreur réseau vers', url, error);
-	process.exit(1);
+  console.error('[cron-check-version] erreur réseau vers', url, error);
+  process.exit(1);
 }

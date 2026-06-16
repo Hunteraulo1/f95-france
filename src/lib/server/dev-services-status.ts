@@ -212,7 +212,7 @@ function buildSecurityTxtCheck(): DevSecurityCheck {
 		hints.push(`Contact par défaut : ${SITE.defaultSecurityContact}`);
 	}
 	if (!publicUrl) {
-		hints.push('PUBLIC_APP_ORIGIN absent — l’URL publique ne sera pas vérifiée au test.');
+		hints.push('SERVICE_URL_APP absent — l’URL publique ne sera pas vérifiée au test.');
 	}
 	if (!envDefined('SECURITY_OPENPGP_FINGERPRINT') && !envDefined('SECURITY_OPENPGP_KEY_URL')) {
 		hints.push(
@@ -246,8 +246,8 @@ function buildSecurityChecks(config: ConfigClientSafe | null): {
 		buildDiscordAutoRoleSyncCheck(),
 		{
 			id: 'app-origin',
-			label: 'PUBLIC_APP_ORIGIN',
-			configured: envDefined('PUBLIC_APP_ORIGIN')
+			label: 'SERVICE_URL_APP',
+			configured: envDefined('SERVICE_URL_APP')
 		}
 	];
 

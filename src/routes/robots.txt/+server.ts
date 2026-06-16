@@ -1,11 +1,11 @@
-import { env } from '$env/dynamic/public';
+import { privateEnv } from '$lib/server/private-env';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { absoluteUrl, siteOrigin } from '$lib/site';
 import type { RequestHandler } from './$types';
 
-/** robots.txt dynamique — origine et sitemap alignés sur PUBLIC_APP_ORIGIN. */
+/** robots.txt dynamique — origine et sitemap alignés sur SERVICE_URL_APP. */
 export const GET: RequestHandler = () => {
-	const origin = siteOrigin(env.PUBLIC_APP_ORIGIN);
+	const origin = siteOrigin(privateEnv('SERVICE_URL_APP'));
 	const sitemapUrl = absoluteUrl('/sitemap.xml', origin);
 	const registrationEnabled = isRegistrationEnabled();
 

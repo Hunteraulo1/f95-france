@@ -134,7 +134,7 @@ type GameRow = {
 };
 
 function resolveAppOriginForWebhooks(): string {
-	return siteOrigin(privateEnv('APP_ORIGIN') ?? privateEnv('PUBLIC_APP_ORIGIN'));
+	return siteOrigin(privateEnv('SERVICE_URL_APP'));
 }
 
 function gameLinkEmbedField(gameLink: string | null | undefined) {
