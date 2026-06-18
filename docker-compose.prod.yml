@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
 
     restart: unless-stopped
 
@@ -112,13 +113,15 @@ services:
       - coolify
 
   filebeat:
-    image: docker.elastic.co/beats/filebeat:9.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: filebeat
     restart: unless-stopped
     user: root
 
     volumes:
       - app_logs:/app/logs:ro
-      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
 
     environment:
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
