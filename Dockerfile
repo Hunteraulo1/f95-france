@@ -31,3 +31,7 @@ RUN mkdir -p /app/logs && chown -R bun:bun /app
 EXPOSE 3000
 USER bun
 CMD ["bash", "scripts/coolify-start.sh"]
+
+FROM docker.elastic.co/beats/filebeat:9.0.0 AS filebeat
+USER root
+COPY filebeat.yml /usr/share/filebeat/filebeat.yml
