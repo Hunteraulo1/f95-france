@@ -144,7 +144,8 @@
 	const newLiveCount = $derived.by(() => {
 		if (!liveEnabled) return 0;
 		const existingIds = new Set(data.logs.map((log) => log.id));
-		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id)).length;
+		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id))
+			.length;
 	});
 
 	const totalCount = $derived(data.pagination.totalCount + newLiveCount);
