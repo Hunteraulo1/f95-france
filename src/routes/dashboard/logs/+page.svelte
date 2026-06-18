@@ -150,6 +150,27 @@
 		];
 	});
 
+	const newLiveCount = $derived.by(() => {
+		if (!liveEnabled) return 0;
+		const existingIds = new Set(data.logs.map((log) => log.id));
+		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id)).length;
+	});
+
+	const totalCount = $derived(data.pagination.totalCount + newLiveCount);
+
+	const statusCounts = $derived.by(() =>
+		displayedLogs.reduce(
+			(acc, log) => {
+				if (log.status >= 500) acc.s5xx += 1;
+				else if (log.status >= 400) acc.s4xx += 1;
+				else if (log.status >= 300) acc.s3xx += 1;
+				else if (log.status >= 200) acc.s2xx += 1;
+				return acc;
+			},
+			{ s2xx: 0, s3xx: 0, s4xx: 0, s5xx: 0 }
+		)
+	);
+
 	const disconnectLive = () => {
 		if (liveSource) {
 			liveSource.close();
@@ -265,26 +286,26 @@
 	>
 		<div class="stat">
 			<div class="stat-title">Total</div>
-			<div class="stat-value text-base-content">{data.pagination.totalCount}</div>
+			<div class="stat-value text-base-content">{totalCount}</div>
 			<div class="stat-desc">
 				Page {data.pagination.page} / {data.pagination.totalPages}
 			</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">2xx</div>
-			<div class="stat-value text-success">{data.statusCounts.s2xx}</div>
+			<div class="stat-value text-success">{statusCounts.s2xx}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">3xx</div>
-			<div class="stat-value text-info">{data.statusCounts.s3xx}</div>
+			<div class="stat-value text-info">{statusCounts.s3xx}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">4xx</div>
-			<div class="stat-value text-warning">{data.statusCounts.s4xx}</div>
+			<div class="stat-value text-warning">{statusCounts.s4xx}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">5xx</div>
-			<div class="stat-value text-error">{data.statusCounts.s5xx}</div>
+			<div class="stat-value text-error">{statusCounts.s5xx}</div>
 		</div>
 	</div>
 
@@ -408,7 +429,7 @@
 					{#if liveEnabled && liveLogs.length > 0}
 						· {liveLogs.length} en direct
 					{/if}
-					· {data.pagination.totalCount} au total
+					· {totalCount} au total
 				</p>
 				<div class="flex gap-2">
 					<a href="/dashboard/logs" class="btn btn-ghost">Réinitialiser</a>
