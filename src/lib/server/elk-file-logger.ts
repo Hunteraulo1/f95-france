@@ -56,7 +56,7 @@ export function writeElkLog(payload: ElkLogPayload): void {
 		log: {
 			level: payload.level
 		},
-		source: payload.source,
+		log_source: payload.source,
 		message: payload.message,
 		meta: payload.meta ?? null
 	});
