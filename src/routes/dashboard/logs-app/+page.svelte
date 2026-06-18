@@ -141,6 +141,26 @@
 		];
 	});
 
+	const newLiveCount = $derived.by(() => {
+		if (!liveEnabled) return 0;
+		const existingIds = new Set(data.logs.map((log) => log.id));
+		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id))
+			.length;
+	});
+
+	const totalCount = $derived(data.pagination.totalCount + newLiveCount);
+
+	const levelCounts = $derived.by(() =>
+		displayedLogs.reduce(
+			(acc, log) => {
+				const key = log.level as AppLogLevel;
+				if (key in acc) acc[key] += 1;
+				return acc;
+			},
+			{ debug: 0, info: 0, warn: 0, error: 0 } satisfies Record<AppLogLevel, number>
+		)
+	);
+
 	const disconnectLive = () => {
 		if (liveSource) {
 			liveSource.close();
@@ -261,26 +281,26 @@
 	>
 		<div class="stat">
 			<div class="stat-title">Total</div>
-			<div class="stat-value text-base-content">{data.pagination.totalCount}</div>
+			<div class="stat-value text-base-content">{totalCount}</div>
 			<div class="stat-desc">
 				Page {data.pagination.page} / {data.pagination.totalPages}
 			</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Debug</div>
-			<div class="stat-value text-accent">{data.levelCounts.debug}</div>
+			<div class="stat-value text-accent">{levelCounts.debug}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Info</div>
-			<div class="stat-value text-info">{data.levelCounts.info}</div>
+			<div class="stat-value text-info">{levelCounts.info}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Warn</div>
-			<div class="stat-value text-warning">{data.levelCounts.warn}</div>
+			<div class="stat-value text-warning">{levelCounts.warn}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Error</div>
-			<div class="stat-value text-error">{data.levelCounts.error}</div>
+			<div class="stat-value text-error">{levelCounts.error}</div>
 		</div>
 	</div>
 
@@ -357,7 +377,7 @@
 					{#if liveEnabled && liveLogs.length > 0}
 						· {liveLogs.length} en direct
 					{/if}
-					· {data.pagination.totalCount} au total
+					· {totalCount} au total
 				</p>
 				<div class="flex gap-2">
 					<a href="/dashboard/logs-app" class="btn btn-ghost">Réinitialiser</a>

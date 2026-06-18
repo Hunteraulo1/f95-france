@@ -22,6 +22,9 @@ _tmp_*
 /docker
 *.dump
 
+# Logs ELK locaux
+/logs
+
 # DB dumps locaux
 dump-*.sql
 

@@ -25,7 +25,7 @@ type ElkSearchResponse = {
 
 type ElkDocument = {
 	'@timestamp': string;
-	source?: string;
+	log_source?: string;
 	message?: string;
 	log?: { level?: string };
 	meta?: Record<string, unknown> | string | null;
@@ -180,7 +180,7 @@ function mapAppLogHit(hit: ElkSearchResponse['hits']['hits'][number]): ElkAppLog
 	return {
 		id: hit._id,
 		level,
-		source: String(hit._source.source ?? ''),
+		source: String(hit._source.log_source ?? ''),
 		message: String(hit._source.message ?? ''),
 		meta: metaString(meta),
 		createdAt: new Date(hit._source['@timestamp'])
@@ -203,7 +203,7 @@ export type SearchApiLogsParams = {
 export async function searchApiLogs(
 	params: SearchApiLogsParams
 ): Promise<{ logs: ElkApiLogRow[]; totalCount: number }> {
-	const must: ElkQueryClause[] = [{ term: { 'source.keyword': 'api' } }, environmentClause()];
+	const must: ElkQueryClause[] = [{ term: { 'log_source.keyword': 'api' } }, environmentClause()];
 	const mustNot: ElkQueryClause[] = [{ prefix: { 'meta.route.keyword': '/api/extension-api' } }];
 
 	if (params.methodFilter) {
@@ -306,7 +306,7 @@ export async function searchAppLogs(
 	params: SearchAppLogsParams
 ): Promise<{ logs: ElkAppLogRow[]; totalCount: number }> {
 	const must: ElkQueryClause[] = [environmentClause()];
-	const mustNot: ElkQueryClause[] = [{ term: { 'source.keyword': 'api' } }];
+	const mustNot: ElkQueryClause[] = [{ term: { 'log_source.keyword': 'api' } }];
 
 	if (params.activeLevels.length > 0) {
 		must.push({
@@ -314,7 +314,7 @@ export async function searchAppLogs(
 		});
 	}
 	if (params.sourceFilter) {
-		must.push({ term: { 'source.keyword': params.sourceFilter } });
+		must.push({ term: { 'log_source.keyword': params.sourceFilter } });
 	}
 	if (params.search) {
 		must.push({
@@ -322,7 +322,9 @@ export async function searchAppLogs(
 				should: [
 					{ wildcard: { message: { value: `*${params.search}*`, case_insensitive: true } } },
 					{
-						wildcard: { 'source.keyword': { value: `*${params.search}*`, case_insensitive: true } }
+						wildcard: {
+							'log_source.keyword': { value: `*${params.search}*`, case_insensitive: true }
+						}
 					},
 					{ wildcard: { 'meta.keyword': { value: `*${params.search}*`, case_insensitive: true } } }
 				],

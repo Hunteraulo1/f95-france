@@ -1,0 +1,67 @@
+name: f95france-dashboard-elk
+
+# Elasticsearch local + Filebeat pour le dev (app lancée via `bun run dev` sur l'hôte).
+# L'app écrit ses logs JSON dans ./logs (voir ELK_LOG_FILE dans .env), Filebeat les
+# expédie vers l'index f95france-dashboard-* lu par les pages /dashboard/logs et logs-app.
+#
+#   docker compose -f docker-compose.elk.yml up -d
+#
+# Sécurité désactivée : usage strictement local. Les identifiants Basic envoyés par
+# Filebeat / l'app sont ignorés par Elasticsearch.
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    container_name: f95-elk-elasticsearch
+    restart: unless-stopped
+
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+    ports:
+      - '127.0.0.1:9200:9200'
+
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"\\(green\\|yellow\\)\"'"
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.0.0
+    container_name: f95-elk-filebeat
+    restart: unless-stopped
+    user: root
+
+    environment:
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+
+    volumes:
+      - ./filebeat.local.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/app/logs:ro
+
+    command: filebeat -e --strict.perms=false
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+volumes:
+  elasticsearch_data:

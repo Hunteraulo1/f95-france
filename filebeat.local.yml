@@ -1,0 +1,31 @@
+filebeat.inputs:
+  - type: filestream
+    id: f95france-dashboard-jsonl
+    enabled: true
+
+    paths:
+      - /app/logs/*.log
+
+    parsers:
+      - ndjson:
+          target: ''
+          overwrite_keys: true
+          add_error_key: true
+
+    # Bind-mount Docker Desktop / WSL2 : le harvester ne démarre pas avec
+    # l'identité fingerprint par défaut. On force le scan par chemin + polling.
+    prospector.scanner.check_interval: 2s
+    prospector.scanner.fingerprint.enabled: false
+    file_identity.path: ~
+
+processors:
+  - add_host_metadata: ~
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+
+output.elasticsearch:
+  hosts: ['${ELASTICSEARCH_HOST}']
+  username: '${ELASTICSEARCH_USERNAME}'
+  password: '${ELASTICSEARCH_PASSWORD}'
+  index: 'f95france-dashboard-%{+yyyy.MM.dd}'
