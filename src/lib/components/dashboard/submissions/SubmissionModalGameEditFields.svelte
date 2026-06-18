@@ -134,8 +134,7 @@
 				name="editGameTags"
 				class="textarea-bordered textarea w-full"
 				rows="3"
-				bind:value={editGameTags}
-			></textarea>
+				bind:value={editGameTags}></textarea>
 		</div>
 		<div class="form-control md:col-span-2">
 			<label class="label" for="editGameDescription">
@@ -146,8 +145,7 @@
 				name="editGameDescription"
 				class="textarea-bordered textarea w-full"
 				rows="3"
-				bind:value={editGameDescription}
-			></textarea>
+				bind:value={editGameDescription}></textarea>
 		</div>
 	</div>
 </div>

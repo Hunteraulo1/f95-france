@@ -78,7 +78,7 @@ async function loadApiLogsFromMariaDb(
 		await db.select({ errorMessage: apiLog.errorMessage }).from(apiLog).limit(1);
 		hasErrorMessageColumn = true;
 	} catch {
-		hasErrorMessageColumn = false;
+		// Colonne error_message absente (migration pas encore appliquée)
 	}
 
 	let query;

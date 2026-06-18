@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
 import { getDiscordOAuthConfig, isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
@@ -200,7 +199,7 @@ async function testLibreTranslate(): Promise<LiveServiceTestResult> {
 }
 
 function testCronAuth(): LiveServiceTestResult {
-	const secret = env.SERVICE_PASSWORD_64_CRON - SECRET?.trim();
+	const secret = privateEnv('SERVICE_PASSWORD_64_CRON-SECRET');
 	if (!secret) {
 		return result('cron', 'Cron (SERVICE_PASSWORD_64_CRON-SECRET)', {
 			success: false,

@@ -14,9 +14,9 @@ type ElkLogPayload = {
 
 let logDirReady: Promise<void> | null = null;
 
-function ensureLogDir() {
+function ensureLogDir(): Promise<void> {
 	if (!logDirReady) {
-		logDirReady = mkdir(dirname(LOG_FILE), { recursive: true });
+		logDirReady = mkdir(dirname(LOG_FILE), { recursive: true }).then(() => undefined);
 	}
 	return logDirReady;
 }
