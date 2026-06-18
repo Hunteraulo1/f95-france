@@ -3,13 +3,13 @@
  * Déclenche POST /api/cron/check-version (Coolify Scheduled Tasks, CI, etc.).
  *
  * Variables :
- * - CRON_SECRET (requis)
+ * - SERVICE_PASSWORD_64_CRON-SECRET (requis)
  * - CRON_BASE_URL (optionnel, prioritaire)
  * - sinon SERVICE_URL_APP
  * - sinon http://127.0.0.1:3000 (dev local uniquement)
  */
 
-const secret = process.env.CRON_SECRET?.trim();
+const secret = process.env.SERVICE_PASSWORD_64_CRON - SECRET?.trim();
 
 function resolveCronBaseUrl() {
   const explicit = process.env.CRON_BASE_URL?.trim();
@@ -26,7 +26,7 @@ const url = `${baseUrl}/api/cron/check-version`;
 const timeoutMs = Number.parseInt(process.env.CRON_HTTP_TIMEOUT_MS ?? '30000', 10);
 
 if (!secret) {
-  console.error('[cron-check-version] CRON_SECRET manquant');
+  console.error('[cron-check-version] SERVICE_PASSWORD_64_CRON-SECRET manquant');
   process.exit(1);
 }
 
