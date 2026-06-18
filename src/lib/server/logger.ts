@@ -1,7 +1,7 @@
 import type { LiveLogEntry } from '$lib/logs/live-log-entry';
-import { appLogError } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
-import { apiLog, user } from '$lib/server/db/schema';
+import { user } from '$lib/server/db/schema';
+import { writeElkLog } from '$lib/server/elk-file-logger';
 import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -16,16 +16,7 @@ type LogPayload = {
 	errorMessage?: string | null;
 };
 
-const isDbTimeoutError = (error: unknown): boolean => {
-	if (!error || typeof error !== 'object') return false;
-	if ('code' in error && error.code === 'ETIMEDOUT') return true;
-	if ('cause' in error && error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
-		return error.cause.code === 'ETIMEDOUT';
-	}
-	return false;
-};
-
-export const logApiAction = async ({
+async function persistApiLog({
 	method,
 	route,
 	status,
@@ -33,61 +24,66 @@ export const logApiAction = async ({
 	ipAddress,
 	payload,
 	errorMessage
-}: LogPayload) => {
-	try {
-		const id = randomUUID();
-		const createdAt = new Date();
-		await db.insert(apiLog).values({
-			id,
+}: LogPayload) {
+	const id = randomUUID();
+	const createdAt = new Date();
+	let logUser: LiveLogEntry['user'] = null;
+
+	if (userId) {
+		const [row] = await db
+			.select({
+				id: user.id,
+				username: user.username,
+				role: user.role
+			})
+			.from(user)
+			.where(eq(user.id, userId))
+			.limit(1);
+		if (row?.username) {
+			logUser = {
+				id: row.id,
+				username: row.username,
+				role: row.role
+			};
+		}
+	}
+
+	writeElkLog({
+		level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+		source: 'api',
+		message: `${method} ${route} ${status}`,
+		meta: {
 			method,
 			route,
 			status,
 			userId: userId ?? null,
+			username: logUser?.username ?? null,
+			userRole: logUser?.role ?? null,
+			ipAddress: ipAddress ?? null,
+			payload: payload ?? null,
+			errorMessage: errorMessage ?? null
+		}
+	});
+
+	if (!route.startsWith('/api/extension-api')) {
+		broadcastLiveLogEntry({
+			id,
+			method,
+			route,
+			status,
 			ipAddress: ipAddress ?? null,
 			payload: payload ?? null,
 			errorMessage: errorMessage ?? null,
-			createdAt
+			createdAt: createdAt.toISOString(),
+			user: logUser
 		});
+	}
+}
 
-		if (!route.startsWith('/api/extension-api')) {
-			const inserted = { id, createdAt };
-			let logUser: LiveLogEntry['user'] = null;
-			if (userId) {
-				const [row] = await db
-					.select({
-						id: user.id,
-						username: user.username,
-						role: user.role
-					})
-					.from(user)
-					.where(eq(user.id, userId))
-					.limit(1);
-				if (row?.username) {
-					logUser = {
-						id: row.id,
-						username: row.username,
-						role: row.role
-					};
-				}
-			}
-
-			broadcastLiveLogEntry({
-				id: inserted.id,
-				method,
-				route,
-				status,
-				ipAddress: ipAddress ?? null,
-				payload: payload ?? null,
-				errorMessage: errorMessage ?? null,
-				createdAt: inserted.createdAt.toISOString(),
-				user: logUser
-			});
-		}
+export const logApiAction = async (payload: LogPayload) => {
+	try {
+		await persistApiLog(payload);
 	} catch (error) {
-		if (isDbTimeoutError(error)) {
-			// Avoid flooding logs when DB is temporarily unreachable.
-			return;
-		}
-		appLogError('db', 'Création log API échouée', error, { route, method, status });
+		console.error('[logger] échec persistance log API:', error);
 	}
 };

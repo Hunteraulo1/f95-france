@@ -46,6 +46,5 @@
 		class="textarea-bordered textarea mt-1 h-10 max-h-32 min-h-10 w-full textarea-xs"
 		class:textarea-error={invalid}
 		class:textarea-warning={warn}
-		{...rest}
-	></textarea>
+		{...rest}></textarea>
 </div>

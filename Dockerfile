@@ -26,7 +26,7 @@ COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
 COPY --from=builder --chown=bun:bun /app/src/lib/server/db ./src/lib/server/db
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
 
-RUN chown -R bun:bun /app
+RUN mkdir -p /app/logs && chown -R bun:bun /app
 
 EXPOSE 3000
 USER bun

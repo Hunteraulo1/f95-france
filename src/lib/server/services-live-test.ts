@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { getEffectiveConfig } from '$lib/server/app-config';
 import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
 import { getDiscordOAuthConfig, isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
@@ -200,12 +199,12 @@ async function testLibreTranslate(): Promise<LiveServiceTestResult> {
 }
 
 function testCronAuth(): LiveServiceTestResult {
-	const secret = env.CRON_SECRET?.trim();
+	const secret = privateEnv('SERVICE_PASSWORD_64_CRON-SECRET');
 	if (!secret) {
-		return result('cron', 'Cron (CRON_SECRET)', {
+		return result('cron', 'Cron (SERVICE_PASSWORD_64_CRON-SECRET)', {
 			success: false,
 			skipped: true,
-			message: 'Ignoré — CRON_SECRET absent'
+			message: 'Ignoré — SERVICE_PASSWORD_64_CRON-SECRET absent'
 		});
 	}
 
@@ -215,13 +214,13 @@ function testCronAuth(): LiveServiceTestResult {
 	const auth = verifyCronAuth(request);
 
 	if (auth.ok) {
-		return result('cron', 'Cron (CRON_SECRET)', {
+		return result('cron', 'Cron (SERVICE_PASSWORD_64_CRON-SECRET)', {
 			success: true,
-			message: 'CRON_SECRET valide (auth simulée)'
+			message: 'SERVICE_PASSWORD_64_CRON-SECRET valide (auth simulée)'
 		});
 	}
 
-	return result('cron', 'Cron (CRON_SECRET)', {
+	return result('cron', 'Cron (SERVICE_PASSWORD_64_CRON-SECRET)', {
 		success: false,
 		message: 'Auth cron invalide',
 		detail: cronAuthFailureMessage(auth.reason)

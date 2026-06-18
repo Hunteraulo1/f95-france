@@ -144,8 +144,7 @@
 				maxlength={maxLength}
 				{placeholder}
 				bind:value
-				aria-label="Bio (markdown)"
-			></textarea>
+				aria-label="Bio (markdown)"></textarea>
 		{/if}
 	</div>
 </div>
