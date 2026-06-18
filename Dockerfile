@@ -17,8 +17,9 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-COPY package.json bun.lock ./
+COPY --chown=bun:bun package.json bun.lock ./
 
+USER bun
 RUN bun install --production --frozen-lockfile
 
 COPY --from=builder --chown=bun:bun /app/build ./build
@@ -26,10 +27,9 @@ COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
 COPY --from=builder --chown=bun:bun /app/src/lib/server/db ./src/lib/server/db
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
 
-RUN mkdir -p /app/logs && chown -R bun:bun /app
+RUN mkdir -p /app/logs
 
 EXPOSE 3000
-USER bun
 CMD ["bash", "scripts/coolify-start.sh"]
 
 FROM docker.elastic.co/beats/filebeat:9.0.0 AS filebeat
