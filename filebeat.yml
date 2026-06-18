@@ -15,18 +15,11 @@ filebeat.inputs:
 processors:
   - add_host_metadata: ~
 
-# Custom Index
 setup.ilm.enabled: false
-
-setup.template.name: 'f95france-dashboard'
-setup.template.pattern: 'f95france-dashboard-*'
-setup.template.overwrite: true
+setup.template.enabled: false
 
 output.elasticsearch:
   hosts: ['${ELASTICSEARCH_HOST}']
   username: '${ELASTICSEARCH_USERNAME}'
   password: '${ELASTICSEARCH_PASSWORD}'
   index: 'f95france-dashboard-%{+yyyy.MM.dd}'
-
-setup.kibana:
-  host: '${KIBANA_HOST}'
