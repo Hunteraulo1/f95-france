@@ -11,7 +11,7 @@ RUN bun run build
 FROM oven/bun:1-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache bash mariadb-client
+RUN apk add --no-cache bash mariadb-client && chown bun:bun /app
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
