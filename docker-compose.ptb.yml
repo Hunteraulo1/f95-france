@@ -40,7 +40,7 @@ services:
       # ─── Logs ELK ────────────────────────────────────────────────────────────────
       - ELK_LOG_ENABLED=${ELK_LOG_ENABLED:-true}
       - ELK_LOG_FILE=/app/logs/f95france-dashboard.log
-      - SERVICE_NAME=f95france-dashboard
+      - SERVICE_NAME=f95-ptb-dashboard
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
       - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:?}
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:?}
