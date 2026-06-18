@@ -36,8 +36,7 @@
 						id="game-delete-reason"
 						class="textarea-bordered textarea min-h-24 w-full"
 						placeholder="Expliquez pourquoi les traductions doivent être retirées…"
-						bind:value={reason}
-					></textarea>
+						bind:value={reason}></textarea>
 				</div>
 			</div>
 

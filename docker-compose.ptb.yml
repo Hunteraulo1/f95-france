@@ -10,13 +10,14 @@ services:
 
     environment:
       - NODE_ENV=production
+      - APP_ENV=ptb
       - HOST=0.0.0.0
       - PORT=3000
 
-      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:?}
-
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
+
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:?}
 
       # ─── Base de données PTB ─────────────────────────────────────────────────────
       - MARIADB_HOST=${MARIADB_HOST:?}
@@ -24,7 +25,6 @@ services:
       - MARIADB_DATABASE=${MARIADB_DATABASE:?}
       - MARIADB_USER=${MARIADB_USER:?}
       - MARIADB_PASSWORD=${MARIADB_PASSWORD:?}
-      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:?}
       - MARIADB_SSL_MODE=${MARIADB_SSL_MODE:?disable}
       - DATABASE_POOL_MAX=${DATABASE_POOL_MAX:?10}
 
@@ -37,9 +37,18 @@ services:
       - MARIADB_PROD_PASSWORD=${MARIADB_PROD_PASSWORD:-}
       - MARIADB_PROD_SSL_MODE=${MARIADB_PROD_SSL_MODE:-disable}
 
+      # ─── Logs ELK ────────────────────────────────────────────────────────────────
+      - ELK_LOG_ENABLED=${ELK_LOG_ENABLED:-true}
+      - ELK_LOG_FILE=/app/logs/f95france-dashboard.log
+      - SERVICE_NAME=f95-ptb-dashboard
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:?}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:?}
+      - KIBANA_HOST=${KIBANA_HOST:-}
+
       # ─── Inscription ─────────────────────────────────────────────────────────────
       - REGISTRATION_DISABLED=${REGISTRATION_DISABLED:?false}
-      - REGISTRATION_INVITE_CODE=$SERVICE_PASSWORD_APP
+      - SERVICE_PASSWORD_REGISTRATION-INVITE-CODE=${SERVICE_PASSWORD_REGISTRATION-INVITE-CODE}
 
       # ─── CORS extract ────────────────────────────────────────────────────────────
       - EXTRACT_F95_ALLOWED_ORIGINS=https://f95zone.to
@@ -51,7 +60,7 @@ services:
       - DISCORD_WEBHOOK_ADMIN=${DISCORD_WEBHOOK_ADMIN:-}
 
       # ─── Auto Generation BASE64 ──────────────────────────────────────────────────
-      - CRON_SECRET=$SERVICE_PASSWORD_64_CRON
+      - SERVICE_PASSWORD_64_CRON-SECRET=${SERVICE_PASSWORD_64_CRON-SECRET}
 
       # ─── Shared ──────────────────────────────────────────────────────────────────
       - SECURITY_CONTACT=${SECURITY_CONTACT:-{{project.SECURITY_CONTACT}}}
@@ -78,13 +87,16 @@ services:
       - LIBRETRANSLATE_URL=${LIBRETRANSLATE_URL:-{{project.LIBRETRANSLATE_URL}}}
       - LIBRETRANSLATE_API_KEY=${LIBRETRANSLATE_API_KEY:-{{project.LIBRETRANSLATE_API_KEY}}}
 
-      - CONFIG_TOKEN_ENCRYPTION_KEY=${CONFIG_TOKEN_ENCRYPTION_KEY:?{{project.CONFIG_TOKEN_ENCRYPTION_KEY}}}
+      - CONFIG_TOKEN_ENCRYPTION_KEY=${CONFIG_TOKEN_ENCRYPTION_KEY:-{{project.CONFIG_TOKEN_ENCRYPTION_KEY}}}
 
       - PUBLIC_TURNSTILE_SITE_KEY=${PUBLIC_TURNSTILE_SITE_KEY:-{{project.PUBLIC_TURNSTILE_SITE_KEY}}}
       - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-{{project.TURNSTILE_SECRET_KEY}}}
 
     expose:
       - '3000'
+
+    volumes:
+      - app_logs:/app/logs
 
     healthcheck:
       test: ['CMD', 'wget', '-q', '--spider', '-T', '5', 'http://127.0.0.1:3000/health']
@@ -100,6 +112,32 @@ services:
 
     networks:
       - coolify
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.0.0
+    restart: unless-stopped
+    user: root
+
+    volumes:
+      - app_logs:/app/logs:ro
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:?}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:?}
+      - KIBANA_HOST=${KIBANA_HOST:-}
+
+    command: filebeat -e --strict.perms=false
+
+    depends_on:
+      - app
+
+    networks:
+      - coolify
+
+volumes:
+  app_logs:
 
 networks:
   coolify:

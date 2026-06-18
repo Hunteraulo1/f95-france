@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.8.12",
+	"version": "4.9.0",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -58,13 +58,13 @@
 	},
 	"dependencies": {
 		"@codemirror/lang-markdown": "6.5.0",
-		"@lucide/svelte": "1.18.0",
+		"@lucide/svelte": "1.21.0",
 		"@oslojs/crypto": "1.0.1",
 		"@oslojs/encoding": "1.1.0",
 		"@simplewebauthn/browser": "13.3.0",
 		"@simplewebauthn/server": "13.3.1",
 		"@sveltejs/adapter-node": "5.5.4",
-		"@sveltejs/kit": "2.65.1",
+		"@sveltejs/kit": "2.65.2",
 		"@tailwindcss/forms": "0.5.11",
 		"@tailwindcss/vite": "4.3.1",
 		"codemirror": "6.0.2",
@@ -75,7 +75,7 @@
 		"linkedom": "0.18.12",
 		"marked": "18.0.5",
 		"mysql2": "3.22.5",
-		"nodemailer": "9.0.0",
+		"nodemailer": "9.0.1",
 		"otpauth": "9.5.1",
 		"qrcode": "1.5.4",
 		"redoc": "2.5.3",

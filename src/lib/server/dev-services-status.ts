@@ -160,17 +160,17 @@ function buildLibreTranslateStatus(): DevServiceCheck {
 }
 
 function buildCronStatus(): DevServiceCheck {
-	if (envDefined('CRON_SECRET')) {
+	if (envDefined('SERVICE_PASSWORD_64_CRON-SECRET')) {
 		return {
 			status: 'ok',
-			label: 'CRON_SECRET défini',
+			label: 'SERVICE_PASSWORD_64_CRON-SECRET défini',
 			hints: ['Protège POST /api/cron/check-version (Bearer ou X-Cron-Secret).']
 		};
 	}
 	return {
 		status: 'missing',
-		label: 'CRON_SECRET absent',
-		hints: ['Définir CRON_SECRET pour sécuriser /api/cron/check-version.']
+		label: 'SERVICE_PASSWORD_64_CRON-SECRET absent',
+		hints: ['Définir SERVICE_PASSWORD_64_CRON-SECRET pour sécuriser /api/cron/check-version.']
 	};
 }
 

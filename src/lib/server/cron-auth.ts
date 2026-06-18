@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { privateEnv } from '$lib/server/private-env';
 import { Buffer } from 'node:buffer';
 import { timingSafeEqual } from 'node:crypto';
 
@@ -35,7 +35,7 @@ function extractCronToken(request: Request): string {
 
 /** Vérifie l’auth des routes `/api/cron/*` (Bearer, en-tête brut ou `X-Cron-Secret`). */
 export function verifyCronAuth(request: Request): CronAuthResult {
-	const secret = env.CRON_SECRET?.trim();
+	const secret = privateEnv('SERVICE_PASSWORD_64_CRON-SECRET');
 	if (!secret) {
 		return { ok: false, reason: 'missing_server_secret' };
 	}
@@ -55,7 +55,7 @@ export function verifyCronAuth(request: Request): CronAuthResult {
 export function cronAuthFailureMessage(reason: CronAuthFailureReason): string {
 	switch (reason) {
 		case 'missing_server_secret':
-			return 'CRON_SECRET non configuré sur le serveur';
+			return 'SERVICE_PASSWORD_64_CRON-SECRET non configuré sur le serveur';
 		case 'missing_client_token':
 			return 'Jeton manquant (Authorization: Bearer … ou en-tête X-Cron-Secret)';
 		case 'invalid_token':

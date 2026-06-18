@@ -166,8 +166,7 @@
 		placeholder="Données de l'Extractor"
 		class="textarea-bordered textarea max-h-32 w-full"
 		oninput={handleInput}
-		bind:value={insertObject}
-	></textarea>
+		bind:value={insertObject}></textarea>
 	{#snippet footer()}
 		<button type="button" class="btn" onclick={() => (insertModal = false)}>Fermer</button>
 		<button type="button" onclick={handleClickInsert} disabled={!isValid} class="btn btn-info">

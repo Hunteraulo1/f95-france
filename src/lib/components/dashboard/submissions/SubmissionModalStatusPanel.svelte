@@ -67,8 +67,7 @@
 					: 'Ajouter des notes pour cette soumission...'}
 				rows="3"
 				required={isStatusRequiringAdminNote}
-				bind:value={adminNotesText}
-			></textarea>
+				bind:value={adminNotesText}></textarea>
 			{#if isStatusRequiringAdminNote}
 				<div class="label">
 					<span class="label-text-alt text-error">

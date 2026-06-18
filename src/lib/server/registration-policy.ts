@@ -10,9 +10,9 @@ export function isRegistrationEnabled(): boolean {
 	return disabled !== 'true' && disabled !== '1';
 }
 
-/** Si défini, l’inscription exige ce code (variable `REGISTRATION_INVITE_CODE`). */
+/** Si défini, l’inscription exige ce code (variable `SERVICE_PASSWORD_REGISTRATION-INVITE-CODE`). */
 export function getRequiredRegistrationInviteCode(): string | null {
-	const code = privateEnv('REGISTRATION_INVITE_CODE')?.trim();
+	const code = privateEnv('SERVICE_PASSWORD_REGISTRATION-INVITE-CODE')?.trim();
 	return code || null;
 }
 
