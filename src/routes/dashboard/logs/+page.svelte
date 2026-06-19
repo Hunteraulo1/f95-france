@@ -142,7 +142,6 @@
 	};
 
 	const displayedLogs = $derived.by(() => {
-		if (!liveEnabled) return data.logs;
 		const liveIds = new Set(liveLogs.map((entry) => entry.id));
 		return [
 			...liveLogs.filter(matchesLiveFilters),
@@ -150,14 +149,13 @@
 		];
 	});
 
-	const newLiveCount = $derived.by(() => {
-		if (!liveEnabled) return 0;
+	const bufferedLiveCount = $derived.by(() => {
 		const existingIds = new Set(data.logs.map((log) => log.id));
 		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id))
 			.length;
 	});
 
-	const totalCount = $derived(data.pagination.totalCount + newLiveCount);
+	const totalCount = $derived(data.pagination.totalCount + bufferedLiveCount);
 
 	const statusCounts = $derived.by(() =>
 		displayedLogs.reduce(
@@ -220,7 +218,6 @@
 		} else {
 			disconnectLive();
 			liveStatus = 'off';
-			liveLogs = [];
 		}
 	};
 
@@ -429,6 +426,8 @@
 					Affichage : {displayedLogs.length} ligne{displayedLogs.length > 1 ? 's' : ''}
 					{#if liveEnabled && liveLogs.length > 0}
 						· {liveLogs.length} en direct
+					{:else if !liveEnabled && liveLogs.length > 0}
+						· {liveLogs.length} en session
 					{/if}
 					· {totalCount} au total
 				</p>

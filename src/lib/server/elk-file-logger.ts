@@ -31,7 +31,7 @@ function safeJsonStringify(value: unknown): string {
 				name: privateEnv('SERVICE_NAME') ?? 'f95france-dashboard',
 				type: 'sveltekit'
 			},
-			environment: privateEnv('APP_ENV') ?? privateEnv('NODE_ENV') ?? 'unknown',
+			environment: privateEnv('ELASTICSEARCH_ENVIRONMENT') ?? privateEnv('APP_ENV') ?? 'unknown',
 			log: { level: 'error' },
 			source: 'elk-file-logger',
 			message: 'Impossible de sérialiser le log',
@@ -52,7 +52,7 @@ export function writeElkLog(payload: ElkLogPayload): void {
 		event: {
 			dataset: 'f95france-dashboard'
 		},
-		environment: privateEnv('APP_ENV') ?? privateEnv('NODE_ENV') ?? 'unknown',
+		environment: privateEnv('ELASTICSEARCH_ENVIRONMENT') ?? privateEnv('APP_ENV') ?? 'unknown',
 		log: {
 			level: payload.level
 		},

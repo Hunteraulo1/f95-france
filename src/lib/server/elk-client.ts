@@ -26,6 +26,7 @@ type ElkSearchResponse = {
 type ElkDocument = {
 	'@timestamp': string;
 	log_source?: string;
+	source?: string;
 	message?: string;
 	log?: { level?: string };
 	meta?: Record<string, unknown> | string | null;
@@ -57,6 +58,11 @@ export type ElkAppLogRow = {
 	createdAt: Date;
 };
 
+function elkEnvironment(): string {
+	// Ne pas retomber sur NODE_ENV (= production sur prod et PTB) : seul APP_ENV distingue les environnements.
+	return privateEnv('ELASTICSEARCH_ENVIRONMENT') ?? privateEnv('APP_ENV') ?? 'unknown';
+}
+
 function getElkConfig(): ElkConfig | null {
 	const host = privateEnv('ELASTICSEARCH_HOST');
 	const username = privateEnv('ELASTICSEARCH_USERNAME');
@@ -67,7 +73,7 @@ function getElkConfig(): ElkConfig | null {
 		host: host.replace(/\/$/, ''),
 		username,
 		password,
-		environment: privateEnv('APP_ENV') ?? privateEnv('NODE_ENV') ?? 'unknown'
+		environment: elkEnvironment()
 	};
 }
 
@@ -125,9 +131,52 @@ async function elkSearch(body: Record<string, unknown>): Promise<ElkSearchRespon
 	return (await response.json()) as ElkSearchResponse;
 }
 
+/** Terme exact tolérant aux mappings dynamiques (keyword seul ou text + .keyword). */
+function termField(field: string, value: string | number | boolean): ElkQueryClause {
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return { term: { [field]: value } };
+	}
+	return {
+		bool: {
+			should: [{ term: { [field]: value } }, { term: { [`${field}.keyword`]: value } }],
+			minimum_should_match: 1
+		}
+	};
+}
+
 function environmentClause(): ElkQueryClause {
-	const environment = getElkConfig()?.environment ?? 'unknown';
-	return { term: { 'environment.keyword': environment } };
+	return termField('environment', getElkConfig()?.environment ?? 'unknown');
+}
+
+/** Filtre les logs HTTP API (champ log_source depuis juin 2026, source avant renommage ECS). */
+function apiLogSourceClause(): ElkQueryClause {
+	return {
+		bool: {
+			should: [termField('log_source', 'api'), termField('source', 'api')],
+			minimum_should_match: 1
+		}
+	};
+}
+
+function prefixField(field: string, value: string): ElkQueryClause {
+	return {
+		bool: {
+			should: [{ prefix: { [field]: value } }, { prefix: { [`${field}.keyword`]: value } }],
+			minimum_should_match: 1
+		}
+	};
+}
+
+function wildcardField(field: string, value: string): ElkQueryClause {
+	return {
+		bool: {
+			should: [
+				{ wildcard: { [field]: { value, case_insensitive: true } } },
+				{ wildcard: { [`${field}.keyword`]: { value, case_insensitive: true } } }
+			],
+			minimum_should_match: 1
+		}
+	};
 }
 
 function dateRangeClause(fromDate: string, toDate: string): ElkQueryClause[] {
@@ -180,7 +229,7 @@ function mapAppLogHit(hit: ElkSearchResponse['hits']['hits'][number]): ElkAppLog
 	return {
 		id: hit._id,
 		level,
-		source: String(hit._source.log_source ?? ''),
+		source: String(hit._source.log_source ?? hit._source.source ?? ''),
 		message: String(hit._source.message ?? ''),
 		meta: metaString(meta),
 		createdAt: new Date(hit._source['@timestamp'])
@@ -203,42 +252,26 @@ export type SearchApiLogsParams = {
 export async function searchApiLogs(
 	params: SearchApiLogsParams
 ): Promise<{ logs: ElkApiLogRow[]; totalCount: number }> {
-	const must: ElkQueryClause[] = [{ term: { 'log_source.keyword': 'api' } }, environmentClause()];
-	const mustNot: ElkQueryClause[] = [{ prefix: { 'meta.route.keyword': '/api/extension-api' } }];
+	const must: ElkQueryClause[] = [apiLogSourceClause(), environmentClause()];
+	const mustNot: ElkQueryClause[] = [prefixField('meta.route', '/api/extension-api')];
 
 	if (params.methodFilter) {
-		must.push({ term: { 'meta.method.keyword': params.methodFilter } });
+		must.push(termField('meta.method', params.methodFilter));
 	}
 	if (params.search) {
 		must.push({
 			bool: {
 				should: [
-					{
-						wildcard: {
-							'meta.route.keyword': { value: `*${params.search}*`, case_insensitive: true }
-						}
-					},
-					{
-						wildcard: {
-							'meta.payload.keyword': { value: `*${params.search}*`, case_insensitive: true }
-						}
-					},
-					{
-						wildcard: {
-							'meta.ipAddress.keyword': { value: `*${params.search}*`, case_insensitive: true }
-						}
-					}
+					wildcardField('meta.route', `*${params.search}*`),
+					wildcardField('meta.payload', `*${params.search}*`),
+					wildcardField('meta.ipAddress', `*${params.search}*`)
 				],
 				minimum_should_match: 1
 			}
 		});
 	}
 	if (params.userSearch) {
-		must.push({
-			wildcard: {
-				'meta.username.keyword': { value: `*${params.userSearch}*`, case_insensitive: true }
-			}
-		});
+		must.push(wildcardField('meta.username', `*${params.userSearch}*`));
 	}
 	if (params.errorsOnly) {
 		must.push({ range: { 'meta.status': { gte: 500 } } });
@@ -247,7 +280,7 @@ export async function searchApiLogs(
 				bool: {
 					must: [
 						{ term: { 'meta.status': 502 } },
-						{ term: { 'meta.route.keyword': '/dashboard/manager/scrape' } }
+						termField('meta.route', '/dashboard/manager/scrape')
 					]
 				}
 			},
@@ -255,8 +288,8 @@ export async function searchApiLogs(
 				bool: {
 					must: [
 						{ term: { 'meta.status': 500 } },
-						{ term: { 'meta.method.keyword': 'DELETE' } },
-						{ prefix: { 'meta.route.keyword': '/dashboard/manager/game/' } }
+						termField('meta.method', 'DELETE'),
+						prefixField('meta.route', '/dashboard/manager/game/')
 					]
 				}
 			}
@@ -306,27 +339,38 @@ export async function searchAppLogs(
 	params: SearchAppLogsParams
 ): Promise<{ logs: ElkAppLogRow[]; totalCount: number }> {
 	const must: ElkQueryClause[] = [environmentClause()];
-	const mustNot: ElkQueryClause[] = [{ term: { 'log_source.keyword': 'api' } }];
+	const mustNot: ElkQueryClause[] = [apiLogSourceClause()];
 
 	if (params.activeLevels.length > 0) {
 		must.push({
-			terms: { 'log.level.keyword': params.activeLevels }
+			bool: {
+				should: params.activeLevels.flatMap((level) => [
+					{ term: { 'log.level': level } },
+					{ term: { 'log.level.keyword': level } }
+				]),
+				minimum_should_match: 1
+			}
 		});
 	}
 	if (params.sourceFilter) {
-		must.push({ term: { 'log_source.keyword': params.sourceFilter } });
+		must.push({
+			bool: {
+				should: [
+					termField('log_source', params.sourceFilter),
+					termField('source', params.sourceFilter)
+				],
+				minimum_should_match: 1
+			}
+		});
 	}
 	if (params.search) {
 		must.push({
 			bool: {
 				should: [
-					{ wildcard: { message: { value: `*${params.search}*`, case_insensitive: true } } },
-					{
-						wildcard: {
-							'log_source.keyword': { value: `*${params.search}*`, case_insensitive: true }
-						}
-					},
-					{ wildcard: { 'meta.keyword': { value: `*${params.search}*`, case_insensitive: true } } }
+					wildcardField('message', `*${params.search}*`),
+					wildcardField('log_source', `*${params.search}*`),
+					wildcardField('source', `*${params.search}*`),
+					wildcardField('meta', `*${params.search}*`)
 				],
 				minimum_should_match: 1
 			}
