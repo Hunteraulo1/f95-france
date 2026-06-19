@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.9.7",
+	"version": "4.9.8",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -46,7 +46,7 @@
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "3.19.0",
 		"globals": "17.6.0",
-		"pg": "8.21.0",
+		"pg": "8.22.0",
 		"prettier": "3.8.4",
 		"prettier-plugin-svelte": "4.1.1",
 		"prettier-plugin-tailwindcss": "0.8.0",

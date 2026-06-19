@@ -23,6 +23,8 @@ USER bun
 RUN bun install --production --frozen-lockfile
 
 COPY --from=builder --chown=bun:bun /app/build ./build
+# adapter-node résout build/client depuis build/server/chunks/ (import.meta.url du chunk).
+RUN ln -sfn ../../client /app/build/server/chunks/client
 COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
 COPY --from=builder --chown=bun:bun /app/src/lib/server/db ./src/lib/server/db
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
