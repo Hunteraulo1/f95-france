@@ -75,7 +75,7 @@
 		"linkedom": "0.18.12",
 		"marked": "18.0.5",
 		"mysql2": "3.22.5",
-		"nodemailer": "8.0.11",
+		"nodemailer": "9.0.1",
 		"otpauth": "9.5.1",
 		"qrcode": "1.5.4",
 		"redoc": "2.5.3",
