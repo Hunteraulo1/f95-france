@@ -397,7 +397,7 @@
 				isAuthenticated={data.isAuthenticated}
 				initialSavedFilters={data.savedFilters}
 				savedFiltersKey={SAVED_UPDATES_FILTERS_KEY}
-				savedFiltersApiPath="/api/updates/saved-filters"
+				savedFiltersApiPath="/api/saved-filters/updates"
 				buildSearchParams={buildPublicUpdatesListSearchParams}
 				createDefaultFilterGroups={createDefaultUpdatesFilterGroups}
 				cloneGroups={cloneUpdatesFilterGroups}

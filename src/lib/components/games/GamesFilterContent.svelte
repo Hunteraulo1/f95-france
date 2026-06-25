@@ -66,7 +66,7 @@
 		sortOptions = PUBLIC_GAMES_SORT_OPTIONS,
 		defaultSort = 'updated_desc',
 		savedFiltersKey = SAVED_GAMES_FILTERS_KEY,
-		savedFiltersApiPath = '/api/games/saved-filters',
+		savedFiltersApiPath = '/api/saved-filters/games',
 		maxSavedFilters = MAX_SAVED_GAMES_FILTERS,
 		buildSearchParams = buildPublicGamesListSearchParams,
 		createDefaultFilterGroups = createDefaultGamesFilterGroups,
@@ -117,7 +117,7 @@
 	const persistSavedToDb = async () => {
 		if (!isAuthenticated || !savedFiltersApiPath) return;
 		try {
-			await fetch(resolve(savedFiltersApiPath as '/api/games/saved-filters'), {
+			await fetch(resolve(savedFiltersApiPath as '/api/saved-filters/games'), {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ filters: savedFilters })

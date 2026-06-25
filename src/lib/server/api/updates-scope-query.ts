@@ -4,24 +4,6 @@ import { and, eq, or, sql, type SQL } from 'drizzle-orm';
 
 export type UpdatesApiScope = 'featured' | 'all';
 
-/**
- * Portée de la liste `/api/updates`.
- * - `featured` (défaut) : ajouts (`adding`) ou changement de version en historique
- * - `all` : toutes les entrées `update`
- */
-export function parseUpdatesApiScope(searchParams: URLSearchParams): UpdatesApiScope {
-	const scopeRaw = searchParams.get('scope')?.trim().toLowerCase();
-	if (scopeRaw === 'all') return 'all';
-	if (scopeRaw === 'featured') return 'featured';
-
-	/** Alias documenté côté consommateurs : `?updateStatus=featured` ≡ `?scope=featured`. */
-	const updateStatusRaw = searchParams.get('updateStatus')?.trim().toLowerCase();
-	if (updateStatusRaw === 'all') return 'all';
-	if (updateStatusRaw === 'featured') return 'featured';
-
-	return 'featured';
-}
-
 export async function featuredUpdatesScopeWhere(): Promise<SQL> {
 	const isAdding = eq(table.update.status, 'adding');
 

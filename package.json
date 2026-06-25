@@ -78,7 +78,6 @@
 		"nodemailer": "9.0.1",
 		"otpauth": "9.5.1",
 		"qrcode": "1.5.4",
-		"redoc": "2.5.3",
 		"svelte-codemirror-editor": "2.1.0",
 		"valibot": "1.4.1",
 		"vite": "8.1.0"
