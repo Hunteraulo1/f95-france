@@ -56,6 +56,7 @@
 								| Lignes Jeux supprimées (absentes de la DB) : {dbSheetSyncResult.details
 									.prunedJeuxRows ?? 0}
 								| Doublons retirés : {dbSheetSyncResult.details.dedupedJeuxRows ?? 0}
+								| IDs traducteur corrigés : {dbSheetSyncResult.details.repairedContributorIds ?? 0}
 							</p>
 						{/if}
 					</div>
@@ -76,6 +77,7 @@
 										.details.totalTranslators}
 									| Lignes Jeux supprimées : {dbSheetSyncResult.details.prunedJeuxRows ?? 0}
 									| Doublons retirés : {dbSheetSyncResult.details.dedupedJeuxRows ?? 0}
+								| IDs traducteur corrigés : {dbSheetSyncResult.details.repairedContributorIds ?? 0}
 								</p>
 								{#if dbSheetSyncResult.details.errors.length > 0}
 									<pre

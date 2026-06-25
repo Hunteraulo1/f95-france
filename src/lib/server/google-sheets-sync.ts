@@ -3,6 +3,7 @@ import { getEffectiveConfig } from '$lib/server/app-config';
 import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { repairGameTranslationContributorIdsInDb } from '$lib/server/ensure-translator';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
 	getTranslatorActivityCounts,
@@ -1628,6 +1629,8 @@ export async function syncDbToSpreadsheetBulk(
 	prunedJeuxRows: number;
 	/** Lignes Jeux en double supprimées (même ID DB). */
 	dedupedJeuxRows: number;
+	/** Traducteur/relecteur : noms legacy remplacés par des id en base. */
+	repairedContributorIds: number;
 	errors: string[];
 	/** Un sous-ensemble de lignes Jeux a été synchronisé (hors purge). */
 	jeuxPartial?: boolean;
@@ -1642,22 +1645,40 @@ export async function syncDbToSpreadsheetBulk(
 			syncedTranslators: 0,
 			prunedJeuxRows: 0,
 			dedupedJeuxRows: 0,
+			repairedContributorIds: 0,
 			errors: ['Configuration Google Sheets absente (OAuth/API key/spreadsheet ID).']
 		};
 	}
 
 	onProgress?.('Sheets : lecture base (traductions + traducteurs)…');
+	const errors: string[] = [];
+	let prunedJeuxRows = 0;
+	let dedupedJeuxRows = 0;
+	let repairedContributorIds = 0;
+	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
+	let jeuxPartial = false;
+	let jeuxRowsWritten = 0;
+
+	try {
+		onProgress?.('Base : normalisation traductor_id / proofreader_id (noms → id)…');
+		const repair = await repairGameTranslationContributorIdsInDb();
+		repairedContributorIds = repair.fixedTranslatorId + repair.fixedProofreaderId;
+		if (repairedContributorIds > 0) {
+			onProgress?.(
+				`Base : ${repairedContributorIds} champ(s) traducteur/relecteur corrigé(s) sur ${repair.scanned} traduction(s)`
+			);
+		}
+	} catch (err) {
+		errors.push(
+			`repair contributor ids: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+		);
+	}
+
 	const [translationsInitial, translators] = await Promise.all([
 		db.select().from(table.gameTranslation),
 		db.select().from(table.translator)
 	]);
 	const translations = translationsInitial;
-	const errors: string[] = [];
-	let prunedJeuxRows = 0;
-	let dedupedJeuxRows = 0;
-	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
-	let jeuxPartial = false;
-	let jeuxRowsWritten = 0;
 
 	try {
 		const jeuxFilter =
@@ -1907,6 +1928,7 @@ export async function syncDbToSpreadsheetBulk(
 		syncedTranslators: skipTranslatorTab ? 0 : translators.length,
 		prunedJeuxRows,
 		dedupedJeuxRows,
+		repairedContributorIds,
 		errors,
 		jeuxPartial: jeuxPartial || undefined
 	};
