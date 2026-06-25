@@ -6,8 +6,8 @@
 	import FixedDropdownMenu from '$lib/components/dashboard/FixedDropdownMenu.svelte';
 	import ResumeTranslationModal from '$lib/components/dashboard/ResumeTranslationModal.svelte';
 	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { newToast } from '$lib/stores';
 	import EllipsisVertical from '@lucide/svelte/icons/ellipsis-vertical';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -108,13 +108,13 @@
 		}),
 		getCacheKey: () => listCacheKey,
 		buildUrl: (nextPage) => {
-			const params = new URLSearchParams({
-				status: data.statusFilter,
-				role: data.roleFilter,
-				page: String(nextPage)
-			});
-			if (data.q) params.set('q', data.q);
-			return `${resolve('/dashboard/my-translations')}?${params}`;
+			const parts = [
+				`status=${encodeURIComponent(data.statusFilter)}`,
+				`role=${encodeURIComponent(data.roleFilter)}`,
+				`page=${nextPage}`
+			];
+			if (data.q) parts.push(`q=${encodeURIComponent(data.q)}`);
+			return `${resolve('/dashboard/my-translations')}?${parts.join('&')}`;
 		},
 		pickItems: (body) =>
 			Array.isArray(body.translations) ? (body.translations as TranslationRow[]) : []

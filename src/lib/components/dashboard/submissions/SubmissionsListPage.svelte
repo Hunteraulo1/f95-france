@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
 	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
 	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { user } from '$lib/stores';
 	import { getStatusFilterLabel } from '$lib/utils/submissions';
 	import { get } from 'svelte/store';
@@ -55,9 +55,6 @@
 		const status = overrides.status ?? data.statusFilter;
 		return `?status=${encodeURIComponent(status)}`;
 	};
-
-	const buildHref = (overrides: { status?: string }) =>
-		resolve(`${basePath}${buildQuery(overrides)}` as typeof basePath);
 
 	const openSubmissionModal = async (submission: SubmissionItem) => {
 		if (reviewMode && submission.status === 'pending') {
@@ -126,11 +123,8 @@
 		}),
 		getCacheKey: () => data.statusFilter,
 		buildUrl: (nextPage) => {
-			const params = new URLSearchParams({
-				status: data.statusFilter,
-				page: String(nextPage)
-			});
-			return `${resolve(basePath)}?${params}`;
+			const parts = [`status=${encodeURIComponent(data.statusFilter)}`, `page=${nextPage}`];
+			return `${resolve(basePath)}?${parts.join('&')}`;
 		},
 		pickItems: (body) =>
 			Array.isArray(body.submissions) ? (body.submissions as SubmissionRow[]) : []

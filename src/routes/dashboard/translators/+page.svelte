@@ -5,8 +5,8 @@
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
 	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { formatUserAccountOptionLabel } from '$lib/permissions/user-email';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -25,21 +25,13 @@
 		return qVal ? `?q=${encodeURIComponent(qVal)}` : '';
 	};
 
-	const buildHref = (overrides: { q?: string }) =>
-		resolve(`/dashboard/translators${buildQuery(overrides)}` as '/dashboard/translators');
-
 	const navigateSearch = (value: string) => {
-		goto(
-			resolve(
-				`/dashboard/translators${buildQuery({ q: value })}` as '/dashboard/translators'
-			),
-			{
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
-				invalidateAll: true
-			}
-		);
+		goto(resolve(`/dashboard/translators${buildQuery({ q: value })}` as '/dashboard/translators'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const onSearchInput = (value: string) => {
@@ -95,10 +87,9 @@
 		}),
 		getCacheKey: () => data.q ?? '',
 		buildUrl: (nextPage) => {
-			const params = new URLSearchParams();
-			if (data.q) params.set('q', data.q);
-			params.set('page', String(nextPage));
-			return `${resolve('/dashboard/translators')}?${params}`;
+			const parts = [`page=${nextPage}`];
+			if (data.q) parts.unshift(`q=${encodeURIComponent(data.q)}`);
+			return `${resolve('/dashboard/translators')}?${parts.join('&')}`;
 		},
 		pickItems: (body) =>
 			Array.isArray(body.translator) ? (body.translator as TranslatorRow[]) : []

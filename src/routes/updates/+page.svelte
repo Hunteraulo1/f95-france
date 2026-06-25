@@ -130,7 +130,7 @@
 	const listCacheKey = $derived(JSON.stringify({ q: data.query, filters: data.filters }));
 
 	$effect(() => {
-		listCacheKey;
+		String(listCacheKey);
 		allUpdates = [...(data.updates ?? [])];
 		loadedPage = data.page ?? 1;
 		totalPages = data.totalPages ?? 1;

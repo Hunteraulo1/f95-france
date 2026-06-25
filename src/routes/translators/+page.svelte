@@ -29,7 +29,7 @@
 	const listCacheKey = $derived(data.q);
 
 	$effect(() => {
-		listCacheKey;
+		String(listCacheKey);
 		allTranslators = [...(data.translators ?? [])];
 		loadedPage = data.page ?? 1;
 		totalPages = data.totalPages ?? 1;

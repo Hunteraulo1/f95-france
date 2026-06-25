@@ -110,7 +110,7 @@
 	);
 
 	$effect(() => {
-		listCacheKey;
+		String(listCacheKey);
 		allGames = [...(data.games ?? [])];
 		loadedPage = data.page ?? 1;
 		totalPages = data.totalPages ?? 1;

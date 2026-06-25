@@ -23,7 +23,7 @@ export function useInfiniteList<T>(config: {
 	const hasMore = $derived(loadedPage < totalPages);
 
 	$effect(() => {
-		cacheKey;
+		String(cacheKey);
 		const seed = config.getInitial();
 		allItems = [...seed.items];
 		loadedPage = seed.page;

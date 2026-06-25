@@ -4,8 +4,8 @@
 	import { resolve } from '$app/paths';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 	import { newToast, roleBadgeStyles } from '$lib/stores';
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
@@ -88,9 +88,6 @@
 		return qVal ? `?q=${encodeURIComponent(qVal)}` : '';
 	};
 
-	const buildHref = (overrides: { q?: string }) =>
-		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
-
 	const navigateSearch = (value: string) => {
 		goto(resolve(`/dashboard/users${buildQuery({ q: value })}` as '/dashboard/users'), {
 			replaceState: true,
@@ -131,10 +128,9 @@
 		}),
 		getCacheKey: () => data.q ?? '',
 		buildUrl: (nextPage) => {
-			const params = new URLSearchParams();
-			if (data.q) params.set('q', data.q);
-			params.set('page', String(nextPage));
-			return `${resolve('/dashboard/users')}?${params}`;
+			const parts = [`page=${nextPage}`];
+			if (data.q) parts.unshift(`q=${encodeURIComponent(data.q)}`);
+			return `${resolve('/dashboard/users')}?${parts.join('&')}`;
 		},
 		pickItems: (body) => (Array.isArray(body.users) ? (body.users as UserRow[]) : [])
 	});

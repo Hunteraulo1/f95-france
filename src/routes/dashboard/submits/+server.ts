@@ -1,10 +1,6 @@
-import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { assertPermission } from '$lib/server/permissions';
-import {
-	loadSubmissionListPage,
-	parseSubmissionStatusFilter
-} from '$lib/server/submission-pages';
+import { loadSubmissionListPage, parseSubmissionStatusFilter } from '$lib/server/submission-pages';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

@@ -16,7 +16,7 @@ import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	await assertGameManageAccess(locals);
 	if (locals.user?.role) {
 		await assertRoleEditMode(locals.user.role);

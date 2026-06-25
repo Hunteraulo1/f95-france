@@ -105,6 +105,9 @@
 		<h2 class="flex items-center gap-2 text-2xl font-bold text-base-content">
 			<History size={24} />
 			Historique des traductions
+			{#if historyTotalCount > 0}
+				<span class="badge badge-neutral badge-sm font-normal">{historyTotalCount}</span>
+			{/if}
 		</h2>
 
 		{#if list.items.length === 0}

@@ -1,6 +1,6 @@
-import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
-import { json, error } from '@sveltejs/kit';
+import { assertPermission } from '$lib/server/permissions';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
