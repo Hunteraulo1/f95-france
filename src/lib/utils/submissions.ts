@@ -88,3 +88,13 @@ export const getStatusFilterLabel = (status: string): string => {
 	};
 	return labels[status] ?? '';
 };
+
+export function getSubmissionGameId(submission: {
+	game?: { id: string } | null;
+	gameId?: string | null;
+	parsedData?: { gameId?: string } | null;
+}): string | null {
+	const parsedGameId =
+		typeof submission.parsedData?.gameId === 'string' ? submission.parsedData.gameId : null;
+	return submission.game?.id ?? submission.gameId ?? parsedGameId;
+}
