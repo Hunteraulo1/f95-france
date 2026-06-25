@@ -36,7 +36,7 @@ import {
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
