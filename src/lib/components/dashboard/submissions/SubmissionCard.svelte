@@ -10,8 +10,10 @@
 		formatDate,
 		getStatusBadge,
 		getSubmissionGameId,
+		getSubmissionReviewedByLabel,
 		getTypeBadge,
-		getTypeLabel
+		getTypeLabel,
+		isReviewedSubmissionStatus
 	} from '$lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
@@ -53,6 +55,12 @@
 			role: string;
 		} | null;
 		openedByUser?: {
+			id: string;
+			username: string;
+			avatar: string | null;
+			role: string;
+		} | null;
+		reviewedByUser?: {
 			id: string;
 			username: string;
 			avatar: string | null;
@@ -141,6 +149,37 @@
 								}}
 							>
 								{submission.openedByUser.username}
+							</button>
+						</div>
+					{/if}
+					{#if isReviewedSubmissionStatus(submission.status) && submission.reviewedByUser?.username}
+						{@const reviewedByLabel = getSubmissionReviewedByLabel(submission.status)}
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">{reviewedByLabel} :</span>
+							<div class="avatar">
+								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
+									{#if submission.reviewedByUser.avatar}
+										<img
+											src={resolveDiscordAvatarDisplayUrl(submission.reviewedByUser.avatar)}
+											alt={submission.reviewedByUser.username}
+											class="h-8 w-8 rounded-full object-cover"
+										/>
+									{:else}
+										<User size={24} />
+									{/if}
+								</div>
+							</div>
+							<button
+								type="button"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.reviewedByUser.role,
+									$roleBadgeStyles[submission.reviewedByUser.role]
+								)}"
+								onclick={() => {
+									goto(resolve(`/dashboard/profile/${submission.reviewedByUser!.username}`));
+								}}
+							>
+								{submission.reviewedByUser.username}
 							</button>
 						</div>
 					{/if}

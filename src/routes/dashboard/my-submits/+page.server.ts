@@ -1,6 +1,8 @@
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { submissionReviewedByUserIdPatch } from '$lib/server/schema-column-compat';
+import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
 	formDataToSubmissionPayload,
 	loadSubmissionListPage,
@@ -156,7 +158,9 @@ export const actions: Actions = {
 				.set({
 					status: 'pending',
 					adminNotes: null,
-					updatedAt: new Date()
+					updatedAt: new Date(),
+					...(await submissionOpenedByUserIdPatch(null)),
+					...(await submissionReviewedByUserIdPatch(null))
 				})
 				.where(eq(table.submission.id, submissionId));
 		}
