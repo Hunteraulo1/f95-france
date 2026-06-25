@@ -201,11 +201,11 @@ wipe_target_database() {
 		docker_mysql \
 			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
-			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;"
 	else
 		"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
-			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;"
 	fi
 }
 
