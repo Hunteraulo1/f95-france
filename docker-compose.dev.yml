@@ -1,7 +1,11 @@
 name: f95france-dashboard-dev
 
+# Dev local : `bun run dev:up` ne démarre que MariaDB ; migrations via `bun run db:migrate` sur l'hôte.
+# Stack complète (app prod dans Docker) : `bun run build:docker` ou `docker compose -f docker-compose.dev.yml --profile full up -d`.
+
 services:
   app:
+    profiles: [full]
     build:
       context: .
       dockerfile: Dockerfile

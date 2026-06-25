@@ -28,10 +28,10 @@ bun install
 cp .env.example .env
 # Éditer .env avec vos valeurs (voir section Variables d'environnement)
 
-# 3. Démarrer MariaDB
+# 3. Démarrer MariaDB (uniquement — pas le conteneur app)
 bun run dev:up
 
-# 4. Appliquer les migrations
+# 4. Appliquer les migrations (une seule fois, depuis l'hôte)
 bun run db:migrate
 
 # 5. Lancer le serveur de développement
