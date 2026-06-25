@@ -1,7 +1,11 @@
 name: f95france-dashboard-dev
 
+# Dev local : `bun run dev:up` ne démarre que MariaDB ; migrations via `bun run db:migrate` sur l'hôte.
+# Stack complète (app prod dans Docker) : `bun run build:docker` ou `docker compose -f docker-compose.dev.yml --profile full up -d`.
+
 services:
   app:
+    profiles: [full]
     build:
       context: .
       dockerfile: Dockerfile
@@ -35,6 +39,11 @@ services:
     container_name: f96-trad-dash-mariadb-dev
     restart: unless-stopped
     env_file: .env
+
+    # Même collation que prod/PTB (utf8mb4_bin) — évite les écarts LIKE / comparaisons de chaînes.
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
 
     environment:
       MARIADB_DATABASE: ${MARIADB_DATABASE}

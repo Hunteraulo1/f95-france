@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.10.3",
+	"version": "4.10.4",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -9,11 +9,11 @@
 	"scripts": {
 		"dev": "vite dev",
 		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && vite dev --force",
-		"dev:up": "docker compose -f docker-compose.dev.yml up -d",
+		"dev:up": "docker compose -f docker-compose.dev.yml up -d mariadb-dev",
 		"dev:down": "docker compose -f docker-compose.dev.yml down",
 		"dev:logs": "docker compose -f docker-compose.dev.yml logs -f mariadb-dev",
 		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
-		"build:docker": "docker compose -f docker-compose.dev.yml up --build",
+		"build:docker": "docker compose -f docker-compose.dev.yml --profile full up --build",
 		"start": "bash scripts/coolify-start.sh",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
