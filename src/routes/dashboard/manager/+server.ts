@@ -26,6 +26,7 @@ import {
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
+import { caseInsensitiveLike } from '$lib/server/sql-like';
 import { createGameSubmission, createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
@@ -35,7 +36,7 @@ import {
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
-import { and, eq, like, or, sql } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
@@ -128,8 +129,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rechercher par nom de jeu (insensible à la casse) ou par threadId
 		const threadIdQuery = Number.parseInt(query, 10);
 		const whereClause = Number.isNaN(threadIdQuery)
-			? like(table.game.name, `%${query}%`)
-			: or(like(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
+			? caseInsensitiveLike(table.game.name, query)
+			: or(caseInsensitiveLike(table.game.name, query), eq(table.game.threadId, threadIdQuery));
 		const enginesSq = enginesPerGameSubquery();
 		const rawGames = await db
 			.select({

@@ -36,6 +36,11 @@ services:
     restart: unless-stopped
     env_file: .env
 
+    # Même collation que prod/PTB (utf8mb4_bin) — évite les écarts LIKE / comparaisons de chaînes.
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+
     environment:
       MARIADB_DATABASE: ${MARIADB_DATABASE}
       MARIADB_USER: ${MARIADB_USER}
