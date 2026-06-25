@@ -166,7 +166,7 @@
 			label: 'Suivi auto-check',
 			href: '/dashboard/auto-check',
 			icon: RefreshCw,
-			access: 'games.auto_check'
+			access: 'auto_check.monitor'
 		},
 		{
 			label: 'Logs',

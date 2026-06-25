@@ -234,7 +234,8 @@
 	{/if}
 
 	<div class="text-sm text-base-content/60">
-		Les utilisateurs avec la permission auto-check reçoivent une notification en cas d’erreur.
+		Les utilisateurs avec la permission « Suivi auto-check » reçoivent une notification en cas
+		d’erreur.
 		<a class="link link-hover inline-flex items-center gap-1" href={resolve('/dashboard/logs-app')}>
 			Logs applicatifs
 			<ArrowUpRight size={14} />

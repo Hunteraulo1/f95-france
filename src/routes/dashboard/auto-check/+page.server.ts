@@ -12,7 +12,7 @@ export const config = {
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	await assertPermission(locals, 'games.auto_check');
+	await assertPermission(locals, 'auto_check.monitor');
 
 	const selectedRunId = url.searchParams.get('run');
 
@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
 	triggerAutoCheck: async ({ locals }) => {
-		await assertPermission(locals, 'games.auto_check');
+		await assertPermission(locals, 'auto_check.monitor');
 
 		try {
 			const result = await runAutoCheckVersions({

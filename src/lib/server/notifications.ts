@@ -218,11 +218,11 @@ export async function notifyAutoCheckIssues(
 ) {
 	if (result.issues.length === 0) return;
 
-	const [autoCheckRecipients, devRecipients] = await Promise.all([
-		getUserIdsWithPermission('games.auto_check'),
+	const [autoCheckMonitorRecipients, devRecipients] = await Promise.all([
+		getUserIdsWithPermission('auto_check.monitor'),
 		getUserIdsWithPermission('dev.panel')
 	]);
-	const recipientIds = Array.from(new Set([...autoCheckRecipients, ...devRecipients]));
+	const recipientIds = Array.from(new Set([...autoCheckMonitorRecipients, ...devRecipients]));
 	if (recipientIds.length === 0) return;
 
 	const triggerLabel =
