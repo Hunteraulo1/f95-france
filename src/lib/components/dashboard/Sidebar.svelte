@@ -13,6 +13,7 @@
 	import Library from '@lucide/svelte/icons/library';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import MonitorCog from '@lucide/svelte/icons/monitor-cog';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
@@ -160,6 +161,12 @@
 			href: '/dashboard/config',
 			icon: Settings,
 			access: 'config.view'
+		},
+		{
+			label: 'Suivi auto-check',
+			href: '/dashboard/auto-check',
+			icon: RefreshCw,
+			access: 'games.auto_check'
 		},
 		{
 			label: 'Logs',

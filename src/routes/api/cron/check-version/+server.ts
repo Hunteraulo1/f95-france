@@ -38,7 +38,7 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 
 	try {
 		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
-		const runPromise = runAutoCheckVersions({ logSource: 'cron' });
+		const runPromise = runAutoCheckVersions({ logSource: 'cron', triggerSource: 'cron' });
 		const timeoutResult = await Promise.race([
 			runPromise
 				.then((result) => ({ kind: 'done' as const, result }))

@@ -3,7 +3,6 @@ import {
 	getEffectiveConfigFromRow,
 	toConfigClientSafe
 } from '$lib/server/app-config';
-import { runAutoCheckVersions } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getValidAccessToken } from '$lib/server/google-oauth';
@@ -56,34 +55,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	triggerAutoCheck: async ({ locals }) => {
-		await assertPermission(locals, 'dev.panel');
-		try {
-			const result = await runAutoCheckVersions({
-				refreshWebhookUrls: true,
-				logSource: 'worker'
-			});
-			await db
-				.update(table.config)
-				.set({
-					autoCheckLastRunAt: new Date(),
-					updatedAt: new Date()
-				})
-				.where(eq(table.config.id, 'main'));
-
-			return {
-				success: true,
-				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} déjà aligné(s), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
-				details: result
-			};
-		} catch (error: unknown) {
-			return {
-				success: false,
-				message: "Erreur lors de l'exécution de l'auto-check",
-				details: error instanceof Error ? error.message : 'Erreur inconnue'
-			};
-		}
-	},
 	testGoogleSheets: async ({ request, locals }) => {
 		await assertPermission(locals, 'dev.panel');
 		const formData = await request.formData();

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import DevAutoCheckCard from '$lib/components/dashboard/dev/DevAutoCheckCard.svelte';
 	import DevDiscordWebhookCard from '$lib/components/dashboard/dev/DevDiscordWebhookCard.svelte';
 	import DevF95ScrapeCard from '$lib/components/dashboard/dev/DevF95ScrapeCard.svelte';
 	import DevGoogleSheetsCard from '$lib/components/dashboard/dev/DevGoogleSheetsCard.svelte';
@@ -18,7 +17,6 @@
 <div class="container flex flex-col gap-6">
 	<h1 class="mb-6 text-3xl font-bold text-base-content">Page de développement</h1>
 
-	<DevAutoCheckCard {config} />
 	<DevGoogleSheetsCard {config} />
 	<DevDiscordWebhookCard {webhookStatus} />
 	<DevF95ScrapeCard />

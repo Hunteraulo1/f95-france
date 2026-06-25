@@ -291,6 +291,57 @@ export const submission = mysqlTable(
 	]
 );
 
+export const autoCheckRun = mysqlTable(
+	'auto_check_run',
+	{
+		id: varchar('id', { length: 255 })
+			.primaryKey()
+			.default(sql`(UUID())`),
+		triggerSource: varchar('trigger_source', { length: 32 }).notNull(),
+		status: varchar('status', { length: 32 }).notNull(),
+		scannedGames: int('scanned_games').notNull().default(0),
+		updatedGames: int('updated_games').notNull().default(0),
+		updatedTranslations: int('updated_translations').notNull().default(0),
+		alignedGames: int('aligned_games').notNull().default(0),
+		translatorWebhooksSent: int('translator_webhooks_sent').notNull().default(0),
+		proofreaderWebhooksSent: int('proofreader_webhooks_sent').notNull().default(0),
+		issueCount: int('issue_count').notNull().default(0),
+		durationMs: int('duration_ms'),
+		fatalError: text('fatal_error'),
+		startedAt: datetime('started_at')
+			.notNull()
+			.default(sql`(NOW())`),
+		finishedAt: datetime('finished_at')
+	},
+	(table) => [index('auto_check_run_started_at_idx').on(table.startedAt)]
+);
+
+export const autoCheckRunItem = mysqlTable(
+	'auto_check_run_item',
+	{
+		id: varchar('id', { length: 255 })
+			.primaryKey()
+			.default(sql`(UUID())`),
+		runId: varchar('run_id', { length: 255 })
+			.notNull()
+			.references(() => autoCheckRun.id, { onDelete: 'cascade' }),
+		kind: varchar('kind', { length: 32 }).notNull(),
+		gameId: varchar('game_id', { length: 255 }).references(() => game.id, { onDelete: 'set null' }),
+		gameName: varchar('game_name', { length: 512 }),
+		translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id, {
+			onDelete: 'set null'
+		}),
+		translationName: varchar('translation_name', { length: 255 }),
+		threadId: int('thread_id'),
+		oldVersion: varchar('old_version', { length: 128 }),
+		newVersion: varchar('new_version', { length: 128 }),
+		stage: varchar('stage', { length: 64 }),
+		message: text('message'),
+		detail: text('detail')
+	},
+	(table) => [index('auto_check_run_item_run_id_idx').on(table.runId)]
+);
+
 export const apiLog = mysqlTable('api_log', {
 	id: varchar('id', { length: 255 })
 		.primaryKey()
@@ -411,6 +462,8 @@ export type Update = typeof update.$inferSelect;
 export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
+export type AutoCheckRun = typeof autoCheckRun.$inferSelect;
+export type AutoCheckRunItem = typeof autoCheckRunItem.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;
 export type AppLog = typeof appLog.$inferSelect;
 export type Notification = typeof notification.$inferSelect;
