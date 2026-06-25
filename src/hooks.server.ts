@@ -161,6 +161,19 @@ function ensurePermissionsCatalogSeededOnce(): Promise<void> {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// Sonde infra : réponse immédiate sans DB, session ni maintenance.
+	if (!building && isHealthCheckPath(event.url.pathname)) {
+		return applySecurityHeaders(
+			new Response('OK', {
+				status: 200,
+				headers: {
+					'content-type': 'text/plain',
+					'cache-control': 'no-store'
+				}
+			})
+		);
+	}
+
 	if (!building && !appLogProcessReady) {
 		appLogProcessReady = true;
 		logApp({
