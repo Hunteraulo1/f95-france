@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 						.limit(1)
 				: Promise.resolve([])
 		]);
-		const result = await listPublicUpdates(params);
+		const result = await listPublicUpdates({ ...params, page: 1 });
 		const savedFilters = locals.user
 			? parseSavedUpdatesFilters(savedFiltersRow[0]?.savedUpdatesFilters)
 			: [];

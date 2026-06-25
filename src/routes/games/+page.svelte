@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
 	import { GAMES_VIEW_MODE_KEY, type GamesListViewMode } from '$lib/games/games-filter-config';
 	import {
 		buildPublicGamesListSearchParams,
@@ -9,6 +9,7 @@
 		hasActivePublicGamesListFilters,
 		type PublicGamesListParams
 	} from '$lib/games/games-filter-url';
+	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
 	import type { PublicGameListItem } from '$lib/server/public-games';
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
@@ -85,24 +86,62 @@
 
 	const rowTagsExpanded = (gameId: string) => tagsExpanded || expandedTagRowIds.has(gameId);
 
-	const games = $derived(data.games ?? []);
-	const total = $derived(data.total ?? 0);
-	const page = $derived(data.page ?? 1);
-	const totalPages = $derived(data.totalPages ?? 1);
+	let allGames = $state<PublicGameListItem[]>([]);
+	let loadedPage = $state(1);
+	let totalPages = $state(1);
+	let loadingMore = $state(false);
+	let loadMoreError = $state<string | null>(null);
 
 	const listParams = $derived.by(
 		(): PublicGamesListParams => ({
-			page,
+			page: loadedPage,
 			query: data.query ?? '',
 			sort: data.sort ?? 'updated_desc',
 			filters: data.filters ?? createEmptyPublicGamesFilterSelections()
 		})
 	);
 
-	const gamesHref = (page: number) => {
-		const params = buildPublicGamesListSearchParams({ ...listParams, page });
-		const search = params.toString();
-		return search ? `${resolve('/games')}?${search}` : resolve('/games');
+	const listCacheKey = $derived(
+		JSON.stringify({
+			q: data.query ?? '',
+			sort: data.sort ?? 'updated_desc',
+			filters: data.filters ?? createEmptyPublicGamesFilterSelections()
+		})
+	);
+
+	$effect(() => {
+		listCacheKey;
+		allGames = [...(data.games ?? [])];
+		loadedPage = data.page ?? 1;
+		totalPages = data.totalPages ?? 1;
+		loadMoreError = null;
+	});
+
+	const total = $derived(data.total ?? 0);
+	const hasMore = $derived(loadedPage < totalPages);
+
+	const loadMoreGames = async () => {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		loadMoreError = null;
+		try {
+			const params = buildPublicGamesListSearchParams({
+				...listParams,
+				page: loadedPage + 1
+			});
+			const search = params.toString();
+			const url = search ? `${resolve('/games')}?${search}` : resolve('/games');
+			const result = await fetchPaginatedJson<PublicGameListItem>(url, (body) =>
+				Array.isArray(body.games) ? (body.games as PublicGameListItem[]) : []
+			);
+			allGames = [...allGames, ...result.items];
+			loadedPage = result.page;
+			totalPages = result.totalPages;
+		} catch {
+			loadMoreError = 'Impossible de charger la suite.';
+		} finally {
+			loadingMore = false;
+		}
 	};
 
 	const translationStatusClass = (status: string | null) => {
@@ -426,7 +465,7 @@
 			</div>
 		{:else}
 			<p class="text-sm text-base-content/60">{resultSummary}</p>
-			{#if !games.length}
+			{#if !allGames.length}
 				<div class="card border border-base-300 bg-base-100">
 					<div class="card-body items-start gap-2">
 						<h2 class="card-title text-lg">Aucun jeu trouvé</h2>
@@ -447,7 +486,7 @@
 			{:else}
 				{#if displayViewMode === 'list'}
 					<ul class="list rounded-box bg-base-100 shadow-md">
-						{#each games as game (game.id)}
+						{#each allGames as game (game.id)}
 							{@render gameListRow(game)}
 						{/each}
 					</ul>
@@ -455,18 +494,16 @@
 					<div
 						class="grid grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
 					>
-						{#each games as game (game.id)}
+						{#each allGames as game (game.id)}
 							{@render gameGridCard(game)}
 						{/each}
 					</div>
 				{/if}
-				<Pagination
-					currentPage={page}
-					{totalPages}
-					totalCount={total}
-					countLabel="jeu"
-					countLabelPlural="jeux"
-					hrefForPage={gamesHref}
+				<InfiniteScrollSentinel
+					hasMore={hasMore && !data.error}
+					loading={loadingMore}
+					error={loadMoreError}
+					onLoadMore={loadMoreGames}
 				/>
 			{/if}
 		{/if}

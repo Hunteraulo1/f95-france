@@ -23,8 +23,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'submissions.review');
 
 	const statusFilter = parseSubmissionStatusFilter(url.searchParams.get('status'));
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
 	try {
 		const whereCondition =
@@ -33,7 +31,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return await loadSubmissionListPage({
 			where: whereCondition,
 			statusFilter,
-			requestedPage,
+			requestedPage: 1,
 			includeAdminNotes: true
 		});
 	} catch (error: unknown) {

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import type { ProfileStats } from '$lib/server/profile-stats';
 	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -10,7 +11,7 @@
 		totalCount: number;
 		page: number;
 		totalPages: number;
-		hrefForPage: (page: number) => string;
+		translationsApiPath: string;
 		translationStats?: ProfileStats['translations'];
 		translatorName?: string | null;
 	}
@@ -20,10 +21,22 @@
 		totalCount,
 		page,
 		totalPages,
-		hrefForPage,
+		translationsApiPath,
 		translationStats = null,
 		translatorName = null
 	}: Props = $props();
+
+	const list = useInfiniteList<ProfileTranslationItem>({
+		getInitial: () => ({
+			items: translations ?? [],
+			page: page ?? 1,
+			totalPages: totalPages ?? 1
+		}),
+		getCacheKey: () => translationsApiPath,
+		buildUrl: (nextPage) => `${translationsApiPath}?page=${nextPage}`,
+		pickItems: (body) =>
+			Array.isArray(body.translations) ? (body.translations as ProfileTranslationItem[]) : []
+	});
 
 	const labelStatus = (s: string) => {
 		if (s === 'completed') return 'Terminé';
@@ -47,7 +60,7 @@
 	const labelTname = (s: string) => tnameLabels[s] ?? s;
 
 	const showSection = $derived(
-		translationStats !== null || translations.length > 0 || totalCount > 0 || translatorName
+		translationStats !== null || list.items.length > 0 || totalCount > 0 || translatorName
 	);
 </script>
 
@@ -92,7 +105,7 @@
 				</div>
 			{/if}
 
-			{#if translations.length === 0}
+			{#if list.items.length === 0}
 				<p class="text-sm text-base-content/70">
 					Aucune traduction liée à ce compte (traducteur ou relecteur).
 				</p>
@@ -110,7 +123,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each translations as t (t.id)}
+							{#each list.items as t (t.id)}
 								<tr>
 									<td class="font-medium">
 										<a class="link link-hover" href="/dashboard/manager/game/{t.game.id}"
@@ -159,12 +172,11 @@
 					</table>
 				</div>
 
-				<Pagination
-					currentPage={page}
-					{totalPages}
-					{totalCount}
-					{hrefForPage}
-					countLabel="traduction"
+				<InfiniteScrollSentinel
+					hasMore={list.hasMore}
+					loading={list.loadingMore}
+					error={list.loadMoreError}
+					onLoadMore={list.loadMore}
 				/>
 			{/if}
 		</div>

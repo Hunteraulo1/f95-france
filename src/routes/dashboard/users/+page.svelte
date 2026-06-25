@@ -3,7 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
 	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 	import { newToast, roleBadgeStyles } from '$lib/stores';
@@ -82,22 +83,16 @@
 		}
 	});
 
-	const buildQuery = (overrides: { q?: string; page?: number }) => {
+	const buildQuery = (overrides: { q?: string }) => {
 		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
-		const page = overrides.page ?? data.page;
-		const params: string[] = [];
-		if (qVal) params.push(`q=${encodeURIComponent(qVal)}`);
-		if (page > 1) params.push(`page=${page}`);
-		return params.length ? `?${params.join('&')}` : '';
+		return qVal ? `?q=${encodeURIComponent(qVal)}` : '';
 	};
 
-	const buildHref = (overrides: { q?: string; page?: number }) =>
+	const buildHref = (overrides: { q?: string }) =>
 		resolve(`/dashboard/users${buildQuery(overrides)}` as '/dashboard/users');
 
-	const hrefForPage = (p: number) => buildHref({ page: p });
-
 	const navigateSearch = (value: string) => {
-		goto(resolve(`/dashboard/users${buildQuery({ q: value, page: 1 })}` as '/dashboard/users'), {
+		goto(resolve(`/dashboard/users${buildQuery({ q: value })}` as '/dashboard/users'), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true,
@@ -124,6 +119,24 @@
 				searchQuery = incoming;
 			}
 		});
+	});
+
+	type UserRow = (typeof data.users)[0];
+
+	const list = useInfiniteList<UserRow>({
+		getInitial: () => ({
+			items: data.users ?? [],
+			page: data.page ?? 1,
+			totalPages: data.totalPages ?? 1
+		}),
+		getCacheKey: () => data.q ?? '',
+		buildUrl: (nextPage) => {
+			const params = new URLSearchParams();
+			if (data.q) params.set('q', data.q);
+			params.set('page', String(nextPage));
+			return `${resolve('/dashboard/users')}?${params}`;
+		},
+		pickItems: (body) => (Array.isArray(body.users) ? (body.users as UserRow[]) : [])
 	});
 
 	const formatDateTime = (value: Date | string) =>
@@ -203,7 +216,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.users as user (user.id)}
+					{#each list.items as user (user.id)}
 						<tr>
 							<td>
 								<div class="flex items-center gap-3">
@@ -278,12 +291,11 @@
 				</tbody>
 			</table>
 
-			<Pagination
-				currentPage={data.page}
-				totalPages={data.totalPages}
-				totalCount={data.totalUsers}
-				{hrefForPage}
-				countLabel="utilisateur"
+			<InfiniteScrollSentinel
+				hasMore={list.hasMore}
+				loading={list.loadingMore}
+				error={list.loadMoreError}
+				onLoadMore={list.loadMore}
 			/>
 		</div>
 	</div>

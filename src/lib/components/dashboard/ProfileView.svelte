@@ -37,7 +37,7 @@
 		translationsTotal?: number;
 		translationsPage?: number;
 		translationsTotalPages?: number;
-		translationsHrefForPage?: (page: number) => string;
+		translationsApiPath?: string;
 		editProfileHref?: string | null;
 		musicUrl?: string | null;
 	}
@@ -52,7 +52,7 @@
 		translationsTotal = 0,
 		translationsPage = 1,
 		translationsTotalPages = 1,
-		translationsHrefForPage = () => '',
+		translationsApiPath = '',
 		editProfileHref = null,
 		musicUrl = null
 	}: Props = $props();
@@ -218,7 +218,7 @@
 					totalCount={translationsTotal}
 					page={translationsPage}
 					totalPages={translationsTotalPages}
-					hrefForPage={translationsHrefForPage}
+					{translationsApiPath}
 					translationStats={profileStats?.translations ?? null}
 					translatorName={linkedTranslator?.name}
 				/>

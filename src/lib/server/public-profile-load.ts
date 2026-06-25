@@ -22,11 +22,6 @@ const userProfileSelect = {
 	updatedAt: table.user.updatedAt
 } as const;
 
-function parseTranslationsPage(url: URL): number {
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-}
-
 export function profilePublicPath(username: string, search = ''): string {
 	const base = `/profile/${encodeURIComponent(username.trim())}`;
 	if (!search) return base;
@@ -67,7 +62,7 @@ export async function loadPublicProfile(options: {
 	const theme = buildCustomProfileTheme(row);
 	const [{ translator, links }, translationBundle, profileStats] = await Promise.all([
 		loadTranslatorPagesForUser(userId),
-		loadProfileTranslationsForUser(userId, { page: parseTranslationsPage(options.url) }),
+		loadProfileTranslationsForUser(userId, { page: 1 }),
 		loadProfileStats(userId)
 	]);
 
