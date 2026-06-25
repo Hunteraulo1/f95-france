@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
 	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
+	import type { PublicTranslatorRow } from '$lib/server/public-translators';
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
@@ -18,23 +20,57 @@
 	let searchQuery = $derived(data.q);
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	const buildQuery = (overrides: { q?: string; page?: number } = {}) => {
+	let allTranslators = $state<PublicTranslatorRow[]>([]);
+	let loadedPage = $state(1);
+	let totalPages = $state(1);
+	let loadingMore = $state(false);
+	let loadMoreError = $state<string | null>(null);
+
+	const listCacheKey = $derived(data.q);
+
+	$effect(() => {
+		String(listCacheKey);
+		allTranslators = [...(data.translators ?? [])];
+		loadedPage = data.page ?? 1;
+		totalPages = data.totalPages ?? 1;
+		loadMoreError = null;
+	});
+
+	const hasMore = $derived(loadedPage < totalPages);
+
+	const buildQuery = (overrides: { q?: string } = {}) => {
 		const qVal = overrides.q !== undefined ? overrides.q : data.q;
-		const page = overrides.page ?? data.page;
-		const params: string[] = [];
 		const trimmed = qVal.trim();
-		if (trimmed) params.push(`q=${encodeURIComponent(trimmed)}`);
-		if (page > 1) params.push(`page=${page}`);
-		return params.length ? `?${params.join('&')}` : '';
+		return trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
 	};
 
-	const buildHref = (overrides: { q?: string; page?: number } = {}) =>
+	const buildHref = (overrides: { q?: string } = {}) =>
 		resolve(`/translators${buildQuery(overrides)}` as '/translators');
 
-	const translatorsHref = (page: number) => buildHref({ page });
+	const loadMoreTranslators = async () => {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		loadMoreError = null;
+		try {
+			const nextPage = loadedPage + 1;
+			const base = buildQuery();
+			const sep = base ? '&' : '?';
+			const url = `${resolve('/translators')}${base}${sep}page=${nextPage}`;
+			const result = await fetchPaginatedJson<PublicTranslatorRow>(url, (body) =>
+				Array.isArray(body.translators) ? (body.translators as PublicTranslatorRow[]) : []
+			);
+			allTranslators = [...allTranslators, ...result.items];
+			loadedPage = result.page;
+			totalPages = result.totalPages;
+		} catch {
+			loadMoreError = 'Impossible de charger la suite.';
+		} finally {
+			loadingMore = false;
+		}
+	};
 
 	const navigateSearch = (value: string) => {
-		void goto(buildHref({ q: value, page: 1 }), {
+		void goto(buildHref({ q: value }), {
 			replaceState: true,
 			keepFocus: true,
 			noScroll: true,
@@ -94,7 +130,7 @@
 		<div role="alert" class="alert alert-warning">
 			<span>{data.error}</span>
 		</div>
-	{:else if !data.translators.length}
+	{:else if !allTranslators.length}
 		<div class="card border border-base-300 bg-base-100">
 			<div class="card-body items-start gap-2">
 				<h2 class="card-title text-lg">Aucun traducteur trouvé</h2>
@@ -114,7 +150,7 @@
 		<ul class="list rounded-box bg-base-100 shadow-md">
 			<li class="p-4 pb-2 text-xs tracking-wide opacity-60 uppercase">{resultSummary}</li>
 
-			{#each data.translators as translator (translator.id)}
+			{#each allTranslators as translator (translator.id)}
 				<li class="list-row items-center hover:bg-base-200">
 					<div class="shrink-0">
 						{#if translator.avatar}
@@ -210,12 +246,11 @@
 			{/each}
 		</ul>
 
-		<Pagination
-			currentPage={data.page}
-			totalPages={data.totalPages}
-			totalCount={data.total}
-			countLabel="traducteur"
-			hrefForPage={translatorsHref}
+		<InfiniteScrollSentinel
+			hasMore={hasMore && !data.error}
+			loading={loadingMore}
+			error={loadMoreError}
+			onLoadMore={loadMoreTranslators}
 		/>
 	{/if}
 </main>

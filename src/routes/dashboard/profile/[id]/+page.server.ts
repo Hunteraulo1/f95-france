@@ -23,11 +23,6 @@ const userProfileSelect = {
 	updatedAt: table.user.updatedAt
 } as const;
 
-function parseTranslationsPage(url: URL): number {
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	return Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-}
-
 export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const profileRef = String(params.id ?? '').trim();
 
@@ -62,7 +57,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const theme = buildCustomProfileTheme(row);
 	const [{ translator, links }, translationBundle, profileStats] = await Promise.all([
 		loadTranslatorPagesForUser(userId),
-		loadProfileTranslationsForUser(userId, { page: parseTranslationsPage(url) }),
+		loadProfileTranslationsForUser(userId, { page: 1 }),
 		loadProfileStats(userId)
 	]);
 

@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import BannerLogo from '$lib/components/BannerLogo.svelte';
 	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
+	import { hasPermission } from '$lib/permissions/client';
 	import { clearUserData, user } from '$lib/stores';
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { profilePublicHref } from '$lib/utils/profile-url';
@@ -76,6 +77,17 @@
 						</li>
 					{/each}
 					{#if $user}
+						{#if $hasPermission('users.manage')}
+							<li aria-current={isCurrentPath('/dashboard')}>
+								<a
+									href={resolve('/dashboard')}
+									class="btn border-0 text-sm font-semibold shadow-none hover:bg-transparent hover:text-secondary aria-[current=page]:text-primary"
+									draggable="false"
+								>
+									Tableau de bord
+								</a>
+							</li>
+						{/if}
 						<li>
 							<UserAvatarMenu class="z-50" />
 						</li>

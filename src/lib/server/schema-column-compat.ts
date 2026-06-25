@@ -45,6 +45,20 @@ export async function hasUpdateHistoryTable(): Promise<boolean> {
 	return hasPublicColumn('update_history', 'id');
 }
 
+export async function hasSubmissionReviewedByUserIdColumn(): Promise<boolean> {
+	return hasPublicColumn('submission', 'reviewed_by_user_id');
+}
+
+/** N’inclut `reviewedByUserId` dans un `.set()` que si la colonne existe en base. */
+export async function submissionReviewedByUserIdPatch(
+	reviewedByUserId: string | null
+): Promise<{ reviewedByUserId?: string | null }> {
+	if (!(await hasSubmissionReviewedByUserIdColumn())) {
+		return {};
+	}
+	return { reviewedByUserId };
+}
+
 /** Message DB exploitable côté client (sans fuite de détail interne). */
 export function publicErrorFromUnknown(error: unknown, fallback: string): string {
 	if (!error || typeof error !== 'object') return fallback;

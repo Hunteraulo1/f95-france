@@ -61,6 +61,11 @@ export interface SubmissionModalItem {
 		username: string;
 		role?: string;
 	} | null;
+	reviewedByUser?: {
+		id: string;
+		username: string;
+		role?: string;
+	} | null;
 }
 
 export interface SubmissionModalTranslator {

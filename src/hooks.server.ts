@@ -20,6 +20,27 @@ import { applySecurityHeaders } from '$lib/server/security-headers';
 import { touchUserLastSeen } from '$lib/server/user-last-connection';
 import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
 
+const EXTERNAL_PUBLIC_API_ORIGIN = 'https://api.f95france.site';
+
+/** Ancienne API publique sur ce domaine → api.f95france.site (ou nouvelles routes internes). */
+function resolveDeprecatedApiRedirect(pathname: string): string | null {
+	if (pathname === '/api' || pathname === '/api/') {
+		return EXTERNAL_PUBLIC_API_ORIGIN;
+	}
+	if (pathname === '/api/games/saved-filters' || pathname === '/api/games/saved-filters/') {
+		return '/api/saved-filters/games';
+	}
+	if (pathname === '/api/updates/saved-filters' || pathname === '/api/updates/saved-filters/') {
+		return '/api/saved-filters/updates';
+	}
+	for (const prefix of ['/api/games', '/api/translators', '/api/translations', '/api/updates']) {
+		if (pathname === prefix || pathname === `${prefix}/` || pathname.startsWith(`${prefix}/`)) {
+			return `${EXTERNAL_PUBLIC_API_ORIGIN}/v1${pathname.slice('/api'.length)}`;
+		}
+	}
+	return null;
+}
+
 /**
  * Démarrage du serveur : ouvre la connexion DB et préchauffe le cache de la home
  * pour que le tout premier visiteur ne paie pas le coût à froid (TCP + TLS + requêtes).
@@ -185,6 +206,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const pathname = event.url.pathname;
+
+	const deprecatedApiRedirect = resolveDeprecatedApiRedirect(pathname);
+	if (deprecatedApiRedirect) {
+		const target = deprecatedApiRedirect.startsWith('/')
+			? new URL(deprecatedApiRedirect, event.url.origin)
+			: deprecatedApiRedirect;
+		return applySecurityHeaders(Response.redirect(target, 308));
+	}
+
 	if (event.locals.user && pathname.startsWith('/dashboard') && !isStaticAssetPath(pathname)) {
 		touchUserLastSeen(event.locals.user.id);
 	}
@@ -262,18 +292,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
 	const isSessionQuotaMeteredApiPath =
-		pathname.startsWith('/api/extension-api') ||
-		pathname.startsWith('/api/extension') ||
-		pathname.startsWith('/api/games') ||
-		pathname.startsWith('/api/translations') ||
-		pathname.startsWith('/api/translators') ||
-		pathname.startsWith('/api/updates');
+		pathname.startsWith('/api/extension-api') || pathname.startsWith('/api/extension');
 	const apiKeyExemptPath =
-		pathname === '/api' ||
-		pathname === '/api/' ||
 		pathname.startsWith('/api/cron/') ||
 		pathname.startsWith('/api/passkeys/') ||
-		pathname.startsWith('/api/google-oauth/');
+		pathname.startsWith('/api/google-oauth/') ||
+		pathname.startsWith('/api/discord-oauth/');
 
 	// Routes /api/* : clé API obligatoire (Authorization: Bearer … / X-Api-Key).
 	if (

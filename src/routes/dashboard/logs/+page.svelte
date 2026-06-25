@@ -2,6 +2,8 @@
 	import { browser } from '$app/environment';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import type { LiveLogEntry } from '$lib/logs/live-log-entry';
 	import { roleBadgeStyles } from '$lib/stores';
 	import { roleUsernameClass } from '$lib/utils/role-display';
@@ -141,16 +143,44 @@
 		return true;
 	};
 
+	type ApiLogRow = (typeof data.logs)[number];
+
+	const logsCacheKey = $derived(JSON.stringify(data.filters));
+
+	const logList = useInfiniteList<ApiLogRow>({
+		getInitial: () => ({
+			items: data.logs ?? [],
+			page: data.pagination.page ?? 1,
+			totalPages: data.pagination.totalPages ?? 1
+		}),
+		getCacheKey: () => logsCacheKey,
+		buildUrl: (nextPage) => {
+			const pairs: Array<[string, string]> = [];
+			if (data.filters.method) pairs.push(['method', data.filters.method]);
+			if (data.filters.search) pairs.push(['q', data.filters.search]);
+			if (data.filters.user) pairs.push(['user', data.filters.user]);
+			if (data.filters.errorsOnly) pairs.push(['errors', 'true']);
+			if (data.filters.warningsOnly) pairs.push(['warnings', 'true']);
+			if (data.filters.redirectsOnly) pairs.push(['redirects', 'true']);
+			if (data.filters.from) pairs.push(['from', data.filters.from]);
+			if (data.filters.to) pairs.push(['to', data.filters.to]);
+			pairs.push(['limit', String(data.pagination.limit)]);
+			pairs.push(['page', String(nextPage)]);
+			return `/dashboard/logs?${pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')}`;
+		},
+		pickItems: (body) => (Array.isArray(body.logs) ? (body.logs as ApiLogRow[]) : [])
+	});
+
 	const displayedLogs = $derived.by(() => {
 		const liveIds = new Set(liveLogs.map((entry) => entry.id));
 		return [
 			...liveLogs.filter(matchesLiveFilters),
-			...data.logs.filter((log) => !liveIds.has(log.id))
+			...logList.items.filter((log) => !liveIds.has(log.id))
 		];
 	});
 
 	const bufferedLiveCount = $derived.by(() => {
-		const existingIds = new Set(data.logs.map((log) => log.id));
+		const existingIds = new Set(logList.items.map((log) => log.id));
 		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id))
 			.length;
 	});
@@ -225,24 +255,6 @@
 		liveEnabled = false;
 		disconnectLive();
 	});
-
-	const buildPageHref = (targetPage: number) => {
-		const pairs: Array<[string, string]> = [];
-		if (data.filters.method) pairs.push(['method', data.filters.method]);
-		if (data.filters.search) pairs.push(['q', data.filters.search]);
-		if (data.filters.user) pairs.push(['user', data.filters.user]);
-		if (data.filters.errorsOnly) pairs.push(['errors', 'true']);
-		if (data.filters.warningsOnly) pairs.push(['warnings', 'true']);
-		if (data.filters.redirectsOnly) pairs.push(['redirects', 'true']);
-		if (data.filters.from) pairs.push(['from', data.filters.from]);
-		if (data.filters.to) pairs.push(['to', data.filters.to]);
-		pairs.push(['limit', String(data.pagination.limit)]);
-		pairs.push(['page', String(targetPage)]);
-		const query = pairs
-			.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-			.join('&');
-		return `/dashboard/logs?${query}`;
-	};
 </script>
 
 <svelte:head>
@@ -286,7 +298,7 @@
 			<div class="stat-title">Total</div>
 			<div class="stat-value text-base-content">{totalCount}</div>
 			<div class="stat-desc">
-				Page {data.pagination.page} / {data.pagination.totalPages}
+				{logList.items.length} chargé{logList.items.length > 1 ? 's' : ''} sur {totalCount}
 			</div>
 		</div>
 		<div class="stat">
@@ -479,10 +491,11 @@
 									</td>
 									<td>
 										{#if log.user?.username}
+											{@const userRole = log.user.role ?? 'user'}
 											<span
 												class="font-semibold {roleUsernameClass(
-													log.user.role,
-													$roleBadgeStyles[log.user.role]
+													userRole,
+													$roleBadgeStyles[userRole]
 												)}">{log.user.username}</span
 											>
 										{:else}
@@ -534,23 +547,12 @@
 		</div>
 	</div>
 
-	<div class="flex items-center justify-center">
-		<div class="join">
-			{#if data.pagination.page > 1}
-				<a class="join-item btn" href={buildPageHref(data.pagination.page - 1)}>Précédent</a>
-			{:else}
-				<button class="join-item btn btn-disabled" type="button">Précédent</button>
-			{/if}
-			<button class="join-item btn btn-active" type="button">
-				Page {data.pagination.page} / {data.pagination.totalPages}
-			</button>
-			{#if data.pagination.page < data.pagination.totalPages}
-				<a class="join-item btn" href={buildPageHref(data.pagination.page + 1)}>Suivant</a>
-			{:else}
-				<button class="join-item btn btn-disabled" type="button">Suivant</button>
-			{/if}
-		</div>
-	</div>
+	<InfiniteScrollSentinel
+		hasMore={logList.hasMore}
+		loading={logList.loadingMore}
+		error={logList.loadMoreError}
+		onLoadMore={logList.loadMore}
+	/>
 </div>
 
 <DaisyDashboardModal

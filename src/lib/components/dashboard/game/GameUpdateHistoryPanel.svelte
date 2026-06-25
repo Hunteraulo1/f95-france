@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Pagination from '$lib/components/Pagination.svelte';
 	import RestoreHistoryModal from '$lib/components/dashboard/game/RestoreHistoryModal.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { newToast } from '$lib/stores';
 	import {
 		formatUpdateHistoryDate,
@@ -40,11 +41,18 @@
 		translations: TranslationRow[];
 	} = $props();
 
-	const hrefForHistoryPage = (page: number) => {
-		const base = resolve(`/dashboard/manager/game/${gameId}`);
-		if (page <= 1) return base;
-		return `${base}?historyPage=${page}`;
-	};
+	const list = useInfiniteList<GameUpdateHistoryEntry>({
+		getInitial: () => ({
+			items: history ?? [],
+			page: historyPage ?? 1,
+			totalPages: historyTotalPages ?? 1
+		}),
+		getCacheKey: () => gameId,
+		buildUrl: (nextPage) =>
+			`${resolve(`/dashboard/manager/game/${gameId}/update-history`)}?page=${nextPage}`,
+		pickItems: (body) =>
+			Array.isArray(body.entries) ? (body.entries as GameUpdateHistoryEntry[]) : []
+	});
 
 	let revertingId = $state<string | null>(null);
 	let pendingRestoreEntry = $state<GameUpdateHistoryEntry | null>(null);
@@ -97,15 +105,18 @@
 		<h2 class="flex items-center gap-2 text-2xl font-bold text-base-content">
 			<History size={24} />
 			Historique des traductions
+			{#if historyTotalCount > 0}
+				<span class="badge badge-neutral badge-sm font-normal">{historyTotalCount}</span>
+			{/if}
 		</h2>
 
-		{#if history.length === 0}
+		{#if list.items.length === 0}
 			<p class="text-sm text-base-content/60">
 				Aucun changement enregistré pour ce jeu pour le moment.
 			</p>
 		{:else}
 			<ul class="timeline timeline-vertical timeline-compact w-full">
-				{#each history as entry (entry.id)}
+				{#each list.items as entry (entry.id)}
 					{@const changes = entry.changes}
 					{@const deltas = changes ? visibleHistoryDeltas(entry.action, changes.deltas) : []}
 					<li>
@@ -217,12 +228,11 @@
 			</ul>
 
 			<div class="mt-2 border-t border-base-300 pt-4">
-				<Pagination
-					currentPage={historyPage}
-					totalPages={historyTotalPages}
-					totalCount={historyTotalCount}
-					hrefForPage={hrefForHistoryPage}
-					countLabel="entrée"
+				<InfiniteScrollSentinel
+					hasMore={list.hasMore}
+					loading={list.loadingMore}
+					error={list.loadMoreError}
+					onLoadMore={list.loadMore}
 				/>
 			</div>
 		{/if}

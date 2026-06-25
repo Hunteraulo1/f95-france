@@ -4,8 +4,9 @@
 	import { resolve } from '$app/paths';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { formatUserAccountOptionLabel } from '$lib/permissions/user-email';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -19,32 +20,18 @@
 	let searchQuery = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	const buildQuery = (overrides: { q?: string; page?: number }) => {
+	const buildQuery = (overrides: { q?: string }) => {
 		const qVal = overrides.q !== undefined ? overrides.q : (data.q ?? '');
-		const page = overrides.page ?? data.page;
-		const params: string[] = [];
-		if (qVal) params.push(`q=${encodeURIComponent(qVal)}`);
-		if (page > 1) params.push(`page=${page}`);
-		return params.length ? `?${params.join('&')}` : '';
+		return qVal ? `?q=${encodeURIComponent(qVal)}` : '';
 	};
 
-	const buildHref = (overrides: { q?: string; page?: number }) =>
-		resolve(`/dashboard/translators${buildQuery(overrides)}` as '/dashboard/translators');
-
-	const hrefForPage = (p: number) => buildHref({ page: p });
-
 	const navigateSearch = (value: string) => {
-		goto(
-			resolve(
-				`/dashboard/translators${buildQuery({ q: value, page: 1 })}` as '/dashboard/translators'
-			),
-			{
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
-				invalidateAll: true
-			}
-		);
+		goto(resolve(`/dashboard/translators${buildQuery({ q: value })}` as '/dashboard/translators'), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true,
+			invalidateAll: true
+		});
 	};
 
 	const onSearchInput = (value: string) => {
@@ -89,6 +76,24 @@
 		showEditModal = false;
 		selectedTranslator = null;
 	};
+
+	type TranslatorRow = (typeof data.translator)[number];
+
+	const list = useInfiniteList<TranslatorRow>({
+		getInitial: () => ({
+			items: data.translator ?? [],
+			page: data.page ?? 1,
+			totalPages: data.totalPages ?? 1
+		}),
+		getCacheKey: () => data.q ?? '',
+		buildUrl: (nextPage) => {
+			const parts = [`page=${nextPage}`];
+			if (data.q) parts.unshift(`q=${encodeURIComponent(data.q)}`);
+			return `${resolve('/dashboard/translators')}?${parts.join('&')}`;
+		},
+		pickItems: (body) =>
+			Array.isArray(body.translator) ? (body.translator as TranslatorRow[]) : []
+	});
 </script>
 
 <div class="mb-4 flex w-full flex-wrap items-center justify-end gap-2">
@@ -133,9 +138,9 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each data.translator as translator, index (translator.id)}
+			{#each list.items as translator, index (translator.id)}
 				<tr>
-					<td class="font-bold">{(data.page - 1) * data.pageSize + index + 1}</td>
+					<td class="font-bold">{index + 1}</td>
 					<th class="font-bold">{translator.name}</th>
 					<td>
 						{#if translator.userId}
@@ -191,12 +196,11 @@
 	</table>
 
 	<div class="card-body pt-0">
-		<Pagination
-			currentPage={data.page}
-			totalPages={data.totalPages}
-			totalCount={data.totalCount}
-			{hrefForPage}
-			countLabel="traducteur"
+		<InfiniteScrollSentinel
+			hasMore={list.hasMore}
+			loading={list.loadingMore}
+			error={list.loadMoreError}
+			onLoadMore={list.loadMore}
 		/>
 	</div>
 </div>

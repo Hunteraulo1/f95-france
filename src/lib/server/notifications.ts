@@ -1,5 +1,7 @@
 import { isRoutineApiError } from '$lib/server/api-log-noise';
 import { appLogWarn } from '$lib/server/app-log-bridge';
+import type { AutoCheckTriggerSource } from '$lib/server/auto-check-run-recorder';
+import type { AutoCheckResult } from '$lib/server/check-version';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { getUserIdsWithPermission } from '$lib/server/permissions';
@@ -11,7 +13,8 @@ export type NotificationType =
 	| 'submission_accepted'
 	| 'submission_rejected'
 	| 'submission_to_fix'
-	| 'api_error';
+	| 'api_error'
+	| 'auto_check_error';
 
 interface CreateNotificationParams {
 	userId: string;
@@ -202,6 +205,45 @@ export async function notifyApiError(
 		}
 	} catch (error) {
 		appLogWarn('notification', "Notification d'erreur API échouée", error);
+	}
+}
+
+/**
+ * Notifie les gestionnaires auto-check lorsqu’un run signale des erreurs.
+ */
+export async function notifyAutoCheckIssues(
+	runId: string,
+	result: AutoCheckResult,
+	triggerSource: AutoCheckTriggerSource
+) {
+	if (result.issues.length === 0) return;
+
+	const [autoCheckMonitorRecipients, devRecipients] = await Promise.all([
+		getUserIdsWithPermission('auto_check.monitor'),
+		getUserIdsWithPermission('dev.panel')
+	]);
+	const recipientIds = Array.from(new Set([...autoCheckMonitorRecipients, ...devRecipients]));
+	if (recipientIds.length === 0) return;
+
+	const triggerLabel =
+		triggerSource === 'cron' ? 'cron' : triggerSource === 'manual' ? 'manuel' : 'arrière-plan';
+
+	for (const userId of recipientIds) {
+		await createNotification({
+			userId,
+			type: 'auto_check_error',
+			title: 'Auto-check : erreurs détectées',
+			message: `${result.issues.length} problème(s) lors du run ${triggerLabel}. ${result.updatedGames} jeu(x) mis à jour, ${result.updatedTranslations} traduction(s) impactée(s).`,
+			link: `/dashboard/auto-check?run=${runId}`,
+			metadata: {
+				runId,
+				issueCount: result.issues.length,
+				triggerSource,
+				updatedGames: result.updatedGames
+			}
+		}).catch((error) => {
+			appLogWarn('notification', 'Création notification auto-check échouée', error);
+		});
 	}
 }
 

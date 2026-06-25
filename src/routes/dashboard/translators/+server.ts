@@ -1,49 +1,21 @@
-import { db } from '$lib/server/db';
-import { translator } from '$lib/server/db/schema';
-import { ensureTranslatorByName } from '$lib/server/ensure-translator';
-import {
-	assertDirectGameWriteAllowed,
-	assertGameManageAccess,
-	loadCurrentUserOrThrow
-} from '$lib/server/game-manage-guard';
+import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
+import { loadDashboardTranslatorsPage } from '$lib/server/dashboard-translators-page-load';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-/** Ajout rapide depuis les formulaires jeu (mode direct admin). */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	await assertGameManageAccess(locals);
-	const currentUser = await loadCurrentUserOrThrow(locals.user!.id);
-	await assertDirectGameWriteAllowed({
-		roleSlug: currentUser.role,
-		userDirectMode: currentUser.directMode ?? true,
-		requestDirectMode: true
+export const GET: RequestHandler = async ({ locals, url }) => {
+	assertDashboardAuthenticated(locals);
+
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
+	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+
+	const result = await loadDashboardTranslatorsPage({ locals, q, requestedPage });
+
+	return json({
+		translator: result.translator,
+		page: result.page,
+		totalPages: result.totalPages,
+		total: result.totalCount
 	});
-
-	let body: { name?: unknown };
-	try {
-		body = await request.json();
-	} catch {
-		return json({ error: 'Corps JSON invalide' }, { status: 400 });
-	}
-
-	const name = typeof body.name === 'string' ? body.name.trim() : '';
-	if (!name) {
-		return json({ error: 'Le nom est requis' }, { status: 400 });
-	}
-
-	try {
-		const id = await ensureTranslatorByName(name);
-		const rows = await db.select().from(translator);
-		return json({ id, name, translators: rows });
-	} catch (error: unknown) {
-		console.error('Erreur création traducteur rapide:', error);
-		const mysqlError =
-			error && typeof error === 'object' && 'cause' in error
-				? (error.cause as { code?: string; errno?: number })
-				: null;
-		if (mysqlError && (mysqlError.code === 'ER_DUP_ENTRY' || mysqlError.errno === 1062)) {
-			return json({ error: `Un traducteur avec le nom « ${name} » existe déjà` }, { status: 409 });
-		}
-		return json({ error: 'Erreur lors de la création du traducteur' }, { status: 500 });
-	}
 };

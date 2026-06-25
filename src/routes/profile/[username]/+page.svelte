@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ProfileView from '$lib/components/dashboard/ProfileView.svelte';
-	import { profilePublicHref } from '$lib/utils/profile-url';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -10,10 +9,9 @@
 
 	let { data }: Props = $props();
 
-	const translationsHrefForPage = (page: number) => {
-		const base = resolve(profilePublicHref(data.profileSlug));
-		return page > 1 ? `${base}?page=${page}` : base;
-	};
+	const translationsApiPath = $derived(
+		resolve(`/profile/${data.profileSlug}/translations` as `/profile/${string}/translations`)
+	);
 
 	const editProfileHref = $derived(
 		data.isOwnProfile && data.editProfileHref
@@ -37,7 +35,7 @@
 		translationsTotal={data.translationsTotal}
 		translationsPage={data.translationsPage}
 		translationsTotalPages={data.translationsTotalPages}
-		{translationsHrefForPage}
+		{translationsApiPath}
 		{editProfileHref}
 		musicUrl={data.customProfile?.musicUrl ?? data.user.profileMusicUrl}
 	/>

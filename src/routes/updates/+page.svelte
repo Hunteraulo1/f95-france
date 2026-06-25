@@ -1,15 +1,20 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
 	import { type GamesListViewMode } from '$lib/games/games-filter-config';
 	import {
 		formatTranslationVersionDisplay,
 		translationVersionSyncBadgeClass,
 		translationVersionSyncLabel
 	} from '$lib/games/public-game-display';
+	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
 	import type { PublicUpdateRow } from '$lib/server/public-updates';
 	import { groupUpdatesByDayAndType } from '$lib/updates/group-updates-by-day';
+	import {
+		publicUpdateDatetimeAttr,
+		revivePublicUpdateRows
+	} from '$lib/updates/revive-public-update-row';
 	import {
 		createDefaultUpdatesFilterGroups,
 		SAVED_UPDATES_FILTERS_KEY,
@@ -102,26 +107,61 @@
 		return `badge ${sizeClass} badge-secondary`;
 	};
 
-	const formatTime = (value: Date) =>
+	const formatTime = (value: Date | string) =>
 		new Date(value).toLocaleTimeString('fr-FR', {
 			hour: '2-digit',
 			minute: '2-digit'
 		});
 
-	const groupedUpdates = $derived(groupUpdatesByDayAndType(data.updates));
+	let allUpdates = $state<PublicUpdateRow[]>([]);
+	let loadedPage = $state(1);
+	let totalPages = $state(1);
+	let loadingMore = $state(false);
+	let loadMoreError = $state<string | null>(null);
 
 	const listParams = $derived.by(
 		(): PublicUpdatesListParams => ({
-			page: data.page,
+			page: loadedPage,
 			query: data.query,
 			filters: data.filters
 		})
 	);
 
-	const updatesHref = (page: number) => {
-		const params = buildPublicUpdatesListSearchParams({ ...listParams, page });
-		const search = params.toString();
-		return search ? resolve(`/updates?${search}` as '/updates') : resolve('/updates');
+	const listCacheKey = $derived(JSON.stringify({ q: data.query, filters: data.filters }));
+
+	$effect(() => {
+		String(listCacheKey);
+		allUpdates = [...(data.updates ?? [])];
+		loadedPage = data.page ?? 1;
+		totalPages = data.totalPages ?? 1;
+		loadMoreError = null;
+	});
+
+	const groupedUpdates = $derived(groupUpdatesByDayAndType(allUpdates));
+	const hasMore = $derived(loadedPage < totalPages);
+
+	const loadMoreUpdates = async () => {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		loadMoreError = null;
+		try {
+			const params = buildPublicUpdatesListSearchParams({
+				...listParams,
+				page: loadedPage + 1
+			});
+			const search = params.toString();
+			const url = search ? resolve(`/updates?${search}` as '/updates') : resolve('/updates');
+			const result = await fetchPaginatedJson<PublicUpdateRow>(url, (body) =>
+				revivePublicUpdateRows(body.updates)
+			);
+			allUpdates = [...allUpdates, ...result.items];
+			loadedPage = result.page;
+			totalPages = result.totalPages;
+		} catch {
+			loadMoreError = 'Impossible de charger la suite.';
+		} finally {
+			loadingMore = false;
+		}
 	};
 
 	const resultSummary = $derived.by(() => {
@@ -196,7 +236,10 @@
 						{game.name}
 					</a>
 				</div>
-				<time class="shrink-0 text-xs opacity-60 ml-auto" datetime={update.createdAt.toISOString()}>
+				<time
+					class="shrink-0 text-xs opacity-60 ml-auto"
+					datetime={publicUpdateDatetimeAttr(update.createdAt)}
+				>
 					{formatTime(update.createdAt)}
 				</time>
 			</div>
@@ -317,7 +360,10 @@
 						{game.name}
 					</a>
 				</h2>
-				<time class="ml-auto shrink-0 text-xs opacity-60" datetime={update.createdAt.toISOString()}>
+				<time
+					class="ml-auto shrink-0 text-xs opacity-60"
+					datetime={publicUpdateDatetimeAttr(update.createdAt)}
+				>
 					{formatTime(update.createdAt)}
 				</time>
 			</div>
@@ -397,7 +443,7 @@
 				isAuthenticated={data.isAuthenticated}
 				initialSavedFilters={data.savedFilters}
 				savedFiltersKey={SAVED_UPDATES_FILTERS_KEY}
-				savedFiltersApiPath="/api/updates/saved-filters"
+				savedFiltersApiPath="/api/saved-filters/updates"
 				buildSearchParams={buildPublicUpdatesListSearchParams}
 				createDefaultFilterGroups={createDefaultUpdatesFilterGroups}
 				cloneGroups={cloneUpdatesFilterGroups}
@@ -426,7 +472,7 @@
 		{:else}
 			<p class="text-sm text-base-content/60">{resultSummary}</p>
 
-			{#if !data.updates.length}
+			{#if !allUpdates.length}
 				<div class="card border border-base-300 bg-base-100">
 					<div class="card-body items-start gap-2">
 						<h2 class="card-title text-lg">Aucune mise à jour trouvée</h2>
@@ -489,13 +535,11 @@
 					</div>
 				{/if}
 
-				<Pagination
-					currentPage={data.page}
-					totalPages={data.totalPages}
-					totalCount={data.total}
-					countLabel="mise à jour"
-					countLabelPlural="mises à jour"
-					hrefForPage={updatesHref}
+				<InfiniteScrollSentinel
+					hasMore={hasMore && !data.error}
+					loading={loadingMore}
+					error={loadMoreError}
+					onLoadMore={loadMoreUpdates}
 				/>
 			{/if}
 		{/if}

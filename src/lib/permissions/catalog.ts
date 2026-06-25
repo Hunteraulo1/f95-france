@@ -13,6 +13,7 @@ export const PERMISSION_KEYS = [
 	'api_keys.label_brackets',
 	'games.manage',
 	'games.auto_check',
+	'auto_check.monitor',
 	'games.silent_mode',
 	'games.view_history',
 	'games.revert_history',
@@ -116,7 +117,14 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		key: 'games.auto_check',
 		label: 'Auto-check (jeu et traductions)',
 		description:
-			'Activer ou désactiver l’auto-check sur les fiches F95, modifier l’auto-check des traductions et actualiser les versions via le checker',
+			'Activer ou désactiver l’auto-check sur les fiches F95, modifier l’auto-check des traductions et actualiser la version d’un jeu via le checker',
+		group: 'Contenu'
+	},
+	{
+		key: 'auto_check.monitor',
+		label: 'Suivi auto-check',
+		description:
+			'Consulter l’historique des exécutions du cron auto-check et lancer un auto-check manuel',
 		group: 'Contenu'
 	},
 	{
@@ -263,6 +271,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'api_keys.label_brackets',
 		'games.manage',
 		'games.auto_check',
+		'auto_check.monitor',
 		'games.silent_mode',
 		'games.view_history',
 		'games.revert_history',

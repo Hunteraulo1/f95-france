@@ -5,6 +5,7 @@ import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
+import { resolveTranslatorContributorIdsForStorage } from '$lib/server/ensure-translator';
 import { getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import {
@@ -97,6 +98,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					? String(proofreaderId)
 					: null
 				: before.proofreaderId;
+		const { translatorId: storedTranslatorId, proofreaderId: storedProofreaderId } =
+			await resolveTranslatorContributorIdsForStorage(resolvedTranslatorId, resolvedProofreaderId);
 
 		const TNAMES = [
 			'no_translation',
@@ -193,8 +196,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 					...(typeof gameTypeBody === 'string' && gameTypeBody.trim()
 						? { gameType: gameTypeBody.trim() }
 						: {}),
-					translatorId: resolvedTranslatorId,
-					proofreaderId: resolvedProofreaderId,
+					translatorId: storedTranslatorId,
+					proofreaderId: storedProofreaderId,
 					ac: acValue
 				},
 				pendingNames.length > 0 ? pendingNames : undefined
@@ -253,11 +256,11 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			ttype: effectiveTtype,
 			tlink: isF95VersionRefresh ? before.tlink : tlinkStored,
 			tname: effectiveTname,
-			translatorId: resolvedTranslatorId,
-			proofreaderId: resolvedProofreaderId,
+			translatorId: storedTranslatorId,
+			proofreaderId: storedProofreaderId,
 			translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
 				beforeTranslatorId: before.translatorId,
-				afterTranslatorId: resolvedTranslatorId,
+				afterTranslatorId: storedTranslatorId,
 				currentTranslatorAlertsEnabled: before.translatorAlertsEnabled
 			}),
 			ac: acValue,
@@ -318,8 +321,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		voidSyncTranslatorActivityCountsToGoogleSheet(
 			before.translatorId,
 			before.proofreaderId,
-			resolvedTranslatorId,
-			resolvedProofreaderId
+			storedTranslatorId,
+			storedProofreaderId
 		);
 		await incrementUserGameCounter(currentUser.id, 'edit', 1);
 

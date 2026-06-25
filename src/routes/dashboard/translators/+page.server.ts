@@ -1,21 +1,15 @@
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
+import { loadDashboardTranslatorsPage } from '$lib/server/dashboard-translators-page-load';
+import { getDiscordAvatarUrl } from '$lib/server/discord-oauth';
+import { assertPermission, hasPermission } from '$lib/server/permissions';
+import { handleTranslatorPagesUpdate } from '$lib/server/translator-pages-write';
+import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { randomUUID } from 'node:crypto';
-import { getDiscordAvatarUrl } from '$lib/server/discord-oauth';
-import { assertPermission, hasPermission } from '$lib/server/permissions';
-import { getRoleEditMode } from '$lib/server/role-edit-mode';
-import {
-	handleTranslatorPagesUpdate,
-	resolveTranslatorPagesWriteMode
-} from '$lib/server/translator-pages-write';
-import { assignTranslatorUser } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
-import { and, eq, like, or, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
-
-const PAGE_SIZE = 20;
 
 async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: string | null) {
 	const normalizedDiscordId = discordId?.trim();
@@ -42,94 +36,9 @@ async function setUserAvatarFromDiscordIdIfMissing(userId: string, discordId: st
 export const load: PageServerLoad = async ({ locals, url }) => {
 	assertDashboardAuthenticated(locals);
 
-	const canManageTranslators = hasPermission(locals, 'translators.manage');
-	const canViewUserEmails = hasPermission(locals, 'users.view_email');
-	const hasGamesManage = hasPermission(locals, 'games.manage');
-	const roleEditMode = hasGamesManage ? await getRoleEditMode(locals.user.role) : null;
-
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-	const escapeIlike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
-
-	const conditions = [];
-	if (!canManageTranslators) {
-		conditions.push(eq(table.translator.userId, locals.user.id));
-	}
-	if (q) {
-		const pattern = `%${escapeIlike(q)}%`;
-		conditions.push(
-			or(like(table.translator.name, pattern), like(table.translator.discordId, pattern))
-		);
-	}
-	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.translator);
-	const [countRow] = await (whereClause ? countBase.where(whereClause) : countBase);
-
-	const totalCount = Number(countRow?.count ?? 0);
-	const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-	const page = Math.min(requestedPage, totalPages);
-	const offset = (page - 1) * PAGE_SIZE;
-
-	const listBase = db
-		.select({
-			id: table.translator.id,
-			name: table.translator.name,
-			discordId: table.translator.discordId,
-			pages: table.translator.pages,
-			userId: table.translator.userId
-		})
-		.from(table.translator);
-	const translators = await (whereClause ? listBase.where(whereClause) : listBase)
-		.orderBy(table.translator.name)
-		.limit(PAGE_SIZE)
-		.offset(offset);
-
-	const users = canManageTranslators
-		? await db
-				.select({
-					id: table.user.id,
-					username: table.user.username,
-					email: table.user.email
-				})
-				.from(table.user)
-				.orderBy(table.user.username)
-		: [];
-
-	const translatorsWithPages = translators.map((translator) => ({
-		...translator,
-		pages: JSON.parse(translator.pages || '[]')
-	}));
-
-	const translatorPagesWriteMode = await resolveTranslatorPagesWriteMode({
-		hasGamesManage,
-		roleSlug: locals.user.role,
-		userDirectMode: locals.user.directMode ?? true
-	});
-
-	const usersForClient = users.map((u) => ({
-		...u,
-		email: formatUserEmailForDisplay(u.email, canViewUserEmails)
-	}));
-
-	return {
-		translator: translatorsWithPages,
-		users: usersForClient,
-		canManageTranslators,
-		canViewUserEmails,
-		hasGamesManage,
-		roleEditMode,
-		translatorPagesWriteMode,
-		directMode: locals.user.directMode ?? true,
-		currentUserId: locals.user.id,
-		q,
-		page,
-		pageSize: PAGE_SIZE,
-		totalCount,
-		totalPages
-	};
+	return loadDashboardTranslatorsPage({ locals, q, requestedPage: 1 });
 };
 
 export const actions: Actions = {

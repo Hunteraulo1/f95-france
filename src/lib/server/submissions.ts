@@ -4,7 +4,7 @@ import * as table from '$lib/server/db/schema';
 import {
 	createPendingTranslators,
 	normalizePendingNewTranslatorNames,
-	resolveTranslatorFieldForStorage
+	resolveTranslatorContributorIdsForStorage
 } from '$lib/server/ensure-translator';
 import {
 	clampTranslationAc,
@@ -46,11 +46,11 @@ async function resolveSubmissionContributorIds(
 ): Promise<{ translatorId: string | null; proofreaderId: string | null }> {
 	const pending = normalizePendingNewTranslatorNames(parsedData.pendingNewTranslators);
 	const nameToId = await createPendingTranslators(pending);
-	const [translatorId, proofreaderId] = await Promise.all([
-		resolveTranslatorFieldForStorage(translationData.translatorId, nameToId),
-		resolveTranslatorFieldForStorage(translationData.proofreaderId, nameToId)
-	]);
-	return { translatorId, proofreaderId };
+	return resolveTranslatorContributorIdsForStorage(
+		translationData.translatorId,
+		translationData.proofreaderId,
+		nameToId
+	);
 }
 
 /**

@@ -37,6 +37,8 @@ export type DbSheetSyncResult = {
 				syncedTranslations: number;
 				syncedTranslators: number;
 				prunedJeuxRows?: number;
+				dedupedJeuxRows?: number;
+				repairedContributorIds?: number;
 				errors: string[];
 		  }
 		| null;
