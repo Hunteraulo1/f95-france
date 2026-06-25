@@ -1,46 +1,18 @@
 import { env } from '$env/dynamic/private';
-import { env as publicEnv } from '$env/dynamic/public';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
-function getConfiguredOrigins(): URL[] {
-	const raw = [env.APP_ORIGINS?.trim(), env.APP_ORIGIN?.trim(), publicEnv.PUBLIC_APP_ORIGIN?.trim()]
-		.filter(Boolean)
-		.join(',');
-
-	const values = Array.from(
-		new Set(
-			raw
-				.split(',')
-				.map((v) => v.trim())
-				.filter(Boolean)
-		)
-	);
-
-	const urls: URL[] = [];
-	for (const value of values) {
-		try {
-			urls.push(new URL(value));
-		} catch {
-			// ignore invalid origins from env
-		}
-	}
-	return urls;
-}
-
 function resolveOrigin(requestUrl?: string): URL {
-	const configured = getConfiguredOrigins();
-	const fallback = configured[0] ?? new URL('https://f95france.site');
+	const fallback = new URL(env.SERVICE_URL_APP?.trim() ?? 'https://f95france.site');
 
 	if (!requestUrl) return fallback;
 	try {
 		const requested = new URL(requestUrl);
 		const requestedOrigin = `${requested.protocol}//${requested.host}`;
-		const match = configured.find((u) => `${u.protocol}//${u.host}` === requestedOrigin);
-		return match ?? fallback;
+		return new URL(requestedOrigin);
 	} catch {
 		return fallback;
 	}

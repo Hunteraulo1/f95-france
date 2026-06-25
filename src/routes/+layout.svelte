@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
 	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
 	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
-	import { SITE, siteOrigin } from '$lib/site';
+	import { SITE } from '$lib/site';
 	import { applyFaviconEnvBadge } from '$lib/site-favicon';
 	import { resolveSiteEnvBadge } from '$lib/site-host';
 	import { initializeUserFromLocals } from '$lib/stores';
@@ -51,7 +50,7 @@
 		void applyFaviconEnvBadge(badge);
 	});
 
-	const origin = $derived(siteOrigin(env.PUBLIC_APP_ORIGIN));
+	const origin = $derived(data.origin);
 	const ogImage = SITE.ogImageUrl;
 	const pageUrl = $derived(origin);
 	const isHome = $derived(page.url.pathname === '/');

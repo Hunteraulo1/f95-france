@@ -28,10 +28,10 @@ bun install
 cp .env.example .env
 # Éditer .env avec vos valeurs (voir section Variables d'environnement)
 
-# 3. Démarrer MariaDB
+# 3. Démarrer MariaDB (uniquement — pas le conteneur app)
 bun run dev:up
 
-# 4. Appliquer les migrations
+# 4. Appliquer les migrations (une seule fois, depuis l'hôte)
 bun run db:migrate
 
 # 5. Lancer le serveur de développement
@@ -44,18 +44,18 @@ L'app est disponible sur http://localhost:5173.
 
 Copier `.env.example` en `.env`. Les variables essentielles pour démarrer :
 
-| Variable                      | Description                                            |
-| ----------------------------- | ------------------------------------------------------ |
-| `PUBLIC_APP_ORIGIN`           | URL publique du site (ex: `https://f95france.site`)    |
-| `MARIADB_HOST`                | Hôte MariaDB (`localhost` en dev)                      |
-| `MARIADB_DATABASE`            | Nom de la base                                         |
-| `MARIADB_USER`                | Utilisateur MariaDB                                    |
-| `MARIADB_PASSWORD`            | Mot de passe MariaDB                                   |
-| `DISCORD_WEBHOOK_UPDATES`     | Webhook Discord pour les mises à jour                  |
-| `DISCORD_OAUTH_CLIENT_ID`     | OAuth Discord (connexion)                              |
-| `DISCORD_OAUTH_CLIENT_SECRET` | OAuth Discord (connexion)                              |
-| `CRON_SECRET`                 | Secret pour sécuriser `/api/cron/check-version`        |
-| `CONFIG_TOKEN_ENCRYPTION_KEY` | Clé de chiffrement des tokens OAuth (prod obligatoire) |
+| Variable                          | Description                                            |
+| --------------------------------- | ------------------------------------------------------ |
+| `PUBLIC_APP_ORIGIN`               | URL publique du site (ex: `https://f95france.site`)    |
+| `MARIADB_HOST`                    | Hôte MariaDB (`localhost` en dev)                      |
+| `MARIADB_DATABASE`                | Nom de la base                                         |
+| `MARIADB_USER`                    | Utilisateur MariaDB                                    |
+| `MARIADB_PASSWORD`                | Mot de passe MariaDB                                   |
+| `DISCORD_WEBHOOK_UPDATES`         | Webhook Discord pour les mises à jour                  |
+| `DISCORD_OAUTH_CLIENT_ID`         | OAuth Discord (connexion)                              |
+| `DISCORD_OAUTH_CLIENT_SECRET`     | OAuth Discord (connexion)                              |
+| `SERVICE_PASSWORD_64_CRON-SECRET` | Secret pour sécuriser `/api/cron/check-version`        |
+| `CONFIG_TOKEN_ENCRYPTION_KEY`     | Clé de chiffrement des tokens OAuth (prod obligatoire) |
 
 Voir `.env.example` pour la liste complète avec commentaires.
 

@@ -37,7 +37,7 @@ export function buildSecurityTxtContent(): string {
 	const contact = privateEnv('SECURITY_CONTACT') || SITE.defaultSecurityContact;
 	const canonical =
 		privateEnv('SECURITY_TXT_CANONICAL') ||
-		`${siteOrigin(privateEnv('PUBLIC_APP_ORIGIN'))}/.well-known/security.txt`;
+		`${siteOrigin(privateEnv('SERVICE_URL_APP'))}/.well-known/security.txt`;
 	const expires = new Date();
 	expires.setFullYear(expires.getFullYear() + 1);
 
@@ -131,7 +131,7 @@ export function validateSecurityTxt(parsed: ParsedSecurityTxt, now = new Date())
 }
 
 export function getSecurityTxtPublicUrl(): string | null {
-	const origin = privateEnv('PUBLIC_APP_ORIGIN')?.trim();
+	const origin = privateEnv('SERVICE_URL_APP')?.trim();
 	if (!origin) return null;
 	try {
 		return new URL('/.well-known/security.txt', origin).href;

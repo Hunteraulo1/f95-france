@@ -1,122 +1,23 @@
-import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+import { assertPermission, hasPermission, roleExists } from '$lib/server/permissions';
+import { loadDashboardUsersPage } from '$lib/server/dashboard-users-page-load';
+import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
-import { assertPermission, hasPermission, listAppRoles, roleExists } from '$lib/server/permissions';
-import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
-import {
-	fetchLastApiActivityByUserIds,
-	resolveLastConnectionAt
-} from '$lib/server/user-last-connection';
 import {
 	assertCanAssignUserRole,
-	assertCanManageUserWithRole,
-	listRolesAssignableToUsers
+	assertCanManageUserWithRole
 } from '$lib/server/user-role-assignment-guard';
+import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
-import { and, eq, like, ne, or, sql } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
-
-const PAGE_SIZE = 20;
-
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'users.manage');
 
-	const canViewUserEmails = hasPermission(locals, 'users.view_email');
-
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-	const searchWhere = q
-		? or(
-				like(table.user.username, `%${escapeLike(q)}%`),
-				...(canViewUserEmails ? [like(table.user.email, `%${escapeLike(q)}%`)] : [])
-			)
-		: undefined;
-
-	const countBase = db.select({ count: sql<number>`count(*)`.as('count') }).from(table.user);
-	const translatorsListPromise = db
-		.select({
-			id: table.translator.id,
-			name: table.translator.name,
-			userId: table.translator.userId
-		})
-		.from(table.translator)
-		.orderBy(table.translator.name);
-
-	const [[totalUsersResult], translatorsList] = await Promise.all([
-		searchWhere ? countBase.where(searchWhere) : countBase,
-		translatorsListPromise
-	]);
-
-	const totalUsers = Number(totalUsersResult?.count ?? 0);
-	const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
-	const page = Math.min(requestedPage, totalPages);
-	const offset = (page - 1) * PAGE_SIZE;
-
-	const listBase = db
-		.select({
-			id: table.user.id,
-			username: table.user.username,
-			email: table.user.email,
-			role: table.user.role,
-			avatar: table.user.avatar,
-			createdAt: table.user.createdAt,
-			lastSeenAt: table.user.lastSeenAt
-		})
-		.from(table.user);
-
-	const users = await (searchWhere ? listBase.where(searchWhere) : listBase)
-		.orderBy(table.user.createdAt)
-		.limit(PAGE_SIZE)
-		.offset(offset);
-
-	const lastApiActivityByUserId = await fetchLastApiActivityByUserIds(users.map((u) => u.id));
-	const now = new Date();
-	const usersWithLiveLastConnection = users.map((u) => ({
-		id: u.id,
-		username: u.username,
-		email: u.email,
-		role: u.role,
-		avatar: u.avatar,
-		createdAt: u.createdAt,
-		lastConnectionAt:
-			u.id === locals.user?.id
-				? now
-				: resolveLastConnectionAt(u.lastSeenAt, lastApiActivityByUserId.get(u.id))
-	}));
-
-	const appRoles = await listAppRoles();
-	const roles = await listRolesAssignableToUsers(
-		locals,
-		appRoles.map((r) => ({
-			slug: r.slug,
-			label: SYSTEM_ROLE_LABELS[r.slug] ?? r.label,
-			isSystem: r.isSystem
-		}))
-	);
-
-	const usersForClient = usersWithLiveLastConnection.map((u) => ({
-		...u,
-		email: formatUserEmailForDisplay(u.email, canViewUserEmails)
-	}));
-
-	return {
-		users: usersForClient,
-		translators: translatorsList,
-		roles,
-		canViewUserEmails,
-		canAssignAdmin: hasPermission(locals, 'users.assign_admin'),
-		q,
-		totalUsers,
-		page,
-		pageSize: PAGE_SIZE,
-		totalPages
-	};
+	return loadDashboardUsersPage({ locals, q, requestedPage: 1 });
 };
 
 export const actions: Actions = {

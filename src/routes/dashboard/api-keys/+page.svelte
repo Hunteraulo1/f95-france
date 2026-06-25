@@ -55,9 +55,9 @@
 	</div>
 
 	<p class="text-sm text-base-content/80">
-		Pour appeler l’API sous
-		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">/api/</code>
-		, envoie ta <strong>clé</strong> dans
+		L’API publique est hébergée sur
+		<a href="https://api.f95france.site" class="link link-primary">api.f95france.site</a>. Pour y
+		appeler les routes, envoie ta <strong>clé</strong> dans
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">Authorization: Bearer …</code>
 		ou
 		<code class="rounded bg-base-200 px-1 py-0.5 text-sm">X-Api-Key</code>. La clé agit comme ton

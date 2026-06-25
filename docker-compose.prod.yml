@@ -5,16 +5,90 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
 
     restart: unless-stopped
 
     environment:
-      NODE_ENV: production
-      HOST: 0.0.0.0
-      PORT: 3000
+      - NODE_ENV=production
+      - APP_ENV=prod
+      - HOST=0.0.0.0
+      - PORT=3000
+
+      - PROTOCOL_HEADER=x-forwarded-proto
+      - HOST_HEADER=x-forwarded-host
+
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID:?}
+
+      # ─── Base de données PROD ─────────────────────────────────────────────────────
+      - MARIADB_HOST=${MARIADB_HOST:?}
+      - MARIADB_PORT=${MARIADB_PORT:?3306}
+      - MARIADB_DATABASE=${MARIADB_DATABASE:?}
+      - MARIADB_USER=${MARIADB_USER:?}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:?}
+      - MARIADB_SSL_MODE=${MARIADB_SSL_MODE:?disable}
+      - DATABASE_POOL_MAX=${DATABASE_POOL_MAX:?10}
+
+      # ─── Logs ELK ────────────────────────────────────────────────────────────────
+      - ELK_LOG_ENABLED=${ELK_LOG_ENABLED:-true}
+      - ELK_LOG_FILE=/app/logs/f95france-dashboard.log
+      - SERVICE_NAME=f95-prod-dashboard
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:?}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:?}
+      - KIBANA_HOST=${KIBANA_HOST:-}
+
+      # ─── Inscription ─────────────────────────────────────────────────────────────
+      - REGISTRATION_DISABLED=${REGISTRATION_DISABLED:?false}
+      - SERVICE_PASSWORD_REGISTRATION-INVITE-CODE=${SERVICE_PASSWORD_REGISTRATION-INVITE-CODE}
+
+      # ─── CORS extract ────────────────────────────────────────────────────────────
+      - EXTRACT_F95_ALLOWED_ORIGINS=https://f95zone.to
+      - EXTRACT_LC_ALLOWED_ORIGINS=https://lewdcorner.com
+
+      # ─── Discord Webhooks ────────────────────────────────────────────────────────
+      - DISCORD_WEBHOOK_UPDATES=${DISCORD_WEBHOOK_UPDATES:-}
+      - DISCORD_WEBHOOK_TRANSLATORS=${DISCORD_WEBHOOK_TRANSLATORS:-}
+      - DISCORD_WEBHOOK_ADMIN=${DISCORD_WEBHOOK_ADMIN:-}
+
+      # ─── Auto Generation BASE64 ──────────────────────────────────────────────────
+      - SERVICE_PASSWORD_64_CRON-SECRET=${SERVICE_PASSWORD_64_CRON-SECRET}
+
+      # ─── Shared ──────────────────────────────────────────────────────────────────
+      - SECURITY_CONTACT=${SECURITY_CONTACT:-{{project.SECURITY_CONTACT}}}
+      - SECURITY_TXT_CANONICAL=${SECURITY_TXT_CANONICAL:-{{project.SECURITY_TXT_CANONICAL}}}
+      - SECURITY_OPENPGP_FINGERPRINT=${SECURITY_OPENPGP_FINGERPRINT:-{{project.SECURITY_OPENPGP_FINGERPRINT}}}
+      - SECURITY_OPENPGP_KEY_URL=${SECURITY_OPENPGP_KEY_URL:-{{project.SECURITY_OPENPGP_KEY_URL}}}
+
+      - DISCORD_OAUTH_CLIENT_ID=${DISCORD_OAUTH_CLIENT_ID:-{{project.DISCORD_OAUTH_CLIENT_ID}}}
+      - DISCORD_OAUTH_CLIENT_SECRET=${DISCORD_OAUTH_CLIENT_SECRET:-{{project.DISCORD_OAUTH_CLIENT_SECRET}}}
+      - DISCORD_OAUTH_GUILD_ID=${DISCORD_OAUTH_GUILD_ID:-{{project.DISCORD_OAUTH_GUILD_ID}}}
+      - DISCORD_OAUTH_TRANSLATOR_ROLE_ID=${DISCORD_OAUTH_TRANSLATOR_ROLE_ID:-{{project.DISCORD_OAUTH_TRANSLATOR_ROLE_ID}}}
+      - DISCORD_OAUTH_AUTO_ROLE_SYNC=${DISCORD_OAUTH_AUTO_ROLE_SYNC:-{{project.DISCORD_OAUTH_AUTO_ROLE_SYNC}}}
+
+      - SMTP_HOST=${SMTP_HOST:-{{project.SMTP_HOST}}}
+      - SMTP_PORT=${SMTP_PORT:-{{project.SMTP_PORT}}}
+      - SMTP_USER=${SMTP_USER:-{{project.SMTP_USER}}}
+      - SMTP_PASS=${SMTP_PASS:-{{project.SMTP_PASS}}}
+      - SMTP_FROM=${SMTP_FROM:-{{project.SMTP_FROM}}}
+
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-{{project.GOOGLE_API_KEY}}}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-{{project.GOOGLE_OAUTH_CLIENT_ID}}}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-{{project.GOOGLE_OAUTH_CLIENT_SECRET}}}
+
+      - LIBRETRANSLATE_URL=${LIBRETRANSLATE_URL:-{{project.LIBRETRANSLATE_URL}}}
+      - LIBRETRANSLATE_API_KEY=${LIBRETRANSLATE_API_KEY:-{{project.LIBRETRANSLATE_API_KEY}}}
+
+      - CONFIG_TOKEN_ENCRYPTION_KEY=${CONFIG_TOKEN_ENCRYPTION_KEY:-{{project.CONFIG_TOKEN_ENCRYPTION_KEY}}}
+
+      - PUBLIC_TURNSTILE_SITE_KEY=${PUBLIC_TURNSTILE_SITE_KEY:-{{project.PUBLIC_TURNSTILE_SITE_KEY}}}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-{{project.TURNSTILE_SECRET_KEY}}}
 
     expose:
       - '3000'
+
+    volumes:
+      - app_logs:/app/logs
 
     healthcheck:
       test:
@@ -34,9 +108,40 @@ services:
       - traefik.enable=true
       - traefik.docker.network=coolify
       - traefik.http.services.f95-prod.loadbalancer.server.port=3000
+      - traefik.http.services.f95-prod.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.f95-prod.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.f95-prod.loadbalancer.healthcheck.timeout=10s
 
     networks:
       - coolify
+
+  filebeat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: filebeat
+    restart: unless-stopped
+    user: root
+
+    volumes:
+      - app_logs:/app/logs:ro
+
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:?}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:?}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:?}
+      - KIBANA_HOST=${KIBANA_HOST:-}
+
+    command: filebeat -e --strict.perms=false
+
+    depends_on:
+      - app
+
+    networks:
+      - coolify
+
+volumes:
+  app_logs:
 
 networks:
   coolify:

@@ -111,7 +111,7 @@ export async function verifySmtpConnection(): Promise<void> {
 }
 
 export function getPublicAppOrigin(): string {
-	return siteOrigin(privateEnv('PUBLIC_APP_ORIGIN') ?? privateEnv('APP_ORIGIN'));
+	return siteOrigin(privateEnv('SERVICE_URL_APP'));
 }
 
 /** En dev, préfère l’origine de la requête pour ne pas générer des liens vers la prod. */

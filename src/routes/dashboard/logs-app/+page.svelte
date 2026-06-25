@@ -2,6 +2,8 @@
 	import { browser } from '$app/environment';
 	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
 	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { APP_LOG_LEVELS, appLogLevelsToParam, type AppLogLevel } from '$lib/logs/app-log';
 	import type { LiveAppLogEntry } from '$lib/logs/live-app-log-entry';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -132,14 +134,59 @@
 		return true;
 	};
 
+	type AppLogRow = (typeof data.logs)[number];
+
+	const logsCacheKey = $derived(JSON.stringify(data.filters));
+
+	const logList = useInfiniteList<AppLogRow>({
+		getInitial: () => ({
+			items: data.logs ?? [],
+			page: data.pagination.page ?? 1,
+			totalPages: data.pagination.totalPages ?? 1
+		}),
+		getCacheKey: () => logsCacheKey,
+		buildUrl: (nextPage) => {
+			const pairs: Array<[string, string]> = [];
+			if (data.filters.search) pairs.push(['q', data.filters.search]);
+			if (data.filters.source) pairs.push(['source', data.filters.source]);
+			if (data.filters.from) pairs.push(['from', data.filters.from]);
+			if (data.filters.to) pairs.push(['to', data.filters.to]);
+			if (data.filters.activeLevels.length) {
+				pairs.push(['levels', appLogLevelsToParam(data.filters.activeLevels)]);
+			}
+			pairs.push(['limit', String(data.pagination.limit)]);
+			pairs.push(['page', String(nextPage)]);
+			return `/dashboard/logs-app?${pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&')}`;
+		},
+		pickItems: (body) => (Array.isArray(body.logs) ? (body.logs as AppLogRow[]) : [])
+	});
+
 	const displayedLogs = $derived.by(() => {
-		if (!liveEnabled) return data.logs;
 		const liveIds = new Set(liveLogs.map((entry) => entry.id));
 		return [
 			...liveLogs.filter(matchesLiveFilters),
-			...data.logs.filter((log) => !liveIds.has(log.id))
+			...logList.items.filter((log) => !liveIds.has(log.id))
 		];
 	});
+
+	const bufferedLiveCount = $derived.by(() => {
+		const existingIds = new Set(logList.items.map((log) => log.id));
+		return liveLogs.filter((entry) => matchesLiveFilters(entry) && !existingIds.has(entry.id))
+			.length;
+	});
+
+	const totalCount = $derived(data.pagination.totalCount + bufferedLiveCount);
+
+	const levelCounts = $derived.by(() =>
+		displayedLogs.reduce(
+			(acc, log) => {
+				const key = log.level as AppLogLevel;
+				if (key in acc) acc[key] += 1;
+				return acc;
+			},
+			{ debug: 0, info: 0, warn: 0, error: 0 } satisfies Record<AppLogLevel, number>
+		)
+	);
 
 	const disconnectLive = () => {
 		if (liveSource) {
@@ -189,7 +236,6 @@
 		} else {
 			disconnectLive();
 			liveStatus = 'off';
-			liveLogs = [];
 		}
 	};
 
@@ -197,21 +243,6 @@
 		liveEnabled = false;
 		disconnectLive();
 	});
-
-	const buildPageHref = (targetPage: number) => {
-		const pairs: Array<[string, string]> = [];
-		if (data.filters.search) pairs.push(['q', data.filters.search]);
-		if (data.filters.source) pairs.push(['source', data.filters.source]);
-		pairs.push(['levels', appLogLevelsToParam(data.filters.activeLevels)]);
-		if (data.filters.from) pairs.push(['from', data.filters.from]);
-		if (data.filters.to) pairs.push(['to', data.filters.to]);
-		pairs.push(['limit', String(data.pagination.limit)]);
-		pairs.push(['page', String(targetPage)]);
-		const query = pairs
-			.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-			.join('&');
-		return `/dashboard/logs-app?${query}`;
-	};
 </script>
 
 <svelte:head>
@@ -261,26 +292,26 @@
 	>
 		<div class="stat">
 			<div class="stat-title">Total</div>
-			<div class="stat-value text-base-content">{data.pagination.totalCount}</div>
+			<div class="stat-value text-base-content">{totalCount}</div>
 			<div class="stat-desc">
-				Page {data.pagination.page} / {data.pagination.totalPages}
+				{logList.items.length} chargé{logList.items.length > 1 ? 's' : ''} sur {totalCount}
 			</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Debug</div>
-			<div class="stat-value text-accent">{data.levelCounts.debug}</div>
+			<div class="stat-value text-accent">{levelCounts.debug}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Info</div>
-			<div class="stat-value text-info">{data.levelCounts.info}</div>
+			<div class="stat-value text-info">{levelCounts.info}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Warn</div>
-			<div class="stat-value text-warning">{data.levelCounts.warn}</div>
+			<div class="stat-value text-warning">{levelCounts.warn}</div>
 		</div>
 		<div class="stat">
 			<div class="stat-title">Error</div>
-			<div class="stat-value text-error">{data.levelCounts.error}</div>
+			<div class="stat-value text-error">{levelCounts.error}</div>
 		</div>
 	</div>
 
@@ -356,8 +387,10 @@
 					Affichage : {displayedLogs.length} ligne{displayedLogs.length > 1 ? 's' : ''}
 					{#if liveEnabled && liveLogs.length > 0}
 						· {liveLogs.length} en direct
+					{:else if !liveEnabled && liveLogs.length > 0}
+						· {liveLogs.length} en session
 					{/if}
-					· {data.pagination.totalCount} au total
+					· {totalCount} au total
 				</p>
 				<div class="flex gap-2">
 					<a href="/dashboard/logs-app" class="btn btn-ghost">Réinitialiser</a>
@@ -437,23 +470,12 @@
 		</div>
 	</div>
 
-	<div class="flex items-center justify-center">
-		<div class="join">
-			{#if data.pagination.page > 1}
-				<a class="join-item btn" href={buildPageHref(data.pagination.page - 1)}>Précédent</a>
-			{:else}
-				<button class="join-item btn btn-disabled" type="button">Précédent</button>
-			{/if}
-			<button class="join-item btn btn-active" type="button">
-				Page {data.pagination.page} / {data.pagination.totalPages}
-			</button>
-			{#if data.pagination.page < data.pagination.totalPages}
-				<a class="join-item btn" href={buildPageHref(data.pagination.page + 1)}>Suivant</a>
-			{:else}
-				<button class="join-item btn btn-disabled" type="button">Suivant</button>
-			{/if}
-		</div>
-	</div>
+	<InfiniteScrollSentinel
+		hasMore={logList.hasMore}
+		loading={logList.loadingMore}
+		error={logList.loadMoreError}
+		onLoadMore={logList.loadMore}
+	/>
 </div>
 
 <DaisyDashboardModal

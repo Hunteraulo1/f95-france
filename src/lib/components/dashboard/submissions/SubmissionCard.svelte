@@ -6,7 +6,15 @@
 	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import { roleUsernameClass } from '$lib/utils/role-display';
-	import { formatDate, getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
+	import {
+		formatDate,
+		getStatusBadge,
+		getSubmissionGameId,
+		getSubmissionReviewedByLabel,
+		getTypeBadge,
+		getTypeLabel,
+		isReviewedSubmissionStatus
+	} from '$lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
 
@@ -30,6 +38,7 @@
 			translationName?: string | null;
 		} | null;
 		parsedData?: {
+			gameId?: string;
 			game?: {
 				name: string;
 				image?: string | null;
@@ -51,6 +60,12 @@
 			avatar: string | null;
 			role: string;
 		} | null;
+		reviewedByUser?: {
+			id: string;
+			username: string;
+			avatar: string | null;
+			role: string;
+		} | null;
 	}
 
 	interface Props {
@@ -59,6 +74,15 @@
 	}
 
 	let { submission, onClick }: Props = $props();
+
+	const gameId = $derived(getSubmissionGameId(submission));
+	const gameHref = $derived(
+		gameId
+			? resolve(
+					$hasPermission('games.manage') ? `/dashboard/manager/game/${gameId}` : `/games/${gameId}`
+				)
+			: null
+	);
 </script>
 
 <div class="card w-full border border-base-300 bg-base-100 shadow-xl">
@@ -84,7 +108,7 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+								class="text-sm text-primary opacity-70 hover:opacity-100 cursor-pointer {roleUsernameClass(
 									submission.user.role,
 									$roleBadgeStyles[submission.user.role]
 								)}"
@@ -128,6 +152,37 @@
 							</button>
 						</div>
 					{/if}
+					{#if isReviewedSubmissionStatus(submission.status) && submission.reviewedByUser?.username}
+						{@const reviewedByLabel = getSubmissionReviewedByLabel(submission.status)}
+						<div class="mb-2 flex flex-wrap items-center gap-2">
+							<span class="text-sm text-base-content/70">{reviewedByLabel} :</span>
+							<div class="avatar">
+								<div class="mask flex h-8 w-8 items-center justify-center mask-squircle">
+									{#if submission.reviewedByUser.avatar}
+										<img
+											src={resolveDiscordAvatarDisplayUrl(submission.reviewedByUser.avatar)}
+											alt={submission.reviewedByUser.username}
+											class="h-8 w-8 rounded-full object-cover"
+										/>
+									{:else}
+										<User size={24} />
+									{/if}
+								</div>
+							</div>
+							<button
+								type="button"
+								class="text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
+									submission.reviewedByUser.role,
+									$roleBadgeStyles[submission.reviewedByUser.role]
+								)}"
+								onclick={() => {
+									goto(resolve(`/dashboard/profile/${submission.reviewedByUser!.username}`));
+								}}
+							>
+								{submission.reviewedByUser.username}
+							</button>
+						</div>
+					{/if}
 					<div class="mb-2 flex flex-wrap items-center gap-3 text-nowrap">
 						<div class="badge {getTypeBadge(submission.type, submission.translationId)}">
 							{getTypeLabel(submission.type)}
@@ -162,45 +217,99 @@
 						{@const gameImageSrc = resolveGameImageSrc(submission.game.image, {
 							website: submission.game.website
 						})}
-						{#if gameImageSrc}
-							<img
-								src={gameImageSrc}
-								alt={submission.game.name}
-								class="h-10 w-10 rounded object-cover"
-								referrerpolicy="no-referrer"
-							/>
-						{/if}
-						<div class="flex flex-col">
-							<span class="text-sm font-medium">{submission.game.name}</span>
-							{#if submission.translation}
-								{@const translation = submission.translation}
-								<span class="text-xs opacity-70">
-									Traduction
-									{#if translation.tversion}
-										: {translation.tversion}
+						{#if gameHref}
+							<a
+								class="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-80"
+								href={gameHref}
+							>
+								{#if gameImageSrc}
+									<img
+										src={gameImageSrc}
+										alt={submission.game.name}
+										class="h-10 w-10 rounded object-cover"
+										referrerpolicy="no-referrer"
+									/>
+								{/if}
+								<div class="flex flex-col">
+									<span class="link link-hover text-sm font-medium">{submission.game.name}</span>
+									{#if submission.translation}
+										{@const translation = submission.translation}
+										<span class="text-xs opacity-70">
+											Traduction
+											{#if translation.tversion}
+												: {translation.tversion}
+											{/if}
+											{#if translation.translationName}
+												({translation.translationName})
+											{/if}
+										</span>
+									{:else if submission.parsedData?.translation}
+										{@const translation = submission.parsedData.translation}
+										<span class="text-xs opacity-70">
+											Traduction
+											{#if translation.tversion}
+												: {translation.tversion}
+											{/if}
+											{#if translation.translationName}
+												({translation.translationName})
+											{/if}
+										</span>
 									{/if}
-									{#if translation.translationName}
-										({translation.translationName})
-									{/if}
-								</span>
-							{:else if submission.parsedData?.translation}
-								{@const translation = submission.parsedData.translation}
-								<span class="text-xs opacity-70">
-									Traduction
-									{#if translation.tversion}
-										: {translation.tversion}
-									{/if}
-									{#if translation.translationName}
-										({translation.translationName})
-									{/if}
-								</span>
+								</div>
+							</a>
+						{:else}
+							{#if gameImageSrc}
+								<img
+									src={gameImageSrc}
+									alt={submission.game.name}
+									class="h-10 w-10 rounded object-cover"
+									referrerpolicy="no-referrer"
+								/>
 							{/if}
-						</div>
+							<div class="flex flex-col">
+								<span class="text-sm font-medium">{submission.game.name}</span>
+								{#if submission.translation}
+									{@const translation = submission.translation}
+									<span class="text-xs opacity-70">
+										Traduction
+										{#if translation.tversion}
+											: {translation.tversion}
+										{/if}
+										{#if translation.translationName}
+											({translation.translationName})
+										{/if}
+									</span>
+								{:else if submission.parsedData?.translation}
+									{@const translation = submission.parsedData.translation}
+									<span class="text-xs opacity-70">
+										Traduction
+										{#if translation.tversion}
+											: {translation.tversion}
+										{/if}
+										{#if translation.translationName}
+											({translation.translationName})
+										{/if}
+									</span>
+								{/if}
+							</div>
+						{/if}
 					{:else if submission.gameId}
-						<span class="text-sm opacity-70">Jeu ID: {submission.gameId}</span>
+						{#if gameHref}
+							<a class="link link-hover text-sm opacity-70" href={gameHref}>
+								{submission.parsedData?.game?.name ?? `Jeu ID: ${submission.gameId}`}
+							</a>
+						{:else}
+							<span class="text-sm opacity-70">Jeu ID: {submission.gameId}</span>
+						{/if}
 					{:else if submission.parsedData?.game}
 						<div class="flex flex-col">
-							<span class="text-sm font-medium">{submission.parsedData.game.name}</span>
+							{#if gameHref}
+								<a class="link link-hover text-sm font-medium" href={gameHref}>
+									{submission.parsedData.game.name}
+								</a>
+							{:else}
+								<span class="text-sm font-medium">{submission.parsedData.game.name}</span>
+							{/if}
 							{#if submission.parsedData?.translation}
 								{@const translation = submission.parsedData.translation}
 								<span class="text-xs opacity-70">

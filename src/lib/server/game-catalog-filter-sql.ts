@@ -2,6 +2,7 @@ import type { GamesFilterGroupName } from '$lib/games/games-filter-config';
 import type { FilterSelection } from '$lib/games/games-filter-url';
 import { db } from '$lib/server/db';
 import { game, gameTranslation } from '$lib/server/db/schema';
+import { caseInsensitiveLike } from '$lib/server/sql-like';
 import { and, eq, exists, like, not, or, sql, type SQL } from 'drizzle-orm';
 
 export type GameCatalogFilters = Record<GamesFilterGroupName, FilterSelection>;
@@ -118,8 +119,8 @@ export function buildGameCatalogFilterParts(filters: GameCatalogFilters, query?:
 		const threadIdQuery = Number.parseInt(query, 10);
 		parts.push(
 			Number.isNaN(threadIdQuery)
-				? like(game.name, `%${query}%`)
-				: or(like(game.name, `%${query}%`), eq(game.threadId, threadIdQuery))!
+				? caseInsensitiveLike(game.name, query)
+				: or(caseInsensitiveLike(game.name, query), eq(game.threadId, threadIdQuery))!
 		);
 	}
 

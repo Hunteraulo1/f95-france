@@ -1,11 +1,11 @@
 import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { randomUUID } from 'node:crypto';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
+import { resolveTranslatorContributorIdsForStorage } from '$lib/server/ensure-translator';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
 	assertDirectGameWriteAllowed,
@@ -29,6 +29,7 @@ import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq, inArray } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
 const normVersion = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
@@ -178,6 +179,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			typeof gameTypeBody === 'string' && gameTypeBody.trim()
 				? coerceGameEngineType(gameTypeBody)
 				: await defaultGameTypeForGame(gameId);
+		const { translatorId: storedTranslatorId, proofreaderId: storedProofreaderId } =
+			await resolveTranslatorContributorIdsForStorage(translatorId, proofreaderId);
 		const createdId = randomUUID();
 		await db.insert(table.gameTranslation).values({
 			id: createdId,
@@ -192,8 +195,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			tname:
 				(tname as 'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
 				'translation',
-			translatorId: translatorId || null,
-			proofreaderId: proofreaderId || null,
+			translatorId: storedTranslatorId,
+			proofreaderId: storedProofreaderId,
 			ac: acValue
 		});
 
@@ -221,7 +224,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 		voidSyncTranslationToGoogleSheet(createdId, 'dashboard/add-translation');
-		voidSyncTranslatorActivityCountsToGoogleSheet(translatorId, proofreaderId);
+		voidSyncTranslatorActivityCountsToGoogleSheet(storedTranslatorId, storedProofreaderId);
 		await incrementUserGameCounter(currentUser.id, 'add', 1);
 
 		return json({ message: 'Traduction créée avec succès' }, { status: 201 });

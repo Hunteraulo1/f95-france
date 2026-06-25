@@ -157,8 +157,25 @@ resolve_mysql_client() {
 	exit 1
 }
 
+# Depuis un conteneur client Docker, localhost ≠ machine hôte (WSL2 / Linux).
+docker_db_host() {
+	local host="${1:-}"
+	case "${host}" in
+	localhost | 127.0.0.1)
+		printf '%s' "host.docker.internal"
+		;;
+	*)
+		printf '%s' "${host}"
+		;;
+	esac
+}
+
+docker_client_run_args() {
+	printf '%s' "--add-host=host.docker.internal:host-gateway"
+}
+
 docker_mysql() {
-	local docker_args=(--rm)
+	local docker_args=(--rm "$(docker_client_run_args)")
 	if [[ "${1:-}" == "--stdin" ]]; then
 		docker_args+=(-i)
 		shift
@@ -167,29 +184,41 @@ docker_mysql() {
 }
 
 docker_mysqldump() {
-	docker run --rm --entrypoint mariadb-dump "${MARIADB_CLIENT_IMAGE}" "$@"
+	docker run --rm "$(docker_client_run_args)" --entrypoint mariadb-dump "${MARIADB_CLIENT_IMAGE}" "$@"
+}
+
+mysql_docker_host() {
+	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
+		docker_db_host "${DB_HOST}"
+	else
+		printf '%s' "${DB_HOST}"
+	fi
 }
 
 mysql_cmd() {
+	local host
+	host="$(mysql_docker_host)"
 	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
 		docker_mysql --stdin \
-			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" --database="${DB_NAME}" "$@"
 	else
-		"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+		"${MYSQL_CLI}" --host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" --database="${DB_NAME}" "$@"
 	fi
 }
 
 mysqldump_cmd() {
+	local host
+	host="$(mysql_docker_host)"
 	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
 		docker_mysqldump \
-			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
 			--single-transaction --skip-lock-tables --no-tablespaces \
 			"${DB_NAME}" "$@"
 	else
-		"${MYSQLDUMP_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+		"${MYSQLDUMP_CLI}" --host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
 			--single-transaction --skip-lock-tables --no-tablespaces \
 			"${DB_NAME}" "$@"
@@ -197,15 +226,17 @@ mysqldump_cmd() {
 }
 
 wipe_target_database() {
+	local host
+	host="$(mysql_docker_host)"
 	if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
 		docker_mysql \
-			--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			--host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
-			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;"
 	else
-		"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+		"${MYSQL_CLI}" --host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 			--password="${DB_PASSWORD}" \
-			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+			-e "DROP DATABASE IF EXISTS \`${DB_NAME}\`; CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;"
 	fi
 }
 
@@ -275,12 +306,13 @@ mysqldump_cmd |
 		DB_NAME="${TARGET_DB}"
 		DB_USER="${TARGET_USER}"
 		DB_PASSWORD="${TARGET_PASSWORD}"
+		host="$(mysql_docker_host)"
 		if [[ "${USE_DOCKER_MYSQL}" == "1" ]]; then
 			docker_mysql --stdin \
-				--host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+				--host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 				--password="${DB_PASSWORD}" "${DB_NAME}"
 		else
-			"${MYSQL_CLI}" --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}" \
+			"${MYSQL_CLI}" --host="${host}" --port="${DB_PORT}" --user="${DB_USER}" \
 				--password="${DB_PASSWORD}" "${DB_NAME}"
 		fi
 	}

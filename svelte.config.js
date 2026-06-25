@@ -3,7 +3,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** Origines autorisées pour les actions POST (CSRF) — localhost + URL publique au build. */
 function buildTrustedOrigins() {
-	const local = [
+	const origins = [
 		'http://localhost:3000',
 		'http://127.0.0.1:3000',
 		'http://localhost:4173',
@@ -11,14 +11,11 @@ function buildTrustedOrigins() {
 		'http://localhost:5173',
 		'http://127.0.0.1:5173'
 	];
-	const fqdn = process.env.COOLIFY_FQDN?.trim();
-	const fromEnv = [
-		process.env.ORIGIN,
-		process.env.PUBLIC_APP_ORIGIN,
-		process.env.COOLIFY_URL,
-		fqdn ? `https://${fqdn}` : undefined
-	];
-	return [...new Set([...local, ...fromEnv.filter(Boolean)])];
+	const serviceUrlApp = process.env.SERVICE_URL_APP?.trim();
+
+	if (serviceUrlApp) origins.push(serviceUrlApp);
+
+	return [...new Set(origins)];
 }
 
 /** @type {import('@sveltejs/kit').Config} */

@@ -5,8 +5,9 @@
 	import AbandonTranslationModal from '$lib/components/dashboard/AbandonTranslationModal.svelte';
 	import FixedDropdownMenu from '$lib/components/dashboard/FixedDropdownMenu.svelte';
 	import ResumeTranslationModal from '$lib/components/dashboard/ResumeTranslationModal.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
 	import { createFormEnhance } from '$lib/forms/enhance';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { newToast } from '$lib/stores';
 	import EllipsisVertical from '@lucide/svelte/icons/ellipsis-vertical';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -39,27 +40,25 @@
 		{ value: 'abandoned', label: 'Abandonnées' }
 	] as const;
 
-	const buildQuery = (overrides: { status?: string; role?: string; q?: string; page?: number }) => {
+	const buildQuery = (overrides: { status?: string; role?: string; q?: string }) => {
 		const status = overrides.status ?? data.statusFilter;
 		const role = overrides.role ?? data.roleFilter;
 		const q = overrides.q ?? data.q ?? '';
-		const page = overrides.page ?? 1;
 		const params = [
 			`status=${encodeURIComponent(status)}`,
 			`role=${encodeURIComponent(role)}`,
-			...(q ? [`q=${encodeURIComponent(q)}`] : []),
-			...(page > 1 ? [`page=${page}`] : [])
+			...(q ? [`q=${encodeURIComponent(q)}`] : [])
 		];
 		return params.length ? `?${params.join('&')}` : '';
 	};
 
-	const buildHref = (overrides: { status?: string; role?: string; q?: string; page?: number }) =>
+	const buildHref = (overrides: { status?: string; role?: string; q?: string }) =>
 		resolve(`/dashboard/my-translations${buildQuery(overrides)}` as '/dashboard/my-translations');
 
 	const navigateSearch = (value: string) => {
 		goto(
 			resolve(
-				`/dashboard/my-translations${buildQuery({ q: value, page: 1 })}` as '/dashboard/my-translations'
+				`/dashboard/my-translations${buildQuery({ q: value })}` as '/dashboard/my-translations'
 			),
 			{
 				replaceState: true,
@@ -89,6 +88,36 @@
 				searchQuery = incoming;
 			}
 		});
+	});
+
+	type TranslationRow = (typeof data.translations)[number];
+
+	const listCacheKey = $derived(
+		JSON.stringify({
+			status: data.statusFilter,
+			role: data.roleFilter,
+			q: data.q ?? ''
+		})
+	);
+
+	const list = useInfiniteList<TranslationRow>({
+		getInitial: () => ({
+			items: data.translations ?? [],
+			page: data.page ?? 1,
+			totalPages: data.totalPages ?? 1
+		}),
+		getCacheKey: () => listCacheKey,
+		buildUrl: (nextPage) => {
+			const parts = [
+				`status=${encodeURIComponent(data.statusFilter)}`,
+				`role=${encodeURIComponent(data.roleFilter)}`,
+				`page=${nextPage}`
+			];
+			if (data.q) parts.push(`q=${encodeURIComponent(data.q)}`);
+			return `${resolve('/dashboard/my-translations')}?${parts.join('&')}`;
+		},
+		pickItems: (body) =>
+			Array.isArray(body.translations) ? (body.translations as TranslationRow[]) : []
 	});
 
 	const labelStatus = (s: string) => {
@@ -314,7 +343,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.translations as t (t.id)}
+					{#each list.items as t (t.id)}
 						<tr>
 							<td class="font-semibold">
 								<a class="link link-hover" href={`/dashboard/manager/game/${t.game.id}`}
@@ -439,11 +468,11 @@
 			</table>
 		</div>
 
-		<Pagination
-			currentPage={data.page}
-			totalPages={data.totalPages}
-			totalCount={data.totalCount}
-			hrefForPage={(p) => buildHref({ page: p })}
+		<InfiniteScrollSentinel
+			hasMore={list.hasMore}
+			loading={list.loadingMore}
+			error={list.loadMoreError}
+			onLoadMore={list.loadMore}
 		/>
 	{/if}
 </div>

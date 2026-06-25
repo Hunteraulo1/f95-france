@@ -6,6 +6,7 @@ import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
 } from '$lib/server/discord-webhook';
+import { resolveTranslatorContributorIdsForStorage } from '$lib/server/ensure-translator';
 import {
 	clampTranslationAc,
 	gameAutoCheckEnabledForWebsite,
@@ -25,6 +26,7 @@ import {
 	voidSyncTranslatorActivityCountsToGoogleSheet
 } from '$lib/server/google-sheets-sync';
 import { hasPermission } from '$lib/server/permissions';
+import { caseInsensitiveLike } from '$lib/server/sql-like';
 import { createGameSubmission, createTranslationSubmission } from '$lib/server/submissions';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import {
@@ -34,7 +36,7 @@ import {
 } from '$lib/utils/game-form-validation';
 import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
-import { and, eq, like, or, sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
@@ -127,8 +129,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Rechercher par nom de jeu (insensible à la casse) ou par threadId
 		const threadIdQuery = Number.parseInt(query, 10);
 		const whereClause = Number.isNaN(threadIdQuery)
-			? like(table.game.name, `%${query}%`)
-			: or(like(table.game.name, `%${query}%`), eq(table.game.threadId, threadIdQuery));
+			? caseInsensitiveLike(table.game.name, query)
+			: or(caseInsensitiveLike(table.game.name, query), eq(table.game.threadId, threadIdQuery));
 		const enginesSq = enginesPerGameSubquery();
 		const rawGames = await db
 			.select({
@@ -308,6 +310,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			await assertDirectGameWriteAllowed(writeModeParamsExisting);
 
+			const { translatorId: storedTranslatorId, proofreaderId: storedProofreaderId } =
+				await resolveTranslatorContributorIdsForStorage(
+					translation.translatorId,
+					translation.proofreaderId
+				);
+
 			const newTranslationId = randomUUID();
 			await db.insert(table.gameTranslation).values({
 				id: newTranslationId,
@@ -326,18 +334,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						| 'translation_with_mods') || 'translation',
 				gameType: coerceGameEngineType(resolvedGameType),
 				tlink: translation.tlink || '',
-				translatorId: translation.translatorId || null,
-				proofreaderId: translation.proofreaderId || null,
+				translatorId: storedTranslatorId,
+				proofreaderId: storedProofreaderId,
 				ac: nextTranslationAc,
 				createdAt: new Date(),
 				updatedAt: new Date()
 			});
 
 			voidSyncTranslationToGoogleSheet(newTranslationId, 'manager/add-translation-to-existing');
-			voidSyncTranslatorActivityCountsToGoogleSheet(
-				translation?.translatorId,
-				translation?.proofreaderId
-			);
+			voidSyncTranslatorActivityCountsToGoogleSheet(storedTranslatorId, storedProofreaderId);
 			await incrementUserGameCounter(currentUserExisting.id, 'add', 1);
 
 			return json({
@@ -521,6 +526,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const normalizedTranslationTversion = shouldCreateTranslation
 			? normalizeTranslationTversion(translationTname, translation?.tversion)
 			: '';
+		const storedContributors = shouldCreateTranslation
+			? await resolveTranslatorContributorIdsForStorage(
+					translation?.translatorId,
+					translation?.proofreaderId
+				)
+			: { translatorId: null as string | null, proofreaderId: null as string | null };
 
 		const { gameId, createdTranslationId } = await db.transaction(async (tx) => {
 			const newGameId = randomUUID();
@@ -565,8 +576,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							: type
 					),
 					tlink: translation.tlink || '',
-					translatorId: translation.translatorId || null,
-					proofreaderId: translation.proofreaderId || null,
+					translatorId: storedContributors.translatorId,
+					proofreaderId: storedContributors.proofreaderId,
 					ac: nextTranslationAc,
 					createdAt: new Date(),
 					updatedAt: new Date()
@@ -591,8 +602,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (shouldCreateTranslation && createdTranslationId) {
 			voidSyncTranslationToGoogleSheet(createdTranslationId, 'manager/create-game');
 			voidSyncTranslatorActivityCountsToGoogleSheet(
-				translation?.translatorId,
-				translation?.proofreaderId
+				storedContributors.translatorId,
+				storedContributors.proofreaderId
 			);
 		}
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import {
 		formatFieldValue,
 		GAME_FIELDS,
@@ -12,6 +13,8 @@
 		SubmissionModalTranslator,
 		SubmissionPrimitive
 	} from '$lib/components/dashboard/submissions/submission-modal-types';
+	import { hasPermission } from '$lib/permissions/client';
+	import { getSubmissionGameId } from '$lib/utils/submissions';
 
 	interface Props {
 		submission: SubmissionModalItem;
@@ -20,6 +23,15 @@
 	}
 
 	let { submission, translators, onTranslatorClick }: Props = $props();
+
+	const gameId = $derived(getSubmissionGameId(submission));
+	const gameHref = $derived(
+		gameId
+			? resolve(
+					$hasPermission('games.manage') ? `/dashboard/manager/game/${gameId}` : `/games/${gameId}`
+				)
+			: null
+	);
 
 	const getTranslator = (translatorId: unknown): SubmissionModalTranslator | null => {
 		if (typeof translatorId !== 'string' || !translatorId) return null;
@@ -55,7 +67,13 @@
 				<div class="rounded-box border border-base-300 p-4">
 					<h4 class="text-md mb-2 font-semibold">Jeu concerné</h4>
 					<p class="text-sm font-medium">
-						{submission.currentGame?.name ?? submission.parsedData?.game?.name ?? '—'}
+						{#if gameHref}
+							<a class="link link-hover" href={gameHref}>
+								{submission.currentGame?.name ?? submission.parsedData?.game?.name ?? '—'}
+							</a>
+						{:else}
+							{submission.currentGame?.name ?? submission.parsedData?.game?.name ?? '—'}
+						{/if}
 					</p>
 				</div>
 			{/if}

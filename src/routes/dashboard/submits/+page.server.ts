@@ -2,12 +2,13 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
 import { assertPermission } from '$lib/server/permissions';
+import { submissionReviewedByUserIdPatch } from '$lib/server/schema-column-compat';
+import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
 	formDataToSubmissionPayload,
 	loadSubmissionListPage,
 	parseSubmissionStatusFilter
 } from '$lib/server/submission-pages';
-import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
 	normalizeTranslationInPayload,
 	parseSubmissionPayloadJson,
@@ -15,6 +16,7 @@ import {
 	validateSubmissionPayloadForType
 } from '$lib/server/submission-payload-update';
 import { applySubmission, revertSubmission } from '$lib/server/submissions';
+import { isReviewedSubmissionStatus } from '$lib/utils/submissions';
 import { fail } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -23,8 +25,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertPermission(locals, 'submissions.review');
 
 	const statusFilter = parseSubmissionStatusFilter(url.searchParams.get('status'));
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
 	try {
 		const whereCondition =
@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return await loadSubmissionListPage({
 			where: whereCondition,
 			statusFilter,
-			requestedPage,
+			requestedPage: 1,
 			includeAdminNotes: true
 		});
 	} catch (error: unknown) {
@@ -205,6 +205,7 @@ export const actions: Actions = {
 				status: 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected';
 				adminNotes: string | null;
 				openedByUserId?: string | null;
+				reviewedByUserId?: string | null;
 			} = {
 				status: status as 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected',
 				adminNotes: adminNotes || null
@@ -214,6 +215,10 @@ export const actions: Actions = {
 			}
 			if (status === 'pending') {
 				Object.assign(statusUpdate, await submissionOpenedByUserIdPatch(null));
+				Object.assign(statusUpdate, await submissionReviewedByUserIdPatch(null));
+			}
+			if (isReviewedSubmissionStatus(status)) {
+				Object.assign(statusUpdate, await submissionReviewedByUserIdPatch(locals.user!.id));
 			}
 			await db
 				.update(table.submission)

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Pagination from '$lib/components/Pagination.svelte';
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
 	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
 	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
+	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
 	import { user } from '$lib/stores';
 	import { getStatusFilterLabel } from '$lib/utils/submissions';
 	import { get } from 'svelte/store';
@@ -50,16 +51,10 @@
 		}
 	});
 
-	const buildQuery = (overrides: { status?: string; page?: number }) => {
+	const buildQuery = (overrides: { status?: string }) => {
 		const status = overrides.status ?? data.statusFilter;
-		const page = overrides.page ?? data.page;
-		const params = [`status=${encodeURIComponent(status)}`];
-		if (page > 1) params.push(`page=${page}`);
-		return params.length ? `?${params.join('&')}` : '';
+		return `?status=${encodeURIComponent(status)}`;
 	};
-
-	const buildHref = (overrides: { status?: string; page?: number }) =>
-		resolve(`${basePath}${buildQuery(overrides)}` as typeof basePath);
 
 	const openSubmissionModal = async (submission: SubmissionItem) => {
 		if (reviewMode && submission.status === 'pending') {
@@ -108,7 +103,7 @@
 		pendingFilter = status;
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
-			await goto(`${resolve(basePath)}${buildQuery({ status, page: 1 })}`, {
+			await goto(`${resolve(basePath)}${buildQuery({ status })}`, {
 				noScroll: true,
 				invalidateAll: true
 			});
@@ -117,6 +112,23 @@
 			isFilterChanging = false;
 		}
 	};
+
+	type SubmissionRow = SubmissionItem;
+
+	const list = useInfiniteList<SubmissionRow>({
+		getInitial: () => ({
+			items: data.submissions ?? [],
+			page: data.page ?? 1,
+			totalPages: data.totalPages ?? 1
+		}),
+		getCacheKey: () => data.statusFilter,
+		buildUrl: (nextPage) => {
+			const parts = [`status=${encodeURIComponent(data.statusFilter)}`, `page=${nextPage}`];
+			return `${resolve(basePath)}?${parts.join('&')}`;
+		},
+		pickItems: (body) =>
+			Array.isArray(body.submissions) ? (body.submissions as SubmissionRow[]) : []
+	});
 </script>
 
 <section class="flex flex-col gap-4">
@@ -154,17 +166,16 @@
 		</div>
 	{:else}
 		<div class="grid gap-4">
-			{#each data.submissions as submission (submission.id)}
+			{#each list.items as submission (submission.id)}
 				<SubmissionCard {submission} onClick={() => openSubmissionModal(submission)} />
 			{/each}
 		</div>
 
-		<Pagination
-			currentPage={data.page}
-			totalPages={data.totalPages}
-			totalCount={data.totalCount}
-			hrefForPage={(p) => buildHref({ page: p })}
-			countLabel="soumission"
+		<InfiniteScrollSentinel
+			hasMore={list.hasMore}
+			loading={list.loadingMore}
+			error={list.loadMoreError}
+			onLoadMore={list.loadMore}
 		/>
 	{/if}
 </section>

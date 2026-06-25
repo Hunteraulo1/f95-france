@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 				: Promise.resolve([])
 		]);
 		const [result, filterGroups] = await Promise.all([
-			listPublicGames(params),
+			listPublicGames({ ...params, page: 1 }),
 			Promise.resolve(buildFilterGroupsForUi(params, translators))
 		]);
 		const savedFilters = locals.user

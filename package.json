@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.8.11",
+	"version": "4.10.4",
 	"type": "module",
 	"engines": {
 		"node": ">=24.0.0"
@@ -9,11 +9,11 @@
 	"scripts": {
 		"dev": "vite dev",
 		"dev:fresh": "rm -rf node_modules/.vite .svelte-kit && svelte-kit sync && vite dev --force",
-		"dev:up": "docker compose -f docker-compose.dev.yml up -d",
+		"dev:up": "docker compose -f docker-compose.dev.yml up -d mariadb-dev",
 		"dev:down": "docker compose -f docker-compose.dev.yml down",
 		"dev:logs": "docker compose -f docker-compose.dev.yml logs -f mariadb-dev",
 		"build": "NODE_ENV=production vite build && cp cron/check-version.mjs build/cron-check-version.mjs",
-		"build:docker": "docker compose -f docker-compose.dev.yml up --build",
+		"build:docker": "docker compose -f docker-compose.dev.yml --profile full up --build",
 		"start": "bash scripts/coolify-start.sh",
 		"preview": "ORIGIN=http://localhost:4173 PORT=4173 HOST=0.0.0.0 node --env-file=.env build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
@@ -36,7 +36,7 @@
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
 		"@sveltejs/vite-plugin-svelte": "7.1.2",
-		"@types/node": "25.9.3",
+		"@types/node": "26.0.1",
 		"@types/nodemailer": "8.0.1",
 		"@types/qrcode": "1.5.6",
 		"chrome-launcher": "1.2.1",
@@ -45,26 +45,26 @@
 		"eslint": "10.5.0",
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "3.19.0",
-		"globals": "17.6.0",
-		"pg": "8.21.0",
+		"globals": "17.7.0",
+		"pg": "8.22.0",
 		"prettier": "3.8.4",
-		"prettier-plugin-svelte": "4.1.0",
+		"prettier-plugin-svelte": "4.1.1",
 		"prettier-plugin-tailwindcss": "0.8.0",
-		"svelte": "5.56.3",
-		"svelte-check": "4.6.0",
+		"svelte": "5.56.4",
+		"svelte-check": "4.7.1",
 		"tailwindcss": "4.3.1",
 		"typescript": "6.0.3",
-		"typescript-eslint": "8.61.0"
+		"typescript-eslint": "8.62.0"
 	},
 	"dependencies": {
 		"@codemirror/lang-markdown": "6.5.0",
-		"@lucide/svelte": "1.18.0",
+		"@lucide/svelte": "1.21.0",
 		"@oslojs/crypto": "1.0.1",
 		"@oslojs/encoding": "1.1.0",
 		"@simplewebauthn/browser": "13.3.0",
-		"@simplewebauthn/server": "13.3.1",
-		"@sveltejs/adapter-node": "5.5.4",
-		"@sveltejs/kit": "2.65.1",
+		"@simplewebauthn/server": "13.3.2",
+		"@sveltejs/adapter-node": "5.5.7",
+		"@sveltejs/kit": "2.68.0",
 		"@tailwindcss/forms": "0.5.11",
 		"@tailwindcss/vite": "4.3.1",
 		"codemirror": "6.0.2",
@@ -75,13 +75,12 @@
 		"linkedom": "0.18.12",
 		"marked": "18.0.5",
 		"mysql2": "3.22.5",
-		"nodemailer": "8.0.11",
+		"nodemailer": "9.0.1",
 		"otpauth": "9.5.1",
 		"qrcode": "1.5.4",
-		"redoc": "2.5.3",
 		"svelte-codemirror-editor": "2.1.0",
 		"valibot": "1.4.1",
-		"vite": "8.0.16"
+		"vite": "8.1.0"
 	},
 	"config": {
 		"commitizen": {

@@ -3,6 +3,7 @@ import { getEffectiveConfig } from '$lib/server/app-config';
 import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { repairGameTranslationContributorIdsInDb } from '$lib/server/ensure-translator';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import {
 	getTranslatorActivityCounts,
@@ -552,7 +553,8 @@ async function getSheetSnapshot(
 	const rowNumberById = new Map<string, number>();
 	for (let i = 1; i < rows.length; i++) {
 		const idVal = (rows[i]?.[idDbIdx] ?? '').trim();
-		if (idVal) rowNumberById.set(idVal, i + 1);
+		// Première occurrence seulement (cohérent avec sync unitaire ; les doublons sont purgés à part).
+		if (idVal && !rowNumberById.has(idVal)) rowNumberById.set(idVal, i + 1);
 	}
 
 	return {
@@ -863,6 +865,125 @@ async function normalizeMajSheetFormats(
 	await sheetsSpreadsheetBatchUpdate(auth, requests);
 }
 
+/** Indices de lignes (0-based, comme l’API Sheets) à supprimer : doublons « ID DB », on garde la première. */
+function findDuplicateRowIndices(rows: string[][], idDbIdx: number): number[] {
+	const seen = new Set<string>();
+	const toDelete: number[] = [];
+	for (let r = 1; r < rows.length; r++) {
+		const idVal = (rows[r]?.[idDbIdx] ?? '').trim();
+		if (!idVal) continue;
+		if (seen.has(idVal)) {
+			toDelete.push(r);
+		} else {
+			seen.add(idVal);
+		}
+	}
+	return toDelete;
+}
+
+async function deleteSheetRowsByIndices(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	tabName: string,
+	rowIndices: number[],
+	options?: { finalizeJeuxLayout?: boolean }
+): Promise<void> {
+	if (!rowIndices.length) return;
+
+	const sheetId = await getSheetIdByTitle(auth, tabName);
+	if (sheetId == null) return;
+
+	const requests = [...new Set(rowIndices)]
+		.sort((a, b) => b - a)
+		.map((startIndex) => ({
+			deleteDimension: {
+				range: {
+					sheetId,
+					dimension: 'ROWS',
+					startIndex,
+					endIndex: startIndex + 1
+				}
+			}
+		}));
+
+	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ requests })
+	});
+	if (!delRes.ok) {
+		const err = await delRes.text().catch(() => '');
+		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
+	}
+	if (options?.finalizeJeuxLayout) {
+		await finalizeJeuxSheetLayout(auth);
+	}
+}
+
+/** Supprime les lignes en double (même « ID DB ») sur un onglet ; conserve la première occurrence. */
+async function deduplicateSheetTabByIdDb(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	tabName: string,
+	options?: { finalizeJeuxLayout?: boolean }
+): Promise<number> {
+	const tabEncoded = encodeURIComponent(tabName);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tabEncoded}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return 0;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length < 2) return 0;
+
+	const headersRow = rows[0] ?? [];
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+	const duplicates = findDuplicateRowIndices(rows, idDbIdx);
+	if (!duplicates.length) return 0;
+
+	await deleteSheetRowsByIndices(auth, tabName, duplicates, options);
+	return duplicates.length;
+}
+
+/** Supprime les doublons d’un seul « ID DB » (sync unitaire, avant update/append). */
+async function deleteDuplicateRowsForIdDb(
+	auth: { spreadsheetId: string; headers: HeadersInit; apiKey?: string },
+	tabName: string,
+	idDb: string,
+	options?: { finalizeJeuxLayout?: boolean }
+): Promise<number> {
+	const tabEncoded = encodeURIComponent(tabName);
+	const valuesRes = await sheetsFetch(
+		auth.spreadsheetId,
+		auth.headers,
+		`/values/${tabEncoded}!A1:ZZ?majorDimension=ROWS`,
+		auth.apiKey
+	);
+	if (!valuesRes.ok) return 0;
+	const body = (await valuesRes.json()) as SheetsApiResponse;
+	const rows = body.values ?? [];
+	if (rows.length < 2) return 0;
+
+	const headersRow = rows[0] ?? [];
+	const idDbIdx = findHeaderIndex(headersRow, 'ID DB');
+	let firstKept = false;
+	const toDelete: number[] = [];
+	for (let r = 1; r < rows.length; r++) {
+		const idVal = (rows[r]?.[idDbIdx] ?? '').trim();
+		if (idVal !== idDb) continue;
+		if (firstKept) {
+			toDelete.push(r);
+		} else {
+			firstKept = true;
+		}
+	}
+	if (!toDelete.length) return 0;
+
+	await deleteSheetRowsByIndices(auth, tabName, toDelete, options);
+	return toDelete.length;
+}
+
 async function deleteRowsByTranslationIds(translationIds: string[]): Promise<void> {
 	if (!translationIds.length) return;
 	const auth = await getSheetsAuth();
@@ -888,39 +1009,11 @@ async function deleteRowsByTranslationIds(translationIds: string[]): Promise<voi
 	const startIndices: number[] = [];
 	for (let r = 1; r < rows.length; r++) {
 		const v = (rows[r]?.[idDbIdx] ?? '').trim();
-		if (ids.has(v)) {
-			// Sheet row r+1 -> deleteDimension uses 0-based index r
-			startIndices.push(r);
-		}
+		if (ids.has(v)) startIndices.push(r);
 	}
 	if (!startIndices.length) return;
 
-	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_JEUX);
-	if (sheetId == null) return;
-
-	const requests = startIndices
-		.sort((a, b) => b - a)
-		.map((start) => ({
-			deleteDimension: {
-				range: {
-					sheetId,
-					dimension: 'ROWS',
-					startIndex: start,
-					endIndex: start + 1
-				}
-			}
-		}));
-
-	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ requests })
-	});
-	if (!delRes.ok) {
-		const err = await delRes.text().catch(() => '');
-		throw new Error(`Sheets delete rows error (${delRes.status}): ${err.slice(0, 500)}`);
-	}
-	await finalizeJeuxSheetLayout(auth);
+	await deleteSheetRowsByIndices(auth, SHEET_TAB_JEUX, startIndices, { finalizeJeuxLayout: true });
 }
 
 /** Supprime des lignes de l’onglet Traducteurs/Relecteurs par `ID DB` (traducteur). */
@@ -953,31 +1046,7 @@ async function deleteTranslatorsFromGoogleSheet(translatorIds: string[]): Promis
 	}
 	if (!startIndices.length) return;
 
-	const sheetId = await getSheetIdByTitle(auth, SHEET_TAB_TR);
-	if (sheetId == null) return;
-
-	const requests = startIndices
-		.sort((a, b) => b - a)
-		.map((start) => ({
-			deleteDimension: {
-				range: {
-					sheetId,
-					dimension: 'ROWS',
-					startIndex: start,
-					endIndex: start + 1
-				}
-			}
-		}));
-
-	const delRes = await sheetsFetch(auth.spreadsheetId, auth.headers, `:batchUpdate`, auth.apiKey, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ requests })
-	});
-	if (!delRes.ok) {
-		const err = await delRes.text().catch(() => '');
-		throw new Error(`Sheets delete TR rows error (${delRes.status}): ${err.slice(0, 500)}`);
-	}
+	await deleteSheetRowsByIndices(auth, SHEET_TAB_TR, startIndices);
 	await sortTranslatorSheetByActivityDesc(auth);
 	await reapplyTranslatorPagesRichText(auth);
 }
@@ -986,7 +1055,28 @@ async function deleteTranslatorsFromGoogleSheet(translatorIds: string[]): Promis
  * Synchronise une traduction vers l’onglet Jeux.
  * @returns `true` si la ligne a été écrite/mise à jour, `false` sinon (alerte loguée).
  */
+const jeuxTranslationSyncInFlight = new Map<string, Promise<boolean>>();
+
 export async function syncTranslationToGoogleSheet(
+	translationId: string,
+	context = 'unspecified',
+	options?: { deferJeuxLayoutFinalize?: boolean }
+): Promise<boolean> {
+	const existing = jeuxTranslationSyncInFlight.get(translationId);
+	if (existing) return existing;
+
+	const work = syncTranslationToGoogleSheetInner(translationId, context, options);
+	jeuxTranslationSyncInFlight.set(translationId, work);
+	try {
+		return await work;
+	} finally {
+		if (jeuxTranslationSyncInFlight.get(translationId) === work) {
+			jeuxTranslationSyncInFlight.delete(translationId);
+		}
+	}
+}
+
+async function syncTranslationToGoogleSheetInner(
 	translationId: string,
 	context = 'unspecified',
 	options?: { deferJeuxLayoutFinalize?: boolean }
@@ -1058,6 +1148,22 @@ export async function syncTranslationToGoogleSheet(
 						.limit(1)
 				: [];
 		const proofreader = proofreaderById ?? proofreaderByName ?? null;
+
+		try {
+			const removed = await deleteDuplicateRowsForIdDb(auth, SHEET_TAB_JEUX, tr.id);
+			if (removed > 0) {
+				appLogWarn('sheets-sync', `Doublons Jeux supprimés avant sync unitaire`, {
+					translationId: tr.id,
+					removed,
+					context
+				});
+			}
+		} catch (err) {
+			appLogWarn('sheets-sync', 'dedup Jeux avant sync unitaire échouée', err, {
+				translationId: tr.id,
+				context
+			});
+		}
 
 		const tab = encodeURIComponent(SHEET_TAB_JEUX);
 		const getAllRes = await sheetsFetch(
@@ -1521,6 +1627,10 @@ export async function syncDbToSpreadsheetBulk(
 	syncedTranslators: number;
 	/** Lignes Jeux supprimées du spreadsheet (ID DB absent de la base). */
 	prunedJeuxRows: number;
+	/** Lignes Jeux en double supprimées (même ID DB). */
+	dedupedJeuxRows: number;
+	/** Traducteur/relecteur : noms legacy remplacés par des id en base. */
+	repairedContributorIds: number;
 	errors: string[];
 	/** Un sous-ensemble de lignes Jeux a été synchronisé (hors purge). */
 	jeuxPartial?: boolean;
@@ -1534,27 +1644,56 @@ export async function syncDbToSpreadsheetBulk(
 			syncedTranslations: 0,
 			syncedTranslators: 0,
 			prunedJeuxRows: 0,
+			dedupedJeuxRows: 0,
+			repairedContributorIds: 0,
 			errors: ['Configuration Google Sheets absente (OAuth/API key/spreadsheet ID).']
 		};
 	}
 
 	onProgress?.('Sheets : lecture base (traductions + traducteurs)…');
+	const errors: string[] = [];
+	let prunedJeuxRows = 0;
+	let dedupedJeuxRows = 0;
+	let repairedContributorIds = 0;
+	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
+	let jeuxPartial = false;
+	let jeuxRowsWritten = 0;
+
+	try {
+		onProgress?.('Base : normalisation traductor_id / proofreader_id (noms → id)…');
+		const repair = await repairGameTranslationContributorIdsInDb();
+		repairedContributorIds = repair.fixedTranslatorId + repair.fixedProofreaderId;
+		if (repairedContributorIds > 0) {
+			onProgress?.(
+				`Base : ${repairedContributorIds} champ(s) traducteur/relecteur corrigé(s) sur ${repair.scanned} traduction(s)`
+			);
+		}
+	} catch (err) {
+		errors.push(
+			`repair contributor ids: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+		);
+	}
+
 	const [translationsInitial, translators] = await Promise.all([
 		db.select().from(table.gameTranslation),
 		db.select().from(table.translator)
 	]);
 	const translations = translationsInitial;
-	const errors: string[] = [];
-	let prunedJeuxRows = 0;
-	const { onlyJeuxTranslationIds, skipJeuxRowWrites, skipTranslatorTab } = options;
-	let jeuxPartial = false;
-	let jeuxRowsWritten = 0;
 
 	try {
 		const jeuxFilter =
 			onlyJeuxTranslationIds && onlyJeuxTranslationIds.size > 0 ? onlyJeuxTranslationIds : null;
 
 		onProgress?.('Sheets Jeux : lecture feuille (index des lignes)…');
+		onProgress?.('Sheets Jeux : suppression des doublons (ID DB)…');
+		try {
+			dedupedJeuxRows += await deduplicateSheetTabByIdDb(auth, SHEET_TAB_JEUX);
+			if (dedupedJeuxRows > 0) {
+				onProgress?.(`Sheets Jeux : ${dedupedJeuxRows} ligne(s) en double supprimée(s)`);
+			}
+		} catch (err) {
+			errors.push(`bulk Jeux dedup: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+		}
 		const jeuxSnap = await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 
 		if (skipJeuxRowWrites) {
@@ -1634,6 +1773,20 @@ export async function syncDbToSpreadsheetBulk(
 			}
 		}
 
+		try {
+			const dedupedAfter = await deduplicateSheetTabByIdDb(auth, SHEET_TAB_JEUX);
+			if (dedupedAfter > 0) {
+				dedupedJeuxRows += dedupedAfter;
+				onProgress?.(
+					`Sheets Jeux : ${dedupedAfter} doublon(s) supplémentaire(s) retiré(s) après écriture`
+				);
+			}
+		} catch (err) {
+			errors.push(
+				`bulk Jeux dedup post-write: ${err instanceof Error ? err.message : 'erreur inconnue'}`
+			);
+		}
+
 		const dbTranslationIds = new Set(translations.map((t) => t.id));
 		const snapAfter = skipJeuxRowWrites ? jeuxSnap : await getSheetSnapshot(auth, SHEET_TAB_JEUX);
 		const orphanJeuxIds = [...snapAfter.rowNumberById.keys()].filter(
@@ -1659,6 +1812,14 @@ export async function syncDbToSpreadsheetBulk(
 			onProgress?.('Sheets TR : ignoré (aucun nouveau traducteur / relecteur dans ce flux)');
 		} else {
 			onProgress?.(`Sheets TR : snapshot + sync (${translators.length} traducteur(s))…`);
+			try {
+				const dedupedTr = await deduplicateSheetTabByIdDb(auth, SHEET_TAB_TR);
+				if (dedupedTr > 0) {
+					onProgress?.(`Sheets TR : ${dedupedTr} ligne(s) en double supprimée(s)`);
+				}
+			} catch (err) {
+				errors.push(`bulk TR dedup: ${err instanceof Error ? err.message : 'erreur inconnue'}`);
+			}
 			const trSnap = await getSheetSnapshot(auth, SHEET_TAB_TR);
 			const activityCountsById = await loadTranslatorActivityCountsById();
 			const updates: Array<{ range: string; values: string[][] }> = [];
@@ -1766,6 +1927,8 @@ export async function syncDbToSpreadsheetBulk(
 		syncedTranslations: skipJeuxRowWrites ? 0 : jeuxPartial ? jeuxRowsWritten : translations.length,
 		syncedTranslators: skipTranslatorTab ? 0 : translators.length,
 		prunedJeuxRows,
+		dedupedJeuxRows,
+		repairedContributorIds,
 		errors,
 		jeuxPartial: jeuxPartial || undefined
 	};

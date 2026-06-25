@@ -88,3 +88,34 @@ export const getStatusFilterLabel = (status: string): string => {
 	};
 	return labels[status] ?? '';
 };
+
+export function getSubmissionGameId(submission: {
+	game?: { id: string } | null;
+	gameId?: string | null;
+	parsedData?: { gameId?: string } | null;
+}): string | null {
+	const parsedGameId =
+		typeof submission.parsedData?.gameId === 'string' ? submission.parsedData.gameId : null;
+	return submission.game?.id ?? submission.gameId ?? parsedGameId;
+}
+
+const REVIEWED_SUBMISSION_STATUSES = ['accepted', 'rejected', 'to_fix'] as const;
+
+export function isReviewedSubmissionStatus(
+	status: string
+): status is (typeof REVIEWED_SUBMISSION_STATUSES)[number] {
+	return (REVIEWED_SUBMISSION_STATUSES as readonly string[]).includes(status);
+}
+
+export function getSubmissionReviewedByLabel(status: string): string | null {
+	switch (status) {
+		case 'accepted':
+			return 'Acceptée par';
+		case 'rejected':
+			return 'Refusée par';
+		case 'to_fix':
+			return 'À corriger par';
+		default:
+			return null;
+	}
+}

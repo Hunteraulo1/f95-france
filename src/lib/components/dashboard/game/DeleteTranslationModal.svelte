@@ -39,8 +39,7 @@
 						id="translation-delete-reason"
 						class="textarea-bordered textarea min-h-24 w-full"
 						placeholder="Expliquez pourquoi cette traduction doit être retirée…"
-						bind:value={reason}
-					></textarea>
+						bind:value={reason}></textarea>
 				</div>
 			</div>
 			<div

@@ -5,7 +5,13 @@
 	import { hasPermission } from '$lib/permissions/client';
 	import { newToast, roleBadgeStyles } from '$lib/stores';
 	import { roleUsernameClass } from '$lib/utils/role-display';
-	import { getStatusBadge, getTypeBadge, getTypeLabel } from '$lib/utils/submissions';
+	import {
+		getStatusBadge,
+		getSubmissionReviewedByLabel,
+		getTypeBadge,
+		getTypeLabel,
+		isReviewedSubmissionStatus
+	} from '$lib/utils/submissions';
 
 	let { submission }: { submission: SubmissionModalItem } = $props();
 </script>
@@ -37,7 +43,7 @@
 			<div class="mt-1 text-sm text-base-content/70">
 				Soumission créée par :
 				<a
-					class="link link-hover {roleUsernameClass(
+					class="link link-hover cursor-pointer {roleUsernameClass(
 						submission.user.role,
 						submission.user.role ? $roleBadgeStyles[submission.user.role] : undefined
 					)}"
@@ -68,6 +74,27 @@
 					}}
 				>
 					{submission.openedByUser.username}
+				</a>
+			</div>
+		{/if}
+		{#if isReviewedSubmissionStatus(submission.status) && submission.reviewedByUser?.username}
+			{@const reviewedByLabel = getSubmissionReviewedByLabel(submission.status)}
+			<div class="mt-1 text-sm text-base-content/70">
+				{reviewedByLabel} :
+				<a
+					class="link link-hover {roleUsernameClass(
+						submission.reviewedByUser.role,
+						submission.reviewedByUser.role
+							? $roleBadgeStyles[submission.reviewedByUser.role]
+							: undefined
+					)}"
+					href={resolve(`/dashboard/profile/${submission.reviewedByUser.username}`)}
+					onclick={async (event) => {
+						event.preventDefault();
+						await goto(resolve(`/dashboard/profile/${submission.reviewedByUser?.username}`));
+					}}
+				>
+					{submission.reviewedByUser.username}
 				</a>
 			</div>
 		{/if}

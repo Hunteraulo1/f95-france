@@ -1,6 +1,8 @@
 import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { submissionReviewedByUserIdPatch } from '$lib/server/schema-column-compat';
+import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
 import {
 	formDataToSubmissionPayload,
 	loadSubmissionListPage,
@@ -19,8 +21,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	assertDashboardAuthenticated(locals);
 
 	const statusFilter = parseSubmissionStatusFilter(url.searchParams.get('status'));
-	const pageRaw = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
-	const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
 	try {
 		const whereCondition =
@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return await loadSubmissionListPage({
 			where: whereCondition,
 			statusFilter,
-			requestedPage,
+			requestedPage: 1,
 			userId: locals.user!.id
 		});
 	} catch (error: unknown) {
@@ -158,7 +158,9 @@ export const actions: Actions = {
 				.set({
 					status: 'pending',
 					adminNotes: null,
-					updatedAt: new Date()
+					updatedAt: new Date(),
+					...(await submissionOpenedByUserIdPatch(null)),
+					...(await submissionReviewedByUserIdPatch(null))
 				})
 				.where(eq(table.submission.id, submissionId));
 		}

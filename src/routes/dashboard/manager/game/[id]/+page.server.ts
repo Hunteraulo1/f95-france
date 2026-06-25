@@ -16,7 +16,7 @@ import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	await assertGameManageAccess(locals);
 	if (locals.user?.role) {
 		await assertRoleEditMode(locals.user.role);
@@ -158,11 +158,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		const canViewUpdateHistory = hasPermission(locals, 'games.view_history');
 		const canRevertUpdateHistory = hasPermission(locals, 'games.revert_history') && !usesSubmission;
 
-		const historyPageRaw = Number.parseInt(url.searchParams.get('historyPage') ?? '1', 10);
-		const historyPage = Number.isFinite(historyPageRaw) && historyPageRaw > 0 ? historyPageRaw : 1;
-
 		const updateHistoryPage = canViewUpdateHistory
-			? await listGameUpdateHistoryPage(gameId, historyPage)
+			? await listGameUpdateHistoryPage(gameId, 1)
 			: { entries: [], totalCount: 0, page: 1, totalPages: 1, pageSize: 15 };
 
 		return {

@@ -168,7 +168,7 @@
 			},
 			{
 				id: 'cron',
-				name: 'Cron (CRON_SECRET)',
+				name: 'Cron (SERVICE_PASSWORD_64_CRON-SECRET)',
 				kind: 'integration',
 				check: servicesStatus.services.cron,
 				testable: true
