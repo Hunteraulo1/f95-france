@@ -14,22 +14,15 @@ const RATE_WINDOW_MS = 60_000;
 
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
-export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
-
-/**
- * Chemins autorisés pour une clé scopée extension. `/api/extension-api` (lecture
- * des données) reste exact ; `/api/extension/` (liaison, sync des filtres) est un
- * préfixe couvrant les sous-routes de l’extension.
- */
-const EXTENSION_SCOPE_ALLOWED_PREFIXES = ['/api/extension-api', '/api/extension/'] as const;
+/** Préfixe des routes de l’extension hébergées sur ce site (liaison + sync des filtres). */
+export const EXTENSION_API_ROUTE_PREFIX = '/api/extension/';
 
 /** Le chemin demandé est-il couvert par le scope route de la clé ? */
 export function isPathAllowedForApiKeyScope(routeScope: string | null, pathname: string): boolean {
 	if (!routeScope) return true;
-	if (routeScope === EXTENSION_ONLY_API_ROUTE) {
-		return EXTENSION_SCOPE_ALLOWED_PREFIXES.some(
-			(prefix) => pathname === prefix || pathname.startsWith(prefix)
-		);
+	if (routeScope === EXTENSION_API_ROUTE_PREFIX) {
+		// Clé d’extension : restreinte aux sous-routes /api/extension/* (liaison, sync).
+		return pathname.startsWith(EXTENSION_API_ROUTE_PREFIX);
 	}
 	return pathname === routeScope;
 }
@@ -107,7 +100,7 @@ export function extractApiKeyFromRequest(request: Request): string | null {
 }
 
 function inferRouteScopeFromLabel(label: string | null | undefined): string | null {
-	return apiKeyLabelIsExtensionScoped(label) ? EXTENSION_ONLY_API_ROUTE : null;
+	return apiKeyLabelIsExtensionScoped(label) ? EXTENSION_API_ROUTE_PREFIX : null;
 }
 
 export type ConsumeApiKeyRateResult = 'ok' | 'rate_limited' | 'quota_disabled';

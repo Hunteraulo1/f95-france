@@ -1,5 +1,5 @@
 import { permissionGranted } from '$lib/permissions/check';
-import { EXTENSION_ONLY_API_ROUTE } from '$lib/server/api-keys';
+import { EXTENSION_API_ROUTE_PREFIX } from '$lib/server/api-keys';
 import { getUserById } from '$lib/server/auth';
 import type { User } from '$lib/server/db/schema';
 import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
@@ -87,7 +87,7 @@ export function isExtensionApiCallerAllowed(
 		return true;
 	}
 
-	if (ctx?.authenticatedViaApiKey && ctx.apiKeyRouteScope === EXTENSION_ONLY_API_ROUTE) {
+	if (ctx?.authenticatedViaApiKey && ctx.apiKeyRouteScope === EXTENSION_API_ROUTE_PREFIX) {
 		return true;
 	}
 
