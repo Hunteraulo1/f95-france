@@ -207,6 +207,35 @@
 	</div>
 
 	<div class="flex flex-col gap-4">
+		<h2 class="text-lg font-semibold text-base-content">Extension navigateur</h2>
+
+		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">
+			<div class="card-body gap-6 sm:py-8">
+				{#if data.extensionLinked}
+					<div role="alert" class="alert alert-soft alert-success">
+						<span>Extension liée — vos filtres sauvegardés sont synchronisés.</span>
+					</div>
+					<div class="flex justify-start">
+						<a href="/dashboard/settings/extension" class="btn btn-outline btn-sm">
+							Gérer les appareils
+						</a>
+					</div>
+				{:else}
+					<p class="text-sm text-base-content/70">
+						Liez votre compte à l’extension F95 France pour synchroniser vos filtres sauvegardés
+						entre le site et l’extension.
+					</p>
+					<div class="flex justify-start">
+						<a href="/dashboard/settings/extension" class="btn btn-primary btn-sm">
+							Lier l’extension
+						</a>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Préférences utilisateur</h2>
 
 		<div class="card w-full border border-base-300 bg-base-100 shadow-xl">

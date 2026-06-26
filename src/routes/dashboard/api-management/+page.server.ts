@@ -86,10 +86,10 @@ export const actions: Actions = {
 			return fail(400, { message: labelCheck.message });
 		}
 
-		const rpmParsed = Number.parseInt(String(formData.get('requestsPerMinute') ?? '60'), 10);
+		const rpmParsed = Number.parseInt(String(formData.get('requestsPerMinute') ?? '30'), 10);
 		const requestsPerMinute = Number.isFinite(rpmParsed)
 			? Math.min(10_000, Math.max(0, rpmParsed))
-			: 60;
+			: 30;
 
 		const expiresRaw = String(formData.get('expiresAt') ?? '').trim();
 		let expiresAt: Date | null = null;

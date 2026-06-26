@@ -29,6 +29,20 @@
       "when": 1782380665723,
       "tag": "0003_motionless_sharon_ventura",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1782469601521,
+      "tag": "0004_funny_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1782488314456,
+      "tag": "0005_lethal_patriot",
+      "breakpoints": true
     }
   ]
 }

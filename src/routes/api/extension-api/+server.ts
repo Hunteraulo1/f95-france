@@ -18,6 +18,7 @@ const corsHeaders = extensionApiCorsHeaders;
 export const OPTIONS: RequestHandler = async () => {
 	// Toujours répondre au preflight CORS sans contrôle d'authentification.
 	// Le contrôle réel est appliqué sur GET.
+
 	return new Response(null, {
 		status: 204,
 		headers: corsHeaders

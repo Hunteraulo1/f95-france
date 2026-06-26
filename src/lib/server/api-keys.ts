@@ -1,4 +1,3 @@
-import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 import { permissionGranted } from '$lib/permissions/check';
 import {
 	USER_API_KEY_MAX_COUNT_DEFAULT,
@@ -14,9 +13,26 @@ const RATE_WINDOW_MS = 60_000;
 
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
-export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
-export { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
-const EXTENSION_ONLY_LABEL_TOKEN = API_KEY_EXTENSION_ONLY_LABEL_TOKEN;
+/** Préfixe des routes de l’extension hébergées sur ce site (liaison + sync des filtres). */
+export const EXTENSION_API_ROUTE_PREFIX = '/api/extension/';
+
+/** Le chemin demandé est-il couvert par le scope route de la clé ? */
+export function isPathAllowedForApiKeyScope(routeScope: string | null, pathname: string): boolean {
+	if (!routeScope) return true;
+	if (routeScope === EXTENSION_API_ROUTE_PREFIX) {
+		// Clé d’extension : restreinte aux sous-routes /api/extension/* (liaison, sync).
+		return pathname.startsWith(EXTENSION_API_ROUTE_PREFIX);
+	}
+	return pathname === routeScope;
+}
+/**
+ * La clé est-elle une clé d’extension (frappée par la liaison) ? Déterminé par son
+ * `route_scope`, pas par son libellé. Ces clés sont gérées depuis la page Extension
+ * et ne comptent pas dans les clés API utilisateur.
+ */
+export function apiKeyIsExtensionScoped(routeScope: string | null | undefined): boolean {
+	return routeScope === EXTENSION_API_ROUTE_PREFIX;
+}
 
 const API_KEY_LABEL_BRACKETS_RE = /[[\]]/;
 
@@ -46,7 +62,8 @@ export function validateApiKeyLabelForActor(
 	}
 	return {
 		ok: false,
-		message: `Les crochets [ ] dans le libellé sont réservés (ex. ${API_KEY_EXTENSION_ONLY_LABEL_TOKEN} pour l’extension). Demandez la permission « Libellés avec crochets » à un administrateur.`
+		message:
+			'Les crochets [ ] dans le libellé sont réservés à un usage interne. Demandez la permission « Libellés avec crochets » à un administrateur.'
 	};
 }
 
@@ -78,11 +95,6 @@ export function extractApiKeyFromRequest(request: Request): string | null {
 	const header = request.headers.get('x-api-key')?.trim();
 	if (header) return header;
 	return null;
-}
-
-function inferRouteScopeFromLabel(label: string | null | undefined): string | null {
-	const normalized = (label ?? '').toLowerCase();
-	return normalized.includes(EXTENSION_ONLY_LABEL_TOKEN) ? EXTENSION_ONLY_API_ROUTE : null;
 }
 
 export type ConsumeApiKeyRateResult = 'ok' | 'rate_limited' | 'quota_disabled';
@@ -188,7 +200,7 @@ export async function validateApiKeyRequest(request: Request): Promise<
 		ok: true,
 		keyId: row.id,
 		ownerUserId: row.ownerUserId,
-		routeScope: inferRouteScopeFromLabel(row.label)
+		routeScope: row.routeScope ?? null
 	};
 }
 
@@ -247,6 +259,7 @@ export type ApiKeyListRow = {
 	id: string;
 	keyPrefix: string;
 	label: string;
+	routeScope: string | null;
 	requestsPerMinute: number;
 	expiresAt: Date | null;
 	revokedAt: Date | null;
@@ -264,7 +277,9 @@ export async function countActiveApiKeysForOwner(ownerUserId: string): Promise<n
 			and(
 				eq(table.apiKey.ownerUserId, ownerUserId),
 				isNull(table.apiKey.revokedAt),
-				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
+				eq(table.apiKey.kind, API_KEY_KIND_BEARER),
+				// Les clés scopées (extension) ne comptent pas dans le quota utilisateur.
+				isNull(table.apiKey.routeScope)
 			)
 		);
 
@@ -287,6 +302,7 @@ export async function listApiKeysForOwner(ownerUserId: string): Promise<ApiKeyLi
 			id: table.apiKey.id,
 			keyPrefix: table.apiKey.keyPrefix,
 			label: table.apiKey.label,
+			routeScope: table.apiKey.routeScope,
 			requestsPerMinute: table.apiKey.requestsPerMinute,
 			expiresAt: table.apiKey.expiresAt,
 			revokedAt: table.apiKey.revokedAt,
@@ -314,6 +330,7 @@ export async function listApiKeysForAdmin(): Promise<ApiKeyAdminRow[]> {
 			id: table.apiKey.id,
 			keyPrefix: table.apiKey.keyPrefix,
 			label: table.apiKey.label,
+			routeScope: table.apiKey.routeScope,
 			kind: table.apiKey.kind,
 			requestsPerMinute: table.apiKey.requestsPerMinute,
 			expiresAt: table.apiKey.expiresAt,
@@ -338,6 +355,8 @@ export async function createApiKey(input: {
 	expiresAt: Date | null;
 	ownerUserId: string;
 	createdByUserId: string;
+	/** Restreint la clé à un préfixe de route (ex. `EXTENSION_API_ROUTE_PREFIX`). */
+	routeScope?: string | null;
 }): Promise<{ id: string; rawKey: string; keyPrefix: string }> {
 	const { rawKey, keyPrefix } = generateApiKeyPlaintext();
 	const keyHash = hashApiKeySecret(rawKey);
@@ -349,6 +368,7 @@ export async function createApiKey(input: {
 		keyPrefix,
 		label: input.label,
 		kind: API_KEY_KIND_BEARER,
+		routeScope: input.routeScope ?? null,
 		requestsPerMinute: input.requestsPerMinute,
 		expiresAt: input.expiresAt,
 		revokedAt: null,
