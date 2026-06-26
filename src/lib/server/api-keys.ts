@@ -15,8 +15,34 @@ const RATE_WINDOW_MS = 60_000;
 export const API_KEY_KIND_BEARER = 'bearer';
 export const API_KEY_KIND_SESSION = 'session';
 export const EXTENSION_ONLY_API_ROUTE = '/api/extension-api';
+
+/**
+ * Chemins autorisés pour une clé scopée extension. `/api/extension-api` (lecture
+ * des données) reste exact ; `/api/extension/` (liaison, sync des filtres) est un
+ * préfixe couvrant les sous-routes de l’extension.
+ */
+const EXTENSION_SCOPE_ALLOWED_PREFIXES = ['/api/extension-api', '/api/extension/'] as const;
+
+/** Le chemin demandé est-il couvert par le scope route de la clé ? */
+export function isPathAllowedForApiKeyScope(routeScope: string | null, pathname: string): boolean {
+	if (!routeScope) return true;
+	if (routeScope === EXTENSION_ONLY_API_ROUTE) {
+		return EXTENSION_SCOPE_ALLOWED_PREFIXES.some(
+			(prefix) => pathname === prefix || pathname.startsWith(prefix)
+		);
+	}
+	return pathname === routeScope;
+}
 export { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 const EXTENSION_ONLY_LABEL_TOKEN = API_KEY_EXTENSION_ONLY_LABEL_TOKEN;
+
+/**
+ * La clé est-elle une clé d’extension (frappée par la liaison) ? Ces clés sont
+ * gérées depuis la page Extension et ne comptent pas dans les clés API utilisateur.
+ */
+export function apiKeyLabelIsExtensionScoped(label: string | null | undefined): boolean {
+	return (label ?? '').toLowerCase().includes(EXTENSION_ONLY_LABEL_TOKEN);
+}
 
 const API_KEY_LABEL_BRACKETS_RE = /[[\]]/;
 
@@ -81,8 +107,7 @@ export function extractApiKeyFromRequest(request: Request): string | null {
 }
 
 function inferRouteScopeFromLabel(label: string | null | undefined): string | null {
-	const normalized = (label ?? '').toLowerCase();
-	return normalized.includes(EXTENSION_ONLY_LABEL_TOKEN) ? EXTENSION_ONLY_API_ROUTE : null;
+	return apiKeyLabelIsExtensionScoped(label) ? EXTENSION_ONLY_API_ROUTE : null;
 }
 
 export type ConsumeApiKeyRateResult = 'ok' | 'rate_limited' | 'quota_disabled';
@@ -264,7 +289,9 @@ export async function countActiveApiKeysForOwner(ownerUserId: string): Promise<n
 			and(
 				eq(table.apiKey.ownerUserId, ownerUserId),
 				isNull(table.apiKey.revokedAt),
-				eq(table.apiKey.kind, API_KEY_KIND_BEARER)
+				eq(table.apiKey.kind, API_KEY_KIND_BEARER),
+				// Les clés d’extension ne comptent pas dans le quota utilisateur.
+				sql`LOWER(${table.apiKey.label}) NOT LIKE ${`%${EXTENSION_ONLY_LABEL_TOKEN}%`}`
 			)
 		);
 

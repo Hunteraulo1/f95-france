@@ -132,7 +132,7 @@ export const apiKey = mysqlTable('api_key', {
 	keyPrefix: varchar('key_prefix', { length: 32 }).notNull(),
 	label: varchar('label', { length: 255 }).notNull().default(''),
 	kind: varchar('kind', { length: 16 }).notNull().default('bearer'),
-	requestsPerMinute: int('requests_per_minute').notNull().default(60),
+	requestsPerMinute: int('requests_per_minute').notNull().default(30),
 	expiresAt: datetime('expires_at'),
 	revokedAt: datetime('revoked_at'),
 	lastUsedAt: datetime('last_used_at'),
@@ -158,6 +158,18 @@ export const apiKeyRate = mysqlTable('api_key_rate', {
 		.references(() => apiKey.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 	requestCount: int('request_count').notNull().default(0),
 	windowStartedAt: datetime('window_started_at')
+		.notNull()
+		.default(sql`(NOW())`)
+});
+
+export const extensionLinkCode = mysqlTable('extension_link_code', {
+	code: varchar('code', { length: 16 }).primaryKey(),
+	userId: varchar('user_id', { length: 255 })
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+	expiresAt: datetime('expires_at').notNull(),
+	usedAt: datetime('used_at'),
+	createdAt: datetime('created_at')
 		.notNull()
 		.default(sql`(NOW())`)
 });
