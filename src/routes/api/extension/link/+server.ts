@@ -1,5 +1,6 @@
 import { extensionLinkCorsHeaders } from '$lib/server/extension-api-cors';
 import { redeemLinkCode } from '$lib/server/extension-link';
+import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -10,6 +11,10 @@ export const OPTIONS: RequestHandler = async () => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
+	if (!isExtensionOriginAllowed(request)) {
+		return json({ error: 'Origine non autorisée.' }, { status: 403, headers: corsHeaders });
+	}
+
 	const body = (await request.json().catch(() => null)) as { code?: unknown } | null;
 	const code = typeof body?.code === 'string' ? body.code : '';
 

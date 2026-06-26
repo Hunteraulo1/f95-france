@@ -1,5 +1,5 @@
 import {
-	apiKeyLabelIsExtensionScoped,
+	apiKeyIsExtensionScoped,
 	countActiveApiKeysForOwner,
 	createApiKey,
 	getMaxApiKeysForRole,
@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			getMaxApiKeysForRole(locals.user.role)
 		]);
 		// Les clés d’extension sont gérées depuis la page Extension, pas ici.
-		const allKeys = ownerKeys.filter((key) => !apiKeyLabelIsExtensionScoped(key.label));
+		const allKeys = ownerKeys.filter((key) => !apiKeyIsExtensionScoped(key.routeScope));
 		const keys =
 			revokedFilter === 'all'
 				? allKeys

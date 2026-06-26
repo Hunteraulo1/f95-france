@@ -36,6 +36,13 @@
       "when": 1782469601521,
       "tag": "0004_funny_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1782488314456,
+      "tag": "0005_lethal_patriot",
+      "breakpoints": true
     }
   ]
 }

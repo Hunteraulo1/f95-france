@@ -132,6 +132,8 @@ export const apiKey = mysqlTable('api_key', {
 	keyPrefix: varchar('key_prefix', { length: 32 }).notNull(),
 	label: varchar('label', { length: 255 }).notNull().default(''),
 	kind: varchar('kind', { length: 16 }).notNull().default('bearer'),
+	// Restreint la clé à un préfixe de route (ex. clé d’extension). NULL = accès complet.
+	routeScope: varchar('route_scope', { length: 64 }),
 	requestsPerMinute: int('requests_per_minute').notNull().default(30),
 	expiresAt: datetime('expires_at'),
 	revokedAt: datetime('revoked_at'),

@@ -1,11 +1,13 @@
 import { building } from '$app/environment';
 import {
+	apiKeyIsExtensionScoped,
 	isPathAllowedForApiKeyScope,
 	extractApiKeyFromRequest,
 	getUserForApiKeyOwner,
 	jsonApiKeyGuardResponse,
 	validateApiKeyRequest
 } from '$lib/server/api-keys';
+import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
@@ -344,6 +346,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 							}
 						}
 					)
+				);
+			}
+			// Garde supplémentaire : une clé d’extension ne s’utilise que depuis l’extension.
+			if (
+				apiKeyIsExtensionScoped(keyResult.routeScope) &&
+				!isExtensionOriginAllowed(event.request)
+			) {
+				return applySecurityHeaders(
+					new Response(JSON.stringify({ error: 'Origine non autorisée pour cette clé.' }), {
+						status: 403,
+						headers: {
+							'content-type': 'application/json; charset=utf-8',
+							...apiPublicErrorCorsHeaders
+						}
+					})
 				);
 			}
 			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);

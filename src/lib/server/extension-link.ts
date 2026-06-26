@@ -1,6 +1,7 @@
-import { API_KEY_EXTENSION_ONLY_LABEL_TOKEN } from '$lib/api-keys/label-tokens';
 import {
+	apiKeyIsExtensionScoped,
 	createApiKey,
+	EXTENSION_API_ROUTE_PREFIX,
 	listApiKeysForOwner,
 	revokeApiKeyForActor,
 	type ApiKeyListRow
@@ -15,12 +16,12 @@ export const LINK_CODE_TTL_MS = 5 * 60 * 1000;
 /** Fréquence autorisée (req/min) pour une clé d’extension. */
 const EXTENSION_KEY_RPM = 30;
 
-/** Libellé des clés frappées par la liaison ; le token garantit le scope extension. */
-export const EXTENSION_KEY_LABEL = `Extension navigateur ${API_KEY_EXTENSION_ONLY_LABEL_TOKEN}`;
+/** Libellé des clés frappées par la liaison (le scope est porté par `route_scope`). */
+export const EXTENSION_KEY_LABEL = 'Extension navigateur';
 
-/** Une clé API appartient-elle à l’extension (scopée via son libellé) ? */
-export function isExtensionApiKey(key: Pick<ApiKeyListRow, 'label'>): boolean {
-	return key.label.toLowerCase().includes(API_KEY_EXTENSION_ONLY_LABEL_TOKEN.toLowerCase());
+/** Une clé API appartient-elle à l’extension (scopée via `route_scope`) ? */
+export function isExtensionApiKey(key: Pick<ApiKeyListRow, 'routeScope'>): boolean {
+	return apiKeyIsExtensionScoped(key.routeScope);
 }
 
 /** Alphabet sans caractères ambigus (0/O, 1/I/L). */
@@ -103,7 +104,8 @@ export async function redeemLinkCode(rawCode: string): Promise<RedeemLinkCodeRes
 		requestsPerMinute: EXTENSION_KEY_RPM,
 		expiresAt: null,
 		ownerUserId: row.userId,
-		createdByUserId: row.userId
+		createdByUserId: row.userId,
+		routeScope: EXTENSION_API_ROUTE_PREFIX
 	});
 
 	return { ok: true, rawKey, userId: row.userId };

@@ -18,3 +18,10 @@ export const extensionLinkCorsHeaders: Record<string, string> = {
 	'Access-Control-Allow-Methods': 'POST, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type'
 };
+
+/** En-têtes CORS pour les routes d’extension en lecture seule (ex. `/api/extension/me`). */
+export const extensionReadCorsHeaders: Record<string, string> = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
+};
