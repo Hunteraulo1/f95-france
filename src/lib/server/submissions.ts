@@ -523,7 +523,7 @@ export async function applySubmission(submissionId: string) {
 					...(newGameTranslationId ? { translationId: newGameTranslationId } : {})
 				})
 				.where(eq(table.submission.id, submissionId));
-			await createGameUpdateRow(gameId, 'adding');
+			await createGameUpdateRow(gameId, 'adding', undefined, newGameTranslationId ?? null);
 		}
 		addCount += 1;
 	} else if (sub.type === 'update') {

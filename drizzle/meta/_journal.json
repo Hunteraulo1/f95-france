@@ -43,6 +43,13 @@
       "when": 1782488314456,
       "tag": "0005_lethal_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1782554611117,
+      "tag": "0006_uneven_callisto",
+      "breakpoints": true
     }
   ]
 }

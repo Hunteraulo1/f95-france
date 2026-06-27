@@ -232,6 +232,10 @@ export const update = mysqlTable('update', {
 	gameId: varchar('game_id', { length: 255 })
 		.notNull()
 		.references(() => game.id),
+	// Traduction à l'origine de la MAJ. NULL = legacy / MAJ jeu sans trad ciblée.
+	translationId: varchar('translation_id', { length: 255 }).references(() => gameTranslation.id, {
+		onDelete: 'set null'
+	}),
 	status: varchar('status', { length: 16 }).notNull().default('update'),
 	createdAt: datetime('created_at')
 		.notNull()

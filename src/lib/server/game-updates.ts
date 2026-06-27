@@ -23,14 +23,18 @@ import { eq, sql } from 'drizzle-orm';
 export async function createGameUpdateRow(
 	gameId: string,
 	status: 'adding' | 'update',
-	history?: UpdateHistoryContext
+	history?: UpdateHistoryContext,
+	translationId?: string | null
 ): Promise<string | null> {
 	const updateId = randomUUID();
+	// Trad ciblée : override explicite, sinon celle portée par l'historique.
+	const linkedTranslationId = translationId ?? history?.changes.translationId ?? null;
 
 	if (await hasUpdateStatusColumn()) {
 		await db.insert(table.update).values({
 			id: updateId,
 			gameId,
+			translationId: linkedTranslationId,
 			status,
 			createdAt: new Date(),
 			updatedAt: new Date()
@@ -40,6 +44,7 @@ export async function createGameUpdateRow(
 		await db.insert(table.update).values({
 			id: updateId,
 			gameId,
+			translationId: linkedTranslationId,
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
@@ -82,9 +87,15 @@ export async function touchGameUpdatedToday(
 			.limit(1);
 
 		if (todayUpdateRow[0]?.id) {
+			// La ligne du jour est partagée par jeu : on la pointe vers la trad
+			// la plus récemment modifiée (déterministe, vs. ancien fallback timing).
+			const linkedTranslationId = history?.changes.translationId ?? null;
 			await db
 				.update(table.update)
-				.set({ updatedAt: new Date() })
+				.set({
+					updatedAt: new Date(),
+					...(linkedTranslationId ? { translationId: linkedTranslationId } : {})
+				})
 				.where(eq(table.update.id, todayUpdateRow[0].id));
 			if (history) {
 				await recordUpdateHistoryEntry(todayUpdateRow[0].id, history);
