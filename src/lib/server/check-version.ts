@@ -15,6 +15,7 @@ import {
 } from '$lib/server/discord-webhook';
 import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
+import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
 import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
@@ -496,6 +497,27 @@ export async function runAutoCheckVersions(
 						gameId: game.gameId,
 						gameName: game.gameName,
 						detail: error instanceof Error ? error.message : String(error)
+					});
+				}
+			}
+
+			// Parité avec le webhook updates : matérialiser le bump de version intégrée
+			// comme une ligne `update` visible dans /updates. On enregistre un changement
+			// de traduction (delta de version, old -> new) ; `game.gameVersion` est encore
+			// l'ancienne valeur ici, ce qui pose l'historique `entity='translation'`
+			// requis par la portée « featured ».
+			if (isActualVersionBump && integratedRows.length > 0) {
+				const integrated = integratedRows[0];
+				try {
+					await recordTranslationChangeInUpdateHistory(game.gameId, {
+						translationId: integrated.translationId,
+						before: { version: game.gameVersion },
+						after: { version: newVersion },
+						updateKind: 'update'
+					});
+				} catch (error) {
+					appLogWarn(logSource, 'auto-check : ligne update non créée', error, {
+						gameId: game.gameId
 					});
 				}
 			}
