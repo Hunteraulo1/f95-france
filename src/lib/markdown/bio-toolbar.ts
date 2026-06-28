@@ -1,15 +1,7 @@
 import type { EditorView } from '@codemirror/view';
 
 export type BioMarkdownAction =
-	| 'bold'
-	| 'italic'
-	| 'link'
-	| 'heading'
-	| 'ul'
-	| 'ol'
-	| 'quote'
-	| 'code'
-	| 'hr';
+	'bold' | 'italic' | 'link' | 'heading' | 'ul' | 'ol' | 'quote' | 'code' | 'hr';
 
 type TextEditResult = {
 	value: string;

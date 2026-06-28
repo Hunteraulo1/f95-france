@@ -92,14 +92,12 @@
 	let loadingMore = $state(false);
 	let loadMoreError = $state<string | null>(null);
 
-	const listParams = $derived.by(
-		(): PublicGamesListParams => ({
-			page: loadedPage,
-			query: data.query ?? '',
-			sort: data.sort ?? 'updated_desc',
-			filters: data.filters ?? createEmptyPublicGamesFilterSelections()
-		})
-	);
+	const listParams = $derived.by((): PublicGamesListParams => ({
+		page: loadedPage,
+		query: data.query ?? '',
+		sort: data.sort ?? 'updated_desc',
+		filters: data.filters ?? createEmptyPublicGamesFilterSelections()
+	}));
 
 	const listCacheKey = $derived(
 		JSON.stringify({

@@ -70,6 +70,7 @@ async function buildHomePayload(): Promise<HomePayload> {
 						updateStatus: updateTable.status,
 						updateCreatedAt: updateTable.createdAt,
 						updateUpdatedAt: updateTable.updatedAt,
+						updateTranslationId: updateTable.translationId,
 						gameId: game.id,
 						gameName: game.name,
 						gameImage: game.image,
@@ -102,7 +103,8 @@ async function buildHomePayload(): Promise<HomePayload> {
 			{
 				status: row.updateStatus,
 				createdAt: row.updateCreatedAt,
-				updatedAt: row.updateUpdatedAt
+				updatedAt: row.updateUpdatedAt,
+				translationId: row.updateTranslationId
 			},
 			translations
 		);
