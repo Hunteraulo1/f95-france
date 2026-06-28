@@ -495,10 +495,7 @@ export async function applySubmission(submissionId: string) {
 				status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: translationData.ttype as 'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tname: translationTname as
-					| 'no_translation'
-					| 'integrated'
-					| 'translation'
-					| 'translation_with_mods',
+					'no_translation' | 'integrated' | 'translation' | 'translation_with_mods',
 				gameType: engineNewTr,
 				tlink: translationData.tlink || '',
 				translatorId: resolvedTranslatorId,
@@ -729,12 +726,7 @@ export async function applySubmission(submissionId: string) {
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: translationData.ttype as
-						| 'auto'
-						| 'vf'
-						| 'manual'
-						| 'semi-auto'
-						| 'to_tested'
-						| 'hs',
+						'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 					tlink: translationData.tlink || '',
 					tname: nextTname,
 					translatorId:
@@ -789,12 +781,7 @@ export async function applySubmission(submissionId: string) {
 					tversion: translationData.tversion,
 					status: translationData.status as 'in_progress' | 'completed' | 'abandoned',
 					ttype: translationData.ttype as
-						| 'auto'
-						| 'vf'
-						| 'manual'
-						| 'semi-auto'
-						| 'to_tested'
-						| 'hs',
+						'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 					gameType: engineRecreated,
 					tlink: translationData.tlink || '',
 					tname: insertTname as typeof table.gameTranslation.$inferInsert.tname,
@@ -1300,12 +1287,7 @@ export async function revertSubmission(submissionId: string) {
 				tversion: originalTranslation.tversion,
 				status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: originalTranslation.ttype as
-					| 'auto'
-					| 'vf'
-					| 'manual'
-					| 'semi-auto'
-					| 'to_tested'
-					| 'hs',
+					'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tlink: originalTranslation.tlink || '',
 				translatorId: originalTranslation.translatorId || null,
 				proofreaderId: originalTranslation.proofreaderId || null,
@@ -1405,12 +1387,7 @@ export async function revertSubmission(submissionId: string) {
 				tversion: originalTranslation.tversion,
 				status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 				ttype: originalTranslation.ttype as
-					| 'auto'
-					| 'vf'
-					| 'manual'
-					| 'semi-auto'
-					| 'to_tested'
-					| 'hs',
+					'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 				tlink: originalTranslation.tlink || '',
 				tname:
 					(originalTranslation.tname as typeof table.gameTranslation.$inferInsert.tname) ??
@@ -1483,12 +1460,7 @@ export async function revertSubmission(submissionId: string) {
 						tversion: originalTranslation.tversion,
 						status: originalTranslation.status as 'in_progress' | 'completed' | 'abandoned',
 						ttype: originalTranslation.ttype as
-							| 'auto'
-							| 'vf'
-							| 'manual'
-							| 'semi-auto'
-							| 'to_tested'
-							| 'hs',
+							'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 						tlink: originalTranslation.tlink || '',
 						tname:
 							(originalTranslation.tname as typeof table.gameTranslation.$inferInsert.tname) ??

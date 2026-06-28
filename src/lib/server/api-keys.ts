@@ -144,11 +144,7 @@ export async function consumeApiKeyRate(
 }
 
 export type ApiKeyValidateFailure =
-	| 'missing'
-	| 'invalid'
-	| 'expired'
-	| 'rate_limited'
-	| 'quota_disabled';
+	'missing' | 'invalid' | 'expired' | 'rate_limited' | 'quota_disabled';
 
 /** Valide la clé (hash, révocation, expiration) et le quota ; met à jour `last_used_at`. */
 export async function validateApiKeyRequest(request: Request): Promise<

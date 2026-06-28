@@ -117,12 +117,7 @@ function translationPatchFromSnapshot(snapshot: TranslationHistorySnapshot) {
 		tversion: snapshot.tversion ?? '',
 		status: (snapshot.status ?? 'in_progress') as 'in_progress' | 'completed' | 'abandoned',
 		ttype: (snapshot.ttype ?? 'manual') as
-			| 'auto'
-			| 'vf'
-			| 'manual'
-			| 'semi-auto'
-			| 'to_tested'
-			| 'hs',
+			'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 		tlink: snapshot.tlink ?? '',
 		tname: tname as (typeof table.gameTranslation.$inferSelect)['tname'],
 		gameType: coerceGameEngineType(snapshot.gameType ?? 'other'),

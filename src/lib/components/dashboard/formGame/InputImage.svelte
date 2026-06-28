@@ -34,19 +34,17 @@
 		(e.currentTarget as HTMLImageElement).classList.add('hidden');
 	};
 
-	const inputAttributes = $derived.by(
-		(): HTMLInputAttributes => ({
-			onfocusin: (e: FocusEvent) => {
-				if (readonly) return;
-				(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.remove('hidden');
-			},
-			onfocusout: (e: FocusEvent) =>
-				(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.add('hidden'),
-			required: !readonly,
-			readonly,
-			disabled: readonly
-		})
-	);
+	const inputAttributes = $derived.by((): HTMLInputAttributes => ({
+		onfocusin: (e: FocusEvent) => {
+			if (readonly) return;
+			(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.remove('hidden');
+		},
+		onfocusout: (e: FocusEvent) =>
+			(e.currentTarget as HTMLInputElement).nextElementSibling?.classList.add('hidden'),
+		required: !readonly,
+		readonly,
+		disabled: readonly
+	}));
 </script>
 
 <Input

@@ -119,13 +119,11 @@
 	let loadingMore = $state(false);
 	let loadMoreError = $state<string | null>(null);
 
-	const listParams = $derived.by(
-		(): PublicUpdatesListParams => ({
-			page: loadedPage,
-			query: data.query,
-			filters: data.filters
-		})
-	);
+	const listParams = $derived.by((): PublicUpdatesListParams => ({
+		page: loadedPage,
+		query: data.query,
+		filters: data.filters
+	}));
 
 	const listCacheKey = $derived(JSON.stringify({ q: data.query, filters: data.filters }));
 

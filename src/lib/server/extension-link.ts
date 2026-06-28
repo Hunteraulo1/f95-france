@@ -62,8 +62,7 @@ export async function createLinkCode(userId: string): Promise<{ code: string; ex
 }
 
 export type RedeemLinkCodeResult =
-	| { ok: true; rawKey: string; userId: string }
-	| { ok: false; reason: 'invalid' | 'expired' };
+	{ ok: true; rawKey: string; userId: string } | { ok: false; reason: 'invalid' | 'expired' };
 
 /**
  * Échange un code de liaison contre une clé API scopée extension.

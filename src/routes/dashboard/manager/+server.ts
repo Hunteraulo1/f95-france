@@ -328,10 +328,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				ttype: translation.ttype,
 				tname:
 					(translation.tname as
-						| 'no_translation'
-						| 'integrated'
-						| 'translation'
-						| 'translation_with_mods') || 'translation',
+						'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+					'translation',
 				gameType: coerceGameEngineType(resolvedGameType),
 				tlink: translation.tlink || '',
 				translatorId: storedTranslatorId,
@@ -566,10 +564,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					ttype: translation.ttype,
 					tname:
 						(translation.tname as
-							| 'no_translation'
-							| 'integrated'
-							| 'translation'
-							| 'translation_with_mods') || 'translation',
+							'no_translation' | 'integrated' | 'translation' | 'translation_with_mods') ||
+						'translation',
 					gameType: coerceGameEngineType(
 						typeof translation.gameType === 'string' && translation.gameType.trim()
 							? translation.gameType

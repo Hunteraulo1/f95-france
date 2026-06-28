@@ -14,8 +14,7 @@ import {
 import { eq } from 'drizzle-orm';
 
 export type SubmissionPayloadParseResult =
-	| { ok: true; data: Record<string, unknown> }
-	| { ok: false; message: string };
+	{ ok: true; data: Record<string, unknown> } | { ok: false; message: string };
 
 export function parseSubmissionPayloadJson(
 	submissionDataJson: unknown

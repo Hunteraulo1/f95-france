@@ -3,9 +3,7 @@ import { Buffer } from 'node:buffer';
 import { timingSafeEqual } from 'node:crypto';
 
 export type CronAuthFailureReason =
-	| 'missing_server_secret'
-	| 'missing_client_token'
-	| 'invalid_token';
+	'missing_server_secret' | 'missing_client_token' | 'invalid_token';
 
 export type CronAuthResult = { ok: true } | { ok: false; reason: CronAuthFailureReason };
 
