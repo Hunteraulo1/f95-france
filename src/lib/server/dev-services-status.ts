@@ -5,8 +5,8 @@ import { isSmtpConfigured } from '$lib/server/mail';
 import { privateEnv } from '$lib/server/private-env';
 import {
 	getRequiredRegistrationInviteCode,
-	isRegistrationEnabled,
-	isRegistrationInviteRequired
+	isRegistrationInviteRequired,
+	isRegistrationOpen
 } from '$lib/server/registration-policy';
 import {
 	buildSecurityTxtContent,
@@ -293,7 +293,7 @@ export function getDevServicesStatus(configRow: Config | null): DevServicesStatu
 
 	return {
 		registration: {
-			enabled: isRegistrationEnabled(),
+			enabled: isRegistrationOpen(),
 			inviteRequired: isRegistrationInviteRequired(),
 			inviteCode: getRequiredRegistrationInviteCode()
 		},

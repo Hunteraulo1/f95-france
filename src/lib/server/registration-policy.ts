@@ -5,19 +5,38 @@ export const REGISTRATION_ACCOUNT_EXISTS_MESSAGE =
 
 export const REGISTRATION_INVITE_INVALID_MESSAGE = 'Code d’invitation invalide.';
 
-export function isRegistrationEnabled(): boolean {
+/** `true` si l’inscription publique est ouverte (`REGISTRATION_DISABLED` ≠ true/1). */
+export function isRegistrationOpen(): boolean {
 	const disabled = privateEnv('REGISTRATION_DISABLED')?.trim().toLowerCase();
 	return disabled !== 'true' && disabled !== '1';
 }
 
-/** Si défini, l’inscription exige ce code (variable `SERVICE_PASSWORD_REGISTRATION-INVITE-CODE`). */
-export function getRequiredRegistrationInviteCode(): string | null {
+/** Code d’invitation configuré (`SERVICE_PASSWORD_REGISTRATION-INVITE-CODE`), sinon `null`. */
+function getConfiguredRegistrationInviteCode(): string | null {
 	const code = privateEnv('SERVICE_PASSWORD_REGISTRATION-INVITE-CODE')?.trim();
 	return code || null;
 }
 
+/**
+ * Le code d’invitation n’est exigé que lorsque l’inscription publique est fermée
+ * mais qu’un code est configuré : il sert alors à contourner la fermeture.
+ * Quand l’inscription est ouverte, aucun code n’est demandé même si la variable est définie.
+ */
 export function isRegistrationInviteRequired(): boolean {
-	return getRequiredRegistrationInviteCode() !== null;
+	return !isRegistrationOpen() && getConfiguredRegistrationInviteCode() !== null;
+}
+
+/** Code d’invitation effectivement requis (`null` si aucun code n’est exigé). */
+export function getRequiredRegistrationInviteCode(): string | null {
+	return isRegistrationInviteRequired() ? getConfiguredRegistrationInviteCode() : null;
+}
+
+/**
+ * `true` si une inscription est possible : soit l’inscription publique est ouverte,
+ * soit elle est fermée mais un code d’invitation permet de s’inscrire.
+ */
+export function isRegistrationEnabled(): boolean {
+	return isRegistrationOpen() || isRegistrationInviteRequired();
 }
 
 export function verifyRegistrationInvite(submitted: string | null | undefined): boolean {
