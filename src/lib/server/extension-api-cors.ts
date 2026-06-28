@@ -4,3 +4,24 @@ export const extensionApiCorsHeaders: Record<string, string> = {
 	'Access-Control-Allow-Methods': 'GET, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
 };
+
+/** En-têtes CORS pour la sync des filtres `/api/extension/saved-filters/*` (lecture + écriture). */
+export const extensionSyncCorsHeaders: Record<string, string> = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
+};
+
+/** En-têtes CORS pour l’échange du code de liaison `/api/extension/link` (aucune clé requise). */
+export const extensionLinkCorsHeaders: Record<string, string> = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type'
+};
+
+/** En-têtes CORS pour les routes d’extension en lecture seule (ex. `/api/extension/me`). */
+export const extensionReadCorsHeaders: Record<string, string> = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key'
+};

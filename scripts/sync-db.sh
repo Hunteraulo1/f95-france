@@ -3,11 +3,17 @@
 # Usage:
 #   ./scripts/sync-prod-to-dev-db.sh [--target dev|ptb] [--yes]
 #
-# dev (défaut) : MARIADB_DEV_* ou MARIADB_* — puis stamp + migrate.
-# ptb          : MARIADB_PTB_* ou MARIADB_* — puis migrate seul.
+# dev (défaut) : MARIADB_DEV_* ou MARIADB_* — puis migrate.
+# ptb          : MARIADB_PTB_* ou MARIADB_* — puis migrate.
 #
-# Les étapes Drizzle (stamp / migrate) utilisent MARIADB_* : le script les
-# surcharge avec la config de la cible (--target dev|ptb), pas celle du .env local.
+# Le dump prod inclut sa table `__drizzle_migrations` : après import, la cible
+# connaît l'état réel des migrations de prod, et `db:migrate` applique seulement
+# le delta (migrations présentes en local mais pas encore en prod). NE PAS
+# « stamper » le journal complet ici : ça écraserait ce ledger importé et
+# `db:migrate` croirait tout appliqué (→ schéma en retard, erreurs 500).
+#
+# L'étape Drizzle (migrate) utilise MARIADB_* : le script la surcharge avec la
+# config de la cible (--target dev|ptb), pas celle du .env local.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -319,10 +325,5 @@ mysqldump_cmd |
 
 echo "Terminé: base ${TARGET} synchronisée depuis prod."
 
-if [[ "${TARGET}" == "dev" ]]; then
-	echo "Marquage des migrations Drizzle..."
-	(cd "${ROOT_DIR}" && run_on_target_db bun run db:stamp-migrations)
-fi
-
-echo "Application des migrations en attente..."
+echo "Application des migrations en attente (delta prod -> local)..."
 (cd "${ROOT_DIR}" && run_on_target_db bun run db:migrate)

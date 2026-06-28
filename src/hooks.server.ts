@@ -1,11 +1,13 @@
 import { building } from '$app/environment';
 import {
-	EXTENSION_ONLY_API_ROUTE,
+	apiKeyIsExtensionScoped,
+	isPathAllowedForApiKeyScope,
 	extractApiKeyFromRequest,
 	getUserForApiKeyOwner,
 	jsonApiKeyGuardResponse,
 	validateApiKeyRequest
 } from '$lib/server/api-keys';
+import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
@@ -310,7 +312,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		pathname.startsWith('/api/cron/') ||
 		pathname.startsWith('/api/passkeys/') ||
 		pathname.startsWith('/api/google-oauth/') ||
-		pathname.startsWith('/api/discord-oauth/');
+		pathname.startsWith('/api/discord-oauth/') ||
+		// Échange du code de liaison : aucune clé encore, le code fait foi.
+		pathname === '/api/extension/link';
 
 	// Routes /api/* : clé API obligatoire (Authorization: Bearer … / X-Api-Key).
 	if (
@@ -328,11 +332,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 					jsonApiKeyGuardResponse(keyResult.failure, apiPublicErrorCorsHeaders)
 				);
 			}
-			if (keyResult.routeScope && pathname !== keyResult.routeScope) {
+			if (!isPathAllowedForApiKeyScope(keyResult.routeScope, pathname)) {
 				return applySecurityHeaders(
 					new Response(
 						JSON.stringify({
-							error: `Cette clé API est restreinte à la route ${EXTENSION_ONLY_API_ROUTE}.`
+							error: `Cette clé API est restreinte aux routes de l’extension (${keyResult.routeScope}).`
 						}),
 						{
 							status: 403,
@@ -342,6 +346,21 @@ export const handle: Handle = async ({ event, resolve }) => {
 							}
 						}
 					)
+				);
+			}
+			// Garde supplémentaire : une clé d’extension ne s’utilise que depuis l’extension.
+			if (
+				apiKeyIsExtensionScoped(keyResult.routeScope) &&
+				!isExtensionOriginAllowed(event.request)
+			) {
+				return applySecurityHeaders(
+					new Response(JSON.stringify({ error: 'Origine non autorisée pour cette clé.' }), {
+						status: 403,
+						headers: {
+							'content-type': 'application/json; charset=utf-8',
+							...apiPublicErrorCorsHeaders
+						}
+					})
 				);
 			}
 			const userRow = await getUserForApiKeyOwner(keyResult.ownerUserId);

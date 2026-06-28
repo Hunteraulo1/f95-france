@@ -1,4 +1,5 @@
 # Ouvre ou met à jour une PR `ptb` → `main` quand une PR `dev` → `ptb` est fusionnée (sans fusion auto).
+# Le titre de la PR reprend le sujet du commit release cz-emoji (`:bookmark: vX.Y.Z`).
 #
 # Prérequis : création de PR par GITHUB_TOKEN (Settings → Actions → Workflow permissions).
 
@@ -46,7 +47,7 @@ jobs:
           ref: ${{ github.event.pull_request.merge_commit_sha || 'ptb' }}
           fetch-depth: 0
 
-      - name: Détecter version release
+      - name: Détecter commit release
         id: gate
         env:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
@@ -55,10 +56,24 @@ jobs:
         run: |
           set -euo pipefail
 
+          release_commit_title() {
+            local version="$1"
+            local subject=""
+
+            subject="$(git log -30 --format=%s --no-merges | grep -F ":bookmark: $version" | head -n1 || true)"
+            if printf '%s' "$subject" | grep -qE '^:bookmark: v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              printf '%s' "$subject"
+              return 0
+            fi
+
+            printf ':bookmark: %s' "$version"
+          }
+
           if [ "$FORCE" = "true" ]; then
             VERSION="v$(node -p "require('./package.json').version")"
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "commit_title=$(release_commit_title "$VERSION")" >> "$GITHUB_OUTPUT"
             echo "Promotion forcée: $VERSION"
             exit 0
           fi
@@ -78,6 +93,7 @@ jobs:
 
           echo "release=true" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit_title=$(release_commit_title "$VERSION")" >> "$GITHUB_OUTPUT"
           echo "Release détectée: $VERSION"
 
       - name: Créer ou mettre à jour la PR (revue manuelle)
@@ -99,7 +115,7 @@ jobs:
           EXISTING="$(pr_number)"
           PTB_SHA="$(git rev-parse HEAD)"
 
-          TITLE=":bookmark: ${{ steps.gate.outputs.version }} (${SOURCE_BRANCH} → ${TARGET_BRANCH})"
+          TITLE="${{ steps.gate.outputs.commit_title }}"
           BODY="PR ouverte après fusion de la PR dev→ptb (#${{ github.event.pull_request.number || 'manuel' }}).
 
           - **Version** : \`${{ steps.gate.outputs.version }}\`

@@ -4,6 +4,21 @@ import { and, eq, or, sql, type SQL } from 'drizzle-orm';
 
 export type UpdatesApiScope = 'featured' | 'all';
 
+/**
+ * Portée « featured » : aligne /updates sur le webhook Discord « updates ».
+ *
+ * Le webhook poste : nouveaux jeux + toute création/modification/suppression de
+ * traduction. Il **n'émet pas** pour les soumissions de type `update` (édition de
+ * métadonnées du jeu) — cf. `sendDiscordWebhookUpdatesSubmissionApplied`. Or ce
+ * chemin (`touchGameUpdatedToday(sub.gameId)`) crée des lignes `update` sans
+ * historique : il faut donc les exclure.
+ *
+ * Critère retenu : `adding` (nouveau jeu), OU ligne liée à un changement de
+ * traduction tracé dans `update_history` (entity = 'translation', quel que soit
+ * le champ — pas seulement la version). NB : les bumps de version de l'auto-check
+ * ne créent aucune ligne `update`, donc cette approche SQL ne peut pas les
+ * refléter (il faudrait les matérialiser à l'écriture).
+ */
 export async function featuredUpdatesScopeWhere(): Promise<SQL> {
 	const isAdding = eq(table.update.status, 'adding');
 
@@ -11,22 +26,15 @@ export async function featuredUpdatesScopeWhere(): Promise<SQL> {
 		return isAdding;
 	}
 
-	const hasVersionDelta = sql`exists (
+	const hasTranslationHistory = sql`exists (
 		select 1 from ${table.updateHistory} uh
 		where uh.update_id = ${table.update.id}
 		and uh.changes is not null
-		and exists (
-			select 1 from JSON_TABLE(uh.changes, '$.deltas[*]' COLUMNS (
-				delta_field VARCHAR(255) PATH '$.field',
-				old_val TEXT PATH '$.oldValue',
-				new_val TEXT PATH '$.newValue'
-			)) as delta
-			where (delta.delta_field = 'version' or delta.delta_field = 'tversion')
-			and not (coalesce(delta.old_val, '') <=> coalesce(delta.new_val, ''))
-		)
+		and json_valid(uh.changes)
+		and json_unquote(json_extract(uh.changes, '$.entity')) = 'translation'
 	)`;
 
-	return or(isAdding, hasVersionDelta)!;
+	return or(isAdding, hasTranslationHistory)!;
 }
 
 export async function buildUpdatesListWhere(

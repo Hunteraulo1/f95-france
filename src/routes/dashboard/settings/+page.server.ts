@@ -10,6 +10,7 @@ import {
 	getDevImpersonationActorUser,
 	returnToOwnAccount as returnToOwnAccountAction
 } from '$lib/server/dev-impersonation';
+import { isExtensionLinked } from '$lib/server/extension-link';
 import { assertPermission, hasPermission } from '$lib/server/permissions';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
@@ -45,13 +46,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.from(table.passkey)
 		.where(eq(table.passkey.userId, locals.user.id));
 	const roleEditMode = await getRoleEditMode(locals.user.role);
+	const extensionLinked = await isExtensionLinked(locals.user.id);
 
 	return {
 		user: locals.user,
 		hasPassword: locals.user.hasPassword,
 		canEditDirectMode: roleEditMode === 'user_direct_mode',
 		devUsers,
-		passkeys
+		passkeys,
+		extensionLinked
 	};
 };
 

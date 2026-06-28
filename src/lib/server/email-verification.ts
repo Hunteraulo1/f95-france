@@ -119,11 +119,7 @@ export async function sendVerificationEmailForUser(
 	| {
 			ok: false;
 			reason:
-				| 'user_not_found'
-				| 'already_verified'
-				| 'smtp_not_configured'
-				| 'cooldown'
-				| 'send_failed';
+				'user_not_found' | 'already_verified' | 'smtp_not_configured' | 'cooldown' | 'send_failed';
 	  }
 > {
 	if (!emailVerificationRequired()) {

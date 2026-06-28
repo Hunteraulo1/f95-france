@@ -4,8 +4,7 @@ import { parseMarkdownDocument, type MarkdownBlock } from '$lib/markdown/content
 const FETCH_TIMEOUT_MS = 15_000;
 
 export type LegalDocumentLoad =
-	| { ok: true; blocks: MarkdownBlock[]; updatedAt: string | null }
-	| { ok: false; message: string };
+	{ ok: true; blocks: MarkdownBlock[]; updatedAt: string | null } | { ok: false; message: string };
 
 export async function loadLegalDocumentFromCdn(publicCdnUrl: string): Promise<LegalDocumentLoad> {
 	const fetchUrl = cdnMarkdownFetchUrl(publicCdnUrl);

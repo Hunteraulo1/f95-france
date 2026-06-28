@@ -1,0 +1,2 @@
+ALTER TABLE `update` ADD `translation_id` varchar(255);--> statement-breakpoint
+ALTER TABLE `update` ADD CONSTRAINT `update_translation_id_game_translation_id_fk` FOREIGN KEY (`translation_id`) REFERENCES `game_translation`(`id`) ON DELETE set null ON UPDATE no action;

@@ -9,12 +9,7 @@ import { asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 export const SUBMISSION_PAGE_SIZE = 20;
 
 export type SubmissionStatusFilter =
-	| 'all'
-	| 'pending'
-	| 'opened'
-	| 'to_fix'
-	| 'accepted'
-	| 'rejected';
+	'all' | 'pending' | 'opened' | 'to_fix' | 'accepted' | 'rejected';
 
 export type SubmissionStatusCounts = {
 	pendingCount: number;
