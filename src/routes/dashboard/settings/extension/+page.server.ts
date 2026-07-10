@@ -10,7 +10,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 const EXTENSION_STORE_URL = 'https://extension.f95france.site';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	assertDashboardAuthenticated(locals);
 
 	const keys = await listExtensionKeys(locals.user.id);
@@ -18,6 +18,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		extensionStoreUrl: EXTENSION_STORE_URL,
 		linkCodeTtlMinutes: Math.round(LINK_CODE_TTL_MS / 60000),
+		// L'extension ouvre cette page avec `?autolink=1` pour déclencher la
+		// génération du code + la liaison automatiquement (parcours « 1 clic »).
+		autolink: url.searchParams.get('autolink') === '1',
 		devices: keys.map((key) => ({
 			id: key.id,
 			keyPrefix: key.keyPrefix,
