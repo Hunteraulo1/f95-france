@@ -15,6 +15,7 @@ import {
 	parseRequestDirectMode,
 	resolveGameWriteMode
 } from '$lib/server/game-manage-guard';
+import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
 	voidSyncTranslationToGoogleSheet,
@@ -30,6 +31,7 @@ import {
 	createTranslationUpdateSubmission
 } from '$lib/server/submissions';
 import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
+import { translationRowToHistorySnapshot } from '$lib/server/update-history';
 import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
 import { validateTranslationLinkField } from '$lib/utils/link-validation';
 import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
@@ -280,6 +282,20 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 				and(eq(table.gameTranslation.id, translationId), eq(table.gameTranslation.gameId, gameId))
 			);
 
+		const [afterRow] = await db
+			.select()
+			.from(table.gameTranslation)
+			.where(eq(table.gameTranslation.id, translationId))
+			.limit(1);
+
+		await recordTranslationChangeInUpdateHistory(gameId, {
+			userId: currentUser.id,
+			translationId,
+			before: translationRowToHistorySnapshot(before),
+			after: afterRow ? translationRowToHistorySnapshot(afterRow) : null,
+			updateKind: 'update'
+		});
+
 		const dataJson = JSON.stringify({
 			gameId,
 			translation: {
@@ -426,6 +442,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		await db.delete(table.gameTranslation).where(eq(table.gameTranslation.id, translationId));
+		await recordTranslationChangeInUpdateHistory(gameId, {
+			userId: currentUser.id,
+			translationId,
+			before: translationRowToHistorySnapshot(tr),
+			after: null,
+			updateKind: 'update'
+		});
 		void deleteTranslationFromGoogleSheet(translationId).catch((err) => {
 			appLogWarn('sheets-sync', 'delete translation row failed', err);
 		});
