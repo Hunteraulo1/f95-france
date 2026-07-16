@@ -253,6 +253,8 @@ export const translator = mysqlTable('translator', {
 	userId: varchar('user_id', { length: 255 }).references(() => user.id),
 	pages: text('pages').notNull(),
 	discordId: varchar('discord_id', { length: 255 }).unique(),
+	/** Auto-géré par le traducteur : coupe le MP + le repli canal des notifications de montée de version. */
+	discordNotificationsEnabled: boolean('discord_notifications_enabled').notNull().default(true),
 	createdAt: datetime('created_at')
 		.notNull()
 		.default(sql`(NOW())`),

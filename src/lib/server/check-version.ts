@@ -356,7 +356,8 @@ export async function runAutoCheckVersions(
 					.select({
 						id: table.translator.id,
 						name: table.translator.name,
-						discordId: table.translator.discordId
+						discordId: table.translator.discordId,
+						discordNotificationsEnabled: table.translator.discordNotificationsEnabled
 					})
 					.from(table.translator)
 					.where(inArray(table.translator.id, staffIds))
@@ -365,6 +366,10 @@ export async function runAutoCheckVersions(
 			staffRows.map((s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const)
 		);
 		const staffDiscordIdById = new Map(staffRows.map((s) => [s.id, s.discordId] as const));
+		/** Le traducteur a désactivé lui-même le MP + le repli canal pour ses notifications. */
+		const staffDiscordNotifDisabledById = new Set(
+			staffRows.filter((s) => !s.discordNotificationsEnabled).map((s) => s.id)
+		);
 		const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
 		const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
 		/** Lignes « montée de version » groupées par traducteur, à envoyer en MP en priorité. */
@@ -471,7 +476,9 @@ export async function runAutoCheckVersions(
 					discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined,
 					translatorId: t.translatorId
 				};
-				if (t.translatorId) {
+				if (t.translatorId && staffDiscordNotifDisabledById.has(t.translatorId)) {
+					// Le traducteur a coupé ses notifications Discord (MP + repli canal) : on n'envoie rien.
+				} else if (t.translatorId) {
 					const bucket = translatorLinesByTranslatorId.get(t.translatorId) ?? [];
 					bucket.push(translatorLine);
 					translatorLinesByTranslatorId.set(t.translatorId, bucket);

@@ -19,6 +19,7 @@
 		id: string;
 		name: string;
 		pages: Array<{ name: string; link: string }>;
+		discordNotificationsEnabled: boolean;
 	};
 
 	interface Props {
@@ -66,6 +67,9 @@
 	let translatorPagesInfo = $state<string | null>(null);
 	let initialTranslatorPagesSignature = $state('[]');
 
+	let discordNotificationsEnabled = $state(true);
+	let discordNotificationsError = $state<string | null>(null);
+
 	const normalizeTranslatorPages = (pages: Array<{ name: string; link: string }>) =>
 		pages
 			.map((page) => ({ name: page.name.trim(), link: page.link.trim() }))
@@ -96,6 +100,7 @@
 			initialTranslatorPagesSignature = JSON.stringify(
 				normalizeTranslatorPages(linkedTranslator.pages ?? [])
 			);
+			discordNotificationsEnabled = linkedTranslator.discordNotificationsEnabled;
 		}
 	});
 
@@ -253,6 +258,57 @@
 									: 'Aucun changement'}
 						</button>
 					</div>
+				</form>
+			</div>
+		</div>
+
+		<div class="card border border-base-300 bg-base-100 shadow-sm">
+			<div class="card-body gap-4">
+				<h2 class="text-lg font-semibold text-base-content">Notifications Discord</h2>
+				<p class="text-sm text-base-content/70">
+					MP envoyé par le bot lors d'une montée de version détectée par l'auto-check (repli
+					automatique sur le canal si le MP est impossible). Désactivez pour ne plus recevoir ni
+					l'un ni l'autre.
+				</p>
+
+				{#if discordNotificationsError}
+					<div class="alert alert-error">
+						<span>{discordNotificationsError}</span>
+					</div>
+				{/if}
+
+				<form
+					method="POST"
+					action="?/updateDiscordNotifications"
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							discordNotificationsError = null;
+						},
+						onFailure: (message) => {
+							discordNotificationsError = message;
+							discordNotificationsEnabled = !discordNotificationsEnabled;
+						}
+					})}
+				>
+					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
+					<input
+						type="hidden"
+						name="enabled"
+						value={discordNotificationsEnabled ? 'true' : 'false'}
+					/>
+					<label class="label cursor-pointer justify-start gap-4">
+						<input
+							type="checkbox"
+							class="toggle toggle-primary"
+							checked={discordNotificationsEnabled}
+							onchange={(e) => {
+								discordNotificationsEnabled = e.currentTarget.checked;
+								const form = e.currentTarget.closest('form');
+								form?.requestSubmit();
+							}}
+						/>
+						<span class="label-text">Recevoir les notifications Discord (MP + canal)</span>
+					</label>
 				</form>
 			</div>
 		</div>

@@ -355,7 +355,8 @@ export const actions: Actions = {
 			.select({
 				id: table.translator.id,
 				name: table.translator.name,
-				discordId: table.translator.discordId
+				discordId: table.translator.discordId,
+				discordNotificationsEnabled: table.translator.discordNotificationsEnabled
 			})
 			.from(table.translator)
 			.where(eq(table.translator.id, translatorId))
@@ -365,6 +366,15 @@ export const actions: Actions = {
 			return {
 				success: false,
 				message: 'Traducteur introuvable',
+				method: null,
+				details: null
+			};
+		}
+
+		if (!translator.discordNotificationsEnabled) {
+			return {
+				success: false,
+				message: `${translator.name} a désactivé ses notifications Discord — aucun message envoyé.`,
 				method: null,
 				details: null
 			};

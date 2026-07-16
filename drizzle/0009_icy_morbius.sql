@@ -1,0 +1,1 @@
+ALTER TABLE `translator` ADD `discord_notifications_enabled` boolean DEFAULT true NOT NULL;
