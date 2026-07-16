@@ -204,7 +204,7 @@
 									<label class="label" for="edit-version">
 										<span class="label-text">Version de référence</span>
 									</label>
-									<div class="join join-horizontal w-full">
+									<div class="join w-full join-horizontal">
 										<input
 											id="edit-version"
 											type="text"
@@ -241,7 +241,7 @@
 									<label class="label" for="edit-tversion">
 										<span class="label-text">Version de traduction</span>
 									</label>
-									<div class="join join-horizontal w-full">
+									<div class="join w-full join-horizontal">
 										<input
 											id="edit-tversion"
 											type="text"
@@ -282,7 +282,7 @@
 									<label class="label" for="edit-tlink">
 										<span class="label-text">Lien de traduction</span>
 									</label>
-									<div class="join join-horizontal w-full">
+									<div class="join w-full join-horizontal">
 										<input
 											id="edit-tlink"
 											type="url"

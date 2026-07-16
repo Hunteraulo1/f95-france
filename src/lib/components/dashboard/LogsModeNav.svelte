@@ -41,7 +41,7 @@
 	};
 </script>
 
-<div role="tablist" class="tabs tabs-box w-fit max-w-full">
+<div role="tablist" class="tabs-box tabs w-fit max-w-full">
 	<a href={httpHref()} class="tab" class:tab-active={mode === 'http'}>Requêtes HTTP</a>
 	<a href={appHref()} class="tab" class:tab-active={mode === 'app'}>Application</a>
 </div>

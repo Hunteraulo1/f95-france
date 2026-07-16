@@ -66,7 +66,7 @@
 						};
 					}}
 				>
-					<a href={resolve('/dashboard/account/logout')} class="gap-2 text-error flex">
+					<a href={resolve('/dashboard/account/logout')} class="flex gap-2 text-error">
 						<LogOut class="h-4 w-4" />
 						Déconnexion
 					</a>

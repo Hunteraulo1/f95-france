@@ -87,7 +87,7 @@
 						<span class="text-sm text-base-content/70">Votre code de liaison&nbsp;:</span>
 						<div class="flex flex-wrap items-center gap-3">
 							<code class="text-2xl font-bold tracking-[0.3em] select-all">{generatedCode}</code>
-							<button type="button" class="btn btn-sm btn-ghost" onclick={copyCode}>
+							<button type="button" class="btn btn-ghost btn-sm" onclick={copyCode}>
 								{copied ? 'Copié !' : 'Copier'}
 							</button>
 						</div>
@@ -144,7 +144,7 @@
 												})}
 											>
 												<input type="hidden" name="id" value={device.id} />
-												<button type="submit" class="btn btn-sm btn-error">Délier</button>
+												<button type="submit" class="btn btn-error btn-sm">Délier</button>
 											</form>
 										</td>
 									</tr>

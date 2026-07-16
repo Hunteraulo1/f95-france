@@ -397,14 +397,14 @@
 										{:else if sub.username}
 											· <span class="text-base-content/70">créée par</span>
 											<a
-												class="font-semibold link link-hover"
+												class="link font-semibold link-hover"
 												href={`/dashboard/profile/${sub.username}`}>{sub.username}</a
 											>
 										{/if}
 										{#if sub.openedByUsername}
 											· <span class="text-base-content/70">ouverte par</span>
 											<a
-												class="font-semibold link link-hover"
+												class="link font-semibold link-hover"
 												href={`/dashboard/profile/${sub.openedByUsername}`}
 												>{sub.openedByUsername}</a
 											>
@@ -459,13 +459,13 @@
 								Aucune vignette disponible
 							</div>
 						{/if}
-						<a class="btn btn-sm btn-primary" href="/dashboard/manager/game/{game.id}/edit-game">
+						<a class="btn btn-primary btn-sm" href="/dashboard/manager/game/{game.id}/edit-game">
 							<SquarePen size={16} />
 							Modifier le jeu
 						</a>
 						{#if canManageGameAutoCheck}
 							<button
-								class="btn btn-sm btn-secondary"
+								class="btn btn-secondary btn-sm"
 								onclick={refreshGame}
 								disabled={refreshManualBlocked}
 								title={refreshManualBlockedReason}
@@ -474,7 +474,7 @@
 								Actualiser le jeu
 							</button>
 						{/if}
-						<button class="btn btn-sm btn-error" onclick={confirmDeleteGame}>
+						<button class="btn btn-error btn-sm" onclick={confirmDeleteGame}>
 							<Trash2 size={16} />
 							Supprimer toutes les traductions
 						</button>
@@ -610,7 +610,7 @@
 							Traductions ({translations.length})
 						</h2>
 						<a
-							class="btn btn-sm btn-primary"
+							class="btn btn-primary btn-sm"
 							href="/dashboard/manager/game/{game.id}/add-translation"
 						>
 							<Plus size={16} />
@@ -723,13 +723,13 @@
 										<td>
 											<div class="flex gap-2">
 												<a
-													class="btn btn-sm btn-primary"
+													class="btn btn-primary btn-sm"
 													href="/dashboard/manager/game/{game.id}/edit-translation/{translation.id}"
 												>
 													Modifier
 												</a>
 												<button
-													class="btn btn-sm btn-error"
+													class="btn btn-error btn-sm"
 													onclick={() => confirmDeleteTranslation(translation)}>Supprimer</button
 												>
 											</div>

@@ -43,7 +43,7 @@
 			<div class="mt-1 text-sm text-base-content/70">
 				Soumission créée par :
 				<a
-					class="link link-hover cursor-pointer {roleUsernameClass(
+					class="link cursor-pointer link-hover {roleUsernameClass(
 						submission.user.role,
 						submission.user.role ? $roleBadgeStyles[submission.user.role] : undefined
 					)}"

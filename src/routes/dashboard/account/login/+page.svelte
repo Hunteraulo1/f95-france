@@ -216,7 +216,7 @@
 
 					<a
 						href="/dashboard/account/forgot-password"
-						class="label-text-alt link link-hover link-primary mx-auto mt-2"
+						class="label-text-alt mx-auto mt-2 link link-primary link-hover"
 					>
 						Mot de passe oublié ?
 					</a>
@@ -229,7 +229,7 @@
 				{#if data?.discordLoginEnabled}
 					<a
 						href={data.discordLoginHref}
-						class="btn btn-block gap-2 bg-[#5865F2] text-white hover:bg-[#4752C4] border-0"
+						class="btn btn-block gap-2 border-0 bg-[#5865F2] text-white hover:bg-[#4752C4]"
 					>
 						<DiscordIcon size={18} />
 						Se connecter avec Discord

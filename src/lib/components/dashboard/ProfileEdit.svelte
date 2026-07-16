@@ -163,7 +163,7 @@
 						<input
 							type="text"
 							name="username"
-							class="grow w-full"
+							class="w-full grow"
 							placeholder="Pseudo"
 							bind:value={profileUsername}
 							required
@@ -174,7 +174,7 @@
 						<input
 							type="url"
 							name="avatar"
-							class="grow w-full"
+							class="w-full grow"
 							placeholder="https://exemple.com/photo.jpg"
 							bind:value={profileAvatar}
 						/>
@@ -194,7 +194,7 @@
 				<p class="text-sm text-base-content/70">
 					Liens affichés sur votre
 					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
-					<a href={translatorListHref(linkedTranslator.name)} class="link link-hover font-medium">
+					<a href={translatorListHref(linkedTranslator.name)} class="link font-medium link-hover">
 						{linkedTranslator.name}
 					</a>.
 					{#if translatorPagesWriteMode === 'direct'}
@@ -314,7 +314,7 @@
 							</p>
 							{#if bioPreviewDocument.length > 0}
 								<div class="rounded-box border border-base-300 bg-base-200/40 p-4">
-									<p class="mb-2 text-xs font-medium uppercase tracking-wide text-base-content/60">
+									<p class="mb-2 text-xs font-medium tracking-wide text-base-content/60 uppercase">
 										Aperçu
 									</p>
 									<MarkdownContent document={bioPreviewDocument} variant="profile" />
@@ -336,7 +336,7 @@
 									<input
 										type="url"
 										name="profileBackgroundUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://exemple.com/fond.jpg"
 										bind:value={profileBackgroundUrl}
 									/>
@@ -350,7 +350,7 @@
 									<input
 										type="url"
 										name="profileMusicUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://music.youtube.com/watch?v=…"
 										bind:value={profileMusicUrl}
 									/>
@@ -367,7 +367,7 @@
 									<input
 										type="url"
 										name="profileCursorUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://exemple.com/curseur.png"
 										bind:value={profileCursorUrl}
 									/>

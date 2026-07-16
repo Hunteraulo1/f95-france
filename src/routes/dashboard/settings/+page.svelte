@@ -184,7 +184,7 @@
 								</form>
 							{:else}
 								<div class="flex w-full flex-col gap-2">
-									<button type="button" class="btn btn-outline btn-error btn-disabled" disabled>
+									<button type="button" class="btn btn-disabled btn-outline btn-error" disabled>
 										Délier Discord
 									</button>
 									<p class="text-xs text-base-content/60">
@@ -612,7 +612,7 @@
 												})}
 											>
 												<input type="hidden" name="passkeyId" value={pk.id} />
-												<button class="btn btn-sm btn-error" type="submit">Supprimer</button>
+												<button class="btn btn-error btn-sm" type="submit">Supprimer</button>
 											</form>
 										</td>
 									</tr>

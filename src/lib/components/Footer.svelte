@@ -4,7 +4,7 @@
 </script>
 
 <footer
-	class="footer footer-center bg-base-200 text-base-content rounded px-4 py-8 sm:px-6 sm:py-10 sm:footer-horizontal"
+	class="footer-center footer rounded bg-base-200 px-4 py-8 text-base-content sm:footer-horizontal sm:px-6 sm:py-10"
 >
 	<nav>
 		<ul class="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">

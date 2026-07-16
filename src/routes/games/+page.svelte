@@ -194,12 +194,12 @@
 		{@const hiddenTagsCount = game.tags.length - visibleTags.length}
 		<div class="flex flex-wrap items-center gap-1">
 			{#each visibleTags as tag (tag)}
-				<span class="badge badge-xs badge-ghost">{tag}</span>
+				<span class="badge badge-ghost badge-xs">{tag}</span>
 			{/each}
 			{#if !tagsExpanded && expandedTagRowIds.has(game.id) && game.tags.length > TAGS_PREVIEW_LIMIT}
 				<button
 					type="button"
-					class="btn h-auto min-h-0 px-1 py-0 text-xs font-normal btn-ghost"
+					class="btn h-auto min-h-0 btn-ghost px-1 py-0 text-xs font-normal"
 					onclick={() => collapseRowTags(game.id)}
 				>
 					Replier
@@ -207,7 +207,7 @@
 			{:else if !showAllTags && hiddenTagsCount > 0}
 				<button
 					type="button"
-					class="btn h-auto min-h-0 px-1 py-0 text-xs font-normal btn-ghost"
+					class="btn h-auto min-h-0 btn-ghost px-1 py-0 text-xs font-normal"
 					onclick={() => expandRowTags(game.id)}
 				>
 					Voir plus ({hiddenTagsCount})
@@ -221,7 +221,7 @@
 
 {#snippet gameListRow(game: PublicGameListItem)}
 	{@const imageSrc = resolveGameImageSrc(game.image, { website: game.website })}
-	<li class="list-row items-start gap-3 py-3 hover:bg-base-200 w-full">
+	<li class="list-row w-full items-start gap-3 py-3 hover:bg-base-200">
 		<div class="relative h-20 w-32 shrink-0">
 			<a
 				href={resolve(`/games/${game.id}`)}
@@ -252,11 +252,11 @@
 			</span>
 		</div>
 
-		<div class="min-w-0 list-col-grow gap-2">
+		<div class="list-col-grow min-w-0 gap-2">
 			<div class="flex flex-wrap items-start gap-2">
 				{#each game.engineTypes as engine (engine)}
 					<span
-						class="badge badge-xs badge-outline"
+						class="badge badge-outline badge-xs"
 						style={`border-color: ${getGameEngineHexColor(engine)}; color: ${getGameEngineHexColor(engine)}`}
 					>
 						{getGameEngineLabel(engine)}
@@ -264,7 +264,7 @@
 				{/each}
 				<a
 					href={resolve(`/games/${game.id}`)}
-					class="link link-hover line-clamp-2 font-medium leading-snug"
+					class="line-clamp-2 link leading-snug font-medium link-hover"
 				>
 					{game.name}
 				</a>
@@ -304,10 +304,10 @@
 			{/if}
 		</div>
 
-		<div class="flex shrink-0 flex-col items-end gap-1 my-auto">
+		<div class="my-auto flex shrink-0 flex-col items-end gap-1">
 			<a
 				href={resolve(`/games/${game.id}`)}
-				class="btn btn-sm btn-ghost w-full px-2"
+				class="btn w-full btn-ghost px-2 btn-sm"
 				aria-label={`Fiche de ${game.name}`}
 			>
 				Fiche du jeu
@@ -317,7 +317,7 @@
 					href={game.link}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="btn btn-square btn-ghost btn-sm w-full px-2"
+					class="btn btn-square w-full btn-ghost px-2 btn-sm"
 					aria-label={`Thread de ${game.name}`}
 					title="Ouvrir le thread"
 				>
@@ -331,7 +331,7 @@
 
 {#snippet gameGridCard(game: PublicGameListItem)}
 	{@const imageSrc = resolveGameImageSrc(game.image, { website: game.website })}
-	<article class="card card-border bg-base-100 shadow-sm transition hover:shadow-md">
+	<article class="card bg-base-100 shadow-sm transition card-border hover:shadow-md">
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			<a
 				href={resolve(`/games/${game.id}`)}
@@ -359,15 +359,15 @@
 			</span>
 		</figure>
 		<div class="card-body gap-2 p-4">
-			<h2 class="card-title text-base leading-snug line-clamp-1">
-				<a href={resolve(`/games/${game.id}`)} class="link link-hover line-clamp-1">
+			<h2 class="card-title line-clamp-1 text-base leading-snug">
+				<a href={resolve(`/games/${game.id}`)} class="line-clamp-1 link link-hover">
 					{game.name}
 				</a>
 			</h2>
 			<div class="flex flex-wrap gap-1">
 				{#each game.engineTypes as engine (engine)}
 					<span
-						class="badge badge-xs badge-outline"
+						class="badge badge-outline badge-xs"
 						style={`border-color: ${getGameEngineHexColor(engine)}; color: ${getGameEngineHexColor(engine)}`}
 					>
 						{getGameEngineLabel(engine)}
@@ -397,21 +397,21 @@
 					<div class="text-base-content/60">Aucune traduction enregistrée</div>
 				{/if}
 			</dl>
-			<dl class="flex flex-col gap-2 text-sm h-fit">
+			<dl class="flex h-fit flex-col gap-2 text-sm">
 				<dt class="shrink-0 text-base-content/60">Tags</dt>
 				<dd>{@render gameTags(game)}</dd>
 			</dl>
 			{#if game.translationCount > 1}
 				<p class="text-xs text-base-content/50">{game.translationCount} traductions au total</p>
 			{/if}
-			<div class="card-actions mt-1 justify-end">
-				<a href={resolve(`/games/${game.id}`)} class="btn btn-sm btn-ghost">Fiche du jeu</a>
+			<div class="mt-1 card-actions justify-end">
+				<a href={resolve(`/games/${game.id}`)} class="btn btn-ghost btn-sm">Fiche du jeu</a>
 				{#if game.link?.trim()}
 					<a
 						href={game.link}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="btn btn-sm btn-outline"
+						class="btn btn-outline btn-sm"
 						aria-label={`Thread de ${game.name}`}
 						title="Ouvrir le thread"
 					>
@@ -432,11 +432,11 @@
 	/>
 </svelte:head>
 
-<main class="mx-auto flex w-full flex-1 flex-col lg:flex-row-reverse gap-4 px-4 py-8 lg:px-8">
+<main class="mx-auto flex w-full flex-1 flex-col gap-4 px-4 py-8 lg:flex-row-reverse lg:px-8">
 	<section
-		class="card border border-base-300 bg-base-100 shadow-sm h-full lg:sticky lg:top-8 lg:max-w-xs"
+		class="card h-full border border-base-300 bg-base-100 shadow-sm lg:sticky lg:top-8 lg:max-w-xs"
 	>
-		<div class="card-body gap-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+		<div class="card-body max-h-[calc(100vh-4rem)] gap-4 overflow-y-auto">
 			<GamesFilterContent
 				bind:query={searchQuery}
 				bind:sort={sortValue}
@@ -453,7 +453,7 @@
 		</div>
 	</section>
 
-	<section class="flex flex-col gap-4 w-full">
+	<section class="flex w-full flex-col gap-4">
 		<header class="flex flex-col gap-3">
 			<h1 class="text-3xl font-bold">Jeux</h1>
 		</header>
@@ -475,7 +475,7 @@
 							{/if}
 						</p>
 						{#if hasFilters}
-							<a href={resolve('/games')} class="btn btn-sm btn-primary"
+							<a href={resolve('/games')} class="btn btn-primary btn-sm"
 								>Réinitialiser les filtres</a
 							>
 						{/if}

@@ -126,7 +126,7 @@
 								<td class="font-mono text-xs opacity-70">
 									{index + 1}
 									{#if index === 0}
-										<span class="badge badge-primary badge-xs mt-1 block">Principal</span>
+										<span class="mt-1 badge block badge-xs badge-primary">Principal</span>
 									{/if}
 								</td>
 								<td>

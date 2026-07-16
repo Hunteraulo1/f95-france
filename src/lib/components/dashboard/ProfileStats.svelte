@@ -26,7 +26,7 @@
 					<p class="text-sm font-medium text-base-content/80">
 						Contributions à la liste (administrateur)
 					</p>
-					<div class="stats stats-vertical w-full shadow-none lg:stats-horizontal">
+					<div class="stats w-full stats-vertical shadow-none lg:stats-horizontal">
 						<div class="stat px-4 py-2">
 							<div class="stat-figure text-primary">
 								<CirclePlus class="h-6 w-6" />
@@ -50,7 +50,7 @@
 			<div class="card border border-base-300 bg-base-100/95 shadow-sm">
 				<div class="card-body gap-3 p-4">
 					<p class="text-sm font-medium text-base-content/80">Soumissions</p>
-					<div class="stats stats-vertical w-full shadow-none sm:stats-horizontal">
+					<div class="stats w-full stats-vertical shadow-none sm:stats-horizontal">
 						<div class="stat px-4 py-2">
 							<div class="stat-title">Total</div>
 							<div class="stat-value text-lg">{stats.submissions.total}</div>

@@ -248,7 +248,7 @@
 
 		{#if data.linkedTranslator}
 			<div class="flex w-full flex-wrap justify-between">
-				<label class="input input-sm w-full sm:w-64">
+				<label class="input w-full input-sm sm:w-64">
 					<Search size={16} class="opacity-60" />
 					<input
 						type="search"

@@ -8,7 +8,7 @@
 	href={SITE.discordInviteUrl}
 	target="_blank"
 	rel="noopener noreferrer"
-	class="group card card-border bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg h-full"
+	class="group card h-full bg-base-100 shadow-sm transition card-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
 	draggable="false"
 >
 	<div
@@ -39,7 +39,7 @@
 				</p>
 			</div>
 		</div>
-		<span class="btn btn-primary btn-sm sm:btn-md shrink-0 gap-2">
+		<span class="btn shrink-0 gap-2 btn-primary btn-sm sm:btn-md">
 			Rejoindre le serveur
 			<ArrowRight class="size-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
 		</span>

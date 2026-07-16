@@ -98,7 +98,7 @@
 {#snippet mockupFace(slide: SlideMockup)}
 	<div class="relative flex h-full w-full items-stretch justify-center">
 		<div
-			class="pointer-events-none absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] blur-[20px] opacity-50"
+			class="pointer-events-none absolute inset-[12%_-6%_-12%] rounded-2xl bg-[radial-gradient(circle_at_50%_50%,color-mix(in_oklab,var(--color-primary)_42%,transparent),transparent_70%)] opacity-50 blur-[20px]"
 		></div>
 		<div class="relative z-1 flex h-full w-full max-w-2xl antialiased">
 			{#if slide.mockup === 'sheet'}
@@ -112,14 +112,14 @@
 	</div>
 {/snippet}
 
-<div class="relative h-[23rem] w-full [perspective:800px] [perspective-origin:50%_50%]">
+<div class="relative h-[23rem] w-full [perspective-origin:50%_50%] [perspective:800px]">
 	<div
-		class="animate-float-sheet h-full w-full [transform-origin:50%_50%] [transform-style:preserve-3d]"
+		class="h-full w-full [transform-origin:50%_50%] animate-float-sheet [transform-style:preserve-3d]"
 		class:paused={isSpinning}
 	>
 		<div
 			bind:this={flipperEl}
-			class="relative h-full w-full [transform-style:preserve-3d] [transform:rotateY(0deg)] [transform-origin:50%_50%] will-change-transform"
+			class="relative h-full w-full [transform-origin:50%_50%] [transform:rotateY(0deg)] will-change-transform [transform-style:preserve-3d]"
 		>
 			<div
 				class="{faceBaseClass} [transform:rotateY(0deg)_translateZ(1px)]"

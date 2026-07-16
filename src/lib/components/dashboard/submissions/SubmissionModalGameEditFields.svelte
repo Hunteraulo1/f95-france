@@ -86,7 +86,7 @@
 			<label class="label" for="editGameLink">
 				<span class="label-text">Lien</span>
 			</label>
-			<div class="join join-horizontal w-full">
+			<div class="join w-full join-horizontal">
 				<input
 					id="editGameLink"
 					name="editGameLink"

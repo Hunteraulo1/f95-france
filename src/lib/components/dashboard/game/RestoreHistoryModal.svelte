@@ -74,7 +74,7 @@
 
 			<div class="space-y-4 px-6 py-5">
 				{#if entry.revertCascadeCount > 1}
-					<div role="alert" class="alert alert-warning alert-soft">
+					<div role="alert" class="alert alert-soft alert-warning">
 						<AlertTriangle size={18} class="shrink-0" />
 						<div class="text-sm">
 							<p class="font-medium">Restauration en cascade</p>
@@ -86,7 +86,7 @@
 					</div>
 				{/if}
 
-				<div class="rounded-box space-y-3 border border-base-300 bg-base-200/40 p-4">
+				<div class="space-y-3 rounded-box border border-base-300 bg-base-200/40 p-4">
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="badge badge-sm {getUpdateHistoryActionBadgeClass(entry.action)}">
 							{getUpdateHistoryActionLabel(entry.action)}
@@ -151,7 +151,7 @@
 					{/if}
 				</div>
 
-				<div role="alert" class="alert alert-info alert-soft">
+				<div role="alert" class="alert alert-soft alert-info">
 					<History size={18} class="shrink-0" />
 					<span class="text-sm">Cette action sera tracée dans l’historique.</span>
 				</div>
@@ -165,12 +165,12 @@
 				</button>
 				<button
 					type="button"
-					class="btn btn-primary gap-2"
+					class="btn gap-2 btn-primary"
 					disabled={confirming}
 					onclick={onConfirm}
 				>
 					{#if confirming}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						Restauration…
 					{:else}
 						<Undo2 size={16} />

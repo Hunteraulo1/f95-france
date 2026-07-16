@@ -96,7 +96,7 @@
 			{@const Icon = toolbarIcons[item.action]}
 			<button
 				type="button"
-				class="btn btn-ghost btn-xs gap-1 px-2"
+				class="btn gap-1 btn-ghost px-2 btn-xs"
 				title={item.shortcut ? `${item.label} (${item.shortcut})` : item.label}
 				aria-label={item.label}
 				onclick={() => handleToolbarAction(item.action)}

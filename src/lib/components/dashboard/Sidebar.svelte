@@ -276,7 +276,7 @@
 					>
 						<button
 							type="submit"
-							class="flex h-8 gap-2 w-full items-center font-semibold text-secondary is-drawer-close:tooltip is-drawer-close:tooltip-right"
+							class="flex h-8 w-full items-center gap-2 font-semibold text-secondary is-drawer-close:tooltip is-drawer-close:tooltip-right"
 							data-tip={devOriginUsername
 								? `Revenir à ${devOriginUsername}`
 								: 'Revenir à mon compte'}

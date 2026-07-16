@@ -115,7 +115,7 @@
 		</p>
 	</header>
 
-	<label class="input input-bordered flex w-full items-center gap-2">
+	<label class="input-bordered input flex w-full items-center gap-2">
 		<Search class="size-4 shrink-0 opacity-60" />
 		<input
 			type="search"
@@ -142,13 +142,13 @@
 					{/if}
 				</p>
 				{#if data.q.trim()}
-					<a href={resolve('/translators')} class="btn btn-sm btn-primary">Réinitialiser</a>
+					<a href={resolve('/translators')} class="btn btn-primary btn-sm">Réinitialiser</a>
 				{/if}
 			</div>
 		</div>
 	{:else}
 		<ul class="list rounded-box bg-base-100 shadow-md">
-			<li class="p-4 pb-2 text-xs tracking-wide opacity-60 uppercase">{resultSummary}</li>
+			<li class="p-4 pb-2 text-xs tracking-wide uppercase opacity-60">{resultSummary}</li>
 
 			{#each allTranslators as translator (translator.id)}
 				<li class="list-row items-center hover:bg-base-200">
@@ -169,9 +169,9 @@
 						{/if}
 					</div>
 
-					<div class="min-w-0 list-col-grow">
+					<div class="list-col-grow min-w-0">
 						{#if translator.profileHref}
-							<a href={resolve(translator.profileHref)} class="link link-hover font-medium">
+							<a href={resolve(translator.profileHref)} class="link font-medium link-hover">
 								{translator.name}
 							</a>
 						{:else}
@@ -186,7 +186,7 @@
 										href={translator.pages[0].url}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="btn btn-sm btn-outline w-full truncate font-normal"
+										class="btn w-full truncate btn-outline font-normal btn-sm"
 									>
 										{translator.pages[0].label}
 									</a>
@@ -195,7 +195,7 @@
 										<div
 											tabindex="0"
 											role="button"
-											class="btn btn-sm btn-outline w-full justify-between font-normal"
+											class="btn w-full justify-between btn-outline font-normal btn-sm"
 										>
 											<span class="truncate">{translatorPagesMenuLabel(translator.pages)}</span>
 											<ChevronDown class="size-4 shrink-0 opacity-60" />
@@ -213,7 +213,7 @@
 														class="truncate"
 													>
 														{#if pageIndex === 0}
-															<span class="badge badge-primary badge-xs mr-1">Principal</span>
+															<span class="mr-1 badge badge-xs badge-primary">Principal</span>
 														{/if}
 														{page.label}
 													</a>
@@ -233,7 +233,7 @@
 									href={page.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="btn btn-sm max-w-40 truncate font-normal btn-ghost"
+									class="btn max-w-40 truncate btn-ghost font-normal btn-sm"
 									class:text-primary={pageIndex === 0}
 									title={pageIndex === 0 ? `${page.label} (lien principal)` : page.label}
 								>

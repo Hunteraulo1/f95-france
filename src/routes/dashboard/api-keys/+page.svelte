@@ -239,7 +239,7 @@
 										use:enhance={createFormEnhance({ invalidateAll: true })}
 									>
 										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
+										<button type="submit" class="btn btn-ghost text-error btn-sm">Révoquer</button>
 									</form>
 								</div>
 							{/if}

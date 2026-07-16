@@ -104,7 +104,7 @@
 <section class="flex flex-col gap-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="text-lg font-semibold text-base-content">Rôles et permissions</h2>
-		<button type="button" class="btn btn-sm btn-primary" onclick={() => (showCreateModal = true)}>
+		<button type="button" class="btn btn-primary btn-sm" onclick={() => (showCreateModal = true)}>
 			Nouveau rôle
 		</button>
 	</div>
@@ -145,7 +145,7 @@
 							</div>
 							<form method="POST" action="?/fixStaffRole" use:enhance={formEnhance()}>
 								<input type="hidden" name="slug" value={issue.slug} />
-								<button type="submit" class="btn btn-sm btn-primary">Corriger</button>
+								<button type="submit" class="btn btn-primary btn-sm">Corriger</button>
 							</form>
 						</li>
 					{/each}
@@ -170,7 +170,7 @@
 									<span class="flex flex-wrap items-center gap-1">
 										<span class={roleBadgeClass(role.slug, role.badgeStyle)}>{role.label}</span>
 										{#if role.hasGamesManage && role.editMode == null}
-											<span class="badge badge-warning badge-xs">Mode manquant</span>
+											<span class="badge badge-xs badge-warning">Mode manquant</span>
 										{/if}
 									</span>
 									<span class="text-xs opacity-60">
@@ -194,9 +194,9 @@
 					<div class="divider my-1"></div>
 					<h4 class="px-1 text-sm font-semibold text-base-content/80">
 						Équipe staff
-						<span class="badge badge-accent badge-xs ml-1">{data.staffUsers.length}</span>
+						<span class="ml-1 badge badge-xs badge-accent">{data.staffUsers.length}</span>
 					</h4>
-					<ul class="menu w-full menu-sm rounded-box bg-base-200 p-1 overflow-y-auto">
+					<ul class="menu w-full overflow-y-auto menu-sm rounded-box bg-base-200 p-1">
 						{#each data.staffUsers as member (member.id)}
 							<li class="w-full">
 								<a href={resolve(profileDashboardHref(member.username))} class="gap-2">
@@ -278,7 +278,7 @@
 									<input type="hidden" name="slug" value={selectedRole.slug} />
 									<button
 										type="submit"
-										class="btn btn-outline btn-sm btn-error"
+										class="btn btn-outline btn-error btn-sm"
 										disabled={selectedRole.userCount > 0}
 									>
 										Supprimer
@@ -405,7 +405,7 @@
 								</p>
 							{/if}
 							{#if canEditMaxApiKeys}
-								<button type="submit" class="btn w-fit btn-sm btn-primary">
+								<button type="submit" class="btn w-fit btn-primary btn-sm">
 									{selectedRole.isSystem && selectedHasGamesManage && !isSelectedSuperadmin
 										? 'Enregistrer le mode'
 										: 'Enregistrer'}
