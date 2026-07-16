@@ -18,6 +18,7 @@
 	import Settings from '@lucide/svelte/icons/settings';
 	import Settings2 from '@lucide/svelte/icons/settings-2';
 	import Shield from '@lucide/svelte/icons/shield';
+	import UserCheck from '@lucide/svelte/icons/user-check';
 	import UserPen from '@lucide/svelte/icons/user-pen';
 	import Users from '@lucide/svelte/icons/users';
 	import type { Component } from 'svelte';
@@ -25,6 +26,7 @@
 
 	interface Props {
 		pendingSubmissionsCount?: number;
+		pendingTranslatorApplicationsCount?: number;
 		hasLinkedTranslator?: boolean;
 		canReturnToOwnAccount?: boolean;
 		devOriginUsername?: string | null;
@@ -35,6 +37,7 @@
 
 	let {
 		pendingSubmissionsCount = 0,
+		pendingTranslatorApplicationsCount = 0,
 		hasLinkedTranslator = false,
 		canReturnToOwnAccount = false,
 		devOriginUsername = null,
@@ -82,7 +85,9 @@
 		access: NavAccess;
 		badge?: number;
 		badgeKey?: boolean;
+		translatorApplicationsBadgeKey?: boolean;
 		requiresLinkedTranslator?: boolean;
+		hideIfLinkedTranslator?: boolean;
 	}
 
 	interface NavItemSplit {
@@ -122,11 +127,25 @@
 			access: 'submissions.own'
 		},
 		{
+			label: 'Devenir traducteur',
+			href: '/dashboard/become-translator',
+			icon: UserCheck,
+			access: 'all',
+			hideIfLinkedTranslator: true
+		},
+		{
 			label: 'Soumissions',
 			href: '/dashboard/submits',
 			icon: Box,
 			access: 'submissions.review',
 			badgeKey: true
+		},
+		{
+			label: 'Candidatures traducteur',
+			href: '/dashboard/translator-applications',
+			icon: UserCheck,
+			access: 'translator_applications.review',
+			translatorApplicationsBadgeKey: true
 		},
 		{
 			label: 'Traducteurs/Relecteurs',
@@ -212,6 +231,7 @@
 
 	const canShowNavItem = (item: NavItem) => {
 		if (item.requiresLinkedTranslator && !hasLinkedTranslator) return false;
+		if (item.hideIfLinkedTranslator && hasLinkedTranslator) return false;
 		return true;
 	};
 </script>
@@ -246,6 +266,13 @@
 									{#if item.badgeKey && pendingSubmissionsCount > 0}
 										<div class="ml-1 badge badge-xs badge-warning">
 											{pendingSubmissionsCount > 99 ? '99+' : pendingSubmissionsCount}
+										</div>
+									{/if}
+									{#if item.translatorApplicationsBadgeKey && pendingTranslatorApplicationsCount > 0}
+										<div class="ml-1 badge badge-xs badge-warning">
+											{pendingTranslatorApplicationsCount > 99
+												? '99+'
+												: pendingTranslatorApplicationsCount}
 										</div>
 									{/if}
 								</span>

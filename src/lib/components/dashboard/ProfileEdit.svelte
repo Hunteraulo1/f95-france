@@ -256,13 +256,6 @@
 				</form>
 			</div>
 		</div>
-	{:else}
-		<div role="alert" class="alert alert-info">
-			<span>
-				Aucune fiche traducteur n’est liée à ce compte : les pages externes apparaîtront une fois
-				l’association faite par un administrateur.
-			</span>
-		</div>
 	{/if}
 
 	{#if profileCustomize.any}
@@ -403,14 +396,6 @@
 					</div>
 				</form>
 			</div>
-		</div>
-	{:else if !linkedTranslator}
-		<div role="alert" class="alert alert-info">
-			<span>
-				Aucune permission de personnalisation (bio, fond, musique, curseur). Demandez les droits
-				appropriés à un administrateur dans
-				<a href="/dashboard/roles" class="link link-hover">Rôles et permissions</a>.
-			</span>
 		</div>
 	{/if}
 </section>

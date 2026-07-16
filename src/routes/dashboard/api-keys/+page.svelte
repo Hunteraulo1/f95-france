@@ -126,12 +126,6 @@
 						name="label"
 						placeholder="Extension navigateur, script…"
 					/>
-					{#if !data.canUseLabelBrackets}
-						<p class="text-xs text-base-content/70">
-							Les crochets [ ] dans le libellé sont réservés — contacte un administrateur si tu en
-							as besoin.
-						</p>
-					{/if}
 				</label>
 				<label class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Expiration (optionnel)</span>

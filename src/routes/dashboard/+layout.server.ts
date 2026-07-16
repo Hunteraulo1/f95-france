@@ -8,6 +8,7 @@ import {
 import { userHasLinkedTranslator } from '$lib/server/linked-translator';
 import { getMaintenanceMode } from '$lib/server/maintenance-mode';
 import { getPendingSubmissionsCountForUser } from '$lib/server/pending-submissions-count';
+import { getPendingTranslatorApplicationsCountForUser } from '$lib/server/pending-translator-applications-count';
 import { hasPermission } from '$lib/server/permissions';
 import { isRegistrationEnabled } from '$lib/server/registration-policy';
 import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
@@ -33,12 +34,14 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) 
 
 	const [
 		pendingSubmissionsCount,
+		pendingTranslatorApplicationsCount,
 		maintenanceMode,
 		hasLinkedTranslator,
 		devOriginUser,
 		roleBadgeStyles
 	] = await Promise.all([
 		locals.user ? getPendingSubmissionsCountForUser(locals) : Promise.resolve(0),
+		locals.user ? getPendingTranslatorApplicationsCountForUser(locals) : Promise.resolve(0),
 		getMaintenanceMode(),
 		locals.user
 			? skipLinkedTranslatorQuery
@@ -54,6 +57,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies, url, depends }) 
 		permissions,
 		roleBadgeStyles,
 		pendingSubmissionsCount,
+		pendingTranslatorApplicationsCount,
 		hasLinkedTranslator,
 		maintenanceMode,
 		canManageConfig,

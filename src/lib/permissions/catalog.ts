@@ -21,6 +21,7 @@ export const PERMISSION_KEYS = [
 	'submissions.own',
 	'submissions.review',
 	'translators.manage',
+	'translator_applications.review',
 	'users.manage',
 	'users.view_email',
 	'users.assign_admin',
@@ -172,6 +173,12 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
 		group: 'Modération'
 	},
 	{
+		key: 'translator_applications.review',
+		label: 'Candidatures traducteur',
+		description: 'Valider ou refuser les demandes pour devenir traducteur',
+		group: 'Modération'
+	},
+	{
 		key: 'users.manage',
 		label: 'Utilisateurs',
 		description: 'Lister et modifier les comptes utilisateurs',
@@ -279,6 +286,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> =
 		'submissions.own',
 		'submissions.review',
 		'translators.manage',
+		'translator_applications.review',
 		'users.manage',
 		'users.view_email',
 		'config.edit',

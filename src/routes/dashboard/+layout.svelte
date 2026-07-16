@@ -27,6 +27,7 @@
 	{#if data.user}
 		<Sidebar
 			pendingSubmissionsCount={data.pendingSubmissionsCount}
+			pendingTranslatorApplicationsCount={data.pendingTranslatorApplicationsCount}
 			hasLinkedTranslator={data.hasLinkedTranslator}
 			canReturnToOwnAccount={data.canReturnToOwnAccount}
 			devOriginUsername={data.devOriginUsername}

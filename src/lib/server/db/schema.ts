@@ -309,6 +309,40 @@ export const submission = mysqlTable(
 	]
 );
 
+export const translatorApplication = mysqlTable(
+	'translator_application',
+	{
+		id: varchar('id', { length: 255 })
+			.primaryKey()
+			.default(sql`(UUID())`),
+		userId: varchar('user_id', { length: 255 })
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+		status: varchar('status', { length: 32 }).notNull().default('pending'),
+		explanation: text('explanation'),
+		/** Nom du nouveau profil traducteur à créer si aucun profil existant n'est revendiqué. */
+		translatorName: varchar('translator_name', { length: 255 }),
+		claimedTranslatorId: varchar('claimed_translator_id', { length: 255 }).references(
+			() => translator.id,
+			{ onDelete: 'set null' }
+		),
+		reviewedByUserId: varchar('reviewed_by_user_id', { length: 255 }).references(() => user.id, {
+			onDelete: 'set null'
+		}),
+		adminNotes: text('admin_notes'),
+		createdAt: datetime('created_at')
+			.notNull()
+			.default(sql`(NOW())`),
+		updatedAt: datetime('updated_at')
+			.notNull()
+			.default(sql`(NOW())`)
+	},
+	(table) => [
+		index('translator_application_status_idx').on(table.status),
+		index('translator_application_user_id_idx').on(table.userId)
+	]
+);
+
 export const autoCheckRun = mysqlTable(
 	'auto_check_run',
 	{
@@ -480,6 +514,7 @@ export type Update = typeof update.$inferSelect;
 export type Translator = typeof translator.$inferSelect;
 export type Config = typeof config.$inferSelect;
 export type Submission = typeof submission.$inferSelect;
+export type TranslatorApplication = typeof translatorApplication.$inferSelect;
 export type AutoCheckRun = typeof autoCheckRun.$inferSelect;
 export type AutoCheckRunItem = typeof autoCheckRunItem.$inferSelect;
 export type ApiLog = typeof apiLog.$inferSelect;

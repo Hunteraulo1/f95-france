@@ -18,7 +18,7 @@
 <div class="space-y-6">
 	<h1 class="text-3xl font-bold text-base-content">Tableau de bord</h1>
 
-	{#if data.userStats}
+	{#if data.userStats && data.canSubmitSubmissions}
 		<!-- Statistiques personnelles -->
 		<div class="mb-8">
 			<h2 class="mb-4 text-xl font-semibold text-base-content">Mes statistiques</h2>
@@ -126,6 +126,14 @@
 						</div>
 					</div>
 				</div>
+			</div>
+		</div>
+	{:else}
+		<div class="card bg-base-200 shadow-xl">
+			<div class="card-body rounded-lg border border-base-300 bg-base-100">
+				<p class="text-base-content/70">
+					Vous n'avez aucune statistique à afficher pour le moment.
+				</p>
 			</div>
 		</div>
 	{/if}
