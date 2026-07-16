@@ -65,7 +65,8 @@
 								Jeux scannés : {result.details.scannedGames} · Mis à jour :
 								{result.details.updatedGames} · Déjà alignés :
 								{result.details.disabledAlignedGames} · Traductions :
-								{result.details.updatedTranslations} · Webhooks traducteurs :
+								{result.details.updatedTranslations} · MP traducteurs :
+								{result.details.translatorDmsSent ?? 0} · Webhooks traducteurs :
 								{result.details.translatorWebhooksSent ?? 0}
 							</p>
 						{:else if typeof result.details === 'string'}

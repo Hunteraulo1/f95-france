@@ -5,10 +5,15 @@ import {
 } from '$lib/server/app-config';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { getDiscordBotToken, sendDiscordBotTranslatorVersionBumpDm } from '$lib/server/discord-bot';
+import {
+	sendDiscordWebhookTranslatorsVersionBumps,
+	type TranslatorVersionBumpLine
+} from '$lib/server/discord-webhook';
 import { getValidAccessToken } from '$lib/server/google-oauth';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
 import { assertPermission } from '$lib/server/permissions';
-import { eq } from 'drizzle-orm';
+import { eq, isNotNull } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
 export const config = {
@@ -48,9 +53,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		admin: Boolean(effective?.discordWebhookAdmin?.trim())
 	};
 
+	const botTranslators = await db
+		.select({ id: table.translator.id, name: table.translator.name })
+		.from(table.translator)
+		.where(isNotNull(table.translator.discordId))
+		.orderBy(table.translator.name);
+
 	return {
 		config,
-		webhookStatus
+		webhookStatus,
+		discordBotConfigured: Boolean(getDiscordBotToken()),
+		botTranslators
 	};
 };
 
@@ -323,5 +336,83 @@ export const actions: Actions = {
 				httpStatus: null
 			};
 		}
+	},
+	testTranslatorMp: async ({ request, locals }) => {
+		await assertPermission(locals, 'dev.panel');
+		const formData = await request.formData();
+		const translatorId = (formData.get('translatorId') as string)?.trim();
+
+		if (!translatorId) {
+			return {
+				success: false,
+				message: 'Traducteur requis',
+				method: null,
+				details: null
+			};
+		}
+
+		const [translator] = await db
+			.select({
+				id: table.translator.id,
+				name: table.translator.name,
+				discordId: table.translator.discordId
+			})
+			.from(table.translator)
+			.where(eq(table.translator.id, translatorId))
+			.limit(1);
+
+		if (!translator) {
+			return {
+				success: false,
+				message: 'Traducteur introuvable',
+				method: null,
+				details: null
+			};
+		}
+
+		const testLine: TranslatorVersionBumpLine = {
+			gameId: 'dev-test',
+			gameName: `🧪 Test MP — ${translator.name}`,
+			translationName: null,
+			oldVersion: '0.0.0',
+			newVersion: '0.0.1-test',
+			discordMention: translator.discordId ? `<@${translator.discordId}>` : undefined,
+			translatorId: translator.id
+		};
+
+		// Même logique de repli que l'auto-check : MP d'abord, canal si MP impossible.
+		const dmResult = translator.discordId
+			? await sendDiscordBotTranslatorVersionBumpDm(translator.discordId, [testLine])
+			: ({ ok: false, blocked: false, error: 'Aucun compte Discord lié à ce traducteur' } as const);
+
+		if (dmResult.ok) {
+			return {
+				success: true,
+				message: `MP envoyé à ${translator.name}.`,
+				method: 'dm',
+				details: null
+			};
+		}
+
+		const cfg = await getEffectiveConfig();
+		const translatorsWebhookUrl = cfg?.discordWebhookTranslators?.trim() || null;
+
+		if (!translatorsWebhookUrl) {
+			return {
+				success: false,
+				message: `MP impossible (${dmResult.error}) et aucun canal de repli configuré.`,
+				method: null,
+				details: dmResult.error
+			};
+		}
+
+		await sendDiscordWebhookTranslatorsVersionBumps([testLine], { forceRefreshWebhookUrls: true });
+
+		return {
+			success: true,
+			message: `MP impossible (${dmResult.error}) — message envoyé en repli sur le canal Discord traducteurs.`,
+			method: 'channel_fallback',
+			details: dmResult.error
+		};
 	}
 };

@@ -559,11 +559,13 @@ export type TranslatorVersionBumpLine = {
 	oldVersion: string;
 	newVersion: string;
 	discordMention?: string;
+	/** Utilisé pour grouper les lignes par destinataire lors d'un envoi en MP. */
+	translatorId?: string | null;
 };
 
-const AUTO_CHECK_EMBEDS_PER_MESSAGE = 10;
+export const AUTO_CHECK_EMBEDS_PER_MESSAGE = 10;
 
-function buildAutoCheckVersionBumpEmbed(
+export function buildAutoCheckVersionBumpEmbed(
 	line: TranslatorVersionBumpLine,
 	footerText: string
 ): DiscordEmbed {
