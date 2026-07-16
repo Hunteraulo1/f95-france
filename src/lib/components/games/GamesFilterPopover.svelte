@@ -28,7 +28,7 @@
 	<div
 		tabindex="0"
 		role="button"
-		class="btn btn-sm w-full justify-between font-normal {hasSelection
+		class="btn w-full justify-between font-normal btn-sm {hasSelection
 			? 'btn-primary'
 			: 'btn-outline'}"
 		class:btn-disabled={disabled}

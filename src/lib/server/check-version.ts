@@ -7,6 +7,7 @@ import {
 } from '$lib/server/auto-check-run-recorder';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sendDiscordBotTranslatorVersionBumpDm } from '$lib/server/discord-bot';
 import {
 	sendDiscordWebhookProofreadersVersionBumps,
 	sendDiscordWebhookTranslatorsVersionBumps,
@@ -42,6 +43,7 @@ export type AutoCheckIssue = {
 		| 'checker_fetch'
 		| 'checker_payload'
 		| 'scrape'
+		| 'dm_translator'
 		| 'webhook_translators'
 		| 'webhook_proofreaders'
 		| 'webhook_updates'
@@ -116,6 +118,7 @@ export type AutoCheckResult = {
 	updatedGames: number;
 	updatedTranslations: number;
 	disabledAlignedGames: number;
+	translatorDmsSent: number;
 	translatorWebhooksSent: number;
 	proofreaderWebhooksSent: number;
 	issues: AutoCheckIssue[];
@@ -211,6 +214,7 @@ export async function runAutoCheckVersions(
 				updatedGames: 0,
 				updatedTranslations: 0,
 				disabledAlignedGames: 0,
+				translatorDmsSent: 0,
 				translatorWebhooksSent: 0,
 				proofreaderWebhooksSent: 0,
 				issues
@@ -293,6 +297,7 @@ export async function runAutoCheckVersions(
 				updatedGames: 0,
 				updatedTranslations: 0,
 				disabledAlignedGames: alignedGames.length,
+				translatorDmsSent: 0,
 				translatorWebhooksSent: 0,
 				proofreaderWebhooksSent: 0,
 				issues
@@ -351,7 +356,8 @@ export async function runAutoCheckVersions(
 					.select({
 						id: table.translator.id,
 						name: table.translator.name,
-						discordId: table.translator.discordId
+						discordId: table.translator.discordId,
+						discordNotificationsEnabled: table.translator.discordNotificationsEnabled
 					})
 					.from(table.translator)
 					.where(inArray(table.translator.id, staffIds))
@@ -359,8 +365,15 @@ export async function runAutoCheckVersions(
 		const staffMentionById = new Map(
 			staffRows.map((s) => [s.id, s.discordId ? `<@${s.discordId}>` : undefined] as const)
 		);
+		const staffDiscordIdById = new Map(staffRows.map((s) => [s.id, s.discordId] as const));
+		/** Le traducteur a désactivé lui-même le MP + le repli canal pour ses notifications. */
+		const staffDiscordNotifDisabledById = new Set(
+			staffRows.filter((s) => !s.discordNotificationsEnabled).map((s) => s.id)
+		);
 		const translatorWebhookLines: TranslatorVersionBumpLine[] = [];
 		const proofreaderWebhookLines: TranslatorVersionBumpLine[] = [];
+		/** Lignes « montée de version » groupées par traducteur, à envoyer en MP en priorité. */
+		const translatorLinesByTranslatorId = new Map<string, TranslatorVersionBumpLine[]>();
 
 		for (const game of changedGames) {
 			const newVersion = normalizeCheckerVersion(versions.get(game.threadId));
@@ -453,15 +466,25 @@ export async function runAutoCheckVersions(
 					continue;
 				}
 				if (!isActualVersionBump) continue;
-				translatorWebhookLines.push({
+				const translatorLine: TranslatorVersionBumpLine = {
 					gameId: game.gameId,
 					gameName: game.gameName,
 					gameImage: game.gameImage,
 					translationName: t.translationName,
 					oldVersion: game.gameVersion ?? '—',
 					newVersion,
-					discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined
-				});
+					discordMention: t.translatorId ? staffMentionById.get(t.translatorId) : undefined,
+					translatorId: t.translatorId
+				};
+				if (t.translatorId && staffDiscordNotifDisabledById.has(t.translatorId)) {
+					// Le traducteur a coupé ses notifications Discord (MP + repli canal) : on n'envoie rien.
+				} else if (t.translatorId) {
+					const bucket = translatorLinesByTranslatorId.get(t.translatorId) ?? [];
+					bucket.push(translatorLine);
+					translatorLinesByTranslatorId.set(t.translatorId, bucket);
+				} else {
+					translatorWebhookLines.push(translatorLine);
+				}
 				if (t.proofreaderId && t.status !== 'abandoned') {
 					proofreaderWebhookLines.push({
 						gameId: game.gameId,
@@ -523,6 +546,37 @@ export async function runAutoCheckVersions(
 			}
 		}
 
+		let translatorDmsSent = 0;
+		for (const [translatorId, lines] of translatorLinesByTranslatorId) {
+			const discordId = staffDiscordIdById.get(translatorId);
+			let delivered = false;
+			if (discordId) {
+				try {
+					const dmResult = await sendDiscordBotTranslatorVersionBumpDm(discordId, lines);
+					delivered = dmResult.ok;
+					if (!dmResult.ok && !dmResult.blocked) {
+						issues.push({
+							stage: 'dm_translator',
+							message: 'MP traducteur échoué (repli sur le canal)',
+							detail: dmResult.error
+						});
+					}
+				} catch (error) {
+					issues.push({
+						stage: 'dm_translator',
+						message: 'MP traducteur échoué (repli sur le canal)',
+						detail: error instanceof Error ? error.message : String(error)
+					});
+				}
+			}
+			if (delivered) {
+				translatorDmsSent += lines.length;
+			} else {
+				// Pas de discordId, ou MP impossible (bloqué / erreur) : on retombe sur le canal.
+				translatorWebhookLines.push(...lines);
+			}
+		}
+
 		let translatorWebhooksSent = 0;
 		let proofreaderWebhooksSent = 0;
 		if (translatorWebhookLines.length > 0) {
@@ -571,6 +625,7 @@ export async function runAutoCheckVersions(
 			updatedGames: changedGames.length,
 			updatedTranslations: impactedTranslations.length,
 			disabledAlignedGames: alignedGames.length,
+			translatorDmsSent,
 			translatorWebhooksSent,
 			proofreaderWebhooksSent,
 			issues

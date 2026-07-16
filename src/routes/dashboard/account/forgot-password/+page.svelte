@@ -39,7 +39,7 @@
 			</div>
 
 			{#if !data.smtpConfigured}
-				<div role="alert" class="alert alert-warning text-sm">
+				<div role="alert" class="alert text-sm alert-warning">
 					<span>L’envoi d’emails n’est pas configuré sur ce serveur.</span>
 				</div>
 			{/if}
@@ -83,7 +83,7 @@
 					<input type="hidden" name={TURNSTILE_FORM_FIELD} value={captchaToken} />
 				{/if}
 
-				<button type="submit" class="btn btn-primary btn-block">Envoyer le lien</button>
+				<button type="submit" class="btn btn-block btn-primary">Envoyer le lien</button>
 			</form>
 
 			<p class="text-center text-sm text-base-content/70">

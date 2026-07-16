@@ -25,7 +25,7 @@
 					ne recevrez plus d’emails informatifs de F95 France. Les emails essentiels liés à la sécurité
 					de votre compte pourront toujours vous être envoyés.
 				</p>
-				<a href="/" class="btn btn-ghost mt-2">Retour au site</a>
+				<a href="/" class="btn mt-2 btn-ghost">Retour au site</a>
 			{:else if data.status === 'missing'}
 				<MailWarning class="mx-auto text-warning" size={48} strokeWidth={1.75} aria-hidden="true" />
 				<h1 class="text-2xl font-bold">Lien invalide</h1>

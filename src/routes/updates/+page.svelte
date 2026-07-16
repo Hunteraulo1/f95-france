@@ -29,7 +29,7 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
@@ -128,11 +128,16 @@
 	const listCacheKey = $derived(JSON.stringify({ q: data.query, filters: data.filters }));
 
 	$effect(() => {
+		// N'écoute que la clé de cache : lire `data` hors de `untrack` suivrait aussi
+		// ses dépendances internes et réinitialiserait la liste déjà chargée à chaque
+		// rechargement de `data` non lié aux filtres (ex. `invalidateAll` après une action).
 		String(listCacheKey);
-		allUpdates = [...(data.updates ?? [])];
-		loadedPage = data.page ?? 1;
-		totalPages = data.totalPages ?? 1;
-		loadMoreError = null;
+		untrack(() => {
+			allUpdates = [...(data.updates ?? [])];
+			loadedPage = data.page ?? 1;
+			totalPages = data.totalPages ?? 1;
+			loadMoreError = null;
+		});
 	});
 
 	const groupedUpdates = $derived(groupUpdatesByDayAndType(allUpdates));
@@ -204,8 +209,8 @@
 			</span>
 		</div>
 
-		<div class="min-w-0 list-col-grow gap-2 h-full">
-			<div class="flex w-full text-nowrap gap-2">
+		<div class="list-col-grow h-full min-w-0 gap-2">
+			<div class="flex w-full gap-2 text-nowrap">
 				{#if game.hasTranslation}
 					<dd class="flex flex-col items-start gap-1">
 						<span
@@ -219,7 +224,7 @@
 				{#if game.engineType}
 					<div class="flex flex-wrap gap-1">
 						<span
-							class="badge badge-xs badge-outline"
+							class="badge badge-outline badge-xs"
 							style={`border-color: ${getGameEngineHexColor(game.engineType)}; color: ${getGameEngineHexColor(game.engineType)}`}
 						>
 							{getGameEngineLabel(game.engineType)}
@@ -229,13 +234,13 @@
 				<div class="flex flex-wrap items-start justify-between gap-2">
 					<a
 						href={resolve(`/games/${game.id}`)}
-						class="link link-hover line-clamp-2 font-medium leading-snug"
+						class="line-clamp-2 link leading-snug font-medium link-hover"
 					>
 						{game.name}
 					</a>
 				</div>
 				<time
-					class="shrink-0 text-xs opacity-60 ml-auto"
+					class="ml-auto shrink-0 text-xs opacity-60"
 					datetime={publicUpdateDatetimeAttr(update.createdAt)}
 				>
 					{formatTime(update.createdAt)}
@@ -258,7 +263,7 @@
 			{/if}
 
 			<dl class="flex items-center gap-2">
-				<dt class="text-base-content/60 text-nowrap">Tags:</dt>
+				<dt class="text-nowrap text-base-content/60">Tags:</dt>
 				<dd>
 					{#if game.tags.length}
 						{@const showAllTags = rowTagsExpanded(update.id)}
@@ -266,12 +271,12 @@
 						{@const hiddenTagsCount = game.tags.length - visibleTags.length}
 						<div class="flex flex-wrap items-center gap-1">
 							{#each visibleTags as tag (tag)}
-								<span class="badge badge-xs badge-ghost">{tag}</span>
+								<span class="badge badge-ghost badge-xs">{tag}</span>
 							{/each}
 							{#if !tagsExpanded && expandedTagRowIds.has(update.id) && game.tags.length > TAGS_PREVIEW_LIMIT}
 								<button
 									type="button"
-									class="btn btn-xs btn-ghost h-auto min-h-0 px-1 py-0 font-normal"
+									class="btn h-auto min-h-0 btn-ghost px-1 py-0 font-normal btn-xs"
 									onclick={() => collapseRowTags(update.id)}
 								>
 									Replier
@@ -279,7 +284,7 @@
 							{:else if !showAllTags && hiddenTagsCount > 0}
 								<button
 									type="button"
-									class="btn btn-xs btn-ghost h-auto min-h-0 px-1 py-0 font-normal"
+									class="btn h-auto min-h-0 btn-ghost px-1 py-0 font-normal btn-xs"
 									onclick={() => expandRowTags(update.id)}
 								>
 									Voir plus ({hiddenTagsCount})
@@ -293,10 +298,10 @@
 			</dl>
 		</div>
 
-		<div class="flex shrink-0 flex-col gap-1 items-end">
+		<div class="flex shrink-0 flex-col items-end gap-1">
 			<a
 				href={resolve(`/games/${game.id}`)}
-				class="btn btn-sm btn-ghost w-full px-2"
+				class="btn w-full btn-ghost px-2 btn-sm"
 				aria-label={`Fiche de ${game.name}`}
 			>
 				Voir la fiche
@@ -307,7 +312,7 @@
 					href={game.link}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="btn btn-square btn-ghost btn-sm w-full px-2"
+					class="btn btn-square w-full btn-ghost px-2 btn-sm"
 					aria-label={`Thread de ${game.name}`}
 					title="Ouvrir le thread"
 				>
@@ -324,7 +329,7 @@
 		website: update.game.website
 	})}
 	{@const game = update.game}
-	<article class="card card-border bg-base-100 shadow-sm transition hover:shadow-md">
+	<article class="card bg-base-100 shadow-sm transition card-border hover:shadow-md">
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			<a
 				href={resolve(`/games/${game.id}`)}
@@ -353,8 +358,8 @@
 		</figure>
 		<div class="card-body gap-2 p-4">
 			<div class="flex items-start gap-2">
-				<h2 class="card-title text-base leading-snug line-clamp-2">
-					<a href={resolve(`/games/${game.id}`)} class="link link-hover line-clamp-2">
+				<h2 class="card-title line-clamp-2 text-base leading-snug">
+					<a href={resolve(`/games/${game.id}`)} class="line-clamp-2 link link-hover">
 						{game.name}
 					</a>
 				</h2>
@@ -368,7 +373,7 @@
 			{#if game.engineType}
 				<div class="flex flex-wrap gap-1">
 					<span
-						class="badge badge-xs badge-outline"
+						class="badge badge-outline badge-xs"
 						style={`border-color: ${getGameEngineHexColor(game.engineType)}; color: ${getGameEngineHexColor(game.engineType)}`}
 					>
 						{getGameEngineLabel(game.engineType)}
@@ -394,20 +399,20 @@
 			{/if}
 			<div class="flex flex-wrap items-center gap-1">
 				{#each game.tags.slice(0, TAGS_PREVIEW_LIMIT) as tag (tag)}
-					<span class="badge badge-xs badge-ghost">{tag}</span>
+					<span class="badge badge-ghost badge-xs">{tag}</span>
 				{/each}
 				{#if game.tags.length > TAGS_PREVIEW_LIMIT}
 					<span class="text-xs text-base-content/60">+{game.tags.length - TAGS_PREVIEW_LIMIT}</span>
 				{/if}
 			</div>
-			<div class="card-actions mt-1 justify-end">
-				<a href={resolve(`/games/${game.id}`)} class="btn btn-sm btn-ghost">Voir la fiche</a>
+			<div class="mt-1 card-actions justify-end">
+				<a href={resolve(`/games/${game.id}`)} class="btn btn-ghost btn-sm">Voir la fiche</a>
 				{#if game.link?.trim()}
 					<a
 						href={game.link}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="btn btn-sm btn-outline"
+						class="btn btn-outline btn-sm"
 						aria-label={`Thread de ${game.name}`}
 						title="Ouvrir le thread"
 					>
@@ -482,7 +487,7 @@
 							{/if}
 						</p>
 						{#if hasFilters}
-							<a href={resolve('/updates')} class="btn btn-sm btn-primary"
+							<a href={resolve('/updates')} class="btn btn-primary btn-sm"
 								>Réinitialiser les filtres</a
 							>
 						{/if}

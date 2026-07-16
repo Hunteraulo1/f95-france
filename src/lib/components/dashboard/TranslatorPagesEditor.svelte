@@ -38,7 +38,7 @@
 </script>
 
 {#if showHelper}
-	<p class="text-sm text-base-content/70 mb-2">
+	<p class="mb-2 text-sm text-base-content/70">
 		Le <span class="font-medium text-primary">premier lien</span> est le lien principal du traducteur
 		(fiches jeu, API, Google Sheet). Utilisez les flèches pour changer l’ordre.
 	</p>
@@ -53,7 +53,7 @@
 		>
 			<div class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
 				{#if index === 0}
-					<span class="badge badge-primary badge-sm shrink-0 self-start sm:self-center"
+					<span class="badge shrink-0 self-start badge-sm badge-primary sm:self-center"
 						>Lien principal</span
 					>
 				{/if}
@@ -93,7 +93,7 @@
 				</button>
 				<button
 					type="button"
-					class="btn btn-square btn-ghost btn-sm text-error"
+					class="btn btn-square btn-ghost text-error btn-sm"
 					disabled={pages.length <= minRows}
 					onclick={() => removePage(index)}
 					aria-label="Supprimer cette page"
@@ -109,6 +109,6 @@
 	{/each}
 </div>
 
-<button type="button" class="btn btn-outline btn-sm mt-2" onclick={addPage}
+<button type="button" class="btn mt-2 btn-outline btn-sm" onclick={addPage}
 	>+ Ajouter une page</button
 >

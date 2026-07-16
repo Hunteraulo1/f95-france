@@ -44,7 +44,7 @@
 			<span class="loading loading-md loading-spinner text-primary" aria-label="Chargement"></span>
 		{:else if error}
 			<p class="text-sm text-error">{error}</p>
-			<button type="button" class="btn btn-sm btn-outline" onclick={() => onLoadMore()}>
+			<button type="button" class="btn btn-outline btn-sm" onclick={() => onLoadMore()}>
 				Réessayer
 			</button>
 		{:else if hasMore}

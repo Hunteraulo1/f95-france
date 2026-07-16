@@ -251,9 +251,9 @@
 				<p class="text-xs font-medium tracking-wide text-base-content/60 uppercase">Statut</p>
 				<p class="mt-1">
 					{#if servicesStatus.registration.enabled}
-						<span class="badge badge-success badge-sm">Activée</span>
+						<span class="badge badge-sm badge-success">Activée</span>
 					{:else}
-						<span class="badge badge-error badge-sm">Désactivée</span>
+						<span class="badge badge-sm badge-error">Désactivée</span>
 					{/if}
 				</p>
 			</div>
@@ -363,7 +363,7 @@
 							href="https://docs.google.com/spreadsheets/d/{row.note}/edit"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="btn btn-ghost btn-xs px-1"
+							class="btn btn-ghost px-1 btn-xs"
 							title="Ouvrir le spreadsheet"
 						>
 							<ExternalLink class="size-3.5" />

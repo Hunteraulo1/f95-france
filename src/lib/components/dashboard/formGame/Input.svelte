@@ -190,7 +190,7 @@
 			{:else}
 				<button
 					type="button"
-					class="btn mt-1 w-min btn-disable"
+					class="btn-disable btn mt-1 w-min"
 					disabled
 					aria-label="Lien du jeu indisponible"
 				>
@@ -212,7 +212,7 @@
 			{:else}
 				<button
 					type="button"
-					class="btn mt-1 w-min btn-disable"
+					class="btn-disable btn mt-1 w-min"
 					disabled
 					aria-label="Lien de traduction indisponible"
 				>

@@ -43,7 +43,7 @@
 		</div>
 
 		<div class="space-y-4 px-6 py-5">
-			<div class="rounded-box space-y-3 border border-base-300 bg-base-200/40 p-4">
+			<div class="space-y-3 rounded-box border border-base-300 bg-base-200/40 p-4">
 				<div class="flex items-center gap-2 text-sm font-medium text-base-content">
 					<Gamepad2 size={16} class="shrink-0 opacity-70" />
 					{gameName}
@@ -55,7 +55,7 @@
 				</ul>
 			</div>
 
-			<div role="alert" class="alert alert-warning alert-soft">
+			<div role="alert" class="alert alert-soft alert-warning">
 				<CircleAlert size={18} class="shrink-0" />
 				<div class="text-sm">
 					<p class="font-medium">Le statut public reste inchangé</p>
@@ -73,9 +73,9 @@
 			<button type="button" class="btn btn-ghost" disabled={confirming} onclick={onClose}>
 				Annuler
 			</button>
-			<button type="button" class="btn btn-error gap-2" disabled={confirming} onclick={onConfirm}>
+			<button type="button" class="btn gap-2 btn-error" disabled={confirming} onclick={onConfirm}>
 				{#if confirming}
-					<span class="loading loading-spinner loading-sm"></span>
+					<span class="loading loading-sm loading-spinner"></span>
 					Abandon en cours…
 				{:else}
 					<BellOff size={16} />

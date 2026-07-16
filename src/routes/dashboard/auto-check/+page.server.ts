@@ -57,7 +57,7 @@ export const actions: Actions = {
 
 			return {
 				success: true,
-				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} déjà aligné(s), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
+				message: `Auto-check : ${result.updatedGames} jeu(x) mis à jour, ${result.disabledAlignedGames} déjà aligné(s), ${result.translatorDmsSent} MP traducteur(s), ${result.translatorWebhooksSent} webhook(s) traducteur(s)`,
 				details: result
 			};
 		} catch (error: unknown) {

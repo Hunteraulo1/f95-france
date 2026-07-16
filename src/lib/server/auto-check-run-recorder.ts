@@ -148,6 +148,7 @@ export class AutoCheckRunRecorder {
 					updatedGames: 0,
 					updatedTranslations: 0,
 					disabledAlignedGames: 0,
+					translatorDmsSent: 0,
 					translatorWebhooksSent: 0,
 					proofreaderWebhooksSent: 0,
 					issues: [

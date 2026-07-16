@@ -55,14 +55,14 @@
 	>
 		<div class="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 pt-0">
 			<div
-				class="sticky top-0 z-10 mx-0.5 rounded-b-xl border p-2 text-center border-ext-border bg-ext-card pb-8"
+				class="sticky top-0 z-10 mx-0.5 rounded-b-xl border border-ext-border bg-ext-card p-2 pb-8 text-center"
 			>
 				<p class="text-[0.65rem] leading-snug text-ext-secondary-foreground">
 					Traduction détectée sur cette page
 				</p>
-				<div class="absolute flex justify-center top-8 right-0 w-full">
+				<div class="absolute top-8 right-0 flex w-full justify-center">
 					<div
-						class="flex items-center justify-center rounded-full py-2 px-4 border-2 border-ext-border transition-opacity text-ext-secondary-foreground bg-ext-card/40 hover:bg-ext-card/80"
+						class="flex items-center justify-center rounded-full border-2 border-ext-border bg-ext-card/40 px-4 py-2 text-ext-secondary-foreground transition-opacity hover:bg-ext-card/80"
 					>
 						<ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
 					</div>
@@ -80,9 +80,9 @@
 							draggable="false"
 						/>
 						<div
-							class="relative flex h-full flex-col justify-end p-6 backdrop-brightness-90 transition hover:backdrop-brightness-100 text-ext-secondary-foreground"
+							class="relative flex h-full flex-col justify-end p-6 text-ext-secondary-foreground backdrop-brightness-90 transition hover:backdrop-brightness-100"
 						>
-							<p class="line-clamp-1 select-none text-sm font-semibold leading-tight">
+							<p class="line-clamp-1 text-sm leading-tight font-semibold select-none">
 								{game.name}
 							</p>
 							<p
@@ -94,7 +94,7 @@
 							</p>
 						</div>
 						<div
-							class="absolute top-1 right-1 rounded-full p-2 opacity-30 text-ext-secondary-foreground"
+							class="absolute top-1 right-1 rounded-full p-2 text-ext-secondary-foreground opacity-30"
 						>
 							<ClipboardCheck class="size-6" strokeWidth={2} aria-hidden="true" />
 						</div>
@@ -102,9 +102,9 @@
 				{/each}
 			</div>
 
-			<div class="absolute bottom-0 left-0 right-0 flex justify-center pb-4">
+			<div class="absolute right-0 bottom-0 left-0 flex justify-center pb-4">
 				<div
-					class="bottom-2 z-10 mx-auto mt-auto w-fit rounded-md border-2 px-4 py-1.5 text-center text-xs font-medium shadow-sm text-ext-secondary-foreground border-ext-border bg-ext-card/80 hover:bg-ext-card"
+					class="bottom-2 z-10 mx-auto mt-auto w-fit rounded-md border-2 border-ext-border bg-ext-card/80 px-4 py-1.5 text-center text-xs font-medium text-ext-secondary-foreground shadow-sm hover:bg-ext-card"
 				>
 					Filtrer
 				</div>
@@ -112,11 +112,11 @@
 		</div>
 
 		<div
-			class="flex h-14 w-full shrink-0 justify-around gap-2 border-t-4 p-1 border-ext-border bg-ext-card"
+			class="flex h-14 w-full shrink-0 justify-around gap-2 border-t-4 border-ext-border bg-ext-card p-1"
 		>
 			{#each navItems as item (item.icon)}
 				<div
-					class="relative flex flex-1 flex-col items-center justify-center rounded-md py-0.5 transition hover:opacity-100 text-ext-secondary-foreground"
+					class="relative flex flex-1 flex-col items-center justify-center rounded-md py-0.5 text-ext-secondary-foreground transition hover:opacity-100"
 					class:opacity-50={!item.active}
 				>
 					{#if item.badge > 0}

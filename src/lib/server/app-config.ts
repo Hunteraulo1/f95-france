@@ -24,6 +24,7 @@ export type EffectiveAppConfig = Config & {
 	discordWebhookUpdates: string | null;
 	discordWebhookTranslators: string | null;
 	discordWebhookAdmin: string | null;
+	discordBotToken: string | null;
 	googleApiKey: string | null;
 	googleOAuthClientId: string | null;
 	googleOAuthClientSecret: string | null;
@@ -39,6 +40,7 @@ export function mergeEnvIntoConfigRow(row: Config): EffectiveAppConfig {
 		discordWebhookUpdates: envTrim('DISCORD_WEBHOOK_UPDATES'),
 		discordWebhookTranslators: envTrim('DISCORD_WEBHOOK_TRANSLATORS'),
 		discordWebhookAdmin: envTrim('DISCORD_WEBHOOK_ADMIN'),
+		discordBotToken: envTrim('DISCORD_BOT_TOKEN'),
 		googleApiKey: envTrim('GOOGLE_API_KEY'),
 		googleOAuthClientId: envTrim('GOOGLE_OAUTH_CLIENT_ID'),
 		googleOAuthClientSecret: envTrim('GOOGLE_OAUTH_CLIENT_SECRET'),
@@ -72,6 +74,7 @@ export type ConfigClientSafe = Pick<
 		discordUpdates: 'env' | 'none';
 		discordTranslators: 'env' | 'none';
 		discordAdmin: 'env' | 'none';
+		discordBot: 'env' | 'none';
 		googleApiKey: 'env' | 'none';
 		googleOAuthClient: 'env' | 'none';
 	};
@@ -95,6 +98,7 @@ export function toConfigClientSafe(row: Config): ConfigClientSafe {
 			discordUpdates: envPresence('DISCORD_WEBHOOK_UPDATES'),
 			discordTranslators: envPresence('DISCORD_WEBHOOK_TRANSLATORS'),
 			discordAdmin: envPresence('DISCORD_WEBHOOK_ADMIN'),
+			discordBot: envPresence('DISCORD_BOT_TOKEN'),
 			googleApiKey: envPresence('GOOGLE_API_KEY'),
 			googleOAuthClient: idOk && secretOk ? 'env' : 'none'
 		},

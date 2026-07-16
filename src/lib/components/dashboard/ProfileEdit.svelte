@@ -19,6 +19,7 @@
 		id: string;
 		name: string;
 		pages: Array<{ name: string; link: string }>;
+		discordNotificationsEnabled: boolean;
 	};
 
 	interface Props {
@@ -66,6 +67,9 @@
 	let translatorPagesInfo = $state<string | null>(null);
 	let initialTranslatorPagesSignature = $state('[]');
 
+	let discordNotificationsEnabled = $state(true);
+	let discordNotificationsError = $state<string | null>(null);
+
 	const normalizeTranslatorPages = (pages: Array<{ name: string; link: string }>) =>
 		pages
 			.map((page) => ({ name: page.name.trim(), link: page.link.trim() }))
@@ -96,6 +100,7 @@
 			initialTranslatorPagesSignature = JSON.stringify(
 				normalizeTranslatorPages(linkedTranslator.pages ?? [])
 			);
+			discordNotificationsEnabled = linkedTranslator.discordNotificationsEnabled;
 		}
 	});
 
@@ -163,7 +168,7 @@
 						<input
 							type="text"
 							name="username"
-							class="grow w-full"
+							class="w-full grow"
 							placeholder="Pseudo"
 							bind:value={profileUsername}
 							required
@@ -174,7 +179,7 @@
 						<input
 							type="url"
 							name="avatar"
-							class="grow w-full"
+							class="w-full grow"
 							placeholder="https://exemple.com/photo.jpg"
 							bind:value={profileAvatar}
 						/>
@@ -194,7 +199,7 @@
 				<p class="text-sm text-base-content/70">
 					Liens affichés sur votre
 					<a href={publicProfileHref} class="link link-hover">profil public</a>. Fiche liée :
-					<a href={translatorListHref(linkedTranslator.name)} class="link link-hover font-medium">
+					<a href={translatorListHref(linkedTranslator.name)} class="link font-medium link-hover">
 						{linkedTranslator.name}
 					</a>.
 					{#if translatorPagesWriteMode === 'direct'}
@@ -256,12 +261,56 @@
 				</form>
 			</div>
 		</div>
-	{:else}
-		<div role="alert" class="alert alert-info">
-			<span>
-				Aucune fiche traducteur n’est liée à ce compte : les pages externes apparaîtront une fois
-				l’association faite par un administrateur.
-			</span>
+
+		<div class="card border border-base-300 bg-base-100 shadow-sm">
+			<div class="card-body gap-4">
+				<h2 class="text-lg font-semibold text-base-content">Notifications Discord</h2>
+				<p class="text-sm text-base-content/70">
+					MP envoyé par le bot lors d'une montée de version détectée par l'auto-check (repli
+					automatique sur le canal si le MP est impossible). Désactivez pour ne plus recevoir ni
+					l'un ni l'autre.
+				</p>
+
+				{#if discordNotificationsError}
+					<div class="alert alert-error">
+						<span>{discordNotificationsError}</span>
+					</div>
+				{/if}
+
+				<form
+					method="POST"
+					action="?/updateDiscordNotifications"
+					use:enhance={createFormEnhance({
+						onStart: () => {
+							discordNotificationsError = null;
+						},
+						onFailure: (message) => {
+							discordNotificationsError = message;
+							discordNotificationsEnabled = !discordNotificationsEnabled;
+						}
+					})}
+				>
+					<input type="hidden" name="translatorId" value={linkedTranslator.id} />
+					<input
+						type="hidden"
+						name="enabled"
+						value={discordNotificationsEnabled ? 'true' : 'false'}
+					/>
+					<label class="label cursor-pointer justify-start gap-4">
+						<input
+							type="checkbox"
+							class="toggle toggle-primary"
+							checked={discordNotificationsEnabled}
+							onchange={(e) => {
+								discordNotificationsEnabled = e.currentTarget.checked;
+								const form = e.currentTarget.closest('form');
+								form?.requestSubmit();
+							}}
+						/>
+						<span class="label-text">Recevoir les notifications Discord (MP + canal)</span>
+					</label>
+				</form>
+			</div>
 		</div>
 	{/if}
 
@@ -314,7 +363,7 @@
 							</p>
 							{#if bioPreviewDocument.length > 0}
 								<div class="rounded-box border border-base-300 bg-base-200/40 p-4">
-									<p class="mb-2 text-xs font-medium uppercase tracking-wide text-base-content/60">
+									<p class="mb-2 text-xs font-medium tracking-wide text-base-content/60 uppercase">
 										Aperçu
 									</p>
 									<MarkdownContent document={bioPreviewDocument} variant="profile" />
@@ -336,7 +385,7 @@
 									<input
 										type="url"
 										name="profileBackgroundUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://exemple.com/fond.jpg"
 										bind:value={profileBackgroundUrl}
 									/>
@@ -350,7 +399,7 @@
 									<input
 										type="url"
 										name="profileMusicUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://music.youtube.com/watch?v=…"
 										bind:value={profileMusicUrl}
 									/>
@@ -367,7 +416,7 @@
 									<input
 										type="url"
 										name="profileCursorUrl"
-										class="grow w-full"
+										class="w-full grow"
 										placeholder="https://exemple.com/curseur.png"
 										bind:value={profileCursorUrl}
 									/>
@@ -403,14 +452,6 @@
 					</div>
 				</form>
 			</div>
-		</div>
-	{:else if !linkedTranslator}
-		<div role="alert" class="alert alert-info">
-			<span>
-				Aucune permission de personnalisation (bio, fond, musique, curseur). Demandez les droits
-				appropriés à un administrateur dans
-				<a href="/dashboard/roles" class="link link-hover">Rôles et permissions</a>.
-			</span>
 		</div>
 	{/if}
 </section>

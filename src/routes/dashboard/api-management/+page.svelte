@@ -196,7 +196,7 @@
 											>
 												<input type="hidden" name="id" value={row.id} />
 												<input
-													class="input-bordered input input-xs w-24"
+													class="input-bordered input w-24 input-xs"
 													type="number"
 													name="requestsPerMinute"
 													min="0"
@@ -205,13 +205,13 @@
 												/>
 												{#if row.kind !== 'session'}
 													<input
-														class="input-bordered input input-xs w-full min-w-40"
+														class="input-bordered input w-full min-w-40 input-xs"
 														type="datetime-local"
 														name="expiresAt"
 														value={toLocalInput(row.expiresAt)}
 													/>
 												{/if}
-												<button type="submit" class="btn w-fit btn-xs btn-primary"
+												<button type="submit" class="btn w-fit btn-primary btn-xs"
 													>Enregistrer</button
 												>
 											</form>
@@ -224,7 +224,7 @@
 											use:enhance={createFormEnhance({ invalidateAll: true })}
 										>
 											<input type="hidden" name="id" value={row.id} />
-											<button type="submit" class="btn w-fit text-error btn-ghost btn-xs"
+											<button type="submit" class="btn w-fit btn-ghost text-error btn-xs"
 												>Révoquer</button
 											>
 										</form>
@@ -238,7 +238,7 @@
 										<input type="hidden" name="id" value={row.id} />
 										<button
 											type="submit"
-											class="btn w-fit text-nowrap btn-outline btn-xs btn-success"
+											class="btn w-fit btn-outline text-nowrap btn-success btn-xs"
 										>
 											Rétablir la clé
 										</button>

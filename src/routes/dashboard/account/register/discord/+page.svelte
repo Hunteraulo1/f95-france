@@ -132,7 +132,7 @@
 						<UserPlus size={18} aria-hidden="true" />
 						Créer mon compte
 					</button>
-					<a href="/dashboard/account/login" class="btn btn-ghost btn-block btn-sm">Annuler</a>
+					<a href="/dashboard/account/login" class="btn btn-block btn-ghost btn-sm">Annuler</a>
 				</div>
 			</form>
 		</div>

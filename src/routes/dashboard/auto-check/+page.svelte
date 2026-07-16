@@ -109,7 +109,7 @@
 			<div class="flex flex-col gap-4">
 				{#if selectedRun}
 					<div
-						class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-xl sm:stats-horizontal"
+						class="stats w-full stats-vertical border border-base-300 bg-base-100 shadow-xl sm:stats-horizontal"
 					>
 						<div class="stat">
 							<div class="stat-title">Jeux scannés</div>
@@ -166,7 +166,7 @@
 													<div class="flex flex-wrap items-center justify-between gap-2">
 														{#if item.gameId}
 															<a
-																class="link link-hover font-medium"
+																class="link font-medium link-hover"
 																href={resolve(`/dashboard/manager/game/${item.gameId}`)}
 															>
 																{item.gameName ?? 'Jeu'}
@@ -236,7 +236,7 @@
 	<div class="text-sm text-base-content/60">
 		Les utilisateurs avec la permission « Suivi auto-check » reçoivent une notification en cas
 		d’erreur.
-		<a class="link link-hover inline-flex items-center gap-1" href={resolve('/dashboard/logs-app')}>
+		<a class="inline-flex link items-center gap-1 link-hover" href={resolve('/dashboard/logs-app')}>
 			Logs applicatifs
 			<ArrowUpRight size={14} />
 		</a>

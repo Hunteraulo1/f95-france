@@ -56,6 +56,7 @@ services:
       - EXTRACT_LC_ALLOWED_ORIGINS=https://lewdcorner.com
 
       # ─── Discord Webhooks ────────────────────────────────────────────────────────
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - DISCORD_WEBHOOK_UPDATES=${DISCORD_WEBHOOK_UPDATES:-}
       - DISCORD_WEBHOOK_TRANSLATORS=${DISCORD_WEBHOOK_TRANSLATORS:-}
       - DISCORD_WEBHOOK_ADMIN=${DISCORD_WEBHOOK_ADMIN:-}

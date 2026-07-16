@@ -66,8 +66,8 @@
 	<title>{game ? `${game.name} — Jeu` : 'Jeu'} — F95 France</title>
 </svelte:head>
 
-<main class="mx-auto w-full flex-1 px-4 py-8 sm:px-16 max-w-7xl">
-	<button type="button" class="btn btn-ghost btn-sm mb-6 gap-2" onclick={goBack}>
+<main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-16">
+	<button type="button" class="btn mb-6 gap-2 btn-ghost btn-sm" onclick={goBack}>
 		<ArrowLeft class="h-4 w-4" />
 		{backLink ? 'Retour en arrière' : 'Retour aux jeux'}
 	</button>
@@ -78,7 +78,7 @@
 		</div>
 	{:else}
 		<article class="flex flex-col gap-8">
-			<header class="card border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+			<header class="card overflow-hidden border border-base-300 bg-base-100 shadow-sm">
 				<div class="grid gap-0 lg:grid-cols-[minmax(280px,360px)_1fr]">
 					<figure class="relative aspect-video bg-base-300 lg:aspect-auto lg:min-h-full">
 						{#if imageSrc}
@@ -99,7 +99,7 @@
 					<div class="card-body gap-4">
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
-								<h1 class="text-2xl font-bold leading-tight sm:text-3xl">{game.name}</h1>
+								<h1 class="text-2xl leading-tight font-bold sm:text-3xl">{game.name}</h1>
 								<p class="mt-1 text-sm text-base-content/60">
 									Mis à jour le {new Date(game.updatedAt).toLocaleDateString('fr-FR')}
 								</p>
@@ -116,7 +116,7 @@
 							<div class="flex flex-wrap gap-1">
 								{#each game.engineTypes as engine (engine)}
 									<span
-										class="badge badge-sm badge-outline"
+										class="badge badge-outline badge-sm"
 										style={`border-color: ${getGameEngineHexColor(engine)}; color: ${getGameEngineHexColor(engine)}`}
 									>
 										{engineDisplayLabel(engine)}
@@ -140,7 +140,7 @@
 						{#if game.tags.length > 0}
 							<div class="flex flex-wrap gap-1">
 								{#each game.tags as tag (tag)}
-									<span class="badge badge-sm badge-ghost">{tag}</span>
+									<span class="badge badge-ghost badge-sm">{tag}</span>
 								{/each}
 							</div>
 						{/if}
@@ -151,20 +151,20 @@
 									href={game.link}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="btn btn-primary gap-2"
+									class="btn gap-2 btn-primary"
 								>
 									<ExternalLink class="h-4 w-4" />
 									Voir le thread
 								</a>
 							{/if}
 							{#if data.canManageGame}
-								<a href="/dashboard/manager/game/{game.id}" class="btn btn-outline gap-2">
+								<a href="/dashboard/manager/game/{game.id}" class="btn gap-2 btn-outline">
 									<SquarePen class="h-4 w-4" />
 									Modifier le jeu
 								</a>
 							{/if}
 							{#if game.threadId}
-								<span class="text-sm text-base-content/60 self-center">
+								<span class="self-center text-sm text-base-content/60">
 									Thread #{game.threadId}
 								</span>
 							{/if}
@@ -209,13 +209,13 @@
 											{translationKindLabel(tr.tname)}
 										</span>
 										<span
-											class="badge badge-sm badge-outline"
+											class="badge badge-outline badge-sm"
 											style={`border-color: ${getGameEngineHexColor(tr.gameType)}; color: ${getGameEngineHexColor(tr.gameType)}`}
 										>
 											{engineDisplayLabel(tr.gameType)}
 										</span>
 										{#if tr.ac}
-											<span class="badge badge-primary badge-sm">Auto-check</span>
+											<span class="badge badge-sm badge-primary">Auto-check</span>
 										{/if}
 									</div>
 
@@ -258,7 +258,7 @@
 											href={tr.tlink}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="btn btn-outline btn-sm gap-2 w-fit"
+											class="btn w-fit gap-2 btn-outline btn-sm"
 										>
 											<ExternalLink class="h-3.5 w-3.5" />
 											Lien de traduction

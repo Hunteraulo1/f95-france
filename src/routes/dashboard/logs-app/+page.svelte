@@ -277,7 +277,7 @@
 		</div>
 		<button
 			type="button"
-			class="btn btn-sm gap-2 {liveEnabled ? 'btn-success' : 'btn-outline'}"
+			class="btn gap-2 btn-sm {liveEnabled ? 'btn-success' : 'btn-outline'}"
 			aria-pressed={liveEnabled}
 			title="Afficher les nouveaux logs en temps réel"
 			onclick={toggleLive}
@@ -288,7 +288,7 @@
 	</div>
 
 	<div
-		class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
+		class="stats w-full stats-vertical border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
 	>
 		<div class="stat">
 			<div class="stat-title">Total</div>
@@ -452,7 +452,7 @@
 										{#if log.meta}
 											<button
 												type="button"
-												class="btn text-primary btn-ghost btn-xs"
+												class="btn btn-ghost text-primary btn-xs"
 												onclick={() => openMetaModal(log.meta ?? '')}
 											>
 												Voir
@@ -509,7 +509,7 @@
 >
 	{#if messageDetail}
 		<pre
-			class="max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left text-xs whitespace-pre-wrap font-mono">
+			class="max-h-[60vh] overflow-auto rounded-lg bg-base-200 p-4 text-left font-mono text-xs whitespace-pre-wrap">
 {messageDetail}
 </pre>
 	{/if}

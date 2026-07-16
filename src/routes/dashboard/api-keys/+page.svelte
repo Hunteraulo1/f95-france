@@ -126,12 +126,6 @@
 						name="label"
 						placeholder="Extension navigateur, script…"
 					/>
-					{#if !data.canUseLabelBrackets}
-						<p class="text-xs text-base-content/70">
-							Les crochets [ ] dans le libellé sont réservés — contacte un administrateur si tu en
-							as besoin.
-						</p>
-					{/if}
 				</label>
 				<label class="flex flex-col gap-1">
 					<span class="text-sm font-medium">Expiration (optionnel)</span>
@@ -239,7 +233,7 @@
 										use:enhance={createFormEnhance({ invalidateAll: true })}
 									>
 										<input type="hidden" name="id" value={row.id} />
-										<button type="submit" class="btn text-error btn-ghost btn-sm">Révoquer</button>
+										<button type="submit" class="btn btn-ghost text-error btn-sm">Révoquer</button>
 									</form>
 								</div>
 							{/if}

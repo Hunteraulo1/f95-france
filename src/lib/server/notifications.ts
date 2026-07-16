@@ -14,7 +14,10 @@ export type NotificationType =
 	| 'submission_rejected'
 	| 'submission_to_fix'
 	| 'api_error'
-	| 'auto_check_error';
+	| 'auto_check_error'
+	| 'translator_application_submitted'
+	| 'translator_application_accepted'
+	| 'translator_application_rejected';
 
 interface CreateNotificationParams {
 	userId: string;
@@ -144,6 +147,63 @@ export async function notifyNewUserRegistration(userId: string, username: string
 			}
 		});
 	}
+}
+
+/**
+ * Crée une notification pour une nouvelle candidature « devenir traducteur » (modérateurs).
+ */
+export async function notifyNewTranslatorApplication(
+	applicationId: string,
+	applicantUsername: string
+) {
+	const recipientIds = await getUserIdsWithPermission('translator_applications.review');
+
+	for (const recipientId of recipientIds) {
+		await createNotification({
+			userId: recipientId,
+			type: 'translator_application_submitted',
+			title: 'Nouvelle candidature traducteur',
+			message: `"${applicantUsername}" a demandé à devenir traducteur.`,
+			link: `/dashboard/translator-applications`,
+			metadata: {
+				applicationId,
+				applicantUsername
+			}
+		});
+	}
+}
+
+/**
+ * Crée une notification pour un changement de statut de candidature « devenir traducteur ».
+ */
+export async function notifyTranslatorApplicationStatusChange(
+	applicantUserId: string,
+	applicationId: string,
+	status: 'accepted' | 'rejected',
+	adminNotes?: string | null
+) {
+	const title =
+		status === 'accepted' ? 'Candidature traducteur acceptée' : 'Candidature traducteur refusée';
+	const reason = adminNotes?.trim();
+	const message =
+		status === 'accepted'
+			? 'Votre candidature pour devenir traducteur a été acceptée, bienvenue !'
+			: reason
+				? `Votre candidature pour devenir traducteur a été refusée. Motif: ${reason}`
+				: 'Votre candidature pour devenir traducteur a été refusée.';
+
+	await createNotification({
+		userId: applicantUserId,
+		type:
+			status === 'accepted' ? 'translator_application_accepted' : 'translator_application_rejected',
+		title,
+		message,
+		link: `/dashboard/become-translator`,
+		metadata: {
+			applicationId,
+			status
+		}
+	});
 }
 
 /**

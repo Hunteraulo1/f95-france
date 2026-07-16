@@ -1027,7 +1027,7 @@
 								<p class="text-xs opacity-70">Aucune traduction enregistrée pour ce jeu.</p>
 							{/if}
 							<a
-								class="btn btn-sm btn-outline mt-1 self-start"
+								class="btn mt-1 self-start btn-outline btn-sm"
 								href="/dashboard/manager/game/{threadDuplicateCheck.existingGameId}"
 							>
 								Voir la fiche du jeu
@@ -1179,7 +1179,7 @@
 				{/if}
 				{#if step < maxStep}
 					<button
-						class="btn w-full btn-primary md:w-38 only:ml-auto"
+						class="btn w-full btn-primary only:ml-auto md:w-38"
 						type="button"
 						onclick={() => changeStep(1)}
 						disabled={blockNextStepForMissingThread}

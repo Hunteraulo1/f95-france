@@ -559,11 +559,13 @@ export type TranslatorVersionBumpLine = {
 	oldVersion: string;
 	newVersion: string;
 	discordMention?: string;
+	/** Utilisé pour grouper les lignes par destinataire lors d'un envoi en MP. */
+	translatorId?: string | null;
 };
 
-const AUTO_CHECK_EMBEDS_PER_MESSAGE = 10;
+export const AUTO_CHECK_EMBEDS_PER_MESSAGE = 10;
 
-function buildAutoCheckVersionBumpEmbed(
+export function buildAutoCheckVersionBumpEmbed(
 	line: TranslatorVersionBumpLine,
 	footerText: string
 ): DiscordEmbed {
@@ -712,6 +714,40 @@ export async function sendDiscordWebhookAdminNewSubmission(args: {
 					}
 				],
 				image: gameImage ? { url: gameImage } : undefined
+			}
+		]
+	});
+}
+
+/** Canal admin : alerte lors d'une nouvelle candidature « devenir traducteur ». */
+export async function sendDiscordWebhookAdminNewTranslatorApplication(args: {
+	applicantUsername: string;
+	explanation?: string | null;
+	claimedTranslatorName?: string | null;
+	translatorName?: string | null;
+}): Promise<void> {
+	const { admin } = await getWebhookUrls(true);
+	if (!admin) return;
+
+	const fields: { name: string; value: string; inline?: boolean }[] = [
+		{ name: 'Candidat', value: args.applicantUsername.trim() || 'Utilisateur inconnu' }
+	];
+	if (args.explanation?.trim()) {
+		fields.push({ name: 'Explications', value: trimFieldValue(args.explanation, 1000) });
+	}
+	if (args.claimedTranslatorName?.trim()) {
+		fields.push({ name: 'Profil traducteur revendiqué', value: args.claimedTranslatorName.trim() });
+	} else if (args.translatorName?.trim()) {
+		fields.push({ name: 'Nouveau nom de traducteur', value: args.translatorName.trim() });
+	}
+
+	await executeDiscordWebhook(admin, {
+		embeds: [
+			{
+				title: 'Nouvelle candidature traducteur',
+				description: 'Un utilisateur a demandé à devenir traducteur.',
+				color: 1345469,
+				fields
 			}
 		]
 	});

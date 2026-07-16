@@ -21,7 +21,7 @@
 
 <div class="navbar h-4 bg-base-100 shadow-sm">
 	<div class="m-2 is-drawer-close:tooltip is-drawer-close:tooltip-right" data-tip="Open">
-		<label for="my-drawer-4" class="drawer-button btn px-2 btn-ghost is-drawer-open:rotate-y-180">
+		<label for="my-drawer-4" class="drawer-button btn btn-ghost px-2 is-drawer-open:rotate-y-180">
 			<Menu />
 		</label>
 	</div>

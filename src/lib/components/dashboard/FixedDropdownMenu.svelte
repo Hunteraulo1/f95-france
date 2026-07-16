@@ -75,7 +75,7 @@
 
 <button
 	type="button"
-	class="btn btn-ghost btn-square btn-sm"
+	class="btn btn-square btn-ghost btn-sm"
 	aria-label={label}
 	aria-expanded={open}
 	aria-haspopup="menu"
