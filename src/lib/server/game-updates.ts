@@ -30,7 +30,9 @@ export async function createGameUpdateRow(
 	// Trad ciblée : override explicite, sinon celle portée par l'historique.
 	// Si la trad vient d'être supprimée, son id n'existe plus dans `game_translation` : ne pas la lier (FK).
 	const linkedTranslationId =
-		translationId ?? (history?.action !== 'deleted' ? history?.changes.translationId : null) ?? null;
+		translationId ??
+		(history?.action !== 'deleted' ? history?.changes.translationId : null) ??
+		null;
 
 	if (await hasUpdateStatusColumn()) {
 		await db.insert(table.update).values({
