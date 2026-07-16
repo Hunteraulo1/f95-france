@@ -28,7 +28,9 @@ export async function createGameUpdateRow(
 ): Promise<string | null> {
 	const updateId = randomUUID();
 	// Trad ciblée : override explicite, sinon celle portée par l'historique.
-	const linkedTranslationId = translationId ?? history?.changes.translationId ?? null;
+	// Si la trad vient d'être supprimée, son id n'existe plus dans `game_translation` : ne pas la lier (FK).
+	const linkedTranslationId =
+		translationId ?? (history?.action !== 'deleted' ? history?.changes.translationId : null) ?? null;
 
 	if (await hasUpdateStatusColumn()) {
 		await db.insert(table.update).values({
@@ -89,7 +91,9 @@ export async function touchGameUpdatedToday(
 		if (todayUpdateRow[0]?.id) {
 			// La ligne du jour est partagée par jeu : on la pointe vers la trad
 			// la plus récemment modifiée (déterministe, vs. ancien fallback timing).
-			const linkedTranslationId = history?.changes.translationId ?? null;
+			// Si la trad vient d'être supprimée, son id n'existe plus dans `game_translation` : ne pas la lier (FK).
+			const linkedTranslationId =
+				history?.action !== 'deleted' ? (history?.changes.translationId ?? null) : null;
 			await db
 				.update(table.update)
 				.set({
