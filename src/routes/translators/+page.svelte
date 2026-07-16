@@ -9,6 +9,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -29,11 +30,16 @@
 	const listCacheKey = $derived(data.q);
 
 	$effect(() => {
+		// N'écoute que la clé de cache : lire `data` hors de `untrack` suivrait aussi
+		// ses dépendances internes et réinitialiserait la liste déjà chargée à chaque
+		// rechargement de `data` non lié à la recherche (ex. `invalidateAll` après une action).
 		String(listCacheKey);
-		allTranslators = [...(data.translators ?? [])];
-		loadedPage = data.page ?? 1;
-		totalPages = data.totalPages ?? 1;
-		loadMoreError = null;
+		untrack(() => {
+			allTranslators = [...(data.translators ?? [])];
+			loadedPage = data.page ?? 1;
+			totalPages = data.totalPages ?? 1;
+			loadMoreError = null;
+		});
 	});
 
 	const hasMore = $derived(loadedPage < totalPages);

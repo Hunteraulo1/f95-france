@@ -29,7 +29,7 @@
 	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
 	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { PageData } from './$types';
 
@@ -128,11 +128,16 @@
 	const listCacheKey = $derived(JSON.stringify({ q: data.query, filters: data.filters }));
 
 	$effect(() => {
+		// N'écoute que la clé de cache : lire `data` hors de `untrack` suivrait aussi
+		// ses dépendances internes et réinitialiserait la liste déjà chargée à chaque
+		// rechargement de `data` non lié aux filtres (ex. `invalidateAll` après une action).
 		String(listCacheKey);
-		allUpdates = [...(data.updates ?? [])];
-		loadedPage = data.page ?? 1;
-		totalPages = data.totalPages ?? 1;
-		loadMoreError = null;
+		untrack(() => {
+			allUpdates = [...(data.updates ?? [])];
+			loadedPage = data.page ?? 1;
+			totalPages = data.totalPages ?? 1;
+			loadMoreError = null;
+		});
 	});
 
 	const groupedUpdates = $derived(groupUpdatesByDayAndType(allUpdates));

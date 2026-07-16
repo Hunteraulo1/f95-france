@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import { fetchPaginatedJson } from './fetch-paginated-json';
 
 type InfiniteListSeed<T> = {
@@ -23,12 +24,18 @@ export function useInfiniteList<T>(config: {
 	const hasMore = $derived(loadedPage < totalPages);
 
 	$effect(() => {
+		// N'écoute que la clé de cache : lire `config.getInitial()` hors de `untrack`
+		// suivrait aussi ses dépendances internes (ex. `data`) et réinitialiserait la
+		// liste déjà chargée à chaque rechargement de `data` non lié au filtre
+		// (ex. `invalidateAll` après une action sur un item).
 		String(cacheKey);
-		const seed = config.getInitial();
-		allItems = [...seed.items];
-		loadedPage = seed.page;
-		totalPages = seed.totalPages;
-		loadMoreError = null;
+		untrack(() => {
+			const seed = config.getInitial();
+			allItems = [...seed.items];
+			loadedPage = seed.page;
+			totalPages = seed.totalPages;
+			loadMoreError = null;
+		});
 	});
 
 	async function loadMore() {
