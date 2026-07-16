@@ -108,7 +108,7 @@
 							</div>
 							<button
 								type="button"
-								class="text-sm text-primary opacity-70 hover:opacity-100 cursor-pointer {roleUsernameClass(
+								class="cursor-pointer text-sm text-primary opacity-70 hover:opacity-100 {roleUsernameClass(
 									submission.user.role,
 									$roleBadgeStyles[submission.user.role]
 								)}"
@@ -231,7 +231,7 @@
 									/>
 								{/if}
 								<div class="flex flex-col">
-									<span class="link link-hover text-sm font-medium">{submission.game.name}</span>
+									<span class="link text-sm font-medium link-hover">{submission.game.name}</span>
 									{#if submission.translation}
 										{@const translation = submission.translation}
 										<span class="text-xs opacity-70">
@@ -295,7 +295,7 @@
 						{/if}
 					{:else if submission.gameId}
 						{#if gameHref}
-							<a class="link link-hover text-sm opacity-70" href={gameHref}>
+							<a class="link text-sm link-hover opacity-70" href={gameHref}>
 								{submission.parsedData?.game?.name ?? `Jeu ID: ${submission.gameId}`}
 							</a>
 						{:else}
@@ -304,7 +304,7 @@
 					{:else if submission.parsedData?.game}
 						<div class="flex flex-col">
 							{#if gameHref}
-								<a class="link link-hover text-sm font-medium" href={gameHref}>
+								<a class="link text-sm font-medium link-hover" href={gameHref}>
 									{submission.parsedData.game.name}
 								</a>
 							{:else}
@@ -340,7 +340,7 @@
 				</div>
 			</div>
 			<div class="flex gap-2">
-				<button class="btn btn-sm btn-primary" onclick={onClick}>
+				<button class="btn btn-primary btn-sm" onclick={onClick}>
 					<Eye size={14} />
 					Voir les détails
 				</button>

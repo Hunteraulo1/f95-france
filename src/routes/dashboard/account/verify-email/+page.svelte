@@ -51,7 +51,7 @@
 			{/if}
 
 			{#if !data.smtpConfigured && !data.justVerified}
-				<div role="alert" class="alert alert-warning text-sm">
+				<div role="alert" class="alert text-sm alert-warning">
 					<span>L’envoi d’emails n’est pas configuré sur ce serveur.</span>
 				</div>
 			{/if}
@@ -61,7 +61,7 @@
 					<a href="/dashboard" class="btn btn-primary">Accéder au tableau de bord</a>
 				{:else}
 					<form method="post" action="?/resend" use:enhance={createFormEnhance()} class="w-full">
-						<button type="submit" class="btn btn-block btn-primary btn-outline">
+						<button type="submit" class="btn btn-block btn-outline btn-primary">
 							Renvoyer l’email de vérification
 						</button>
 					</form>

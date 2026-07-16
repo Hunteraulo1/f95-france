@@ -75,7 +75,7 @@
 			</div>
 
 			{#if translationStats}
-				<div class="stats stats-vertical w-full shadow-none lg:stats-horizontal">
+				<div class="stats w-full stats-vertical shadow-none lg:stats-horizontal">
 					<div class="stat px-4 py-2">
 						<div class="stat-figure text-primary">
 							<Languages class="h-6 w-6" />
@@ -100,8 +100,8 @@
 					</div>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					<span class="badge badge-success badge-sm">{translationStats.upToDate} à jour</span>
-					<span class="badge badge-warning badge-sm">{translationStats.outdated} pas à jour</span>
+					<span class="badge badge-sm badge-success">{translationStats.upToDate} à jour</span>
+					<span class="badge badge-sm badge-warning">{translationStats.outdated} pas à jour</span>
 				</div>
 			{/if}
 
@@ -154,7 +154,7 @@
 									<td class="text-right">
 										{#if t.tlink?.trim()}
 											<a
-												class="btn btn-ghost btn-xs btn-square"
+												class="btn btn-square btn-ghost btn-xs"
 												href={t.tlink}
 												target="_blank"
 												rel="noopener noreferrer"

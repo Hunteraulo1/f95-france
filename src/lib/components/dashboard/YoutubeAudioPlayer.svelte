@@ -198,7 +198,7 @@
 
 		<button
 			type="button"
-			class="btn btn-sm btn-outline gap-2"
+			class="btn gap-2 btn-outline btn-sm"
 			disabled={!!loadError}
 			aria-pressed={playing}
 			onclick={togglePlayback}
@@ -216,7 +216,7 @@
 			<button
 				type="button"
 				tabindex="0"
-				class="btn btn-sm btn-outline btn-square"
+				class="btn btn-square btn-outline btn-sm"
 				disabled={!!loadError}
 				aria-label="Régler le volume ({volume} %)"
 			>
@@ -228,7 +228,7 @@
 			</button>
 			<div
 				tabindex="0"
-				class="dropdown-content z-20 mt-1 left-0 w-fit rounded-box border border-base-300 bg-base-100 p-3 shadow-md"
+				class="dropdown-content left-0 z-20 mt-1 w-fit rounded-box border border-base-300 bg-base-100 p-3 shadow-md"
 				role="dialog"
 				aria-label="Niveau du volume"
 			>
@@ -240,7 +240,7 @@
 							min="0"
 							max="100"
 							step="1"
-							class="range range-xs w-36"
+							class="range w-36 range-xs"
 							value={volume}
 							disabled={!!loadError}
 							oninput={(e) => setVolumeLevel(Number(e.currentTarget.value))}
@@ -248,7 +248,7 @@
 					</label>
 					<button
 						type="button"
-						class="btn btn-ghost btn-xs w-fit"
+						class="btn w-fit btn-ghost btn-xs"
 						disabled={!!loadError}
 						onclick={toggleMute}
 					>

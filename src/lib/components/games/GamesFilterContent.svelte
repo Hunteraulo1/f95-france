@@ -219,7 +219,7 @@
 			<span class="text-sm font-medium">Filtrages sauvegardés</span>
 			<button
 				type="button"
-				class="btn btn-circle btn-ghost btn-xs h-6 w-6 min-h-0"
+				class="btn btn-circle h-6 min-h-0 w-6 btn-ghost btn-xs"
 				aria-label="Aide — filtrages sauvegardés"
 				aria-expanded={savedFiltersHelpOpen}
 				onclick={() => (savedFiltersHelpOpen = !savedFiltersHelpOpen)}
@@ -260,7 +260,7 @@
 			{#each savedFilters as preset, index (index)}
 				<button
 					type="button"
-					class="btn btn-circle btn-sm font-bold {filterRemoveIndex === index
+					class="btn btn-circle font-bold btn-sm {filterRemoveIndex === index
 						? 'btn-error'
 						: 'btn-secondary'}"
 					title={filterRemoveIndex === index
@@ -279,7 +279,7 @@
 			{#if savedFilters.length < maxSavedFilters}
 				<button
 					type="button"
-					class="btn btn-circle btn-sm btn-primary"
+					class="btn btn-circle btn-primary btn-sm"
 					title="Sauvegarder les filtres actuels"
 					onclick={handleSavedAdd}
 					{disabled}
@@ -297,7 +297,7 @@
 			</span>
 			<input
 				type="search"
-				class="input input-bordered w-full input-sm"
+				class="input-bordered input w-full input-sm"
 				placeholder="Rechercher un nom ou un n° de thread"
 				bind:value={query}
 				{disabled}
@@ -341,12 +341,12 @@
 	</div>
 
 	{#if showViewModeToggle}
-		<div class="flex-col gap-2 rounded-box border border-base-300 px-3 py-2 hidden md:flex">
+		<div class="hidden flex-col gap-2 rounded-box border border-base-300 px-3 py-2 md:flex">
 			<span class="text-sm font-medium">Affichage</span>
 			<div class="join w-full">
 				<button
 					type="button"
-					class="join-item btn btn-sm flex-1 {viewMode === 'grid' ? 'btn-primary' : 'btn-ghost'}"
+					class="btn join-item flex-1 btn-sm {viewMode === 'grid' ? 'btn-primary' : 'btn-ghost'}"
 					onclick={() => (viewMode = 'grid')}
 					{disabled}
 				>
@@ -354,7 +354,7 @@
 				</button>
 				<button
 					type="button"
-					class="join-item btn btn-sm flex-1 {viewMode === 'list' ? 'btn-primary' : 'btn-ghost'}"
+					class="btn join-item flex-1 btn-sm {viewMode === 'list' ? 'btn-primary' : 'btn-ghost'}"
 					onclick={() => (viewMode = 'list')}
 					{disabled}
 				>
@@ -371,7 +371,7 @@
 			<span class="text-sm font-medium">Tags dépliés</span>
 			<input
 				type="checkbox"
-				class="toggle toggle-sm toggle-primary"
+				class="toggle toggle-primary toggle-sm"
 				bind:checked={tagsExpanded}
 				{disabled}
 			/>
@@ -387,7 +387,7 @@
 				<div
 					tabindex={disabled ? -1 : 0}
 					role="button"
-					class="btn btn-sm w-full justify-between font-normal btn-outline"
+					class="btn w-full justify-between btn-outline font-normal btn-sm"
 					class:btn-disabled={disabled}
 				>
 					<span class="truncate text-left">{selectedSortLabel}</span>
@@ -403,7 +403,7 @@
 							<li>
 								<button
 									type="button"
-									class={option.value === sort ? 'menu-active font-medium bg-base-300' : ''}
+									class={option.value === sort ? 'menu-active bg-base-300 font-medium' : ''}
 									onclick={() => handleSortSelect(option.value)}
 									{disabled}
 								>

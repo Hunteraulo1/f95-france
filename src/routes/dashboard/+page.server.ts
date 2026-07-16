@@ -21,11 +21,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return {
 			stats: null,
 			userStats: null,
-			canReviewSubmissions: false
+			canReviewSubmissions: false,
+			canSubmitSubmissions: false
 		};
 	}
 
 	const canReviewSubmissions = hasPermission(locals, 'submissions.review');
+	const canSubmitSubmissions = hasPermission(locals, 'submissions.submit');
 
 	// Statistiques générales (pour tous les utilisateurs)
 	let userStats;
@@ -195,6 +197,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		stats,
 		userStats,
-		canReviewSubmissions
+		canReviewSubmissions,
+		canSubmitSubmissions
 	};
 };

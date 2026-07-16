@@ -106,7 +106,7 @@
 			<History size={24} />
 			Historique des traductions
 			{#if historyTotalCount > 0}
-				<span class="badge badge-neutral badge-sm font-normal">{historyTotalCount}</span>
+				<span class="badge badge-sm font-normal badge-neutral">{historyTotalCount}</span>
 			{/if}
 		</h2>
 
@@ -133,7 +133,7 @@
 							></span>
 						</div>
 						<div
-							class="timeline-end timeline-box mb-4 w-full max-w-none sm:max-w-[calc(100%-7rem)]"
+							class="timeline-end mb-4 w-full max-w-none timeline-box sm:max-w-[calc(100%-7rem)]"
 						>
 							<div class="mb-2 flex flex-wrap items-center gap-2">
 								<span class="badge badge-sm {getUpdateHistoryActionBadgeClass(entry.action)}">
@@ -151,7 +151,7 @@
 								{#if canRevert && entry.revertible}
 									<button
 										type="button"
-										class="btn btn-ghost btn-xs ml-auto gap-1"
+										class="btn ml-auto gap-1 btn-ghost btn-xs"
 										disabled={revertingId === entry.id}
 										onclick={() => openRestoreModal(entry)}
 										title={entry.revertCascadeCount > 1
@@ -159,7 +159,7 @@
 											: 'Restaurer cet état'}
 									>
 										{#if revertingId === entry.id}
-											<span class="loading loading-spinner loading-xs"></span>
+											<span class="loading loading-xs loading-spinner"></span>
 										{:else}
 											<Undo2 size={14} />
 										{/if}
@@ -172,7 +172,7 @@
 								{#if entry.username}
 									Par
 									<a
-										class="link link-hover font-medium"
+										class="link font-medium link-hover"
 										href={`/dashboard/profile/${entry.username}`}
 									>
 										{entry.username}

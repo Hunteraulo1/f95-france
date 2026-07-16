@@ -160,7 +160,7 @@
 			<label class="label" for="editTranslationTlink">
 				<span class="label-text">Lien de traduction</span>
 			</label>
-			<div class="join join-horizontal w-full">
+			<div class="join w-full join-horizontal">
 				<input
 					id="editTranslationTlink"
 					name="editTranslationTlink"

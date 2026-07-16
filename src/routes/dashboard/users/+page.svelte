@@ -270,7 +270,7 @@
 							</td>
 							<td>
 								<div class="flex flex-wrap items-center gap-2">
-									<button class="btn btn-sm btn-primary" onclick={() => openEditUserModal(user)}>
+									<button class="btn btn-primary btn-sm" onclick={() => openEditUserModal(user)}>
 										Modifier
 									</button>
 									<button
@@ -442,7 +442,7 @@
 		onClose={closePasswordResetModal}
 	>
 		{#if passwordResetError}
-			<div role="alert" class="alert alert-error text-sm">
+			<div role="alert" class="alert text-sm alert-error">
 				<span>{passwordResetError}</span>
 			</div>
 		{/if}
@@ -479,7 +479,7 @@
 						{formatUserEmailForDisplay(passwordResetUser.email, data.canViewUserEmails)}
 					</p>
 					<div
-						class="badge mt-1 badge-outline badge-sm {roleBadgeClass(
+						class="mt-1 badge badge-outline badge-sm {roleBadgeClass(
 							passwordResetUser.role,
 							$roleBadgeStyles[passwordResetUser.role]
 						)}"
@@ -490,7 +490,7 @@
 				</div>
 			</div>
 
-			<div role="alert" class="alert alert-info text-sm">
+			<div role="alert" class="alert text-sm alert-info">
 				<span>
 					L’utilisateur pourra choisir un nouveau mot de passe via le lien reçu par email. Son mot
 					de passe actuel reste valide tant que le lien n’a pas été utilisé.

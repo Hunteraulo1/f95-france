@@ -26,6 +26,12 @@ export type WebhookTestResult = {
 	channel: string | null;
 	httpStatus: number | null;
 };
+export type TranslatorMpTestResult = {
+	success: boolean;
+	message: string;
+	method: 'dm' | 'channel_fallback' | null;
+	details: string | null;
+};
 export type DbSheetSyncResult = {
 	success: boolean;
 	message: string;
@@ -53,6 +59,7 @@ export type AutoCheckManualResult = {
 				updatedGames: number;
 				updatedTranslations: number;
 				disabledAlignedGames: number;
+				translatorDmsSent?: number;
 				translatorWebhooksSent?: number;
 				proofreaderWebhooksSent?: number;
 		  }
@@ -107,6 +114,15 @@ export const mapWebhookTestResult = (data: Record<string, unknown>): WebhookTest
 	channel: typeof data.channel === 'string' ? data.channel : null,
 	httpStatus:
 		typeof data.httpStatus === 'number' || data.httpStatus === null ? data.httpStatus : null
+});
+
+export const mapTranslatorMpTestResult = (
+	data: Record<string, unknown>
+): TranslatorMpTestResult => ({
+	success: boolFromRecord(data, 'success'),
+	message: strFromRecord(data, 'message', 'Erreur'),
+	method: data.method === 'dm' || data.method === 'channel_fallback' ? data.method : null,
+	details: typeof data.details === 'string' || data.details === null ? data.details : null
 });
 
 export const mapDbSheetSyncResult = (data: Record<string, unknown>): DbSheetSyncResult => ({

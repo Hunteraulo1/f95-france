@@ -281,7 +281,7 @@
 		</div>
 		<button
 			type="button"
-			class="btn btn-sm gap-2 {liveEnabled ? 'btn-success' : 'btn-outline'}"
+			class="btn gap-2 btn-sm {liveEnabled ? 'btn-success' : 'btn-outline'}"
 			aria-pressed={liveEnabled}
 			title="Afficher les nouveaux logs en temps réel"
 			onclick={toggleLive}
@@ -292,7 +292,7 @@
 	</div>
 
 	<div
-		class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
+		class="stats w-full stats-vertical border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal"
 	>
 		<div class="stat">
 			<div class="stat-title">Total</div>
@@ -513,7 +513,7 @@
 										{#if log.payload}
 											<button
 												type="button"
-												class="btn text-primary btn-ghost btn-xs"
+												class="btn btn-ghost text-primary btn-xs"
 												onclick={() => openPayloadModal(log.payload ?? '')}
 											>
 												Voir
@@ -526,7 +526,7 @@
 										{#if 'errorMessage' in log && log.errorMessage}
 											<button
 												type="button"
-												class="btn text-error btn-ghost btn-xs"
+												class="btn btn-ghost text-error btn-xs"
 												onclick={() =>
 													openErrorModal(
 														typeof log.errorMessage === 'string' ? log.errorMessage : ''

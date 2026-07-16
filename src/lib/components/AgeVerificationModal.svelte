@@ -14,12 +14,12 @@
 
 <!-- modal-open requis : sans lui, .modal-box reste à opacity 0 (daisyUI) -->
 <dialog
-	class="age-verification-modal modal modal-open bg-transparent!"
+	class="age-verification-modal modal-open modal bg-transparent!"
 	open
 	aria-labelledby="age-verification-title"
 >
 	<div
-		class="modal-box relative z-10 w-full max-w-lg border border-base-300/80 bg-base-100 shadow-2xl"
+		class="relative z-10 modal-box w-full max-w-lg border border-base-300/80 bg-base-100 shadow-2xl"
 	>
 		<h2 id="age-verification-title" class="text-xl font-bold">Confirmation d'âge</h2>
 		<p class="mt-3 text-base-content/80">
@@ -28,10 +28,10 @@
 			<strong>18 ans</strong> et être légalement autorisé à consulter ce type de contenu dans votre pays.
 		</p>
 		<div class="modal-action mt-6 flex-col gap-2 sm:flex-row sm:justify-end">
-			<button type="button" class="btn btn-ghost w-full sm:w-auto" onclick={denyAccess}>
+			<button type="button" class="btn w-full btn-ghost sm:w-auto" onclick={denyAccess}>
 				Non, je suis mineur
 			</button>
-			<button type="button" class="btn btn-primary w-full sm:w-auto" onclick={onConfirm}>
+			<button type="button" class="btn w-full btn-primary sm:w-auto" onclick={onConfirm}>
 				Oui, j'ai 18 ans ou plus
 			</button>
 		</div>

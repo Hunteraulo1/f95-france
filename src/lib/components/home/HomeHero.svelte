@@ -254,12 +254,12 @@
 
 <section
 	bind:this={heroSectionEl}
-	class="hero min-h-screen relative overflow-x-clip overflow-y-hidden bg-transparent"
+	class="relative hero min-h-screen overflow-x-clip overflow-y-hidden bg-transparent"
 	aria-label="Présentation F95 France"
 	onmouseenter={pauseSlides}
 	onmouseleave={resumeSlides}
 >
-	<div class="top-0 absolute w-full z-40">
+	<div class="absolute top-0 z-40 w-full">
 		<Header />
 	</div>
 	{#if starsReady}
@@ -283,16 +283,16 @@
 	{/if}
 	<div class="hero-overlay bg-transparent"></div>
 	<div
-		class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
+		class="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-24 bg-linear-to-b from-transparent to-base-200"
 	></div>
 	<div
-		class="hero-content max-w-none 2xl:px-32 sm:px-16 px-4 xs:px-8 relative z-20 w-full flex-col-reverse gap-16 py-10 text-base-content xl:flex-row xl:items-center"
+		class="relative hero-content z-20 w-full max-w-none flex-col-reverse gap-16 px-4 py-10 text-base-content xs:px-8 sm:px-16 xl:flex-row xl:items-center 2xl:px-32"
 	>
-		<div class="w-full min-w-0 max-w-2xl flex-1 space-y-4 text-center xl:text-left">
+		<div class="w-full max-w-2xl min-w-0 flex-1 space-y-4 text-center xl:text-left">
 			<div class="grid w-full grid-cols-[minmax(0,1fr)]">
 				{#each slides as slide, slideIndex (slide.id)}
 					<div
-						class="col-start-1 row-start-1 min-w-0 w-full space-y-4 transition-opacity ease-in-out {slideIndex ===
+						class="col-start-1 row-start-1 w-full min-w-0 space-y-4 transition-opacity ease-in-out {slideIndex ===
 						activeSlide
 							? 'relative z-1 opacity-100'
 							: 'pointer-events-none opacity-0'}"
@@ -302,12 +302,12 @@
 					>
 						<h1
 							id={slideIndex === activeSlide ? 'home-hero-title' : undefined}
-							class="text-2xl xs:text-3xl sm:text-4xl font-bold leading-tight md:text-5xl"
+							class="text-2xl leading-tight font-bold xs:text-3xl sm:text-4xl md:text-5xl"
 						>
 							{slide.titleBefore}
 							<span
 								class="mx-1 inline-block {slide.highlightNeon
-									? '[text-shadow:0_0_10px_color-mix(in_oklab,#ff005e_35%,transparent)] sm:animate-neon-glow sm:text-shadow:none'
+									? 'sm:text-shadow:none [text-shadow:0_0_10px_color-mix(in_oklab,#ff005e_35%,transparent)] sm:animate-neon-glow'
 									: 'text-primary'}"
 							>
 								{slide.titleHighlight}
@@ -317,7 +317,7 @@
 							{/if}
 						</h1>
 						<p class="home-hero-lead text-base-content/90">{slide.lead}</p>
-						<div class="flex flex-wrap gap-3 justify-center xl:justify-start pt-4">
+						<div class="flex flex-wrap justify-center gap-3 pt-4 xl:justify-start">
 							<a
 								href={slide.primaryCta.href}
 								class="btn btn-primary"
@@ -330,7 +330,7 @@
 							{#if slide.secondaryCta}
 								<a
 									href={slide.secondaryCta.href}
-									class="btn btn-ghost hover:border-primary transition-colors duration-300 hover:text-primary"
+									class="btn btn-ghost transition-colors duration-300 hover:border-primary hover:text-primary"
 									draggable="false"
 									target={slide.secondaryCta?.external ? '_blank' : undefined}
 									rel={slide.secondaryCta?.external ? 'noopener noreferrer' : undefined}
@@ -351,9 +351,9 @@
 					<button
 						type="button"
 						role="tab"
-						class="btn btn-xs btn-circle transition-colors {index === activeSlide
+						class="btn btn-circle transition-colors btn-xs {index === activeSlide
 							? 'btn-primary'
-							: 'btn-ghost border border-base-content/30 text-base-content'}"
+							: 'border border-base-content/30 btn-ghost text-base-content'}"
 						aria-selected={index === activeSlide}
 						aria-label={slide.label}
 						onclick={() => goToSlide(index)}
@@ -365,7 +365,7 @@
 		</div>
 
 		<div
-			class="xl:relative mt-4 w-full max-w-2xl perspective-distant absolute -z-20 opacity-25 px-8 select-none xl:opacity-100 xl:px-0 -translate-x-4"
+			class="absolute -z-20 mt-4 w-full max-w-2xl -translate-x-4 px-8 opacity-25 select-none perspective-distant xl:relative xl:px-0 xl:opacity-100"
 			aria-hidden="true"
 			inert
 		>
@@ -376,7 +376,7 @@
 		<button
 			transition:fade={{ duration: 250 }}
 			aria-label="Faire défiler vers le bas"
-			class="btn hover:border-primary hover:text-primary border-secondary border-2 btn-circle mt-auto mb-8 btn-outline animate-bounce absolute bottom-0 text-secondary"
+			class="btn absolute bottom-0 mt-auto mb-8 btn-circle animate-bounce border-2 border-secondary btn-outline text-secondary hover:border-primary hover:text-primary"
 			onclick={scrollToNextSection}
 		>
 			<ChevronDown size={24} strokeWidth={4} />

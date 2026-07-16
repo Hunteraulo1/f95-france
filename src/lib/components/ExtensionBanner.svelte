@@ -41,30 +41,30 @@
 </script>
 
 <div
-	class="card card-border w-full overflow-hidden bg-base-100 shadow-sm lg:card-side lg:flex-row"
+	class="card w-full overflow-hidden bg-base-100 shadow-sm card-border lg:card-side lg:flex-row"
 	aria-labelledby="extension-promo-title"
 >
 	<div class="relative block w-full lg:contents">
 		<figure
-			class="pointer-events-none flex items-center justify-center overflow-hidden bg-linear-to-br from-base-200 via-base-300/40 to-base-200 absolute max-lg:inset-0 min-h-full opacity-25 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100 bg-base-300"
+			class="pointer-events-none absolute flex min-h-full items-center justify-center overflow-hidden bg-base-300 bg-linear-to-br from-base-200 via-base-300/40 to-base-200 opacity-25 max-lg:inset-0 lg:pointer-events-auto lg:relative lg:z-auto lg:min-h-80 lg:min-w-[42%] lg:shrink-0 lg:p-8 lg:opacity-100"
 		>
 			<div
 				class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,color-mix(in_oklab,var(--color-secondary)_22%,transparent),transparent_65%)]"
 			></div>
-			<div class="relative shrink-0 origin-center max-lg:scale-60 -translate-y-4">
+			<div class="relative shrink-0 origin-center -translate-y-4 max-lg:scale-60">
 				<ExtensionMockup {games} />
 			</div>
 		</figure>
 
 		<div
-			class="card-body relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
+			class="relative z-10 card-body flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
 		>
-			<div class="badge badge-secondary badge-outline w-fit gap-1.5">
+			<div class="badge w-fit gap-1.5 badge-outline badge-secondary">
 				<Puzzle class="size-3.5" aria-hidden="true" />
 				Extension F95 France
 			</div>
 			<div class="space-y-3">
-				<h2 id="extension-promo-title" class="text-2xl font-bold leading-tight sm:text-3xl">
+				<h2 id="extension-promo-title" class="text-2xl leading-tight font-bold sm:text-3xl">
 					Vos traductions françaises, directement sur F95zone
 				</h2>
 				<p class="text-base text-base-content/80">
@@ -94,7 +94,7 @@
 						href={downloadHref}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="btn btn-secondary gap-2"
+						class="btn gap-2 btn-secondary"
 						draggable="false"
 					>
 						<Download class="size-4" aria-hidden="true" />
@@ -130,7 +130,7 @@
 							href={alternateHref}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="link link-hover text-base-content/80"
+							class="link text-base-content/80 link-hover"
 							draggable="false"
 						>
 							{alternateLabel}

@@ -103,7 +103,7 @@
 	role="region"
 	aria-label={`Profil de ${user.username}`}
 	class={[
-		'relative flex w-full min-h-[calc(100vh-14rem)] flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100',
+		'relative flex min-h-[calc(100vh-14rem)] w-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100',
 		hasCustomCursor && 'cursor-none **:cursor-none!'
 	]}
 	onmousemove={hasCustomCursor ? trackCustomCursor : undefined}
@@ -158,7 +158,7 @@
 				Membre depuis: {new Date(user.createdAt).toLocaleDateString('fr-FR')}
 			</p>
 			{#if editProfileHref}
-				<a href={editProfileHref} class="btn btn-outline btn-sm w-fit gap-2">
+				<a href={editProfileHref} class="btn w-fit gap-2 btn-outline btn-sm">
 					<UserPen class="h-4 w-4" />
 					Modifier mon profil
 				</a>
@@ -168,7 +168,7 @@
 			{/if}
 		</div>
 
-		<div class="mb-8 flex w-full h-full min-w-0 flex-col gap-4">
+		<div class="mb-8 flex h-full w-full min-w-0 flex-col gap-4">
 			{#if customProfile?.bio}
 				<div class="card border border-base-300 bg-base-100/95 shadow-sm">
 					<div class="card-body gap-2">
@@ -193,10 +193,10 @@
 										href={link.url}
 										target="_blank"
 										rel="noopener noreferrer"
-										class="link link-primary inline-flex flex-wrap items-center gap-2"
+										class="inline-flex link flex-wrap items-center gap-2 link-primary"
 									>
 										{#if i === 0}
-											<span class="badge badge-primary badge-sm">Lien principal</span>
+											<span class="badge badge-sm badge-primary">Lien principal</span>
 										{/if}
 										<span>{link.label}</span>
 										<ExternalLink class="h-4 w-4 shrink-0" />

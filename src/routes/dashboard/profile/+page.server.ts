@@ -8,7 +8,10 @@ import { validateOptionalYoutubeMusicUrl } from '$lib/profile/youtube-music';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { hasPermission } from '$lib/server/permissions';
-import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
+import {
+	loadTranslatorPagesForUser,
+	setTranslatorDiscordNotificationsEnabled
+} from '$lib/server/profile-translator';
 import { getRoleEditMode } from '$lib/server/role-edit-mode';
 import {
 	handleTranslatorPagesUpdate,
@@ -70,7 +73,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			? {
 					id: translator.id,
 					name: translator.name,
-					pages: links.map((p) => ({ name: p.label, link: p.url }))
+					pages: links.map((p) => ({ name: p.label, link: p.url })),
+					discordNotificationsEnabled: translator.discordNotificationsEnabled
 				}
 			: null
 	};
@@ -221,5 +225,35 @@ export const actions: Actions = {
 			return fail(result.status, { message: result.message });
 		}
 		return { success: true, message: result.message, mode: result.mode };
+	},
+
+	updateDiscordNotifications: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { message: 'Non authentifié' });
+		}
+
+		const formData = await request.formData();
+		const translatorId = String(formData.get('translatorId') ?? '').trim();
+		const enabled = formData.get('enabled') === 'true';
+
+		if (!translatorId) {
+			return fail(400, { message: 'Traducteur introuvable' });
+		}
+
+		const result = await setTranslatorDiscordNotificationsEnabled(
+			locals.user.id,
+			translatorId,
+			enabled
+		);
+		if (!result.ok) {
+			return fail(result.status, { message: result.message });
+		}
+
+		return {
+			success: true,
+			message: enabled
+				? 'Notifications Discord réactivées.'
+				: 'Notifications Discord désactivées (MP et canal).'
+		};
 	}
 };

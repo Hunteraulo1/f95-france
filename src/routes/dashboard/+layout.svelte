@@ -19,14 +19,15 @@
 <Header maintenanceMode={data.maintenanceMode} />
 
 <main
-	class="drawer h-[calc(100vh-4rem)] overflow-hidden sm:drawer-open bg-base-200 overflow-y-auto"
+	class="drawer h-[calc(100vh-4rem)] overflow-hidden overflow-y-auto bg-base-200 sm:drawer-open"
 >
-	<div class="drawer-content p-4 sm:p-8 lg:p-16 max-w-[1536px] w-full mx-auto">
+	<div class="drawer-content mx-auto w-full max-w-[1536px] p-4 sm:p-8 lg:p-16">
 		{@render children?.()}
 	</div>
 	{#if data.user}
 		<Sidebar
 			pendingSubmissionsCount={data.pendingSubmissionsCount}
+			pendingTranslatorApplicationsCount={data.pendingTranslatorApplicationsCount}
 			hasLinkedTranslator={data.hasLinkedTranslator}
 			canReturnToOwnAccount={data.canReturnToOwnAccount}
 			devOriginUsername={data.devOriginUsername}

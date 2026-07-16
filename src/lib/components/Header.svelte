@@ -54,16 +54,16 @@
 		<div class="navbar z-10 h-32 items-center gap-4 px-8 sm:px-12">
 			<div class="navbar-start w-full">
 				<a href={resolve('/')} class="py-10" draggable="false">
-					<BannerLogo class="h-4 xs:h-6 sm:h-8 md:h-10 lg:h-10 w-auto object-contain" />
+					<BannerLogo class="h-4 w-auto object-contain xs:h-6 sm:h-8 md:h-10 lg:h-10" />
 				</a>
 			</div>
 
-			<div class="navbar-end gap-2 w-full">
+			<div class="navbar-end w-full gap-2">
 				<label for={NAV_DRAWER_ID} class="btn btn-ghost px-2 lg:hidden" aria-label="Ouvrir le menu">
 					<Menu class="h-6 w-6" />
 				</label>
 
-				<ul class="hidden items-center gap-2 lg:flex xl:gap-4 flex-nowrap text-nowrap">
+				<ul class="hidden flex-nowrap items-center gap-2 text-nowrap lg:flex xl:gap-4">
 					{#each links as link (link.href)}
 						<li aria-current={isCurrentPath(link.href) ? 'page' : undefined}>
 							<a
@@ -111,7 +111,7 @@
 									? 'page'
 									: undefined}
 								href={resolve('/dashboard/account/register')}
-								class="btn btn-primary w-28 rounded-md border-base-content/10 p-2 text-sm font-semibold shadow-lg hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
+								class="btn w-28 rounded-md border-base-content/10 p-2 text-sm font-semibold shadow-lg btn-primary hover:text-primary-content aria-[current=page]:bg-primary aria-[current=page]:text-primary-content"
 								draggable="false"
 							>
 								Inscription
@@ -158,7 +158,7 @@
 			<div class="flex flex-col gap-2 border-t border-base-300 pt-4">
 				{#if $user}
 					<div class="flex items-center gap-3 px-2 py-1">
-						<div class="avatar placeholder">
+						<div class="placeholder avatar">
 							<div class="flex w-10 items-center justify-center rounded-full bg-base-300">
 								{#if $user.avatar}
 									<img
@@ -175,7 +175,7 @@
 					</div>
 					<a
 						href={resolve('/dashboard')}
-						class="btn btn-ghost justify-start gap-2"
+						class="btn justify-start gap-2 btn-ghost"
 						onclick={closeNavDrawer}
 					>
 						<LayoutDashboard class="h-4 w-4" />
@@ -183,7 +183,7 @@
 					</a>
 					<a
 						href={resolve(profilePublicHref($user.username))}
-						class="btn btn-ghost justify-start gap-2"
+						class="btn justify-start gap-2 btn-ghost"
 						onclick={closeNavDrawer}
 					>
 						<User class="h-4 w-4" />
@@ -191,7 +191,7 @@
 					</a>
 					<a
 						href={resolve('/dashboard/profile')}
-						class="btn btn-ghost justify-start gap-2"
+						class="btn justify-start gap-2 btn-ghost"
 						onclick={closeNavDrawer}
 					>
 						<UserPen class="h-4 w-4" />
@@ -208,7 +208,7 @@
 							};
 						}}
 					>
-						<button type="submit" class="btn btn-ghost justify-start gap-2 text-error w-full">
+						<button type="submit" class="btn w-full justify-start gap-2 btn-ghost text-error">
 							<LogOut class="h-4 w-4" />
 							Déconnexion
 						</button>
@@ -225,7 +225,7 @@
 					</a>
 					<a
 						href={resolve('/dashboard/account/register')}
-						class="btn btn-primary w-full"
+						class="btn w-full btn-primary"
 						onclick={closeNavDrawer}
 					>
 						Inscription

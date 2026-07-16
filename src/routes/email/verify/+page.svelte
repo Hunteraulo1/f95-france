@@ -25,7 +25,7 @@
 					Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant utiliser votre
 					compte.
 				</p>
-				<a href="/dashboard/account/login" class="btn btn-primary mt-2">Se connecter</a>
+				<a href="/dashboard/account/login" class="btn mt-2 btn-primary">Se connecter</a>
 			{:else if data.status === 'expired'}
 				<MailWarning class="mx-auto text-warning" size={48} strokeWidth={1.75} aria-hidden="true" />
 				<h1 class="text-2xl font-bold">Lien expiré</h1>
@@ -33,19 +33,19 @@
 					Ce lien de confirmation a expiré. Connectez-vous et demandez un nouvel email de
 					vérification.
 				</p>
-				<a href="/dashboard/account/login" class="btn btn-primary mt-2">Se connecter</a>
+				<a href="/dashboard/account/login" class="btn mt-2 btn-primary">Se connecter</a>
 			{:else if data.status === 'missing'}
 				<MailWarning class="mx-auto text-warning" size={48} strokeWidth={1.75} aria-hidden="true" />
 				<h1 class="text-2xl font-bold">Lien invalide</h1>
 				<p class="text-sm text-base-content/70">Aucun jeton de vérification n’a été fourni.</p>
-				<a href="/dashboard/account/login" class="btn btn-ghost mt-2">Retour à la connexion</a>
+				<a href="/dashboard/account/login" class="btn mt-2 btn-ghost">Retour à la connexion</a>
 			{:else}
 				<MailWarning class="mx-auto text-error" size={48} strokeWidth={1.75} aria-hidden="true" />
 				<h1 class="text-2xl font-bold">Lien invalide</h1>
 				<p class="text-sm text-base-content/70">
 					Ce lien de confirmation n’est pas valide ou a déjà été utilisé.
 				</p>
-				<a href="/dashboard/account/login" class="btn btn-ghost mt-2">Retour à la connexion</a>
+				<a href="/dashboard/account/login" class="btn mt-2 btn-ghost">Retour à la connexion</a>
 			{/if}
 		</div>
 	</div>

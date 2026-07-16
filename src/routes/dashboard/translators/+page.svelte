@@ -179,7 +179,7 @@
 					<td>
 						{#if data.canManageTranslators || translator.userId === data.currentUserId}
 							<button
-								class="btn btn-sm btn-primary"
+								class="btn btn-primary btn-sm"
 								onclick={() => {
 									selectedTranslator = translator;
 									initializePagesForEdit(translator);

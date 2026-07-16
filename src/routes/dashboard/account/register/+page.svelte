@@ -183,7 +183,7 @@
 				<div class="divider text-xs text-base-content/50">ou</div>
 				<a
 					href={discordRegisterHref}
-					class="btn btn-block gap-2 bg-[#5865F2] text-white hover:bg-[#4752C4] border-0"
+					class="btn btn-block gap-2 border-0 bg-[#5865F2] text-white hover:bg-[#4752C4]"
 				>
 					<DiscordIcon size={18} />
 					S’inscrire avec Discord

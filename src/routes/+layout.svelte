@@ -137,7 +137,7 @@
 				{#if !isHome}
 					<Header />
 				{/if}
-				<div class="w-full mx-auto" class:max-w-[1536px]={page.url.pathname !== '/'}>
+				<div class="mx-auto w-full" class:max-w-[1536px]={page.url.pathname !== '/'}>
 					{@render children()}
 				</div>
 			</div>

@@ -1,0 +1,1 @@
+ALTER TABLE `translator_application` ADD `translator_name` varchar(255);
