@@ -31,6 +31,7 @@ export interface SubmissionModalItem {
 	id: string;
 	status: string;
 	type: string;
+	updatedAt: string | Date;
 	gameId?: string | null;
 	translationId?: string | null;
 	adminNotes?: string | null;

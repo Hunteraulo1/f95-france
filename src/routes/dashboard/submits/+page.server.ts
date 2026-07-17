@@ -138,6 +138,7 @@ export const actions: Actions = {
 		const status = formData.get('status') as string;
 		const adminNotes = formData.get('adminNotes') as string;
 		const submissionDataJson = formData.get('submissionDataJson');
+		const expectedUpdatedAt = formData.get('expectedUpdatedAt') as string | null;
 
 		if (!submissionId || !status) {
 			return fail(400, { message: 'ID de soumission et statut requis' });
@@ -166,7 +167,8 @@ export const actions: Actions = {
 					userId: table.submission.userId,
 					type: table.submission.type,
 					data: table.submission.data,
-					translationId: table.submission.translationId
+					translationId: table.submission.translationId,
+					updatedAt: table.submission.updatedAt
 				})
 				.from(table.submission)
 				.where(eq(table.submission.id, submissionId))
@@ -174,6 +176,16 @@ export const actions: Actions = {
 
 			if (currentSubmission.length === 0) {
 				return fail(404, { message: 'Soumission non trouvée' });
+			}
+
+			if (
+				expectedUpdatedAt &&
+				currentSubmission[0].updatedAt.toISOString() !== expectedUpdatedAt
+			) {
+				return fail(409, {
+					message:
+						'Cette soumission a été modifiée entre-temps par quelqu’un d’autre. Veuillez recharger la page avant de continuer.'
+				});
 			}
 
 			const currentStatus = currentSubmission[0].status;
