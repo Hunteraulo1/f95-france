@@ -178,10 +178,7 @@ export const actions: Actions = {
 				return fail(404, { message: 'Soumission non trouvée' });
 			}
 
-			if (
-				expectedUpdatedAt &&
-				currentSubmission[0].updatedAt.toISOString() !== expectedUpdatedAt
-			) {
+			if (expectedUpdatedAt && currentSubmission[0].updatedAt.toISOString() !== expectedUpdatedAt) {
 				return fail(409, {
 					message:
 						'Cette soumission a été modifiée entre-temps par quelqu’un d’autre. Veuillez recharger la page avant de continuer.'
