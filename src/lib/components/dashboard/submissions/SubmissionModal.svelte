@@ -373,6 +373,11 @@
 								{#if canModerateSubmission}
 									<input type="hidden" name="status" value={selectedStatus} />
 									<input type="hidden" name="adminNotes" value={adminNotesText} />
+									<input
+										type="hidden"
+										name="expectedUpdatedAt"
+										value={new Date(submission.updatedAt).toISOString()}
+									/>
 								{/if}
 								{#if submission.type === 'translator_pages'}
 									<input

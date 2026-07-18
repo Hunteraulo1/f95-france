@@ -302,8 +302,13 @@
 							class="toggle toggle-primary"
 							checked={discordNotificationsEnabled}
 							onchange={(e) => {
-								discordNotificationsEnabled = e.currentTarget.checked;
+								const checked = e.currentTarget.checked;
+								discordNotificationsEnabled = checked;
 								const form = e.currentTarget.closest('form');
+								const hiddenInput = form?.querySelector('input[type="hidden"][name="enabled"]');
+								if (hiddenInput instanceof HTMLInputElement) {
+									hiddenInput.value = checked ? 'true' : 'false';
+								}
 								form?.requestSubmit();
 							}}
 						/>
