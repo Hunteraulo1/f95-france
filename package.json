@@ -29,7 +29,6 @@
 		"db:studio": "drizzle-kit studio",
 		"db:sync:prod-to-dev": "bash scripts/sync-db.sh --target dev",
 		"db:sync:prod-to-ptb": "bash scripts/sync-db.sh --target ptb",
-		"db:migrate:from-postgres": "bun scripts/migrate-postgres-to-mariadb.ts",
 		"cron:check-version": "node cron/check-version.mjs",
 		"sheet:diff-jeux": "bun scripts/compare-jeux-csv.ts"
 	},
@@ -46,7 +45,6 @@
 		"eslint-config-prettier": "10.1.8",
 		"eslint-plugin-svelte": "3.20.0",
 		"globals": "17.7.0",
-		"pg": "8.22.0",
 		"prettier": "3.9.5",
 		"prettier-plugin-svelte": "4.1.1",
 		"prettier-plugin-tailwindcss": "0.8.1",
