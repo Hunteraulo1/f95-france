@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { fetchPaginatedJson } from './fetch-paginated-json';
 
 type InfiniteListSeed<T> = {
@@ -19,7 +20,7 @@ export function useInfiniteList<T extends { id: string | number }>(config: {
 	let totalPages = $state(initialSeed.totalPages);
 	let loadingMore = $state(false);
 	let loadMoreError = $state<string | null>(null);
-	let lastSeedIds = new Set(initialSeed.items.map((item) => item.id));
+	let lastSeedIds = new SvelteSet(initialSeed.items.map((item) => item.id));
 
 	const cacheKey = $derived(config.getCacheKey());
 	const hasMore = $derived(loadedPage < totalPages);
@@ -36,7 +37,7 @@ export function useInfiniteList<T extends { id: string | number }>(config: {
 			loadedPage = seed.page;
 			totalPages = seed.totalPages;
 			loadMoreError = null;
-			lastSeedIds = new Set(seed.items.map((item) => item.id));
+			lastSeedIds = new SvelteSet(seed.items.map((item) => item.id));
 		});
 	});
 
@@ -48,9 +49,9 @@ export function useInfiniteList<T extends { id: string | number }>(config: {
 		// chargées via `loadMore`.
 		const seed = config.getInitial();
 		untrack(() => {
-			const freshIds = new Set(seed.items.map((item) => item.id));
-			const freshById = new Map(seed.items.map((item) => [item.id, item]));
-			const existingIds = new Set(allItems.map((item) => item.id));
+			const freshIds = new SvelteSet(seed.items.map((item) => item.id));
+			const freshById = new SvelteMap(seed.items.map((item) => [item.id, item]));
+			const existingIds = new SvelteSet(allItems.map((item) => item.id));
 
 			// Un item qu'on savait présent en page 1 et qui a disparu du jeu frais
 			// (ex. changement de statut qui le fait sortir du filtre courant) est
