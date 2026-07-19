@@ -68,7 +68,7 @@ export function isGameImageGalleryPageUrl(raw: string | null | undefined): boole
 
 /**
  * URL utilisable en `src` pour une vignette jeu : absolue, HTTPS quand c’est possible,
- * chemins relatifs XenForo résolus sur f95zone.to (sinon le navigateur les charge sur le domaine Vercel).
+ * chemins relatifs XenForo résolus sur f95zone.to.
  * Retourne une chaîne vide si l’URL est une page galerie ou invalide pour `<img>`.
  */
 export function resolveGameImageSrc(

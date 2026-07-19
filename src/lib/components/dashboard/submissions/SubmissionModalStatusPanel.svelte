@@ -6,6 +6,7 @@
 		hasNotesError = false,
 		isStatusRequiringAdminNote = false,
 		canModerateSubmission = false,
+		submitting = false,
 		onClose
 	}: {
 		selectedStatus?: string;
@@ -14,6 +15,7 @@
 		hasNotesError?: boolean;
 		isStatusRequiringAdminNote?: boolean;
 		canModerateSubmission?: boolean;
+		submitting?: boolean;
 		onClose: () => void;
 	} = $props();
 </script>
@@ -77,8 +79,18 @@
 			{/if}
 		</div>
 		<div class="modal-action mt-4">
-			<button type="submit" form="submission-save-form" class="btn btn-primary">
-				Enregistrer
+			<button
+				type="submit"
+				form="submission-save-form"
+				class="btn gap-2 btn-primary"
+				disabled={submitting}
+			>
+				{#if submitting}
+					<span class="loading loading-sm loading-spinner"></span>
+					Enregistrement…
+				{:else}
+					Enregistrer
+				{/if}
 			</button>
 		</div>
 	</div>
