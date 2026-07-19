@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { fetchPaginatedJson } from './fetch-paginated-json';
 
 type InfiniteListSeed<T> = {
@@ -7,7 +8,7 @@ type InfiniteListSeed<T> = {
 	totalPages: number;
 };
 
-export function useInfiniteList<T>(config: {
+export function useInfiniteList<T extends { id: string | number }>(config: {
 	getInitial: () => InfiniteListSeed<T>;
 	getCacheKey: () => string;
 	buildUrl: (nextPage: number) => string;
@@ -19,6 +20,7 @@ export function useInfiniteList<T>(config: {
 	let totalPages = $state(initialSeed.totalPages);
 	let loadingMore = $state(false);
 	let loadMoreError = $state<string | null>(null);
+	let lastSeedIds = new SvelteSet(initialSeed.items.map((item) => item.id));
 
 	const cacheKey = $derived(config.getCacheKey());
 	const hasMore = $derived(loadedPage < totalPages);
@@ -35,6 +37,34 @@ export function useInfiniteList<T>(config: {
 			loadedPage = seed.page;
 			totalPages = seed.totalPages;
 			loadMoreError = null;
+			lastSeedIds = new SvelteSet(seed.items.map((item) => item.id));
+		});
+	});
+
+	$effect(() => {
+		// Contrairement à l'effet ci-dessus, celui-ci suit `config.getInitial()`
+		// directement : un `invalidateAll` à filtre inchangé (ex. après la
+		// modification d'une soumission dans sa modal) doit rafraîchir le
+		// contenu des items déjà affichés, sans réinitialiser les pages déjà
+		// chargées via `loadMore`.
+		const seed = config.getInitial();
+		untrack(() => {
+			const freshIds = new SvelteSet(seed.items.map((item) => item.id));
+			const freshById = new SvelteMap(seed.items.map((item) => [item.id, item]));
+			const existingIds = new SvelteSet(allItems.map((item) => item.id));
+
+			// Un item qu'on savait présent en page 1 et qui a disparu du jeu frais
+			// (ex. changement de statut qui le fait sortir du filtre courant) est
+			// retiré. Les items chargés au-delà de la page 1 (`loadMore`) ne sont
+			// pas dans `lastSeedIds` : on ne peut pas vérifier leur fraîcheur sans
+			// refaire une requête, donc on les laisse tels quels.
+			const reconciled = allItems
+				.filter((item) => freshById.has(item.id) || !lastSeedIds.has(item.id))
+				.map((item) => freshById.get(item.id) ?? item);
+			const newItems = seed.items.filter((item) => !existingIds.has(item.id));
+
+			allItems = [...newItems, ...reconciled];
+			lastSeedIds = freshIds;
 		});
 	});
 

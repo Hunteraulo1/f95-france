@@ -36,6 +36,7 @@
 
 	let { submission, translators, canEditStatus = false, onClose }: Props = $props();
 
+	let submitting = $state(false);
 	let statusError = $state<string | null>(null);
 	let selectedStatus = $state<string>('pending');
 	let adminNotesText = $state<string>('');
@@ -326,6 +327,7 @@
 									onStart: () => {
 										submissionEditError = null;
 										statusError = null;
+										submitting = true;
 									},
 									validate: ({ cancel }) => {
 										if (canModerateSubmission) {
@@ -355,9 +357,11 @@
 										}
 									},
 									onSuccess: () => {
+										submitting = false;
 										onClose();
 									},
 									onFailure: (message) => {
+										submitting = false;
 										if (canModerateSubmission) {
 											statusError = message;
 										} else {
@@ -426,8 +430,17 @@
 								</fieldset>
 								{#if !canModerateSubmission && submission?.status !== 'opened'}
 									<div class="modal-action mt-4">
-										<button type="button" class="btn" onclick={onClose}>Annuler</button>
-										<button type="submit" class="btn btn-primary">Enregistrer</button>
+										<button type="button" class="btn" disabled={submitting} onclick={onClose}
+											>Annuler</button
+										>
+										<button type="submit" class="btn gap-2 btn-primary" disabled={submitting}>
+											{#if submitting}
+												<span class="loading loading-sm loading-spinner"></span>
+												Enregistrement…
+											{:else}
+												Enregistrer
+											{/if}
+										</button>
 									</div>
 								{/if}
 							</form>
@@ -468,6 +481,7 @@
 						{hasNotesError}
 						{isStatusRequiringAdminNote}
 						{canModerateSubmission}
+						{submitting}
 						{onClose}
 					/>
 				</div>

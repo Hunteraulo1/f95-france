@@ -1,4 +1,0 @@
--- Obsolète : les colonnes de secrets sur `public.config` sont supprimées par la migration
--- `drizzle/0015_busy_war_machine.sql` (webhooks Discord, clé API Google, client OAuth en base).
--- Les valeurs doivent être fournies uniquement via les variables d’environnement listées sur
--- /dashboard/config (DISCORD_WEBHOOK_*, GOOGLE_API_KEY, GOOGLE_OAUTH_CLIENT_*, etc.).

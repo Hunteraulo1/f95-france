@@ -14,7 +14,7 @@ const STATIC_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 };
 
 function shouldSendHsts(): boolean {
-	return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+	return process.env.NODE_ENV === 'production';
 }
 
 /** Ajoute les en-têtes de sécurité HTTP (hors CSP, géré par `kit.csp` dans svelte.config.js). */

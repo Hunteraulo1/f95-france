@@ -1,18 +1,18 @@
 import { building } from '$app/environment';
 import {
 	apiKeyIsExtensionScoped,
-	isPathAllowedForApiKeyScope,
 	extractApiKeyFromRequest,
 	getUserForApiKeyOwner,
+	isPathAllowedForApiKeyScope,
 	jsonApiKeyGuardResponse,
 	validateApiKeyRequest
 } from '$lib/server/api-keys';
-import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
 import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
 import { logApp } from '$lib/server/app-logger';
 import * as auth from '$lib/server/auth';
 import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
 import { isPublicSitePath } from '$lib/server/dashboard-auth';
+import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
 import { warmHomePayload } from '$lib/server/home-page-data';
 import { logApiAction } from '$lib/server/logger';
 import { getMaintenanceMode } from '$lib/server/maintenance-mode';
@@ -236,7 +236,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Mode maintenance global: autoriser uniquement les superadmins.
 	// Exceptions: pages auth pour permettre la connexion/déconnexion.
-	// Pas de requête DB pendant le prerender (build sans Postgres).
+	// Pas de requête DB pendant le prerender (build sans MariaDB).
 	if (!building) {
 		try {
 			const maintenanceEnabled = await getMaintenanceMode();

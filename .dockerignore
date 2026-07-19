@@ -20,9 +20,6 @@ drizzle.config.ts
 # Qualité de code
 eslint.config.js
 
-# Scripts dev-only
-scripts/migrate-postgres-to-mariadb.ts
-
 # Docs & meta
 *.md
 LICENSE
