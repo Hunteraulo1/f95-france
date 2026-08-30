@@ -189,7 +189,7 @@
 		{/if}
 	</button>
 	<div
-		class="dropdown-content menu fixed z-1 mt-2 w-full border border-base-300 bg-base-100 shadow-lg xs:absolute xs:w-96 xs:rounded-box"
+		class="menu dropdown-content fixed z-1 mt-2 w-full border border-base-300 bg-base-100 shadow-lg xs:absolute xs:w-96 xs:rounded-box"
 	>
 		<div class="flex items-center justify-between border-b border-base-300 p-4">
 			<h3 class="text-lg font-semibold">Notifications</h3>

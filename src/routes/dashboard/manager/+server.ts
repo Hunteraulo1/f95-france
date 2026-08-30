@@ -61,7 +61,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const threadIdCheck = url.searchParams.get('threadIdCheck');
 	if (threadIdCheck !== null) {
 		const parsed = Number.parseInt(threadIdCheck, 10);
-		if (Number.isNaN(parsed) || parsed <= 0) {
+		const websiteCheck = url.searchParams.get('website');
+		if (Number.isNaN(parsed) || parsed <= 0 || !websiteCheck) {
 			return json({ gameExists: false, pendingSubmission: false });
 		}
 
@@ -69,7 +70,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			const existingGame = await db
 				.select({ id: table.game.id, name: table.game.name })
 				.from(table.game)
-				.where(eq(table.game.threadId, parsed))
+				.where(and(eq(table.game.threadId, parsed), eq(table.game.website, websiteCheck)))
 				.limit(1);
 
 			const pendingGameSubmission = await db
@@ -79,7 +80,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`JSON_VALUE(${table.submission.data}, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(${table.submission.data}, '$.game.threadId') AS UNSIGNED) = ${parsed}`
+						sql`JSON_VALUE(${table.submission.data}, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(${table.submission.data}, '$.game.threadId') AS UNSIGNED) = ${parsed} AND JSON_VALUE(${table.submission.data}, '$.game.website') = ${websiteCheck}`
 					)
 				)
 				.limit(1);
@@ -216,7 +217,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const existingGameRow = await db
 				.select({ id: table.game.id, name: table.game.name })
 				.from(table.game)
-				.where(eq(table.game.threadId, validTid))
+				.where(and(eq(table.game.threadId, validTid), eq(table.game.website, website)))
 				.limit(1);
 
 			if (existingGameRow.length === 0) {
@@ -403,16 +404,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				? parsedThreadId
 				: null;
 
-		// Doublon : même thread (le nom peut être partagé entre plusieurs jeux)
+		// Doublon : même thread sur le même site (le thread ID n'est unique que par site)
 		if (validThreadId !== null) {
 			const existingGameByThread = await db
 				.select({ id: table.game.id })
 				.from(table.game)
-				.where(eq(table.game.threadId, validThreadId))
+				.where(and(eq(table.game.threadId, validThreadId), eq(table.game.website, website)))
 				.limit(1);
 
 			if (existingGameByThread.length > 0) {
-				return json({ error: 'Un jeu avec cet ID de thread existe déjà' }, { status: 409 });
+				return json(
+					{ error: 'Un jeu avec cet ID de thread existe déjà pour ce site' },
+					{ status: 409 }
+				);
 			}
 
 			const pendingForThread = await db
@@ -422,7 +426,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					and(
 						eq(table.submission.type, 'game'),
 						eq(table.submission.status, 'pending'),
-						sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${validThreadId}`
+						sql`JSON_VALUE(data, '$.game.threadId') IS NOT NULL AND CAST(JSON_VALUE(data, '$.game.threadId') AS UNSIGNED) = ${validThreadId} AND JSON_VALUE(data, '$.game.website') = ${website}`
 					)
 				)
 				.limit(1);

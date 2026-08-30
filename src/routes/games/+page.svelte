@@ -257,7 +257,7 @@
 			</span>
 		</div>
 
-		<div class="list-col-grow min-w-0 gap-2">
+		<div class="min-w-0 gap-2 list-col-grow">
 			<div class="flex flex-wrap items-start gap-2">
 				{#each game.engineTypes as engine (engine)}
 					<span

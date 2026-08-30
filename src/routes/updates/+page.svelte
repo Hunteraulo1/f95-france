@@ -209,7 +209,7 @@
 			</span>
 		</div>
 
-		<div class="list-col-grow h-full min-w-0 gap-2">
+		<div class="h-full min-w-0 gap-2 list-col-grow">
 			<div class="flex w-full gap-2 text-nowrap">
 				{#if game.hasTranslation}
 					<dd class="flex flex-col items-start gap-1">

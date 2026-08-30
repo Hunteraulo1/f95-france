@@ -17,7 +17,7 @@
 </script>
 
 <div
-	class="modal-open modal"
+	class="modal modal-open"
 	role="dialog"
 	aria-modal="true"
 	aria-labelledby="abandon-translation-title"

@@ -12,7 +12,10 @@ import {
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
+import {
+	resolveGameDescriptionFields,
+	voidTranslateGameDescriptionInBackground
+} from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
 	createGameUpdateRow,
@@ -411,22 +414,34 @@ export async function applySubmission(submissionId: string) {
 			throw new Error('Données de jeu manquantes');
 		}
 
-		// Vérifier si un jeu avec le même nom existe déjà
-		const existingGame = await db
-			.select({ id: table.game.id })
-			.from(table.game)
-			.where(eq(table.game.name, gameData.name))
-			.limit(1);
+		const validThreadId = gameData.threadId
+			? typeof gameData.threadId === 'string'
+				? parseInt(gameData.threadId)
+				: gameData.threadId
+			: null;
 
-		if (existingGame.length > 0) {
-			throw new Error('Un jeu avec ce nom existe déjà');
+		// Doublon : même thread sur le même site (le thread ID n'est unique que par site)
+		if (validThreadId !== null) {
+			const existingGameByThread = await db
+				.select({ id: table.game.id })
+				.from(table.game)
+				.where(
+					and(eq(table.game.threadId, validThreadId), eq(table.game.website, gameData.website))
+				)
+				.limit(1);
+
+			if (existingGameByThread.length > 0) {
+				throw new Error('Un jeu avec cet ID de thread existe déjà pour ce site');
+			}
 		}
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
+		// La traduction (LibreTranslate) peut prendre plusieurs secondes : ne pas
+		// bloquer la validation de la soumission dessus, la lancer en arrière-plan.
 		const descFields = await resolveGameDescriptionFields({
 			description: gameData.description,
-			autoTranslate: true
+			autoTranslate: false
 		});
 
 		const gameId = randomUUID();
@@ -436,11 +451,7 @@ export async function applySubmission(submissionId: string) {
 			description: descFields.description,
 			descriptionFr: descFields.descriptionFr,
 			website: gameData.website as 'f95z' | 'lc' | 'other',
-			threadId: gameData.threadId
-				? typeof gameData.threadId === 'string'
-					? parseInt(gameData.threadId)
-					: gameData.threadId
-				: null,
+			threadId: validThreadId,
 			tags: gameData.tags || '',
 			link: gameData.link || '',
 			image: gameData.image,
@@ -458,6 +469,7 @@ export async function applySubmission(submissionId: string) {
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
+		voidTranslateGameDescriptionInBackground(gameId, descFields.description);
 
 		const translationTname =
 			typeof parsedData.translation?.tname === 'string'
@@ -594,12 +606,15 @@ export async function applySubmission(submissionId: string) {
 					: null
 				: (originalGame.gameVersion ?? null);
 
+		// La traduction (LibreTranslate) peut prendre plusieurs secondes : ne pas
+		// bloquer la validation de la soumission dessus, la lancer en arrière-plan.
 		const descFields = await resolveGameDescriptionFields({
 			description: gameData.description,
 			previousDescription: originalGame.description,
 			previousDescriptionFr: originalGame.descriptionFr,
-			autoTranslate: true
+			autoTranslate: false
 		});
+		const descriptionChanged = descFields.description !== (originalGame.description || null);
 
 		// Mettre à jour le jeu
 		await db
@@ -622,6 +637,9 @@ export async function applySubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+		if (descriptionChanged) {
+			voidTranslateGameDescriptionInBackground(sub.gameId, descFields.description);
+		}
 
 		if (
 			gameData.type !== undefined &&
@@ -729,14 +747,11 @@ export async function applySubmission(submissionId: string) {
 						'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 					tlink: translationData.tlink || '',
 					tname: nextTname,
-					translatorId:
-						resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
-					proofreaderId:
-						resolvedContributors.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					translatorId: resolvedContributors.translatorId,
+					proofreaderId: resolvedContributors.proofreaderId,
 					translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
 						beforeTranslatorId: originalTranslation.translatorId,
-						afterTranslatorId:
-							resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
+						afterTranslatorId: resolvedContributors.translatorId,
 						currentTranslatorAlertsEnabled: originalTranslation.translatorAlertsEnabled
 					}),
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),

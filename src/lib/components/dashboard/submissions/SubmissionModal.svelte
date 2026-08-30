@@ -31,7 +31,7 @@
 		submission: SubmissionModalItem | null;
 		translators: SubmissionModalTranslator[];
 		canEditStatus?: boolean;
-		onClose: () => void;
+		onClose: (options?: { skipRefresh?: boolean }) => void;
 	}
 
 	let { submission, translators, canEditStatus = false, onClose }: Props = $props();
@@ -118,8 +118,8 @@
 			const fallbackStatus = tr?.status ?? currentTr?.status ?? 'in_progress';
 			const fallbackTtype = tr?.ttype ?? currentTr?.ttype ?? 'manual';
 			const fallbackAc = typeof tr?.ac === 'boolean' ? tr.ac : (currentTr?.ac ?? false);
-			const fallbackTranslatorId = tr?.translatorId ?? currentTr?.translatorId ?? '';
-			const fallbackProofreaderId = tr?.proofreaderId ?? currentTr?.proofreaderId ?? '';
+			const fallbackTranslatorId = tr ? tr.translatorId : currentTr?.translatorId;
+			const fallbackProofreaderId = tr ? tr.proofreaderId : currentTr?.proofreaderId;
 
 			editTranslationTranslationName = tr?.translationName ?? currentTr?.translationName ?? '';
 			editTranslationVersion = (tr?.version ?? currentTr?.version ?? '') as string;
@@ -173,7 +173,7 @@
 		ac: editTranslationAc
 	});
 
-	const submissionDataJsonHidden = $derived(() => {
+	const submissionDataJsonHidden = $derived.by(() => {
 		if (!submission) return '';
 
 		if (submission.type === 'delete') {
@@ -274,7 +274,7 @@
 </script>
 
 {#if submission}
-	<div class="modal-open modal">
+	<div class="modal modal-open">
 		<div class="modal-box flex max-h-[90vh] max-w-7xl flex-col">
 			<SubmissionModalHeader {submission} />
 
@@ -358,7 +358,7 @@
 									},
 									onSuccess: () => {
 										submitting = false;
-										onClose();
+										onClose({ skipRefresh: true });
 									},
 									onFailure: (message) => {
 										submitting = false;
@@ -430,8 +430,11 @@
 								</fieldset>
 								{#if !canModerateSubmission && submission?.status !== 'opened'}
 									<div class="modal-action mt-4">
-										<button type="button" class="btn" disabled={submitting} onclick={onClose}
-											>Annuler</button
+										<button
+											type="button"
+											class="btn"
+											disabled={submitting}
+											onclick={() => onClose()}>Annuler</button
 										>
 										<button type="submit" class="btn gap-2 btn-primary" disabled={submitting}>
 											{#if submitting}
@@ -457,7 +460,7 @@
 										submissionEditError = null;
 									},
 									onSuccess: () => {
-										onClose();
+										onClose({ skipRefresh: true });
 									},
 									onFailure: (message) => {
 										submissionEditError = message;
@@ -487,7 +490,11 @@
 				</div>
 			</div>
 		</div>
-		<button type="button" class="modal-backdrop" onclick={onClose} aria-label="Fermer la modal"
+		<button
+			type="button"
+			class="modal-backdrop"
+			onclick={() => onClose()}
+			aria-label="Fermer la modal"
 		></button>
 	</div>
 {/if}

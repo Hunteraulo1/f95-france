@@ -107,7 +107,7 @@
 							class="pointer-events-none absolute inset-0 bg-linear-to-b from-black/55 via-black/15 to-transparent"
 							aria-hidden="true"
 						></div>
-						<div class="relative z-10 card-body flex h-full flex-col justify-start gap-3 p-4">
+						<div class="card-body relative z-10 flex h-full flex-col justify-start gap-3 p-4">
 							<div
 								class="flex flex-col items-start justify-between gap-3 text-neutral-content drop-shadow-sm"
 							>

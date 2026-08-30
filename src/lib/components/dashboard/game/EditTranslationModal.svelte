@@ -72,7 +72,7 @@
 </script>
 
 {#if open}
-	<div class="modal-open modal">
+	<div class="modal modal-open">
 		<div class="modal-box max-h-[90vh] max-w-7xl p-0">
 			<div class="p-8">
 				<h3 class="text-lg font-bold">Modifier la traduction</h3>

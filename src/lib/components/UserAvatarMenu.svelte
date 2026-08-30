@@ -35,7 +35,7 @@
 		</div>
 		<ul
 			tabindex="-1"
-			class="dropdown-content menu z-50 mt-2 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+			class="menu dropdown-content z-50 mt-2 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 		>
 			<li>
 				<a href={resolve('/dashboard')} class="gap-2">
