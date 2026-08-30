@@ -175,7 +175,7 @@
 						{/if}
 					</div>
 
-					<div class="list-col-grow min-w-0">
+					<div class="min-w-0 list-col-grow">
 						{#if translator.profileHref}
 							<a href={resolve(translator.profileHref)} class="link font-medium link-hover">
 								{translator.name}
@@ -208,7 +208,7 @@
 										</div>
 										<ul
 											tabindex="-1"
-											class="dropdown-content menu z-50 mt-1 w-full rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+											class="menu dropdown-content z-50 mt-1 w-full rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
 										>
 											{#each translator.pages as page, pageIndex (`${translator.id}-${page.url}`)}
 												<li>

@@ -11,7 +11,7 @@
 </script>
 
 {#if open}
-	<div class="modal-open modal">
+	<div class="modal modal-open">
 		<div class="modal-box max-h-[90vh] max-w-4xl p-0">
 			<div class="p-8">
 				<h3 class="mb-4 text-lg font-bold">Confirmer la suppression</h3>

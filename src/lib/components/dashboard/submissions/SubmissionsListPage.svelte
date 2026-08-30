@@ -70,9 +70,7 @@
 				});
 				const result = deserialize(await response.text());
 				const updatedAt =
-					result.type === 'success' &&
-					result.data &&
-					typeof result.data.updatedAt === 'string'
+					result.type === 'success' && result.data && typeof result.data.updatedAt === 'string'
 						? result.data.updatedAt
 						: submission.updatedAt;
 				const currentUser = get(user);

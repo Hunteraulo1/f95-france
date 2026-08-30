@@ -274,7 +274,7 @@
 </script>
 
 {#if submission}
-	<div class="modal-open modal">
+	<div class="modal modal-open">
 		<div class="modal-box flex max-h-[90vh] max-w-7xl flex-col">
 			<SubmissionModalHeader {submission} />
 

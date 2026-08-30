@@ -10,7 +10,7 @@
 </script>
 
 {#if open}
-	<div class="modal-open modal" role="dialog" aria-modal="true" aria-label="Aperçu image du jeu">
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Aperçu image du jeu">
 		<div class="modal-box max-h-[90vh] max-w-5xl p-2 sm:p-4">
 			<img
 				src={imageSrc}
