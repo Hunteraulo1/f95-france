@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { deserialize } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
@@ -61,15 +62,24 @@
 			try {
 				const formData = new FormData();
 				formData.append('submissionId', submission.id);
-				await fetch(`${basePath}?/openSubmission`, {
+				const response = await fetch(`${basePath}?/openSubmission`, {
 					method: 'POST',
 					body: formData,
-					credentials: 'include'
+					credentials: 'include',
+					headers: { accept: 'application/json', 'x-sveltekit-action': 'true' }
 				});
+				const result = deserialize(await response.text());
+				const updatedAt =
+					result.type === 'success' &&
+					result.data &&
+					typeof result.data.updatedAt === 'string'
+						? result.data.updatedAt
+						: submission.updatedAt;
 				const currentUser = get(user);
 				selectedSubmission = {
 					...submission,
 					status: 'opened',
+					updatedAt,
 					openedByUser: currentUser
 						? {
 								id: currentUser.id,

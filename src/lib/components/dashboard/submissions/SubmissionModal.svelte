@@ -173,7 +173,7 @@
 		ac: editTranslationAc
 	});
 
-	const submissionDataJsonHidden = $derived(() => {
+	const submissionDataJsonHidden = $derived.by(() => {
 		if (!submission) return '';
 
 		if (submission.type === 'delete') {
