@@ -411,15 +411,25 @@ export async function applySubmission(submissionId: string) {
 			throw new Error('Données de jeu manquantes');
 		}
 
-		// Vérifier si un jeu avec le même nom existe déjà
-		const existingGame = await db
-			.select({ id: table.game.id })
-			.from(table.game)
-			.where(eq(table.game.name, gameData.name))
-			.limit(1);
+		const validThreadId = gameData.threadId
+			? typeof gameData.threadId === 'string'
+				? parseInt(gameData.threadId)
+				: gameData.threadId
+			: null;
 
-		if (existingGame.length > 0) {
-			throw new Error('Un jeu avec ce nom existe déjà');
+		// Doublon : même thread sur le même site (le thread ID n'est unique que par site)
+		if (validThreadId !== null) {
+			const existingGameByThread = await db
+				.select({ id: table.game.id })
+				.from(table.game)
+				.where(
+					and(eq(table.game.threadId, validThreadId), eq(table.game.website, gameData.website))
+				)
+				.limit(1);
+
+			if (existingGameByThread.length > 0) {
+				throw new Error('Un jeu avec cet ID de thread existe déjà pour ce site');
+			}
 		}
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
@@ -436,11 +446,7 @@ export async function applySubmission(submissionId: string) {
 			description: descFields.description,
 			descriptionFr: descFields.descriptionFr,
 			website: gameData.website as 'f95z' | 'lc' | 'other',
-			threadId: gameData.threadId
-				? typeof gameData.threadId === 'string'
-					? parseInt(gameData.threadId)
-					: gameData.threadId
-				: null,
+			threadId: validThreadId,
 			tags: gameData.tags || '',
 			link: gameData.link || '',
 			image: gameData.image,
