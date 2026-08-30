@@ -12,7 +12,10 @@ import {
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
 } from '$lib/server/game-auto-check';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
+import {
+	resolveGameDescriptionFields,
+	voidTranslateGameDescriptionInBackground
+} from '$lib/server/game-description-fr';
 import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
 import {
 	createGameUpdateRow,
@@ -434,9 +437,11 @@ export async function applySubmission(submissionId: string) {
 
 		const engineFromGamePayload = coerceGameEngineType(gameData.type);
 
+		// La traduction (LibreTranslate) peut prendre plusieurs secondes : ne pas
+		// bloquer la validation de la soumission dessus, la lancer en arrière-plan.
 		const descFields = await resolveGameDescriptionFields({
 			description: gameData.description,
-			autoTranslate: true
+			autoTranslate: false
 		});
 
 		const gameId = randomUUID();
@@ -464,6 +469,7 @@ export async function applySubmission(submissionId: string) {
 			createdAt: new Date(),
 			updatedAt: new Date()
 		});
+		voidTranslateGameDescriptionInBackground(gameId, descFields.description);
 
 		const translationTname =
 			typeof parsedData.translation?.tname === 'string'
@@ -600,12 +606,15 @@ export async function applySubmission(submissionId: string) {
 					: null
 				: (originalGame.gameVersion ?? null);
 
+		// La traduction (LibreTranslate) peut prendre plusieurs secondes : ne pas
+		// bloquer la validation de la soumission dessus, la lancer en arrière-plan.
 		const descFields = await resolveGameDescriptionFields({
 			description: gameData.description,
 			previousDescription: originalGame.description,
 			previousDescriptionFr: originalGame.descriptionFr,
-			autoTranslate: true
+			autoTranslate: false
 		});
+		const descriptionChanged = descFields.description !== (originalGame.description || null);
 
 		// Mettre à jour le jeu
 		await db
@@ -628,6 +637,9 @@ export async function applySubmission(submissionId: string) {
 				updatedAt: new Date()
 			})
 			.where(eq(table.game.id, sub.gameId));
+		if (descriptionChanged) {
+			voidTranslateGameDescriptionInBackground(sub.gameId, descFields.description);
+		}
 
 		if (
 			gameData.type !== undefined &&

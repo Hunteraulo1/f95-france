@@ -1,7 +1,10 @@
+import { db } from '$lib/server/db';
+import * as table from '$lib/server/db/schema';
 import {
 	isDescriptionAutoTranslateEnabled,
 	translateTextToFrenchLibreTranslate
 } from '$lib/server/translate-libretranslate';
+import { eq } from 'drizzle-orm';
 
 export type GameDescriptionFields = {
 	description: string | null;
@@ -63,4 +66,24 @@ export async function resolveGameDescriptionFields(options: {
 
 	const descriptionFr = await translateTextToFrench(description);
 	return { description, descriptionFr };
+}
+
+/**
+ * Traduit `description` en arrière-plan et met à jour `game.descriptionFr` une fois
+ * terminé, sans bloquer l'appelant (LibreTranslate peut prendre plusieurs secondes).
+ */
+export function voidTranslateGameDescriptionInBackground(
+	gameId: string,
+	description: string | null
+): void {
+	if (!description) return;
+
+	translateTextToFrench(description)
+		.then(async (descriptionFr) => {
+			if (!descriptionFr) return;
+			await db.update(table.game).set({ descriptionFr }).where(eq(table.game.id, gameId));
+		})
+		.catch((error) => {
+			console.warn('[game-description-fr] traduction en arrière-plan échouée', error);
+		});
 }
