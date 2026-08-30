@@ -118,8 +118,8 @@
 			const fallbackStatus = tr?.status ?? currentTr?.status ?? 'in_progress';
 			const fallbackTtype = tr?.ttype ?? currentTr?.ttype ?? 'manual';
 			const fallbackAc = typeof tr?.ac === 'boolean' ? tr.ac : (currentTr?.ac ?? false);
-			const fallbackTranslatorId = tr?.translatorId ?? currentTr?.translatorId ?? '';
-			const fallbackProofreaderId = tr?.proofreaderId ?? currentTr?.proofreaderId ?? '';
+			const fallbackTranslatorId = tr ? tr.translatorId : currentTr?.translatorId;
+			const fallbackProofreaderId = tr ? tr.proofreaderId : currentTr?.proofreaderId;
 
 			editTranslationTranslationName = tr?.translationName ?? currentTr?.translationName ?? '';
 			editTranslationVersion = (tr?.version ?? currentTr?.version ?? '') as string;

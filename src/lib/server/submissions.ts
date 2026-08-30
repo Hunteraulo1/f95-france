@@ -735,14 +735,11 @@ export async function applySubmission(submissionId: string) {
 						'auto' | 'vf' | 'manual' | 'semi-auto' | 'to_tested' | 'hs',
 					tlink: translationData.tlink || '',
 					tname: nextTname,
-					translatorId:
-						resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
-					proofreaderId:
-						resolvedContributors.proofreaderId ?? originalTranslation.proofreaderId ?? null,
+					translatorId: resolvedContributors.translatorId,
+					proofreaderId: resolvedContributors.proofreaderId,
 					translatorAlertsEnabled: resolveTranslatorAlertsEnabledOnWrite({
 						beforeTranslatorId: originalTranslation.translatorId,
-						afterTranslatorId:
-							resolvedContributors.translatorId ?? originalTranslation.translatorId ?? null,
+						afterTranslatorId: resolvedContributors.translatorId,
 						currentTranslatorAlertsEnabled: originalTranslation.translatorAlertsEnabled
 					}),
 					ac: clampTranslationAc(allowsAc, translationData.ac ?? originalTranslation.ac ?? false),
