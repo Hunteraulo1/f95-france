@@ -16,7 +16,7 @@
 		isStatusRequiringAdminNote?: boolean;
 		canModerateSubmission?: boolean;
 		submitting?: boolean;
-		onClose: () => void;
+		onClose: (options?: { skipRefresh?: boolean }) => void;
 	} = $props();
 </script>
 
@@ -96,6 +96,6 @@
 	</div>
 {:else}
 	<div class="modal-action mt-4">
-		<button type="button" class="btn" onclick={onClose}> Fermer </button>
+		<button type="button" class="btn" onclick={() => onClose()}> Fermer </button>
 	</div>
 {/if}

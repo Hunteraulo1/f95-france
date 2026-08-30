@@ -31,7 +31,7 @@
 		submission: SubmissionModalItem | null;
 		translators: SubmissionModalTranslator[];
 		canEditStatus?: boolean;
-		onClose: () => void;
+		onClose: (options?: { skipRefresh?: boolean }) => void;
 	}
 
 	let { submission, translators, canEditStatus = false, onClose }: Props = $props();
@@ -358,7 +358,7 @@
 									},
 									onSuccess: () => {
 										submitting = false;
-										onClose();
+										onClose({ skipRefresh: true });
 									},
 									onFailure: (message) => {
 										submitting = false;
@@ -430,8 +430,11 @@
 								</fieldset>
 								{#if !canModerateSubmission && submission?.status !== 'opened'}
 									<div class="modal-action mt-4">
-										<button type="button" class="btn" disabled={submitting} onclick={onClose}
-											>Annuler</button
+										<button
+											type="button"
+											class="btn"
+											disabled={submitting}
+											onclick={() => onClose()}>Annuler</button
 										>
 										<button type="submit" class="btn gap-2 btn-primary" disabled={submitting}>
 											{#if submitting}
@@ -457,7 +460,7 @@
 										submissionEditError = null;
 									},
 									onSuccess: () => {
-										onClose();
+										onClose({ skipRefresh: true });
 									},
 									onFailure: (message) => {
 										submissionEditError = message;
@@ -487,7 +490,11 @@
 				</div>
 			</div>
 		</div>
-		<button type="button" class="modal-backdrop" onclick={onClose} aria-label="Fermer la modal"
+		<button
+			type="button"
+			class="modal-backdrop"
+			onclick={() => onClose()}
+			aria-label="Fermer la modal"
 		></button>
 	</div>
 {/if}

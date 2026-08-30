@@ -87,8 +87,9 @@
 		selectedSubmission = submission;
 	};
 
-	const closeSubmissionModal = async () => {
+	const closeSubmissionModal = async (options?: { skipRefresh?: boolean }) => {
 		selectedSubmission = null;
+		if (options?.skipRefresh) return;
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
 		await goto(`${resolve(basePath)}${buildQuery({})}`, {
 			noScroll: true,
