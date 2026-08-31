@@ -57,7 +57,7 @@
 		</figure>
 
 		<div
-			class="relative z-10 card-body flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
+			class="card-body relative z-10 flex flex-col justify-center gap-5 p-6 sm:p-8 lg:max-w-[58%] lg:flex-1"
 		>
 			<div class="badge w-fit gap-1.5 badge-outline badge-secondary">
 				<Puzzle class="size-3.5" aria-hidden="true" />

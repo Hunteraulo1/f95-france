@@ -1,3 +1,4 @@
+import { appLogWarn } from '$lib/server/app-log-bridge';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
@@ -66,16 +67,22 @@ export const actions: Actions = {
 		const submissionId = formData.get('submissionId') as string;
 		if (!submissionId) return fail(400, { message: 'submissionId requis' });
 
+		// La colonne `updated_at` est un DATETIME sans précision sous-seconde : MySQL
+		// tronque les millisecondes au stockage. On tronque ici aussi pour que la valeur
+		// renvoyée au client corresponde exactement à ce qui sera relu en base ensuite
+		// (sinon la vérification anti-conflit de `updateStatus` échoue systématiquement).
+		const openedAt = new Date();
+		openedAt.setMilliseconds(0);
 		await db
 			.update(table.submission)
 			.set({
 				status: 'opened',
-				updatedAt: new Date(),
+				updatedAt: openedAt,
 				...(await submissionOpenedByUserIdPatch(locals.user!.id))
 			})
 			.where(and(eq(table.submission.id, submissionId), eq(table.submission.status, 'pending')));
 
-		return { success: true };
+		return { success: true, updatedAt: openedAt.toISOString() };
 	},
 	updateSubmissionData: async ({ request, locals }) => {
 		await assertPermission(locals, 'submissions.review');
@@ -179,6 +186,10 @@ export const actions: Actions = {
 			}
 
 			if (expectedUpdatedAt && currentSubmission[0].updatedAt.toISOString() !== expectedUpdatedAt) {
+				appLogWarn(
+					'submissions',
+					`Conflit expectedUpdatedAt sur ${submissionId} : DB=${currentSubmission[0].updatedAt.toISOString()} attendu=${expectedUpdatedAt} (statut actuel=${currentSubmission[0].status}, cible=${status})`
+				);
 				return fail(409, {
 					message:
 						'Cette soumission a été modifiée entre-temps par quelqu’un d’autre. Veuillez recharger la page avant de continuer.'

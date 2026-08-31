@@ -14,7 +14,7 @@
 
 <!-- modal-open requis : sans lui, .modal-box reste à opacity 0 (daisyUI) -->
 <dialog
-	class="age-verification-modal modal-open modal bg-transparent!"
+	class="age-verification-modal modal modal-open bg-transparent!"
 	open
 	aria-labelledby="age-verification-title"
 >

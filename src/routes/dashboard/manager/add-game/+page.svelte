@@ -510,7 +510,7 @@
 		checkingDuplicateThread = true;
 		try {
 			const response = await fetch(
-				`/dashboard/manager?threadIdCheck=${encodeURIComponent(String(tid))}`
+				`/dashboard/manager?threadIdCheck=${encodeURIComponent(String(tid))}&website=${encodeURIComponent(game.website)}`
 			);
 			const payload = (await response.json()) as {
 				gameExists?: boolean;

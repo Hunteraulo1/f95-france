@@ -25,7 +25,7 @@
 </script>
 
 {#if open}
-	<dialog class="modal-open modal">
+	<dialog class="modal modal-open">
 		<div class="modal-box {maxWidthClass} {scrollBody ? 'max-h-[90vh] overflow-y-auto' : ''}">
 			<h3 class="text-lg font-bold">{title}</h3>
 			{#if description}

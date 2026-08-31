@@ -67,7 +67,7 @@
 </script>
 
 {#if open}
-	<div class="modal-open modal">
+	<div class="modal modal-open">
 		<div class="modal-box max-h-[90vh] max-w-7xl overflow-y-auto">
 			<div class="mb-5">
 				<h3 class="text-lg font-bold">Ajouter une traduction</h3>

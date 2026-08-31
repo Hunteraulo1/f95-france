@@ -13,7 +13,7 @@ export async function hasSubmissionOpenedByUserIdColumn(): Promise<boolean> {
 			.select({ one: sql<number>`1` })
 			.from(sql`information_schema.columns`)
 			.where(
-				sql`table_schema = 'public' AND table_name = 'submission' AND column_name = 'opened_by_user_id'`
+				sql`table_schema = DATABASE() AND table_name = 'submission' AND column_name = 'opened_by_user_id'`
 			)
 			.limit(1);
 		cachedHasOpenedByUserIdColumn = rows.length > 0;
