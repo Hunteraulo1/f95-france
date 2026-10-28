@@ -1,7 +1,7 @@
 {
 	"name": "f95-france",
 	"private": true,
-	"version": "4.13.0",
+	"version": "4.13.1",
 	"type": "module",
 	"imports": {
 		"#lib": "./src/lib",

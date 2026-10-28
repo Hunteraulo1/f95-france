@@ -5,6 +5,7 @@ import {
 	type F95ScraperThread,
 	type F95ScraperThreadStatus
 } from './f95-scraper';
+import { F95_TAG_NAME_BY_ID } from './f95-tags';
 
 const SPOILER_LOCKED_TEXT_PATTERNS = [
 	/you don't have permission to view the spoiler content/i,
@@ -73,8 +74,8 @@ const STATUS_LABELS: Record<NonNullable<F95ScraperThreadStatus>, string> = {
 
 /**
  * Convertit un thread renvoyé par le scraper au format historique du scrape HTML.
- * `tags` et `gameType` restent nuls : l’API ne donne que des identifiants numériques, pas encore
- * convertis. Les appelants conservent alors les valeurs existantes.
+ * Les tags sont convertis via {@link F95_TAG_NAME_BY_ID}. `gameType` reste nul : l’API ne donne
+ * qu’un identifiant de moteur, pas encore converti. Les appelants conservent alors la valeur existante.
  */
 export const scrapedFromF95Thread = (
 	thread: F95ScraperThread,
@@ -84,13 +85,16 @@ export const scrapedFromF95Thread = (
 		normalizeDescription(stripOverviewPrefix(thread.description))
 	);
 	const imageUrl = thread.imageUrl?.trim();
+	const tags = thread.tags
+		.map((id) => F95_TAG_NAME_BY_ID[id])
+		.filter((name): name is string => Boolean(name));
 
 	return {
 		name: thread.name.trim() || null,
 		version: thread.version?.trim() || null,
 		description,
 		status: status ? STATUS_LABELS[status] : null,
-		tags: null,
+		tags: tags.length > 0 ? tags.join(', ') : null,
 		gameType: null,
 		image: imageUrl
 			? resolveGameImageSrc(imageUrl.replace('thumb/', ''), { website: 'f95z' })
