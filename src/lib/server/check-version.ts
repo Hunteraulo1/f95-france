@@ -1,38 +1,38 @@
-import type { AppLogSource } from '$lib/logs/app-log';
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { logApp } from '$lib/server/app-logger';
+import type { AppLogSource } from '#lib/logs/app-log';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { logApp } from '#lib/server/app-logger';
 import {
 	AutoCheckRunRecorder,
 	type AutoCheckTriggerSource
-} from '$lib/server/auto-check-run-recorder';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { sendDiscordBotTranslatorVersionBumpDm } from '$lib/server/discord-bot';
+} from '#lib/server/auto-check-run-recorder';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { sendDiscordBotTranslatorVersionBumpDm } from '#lib/server/discord-bot';
 import {
 	sendDiscordWebhookProofreadersVersionBumps,
 	sendDiscordWebhookTranslatorsVersionBumps,
 	sendDiscordWebhookUpdatesAutoCheckVersionBump,
 	type TranslatorVersionBumpLine
-} from '$lib/server/discord-webhook';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
-import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import type { ScrapedThreadGame } from '$lib/server/scrape';
-import { scrapedFromF95Thread } from '$lib/server/scrape/f95';
-import { checkF95ScraperThreads, F95_SCRAPER_CHECK_BATCH } from '$lib/server/scrape/f95-scraper';
-import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
+} from '#lib/server/discord-webhook';
+import { resolveGameDescriptionFields } from '#lib/server/game-description-fr';
+import { coerceGameEngineType } from '#lib/server/game-engine-type';
+import { recordTranslationChangeInUpdateHistory } from '#lib/server/game-updates';
+import { syncDbToSpreadsheetBulk } from '#lib/server/google-sheets-sync';
+import type { ScrapedThreadGame } from '#lib/server/scrape';
+import { scrapedFromF95Thread } from '#lib/server/scrape/f95';
+import { checkF95ScraperThreads, F95_SCRAPER_CHECK_BATCH } from '#lib/server/scrape/f95-scraper';
+import { syncAcTranslationsToCheckerVersion } from '#lib/server/translation-ac-status';
 import {
 	shouldNotifyTranslatorOnAutoCheckVersionBump,
 	tradVerIndicatesIntegrated
-} from '$lib/server/translation-notify-rules';
+} from '#lib/server/translation-notify-rules';
 import {
 	hasF95CheckerGameVersionChange,
 	isF95CheckerVersionAligned,
 	needsF95VersionBump,
 	normalizeCheckerVersion
-} from '$lib/utils/f95-checker-alignment';
-import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
+} from '#lib/utils/f95-checker-alignment';
+import { resolveGameThreadLink } from '#lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 
 export type AutoCheckIssue = {

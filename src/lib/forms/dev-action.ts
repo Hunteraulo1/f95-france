@@ -1,5 +1,5 @@
-import { createActionResultEnhance } from '$lib/forms/enhance';
-import type { ActionResult, SubmitFunction } from '@sveltejs/kit';
+import { createActionResultEnhance } from '#lib/forms/enhance';
+import type { ActionResult, SubmitFunction } from '$app/forms';
 
 /** Données renvoyées par une action dev (`success` / `failure`). */
 export function actionDataRecord(result: ActionResult): Record<string, unknown> | null {

@@ -1,15 +1,15 @@
 import {
 	checkPasswordResetRequestThrottle,
 	recordPasswordResetRequest
-} from '$lib/server/login-throttle';
-import { isSmtpConfigured } from '$lib/server/mail';
-import { requestPasswordResetByEmail } from '$lib/server/password-reset';
+} from '#lib/server/login-throttle';
+import { isSmtpConfigured } from '#lib/server/mail';
+import { requestPasswordResetByEmail } from '#lib/server/password-reset';
 import {
 	extractTurnstileTokenFromFormData,
 	getTurnstileSiteKey,
 	isTurnstileConfigured,
 	verifyTurnstileFromForm
-} from '$lib/server/turnstile';
+} from '#lib/server/turnstile';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

@@ -1,5 +1,5 @@
-import { loadDashboardAppLogsPage } from '$lib/server/dashboard-app-logs-page-load';
-import { assertPermission } from '$lib/server/permissions';
+import { loadDashboardAppLogsPage } from '#lib/server/dashboard-app-logs-page-load';
+import { assertPermission } from '#lib/server/permissions';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

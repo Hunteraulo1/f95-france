@@ -1,4 +1,4 @@
-import type { GameEngineType } from '$lib/types';
+import type { GameEngineType } from '#lib/types';
 
 const htmlEntities: Record<string, string> = {
 	'&amp;': '&',

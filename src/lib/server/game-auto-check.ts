@@ -1,11 +1,11 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasGameAutoCheckColumn } from '$lib/server/schema-column-compat';
-import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasGameAutoCheckColumn } from '#lib/server/schema-column-compat';
+import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
 import { eq } from 'drizzle-orm';
 
-export { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+export { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
 
 /**
  * Valeur à persister pour `game.game_auto_check` : forcée à `false` si le site n’est pas F95Zone.

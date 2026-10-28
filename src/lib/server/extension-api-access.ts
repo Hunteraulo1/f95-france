@@ -1,9 +1,9 @@
-import { permissionGranted } from '$lib/permissions/check';
-import { EXTENSION_API_ROUTE_PREFIX } from '$lib/server/api-keys';
-import { getUserById } from '$lib/server/auth';
-import type { User } from '$lib/server/db/schema';
-import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '$lib/server/dev-impersonation';
-import { hasPermissionForUser } from '$lib/server/permissions';
+import { permissionGranted } from '#lib/permissions/check';
+import { EXTENSION_API_ROUTE_PREFIX } from '#lib/server/api-keys';
+import { getUserById } from '#lib/server/auth';
+import type { User } from '#lib/server/db/schema';
+import { DEV_IMPERSONATION_ORIGIN_COOKIE } from '#lib/server/dev-impersonation';
+import { hasPermissionForUser } from '#lib/server/permissions';
 
 /** Préfixes d’`Origin` émis par le runtime extension (service worker, popup). */
 const EXTENSION_ORIGIN_PREFIXES = [

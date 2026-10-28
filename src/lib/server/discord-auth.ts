@@ -1,23 +1,23 @@
-import * as auth from '$lib/server/auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import * as auth from '#lib/server/auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	getDiscordAvatarUrl,
 	getDiscordGuildMemberRoles,
 	type DiscordIdentity
-} from '$lib/server/discord-oauth';
-import type { DiscordOAuthContext } from '$lib/server/discord-oauth-state';
+} from '#lib/server/discord-oauth';
+import type { DiscordOAuthContext } from '#lib/server/discord-oauth-state';
 import {
 	clearDiscordSignupPendingCookie,
 	setDiscordSignupPendingCookie,
 	type DiscordSignupPending
-} from '$lib/server/discord-signup-pending';
-import { sendVerificationEmailForUser } from '$lib/server/email-verification';
+} from '#lib/server/discord-signup-pending';
+import { sendVerificationEmailForUser } from '#lib/server/email-verification';
 import {
 	REGISTRATION_INVITE_INVALID_MESSAGE,
 	isRegistrationEnabled,
 	verifyRegistrationInvite
-} from '$lib/server/registration-policy';
+} from '#lib/server/registration-policy';
 import { encodeBase64url } from '@oslojs/encoding';
 import { redirect, type RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -214,7 +214,7 @@ async function registerUserFromDiscordWithUsername(params: {
 	}
 
 	try {
-		const { notifyNewUserRegistration } = await import('$lib/server/notifications');
+		const { notifyNewUserRegistration } = await import('#lib/server/notifications');
 		await notifyNewUserRegistration(user.id, params.username);
 	} catch (notificationError) {
 		console.error('Erreur notification inscription Discord:', notificationError);

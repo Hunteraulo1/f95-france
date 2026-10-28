@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import { translator } from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import { translator } from '#lib/server/db/schema';
 import { asc } from 'drizzle-orm';
 
 export async function listTranslatorFilterOptions(): Promise<{ id: string; name: string }[]> {

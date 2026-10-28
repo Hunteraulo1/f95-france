@@ -1,8 +1,8 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import type { AutoCheckResult } from '$lib/server/check-version';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { notifyAutoCheckIssues } from '$lib/server/notifications';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import type { AutoCheckResult } from '#lib/server/check-version';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { notifyAutoCheckIssues } from '#lib/server/notifications';
 import { eq } from 'drizzle-orm';
 
 export type AutoCheckTriggerSource = 'cron' | 'manual' | 'worker';

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FormGameType } from '$lib/types';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import type { FormGameType } from '#lib/types';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import Input from './Input.svelte';
 

@@ -1,4 +1,4 @@
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
+import { formatUserEmailForDisplay } from '#lib/permissions/user-email';
 import {
 	createApiKey,
 	listApiKeysForAdmin,
@@ -6,10 +6,10 @@ import {
 	revokeApiKeyForActor,
 	updateApiKeyLimitsAdmin,
 	validateApiKeyLabelForActor
-} from '$lib/server/api-keys';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertPermission, hasPermission } from '$lib/server/permissions';
+} from '#lib/server/api-keys';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertPermission, hasPermission } from '#lib/server/permissions';
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';

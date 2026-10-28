@@ -1,9 +1,9 @@
 <script lang="ts">
-	import TranslatorContributorInput from '$lib/components/dashboard/TranslatorContributorInput.svelte';
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import { newToast } from '$lib/stores';
-	import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { GAME_ENGINE_SELECT_VALUES } from '$lib/utils/game-translation-labels';
+	import TranslatorContributorInput from '#lib/components/dashboard/TranslatorContributorInput.svelte';
+	import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+	import { newToast } from '#lib/stores';
+	import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
+	import { GAME_ENGINE_SELECT_VALUES } from '#lib/utils/game-translation-labels';
 
 	export type EditingTranslationForm = {
 		translationName: string;

@@ -1,4 +1,4 @@
-import type { GameEngineType } from '$lib/types';
+import type { GameEngineType } from '#lib/types';
 
 const ALLOWED = ['renpy', 'rpgm', 'unity', 'unreal', 'flash', 'html', 'qsp', 'other'] as const;
 

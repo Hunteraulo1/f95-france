@@ -9,7 +9,12 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
+		"moduleResolution": "bundler",
+		// Miroir du champ `imports` de package.json : TS ne teste pas les extensions sur ses cibles
+		"paths": {
+			"#lib": ["./src/lib"],
+			"#lib/*": ["./src/lib/*"]
+		}
 	},
 	// Les dossiers commençant par `.` ne sont pas couverts par `src` (security.txt, etc.)
 	"include": ["src", "src/**/.well-known/**/*", "*"]

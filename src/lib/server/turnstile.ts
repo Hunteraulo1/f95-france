@@ -1,7 +1,6 @@
-import { env } from '$env/dynamic/public';
-import { getRequestClientAddress } from '$lib/server/client-address';
-import { privateEnv } from '$lib/server/private-env';
-import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
+import { getRequestClientAddress } from '#lib/server/client-address';
+import { privateEnv } from '#lib/server/private-env';
+import { TURNSTILE_FORM_FIELD } from '#lib/turnstile/constants';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export { TURNSTILE_FORM_FIELD };
@@ -17,7 +16,7 @@ type TurnstileVerifyResponse = {
 };
 
 export function isTurnstileConfigured(): boolean {
-	const siteKey = env.PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+	const siteKey = process.env.PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
 	const secretKey = privateEnv('TURNSTILE_SECRET_KEY')?.trim() ?? '';
 	return siteKey.length > 0 && secretKey.length > 0;
 }
@@ -25,7 +24,7 @@ export function isTurnstileConfigured(): boolean {
 /** Clé site publique pour le widget (vide si non configuré). */
 export function getTurnstileSiteKey(): string {
 	if (!isTurnstileConfigured()) return '';
-	return env.PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+	return process.env.PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
 }
 
 async function verifyTurnstileToken(

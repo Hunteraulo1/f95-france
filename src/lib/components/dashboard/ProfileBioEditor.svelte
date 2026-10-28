@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import {
 		applyBioMarkdownAction,
 		BIO_MARKDOWN_TOOLBAR,
 		type BioMarkdownAction
-	} from '$lib/markdown/bio-toolbar';
-	import { PROFILE_BIO_MAX_LENGTH } from '$lib/profile/custom-profile';
+	} from '#lib/markdown/bio-toolbar';
+	import { PROFILE_BIO_MAX_LENGTH } from '#lib/profile/custom-profile';
 	import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 	import { EditorState } from '@codemirror/state';
 	import type { EditorView } from '@codemirror/view';

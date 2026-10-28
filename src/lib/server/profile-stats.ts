@@ -1,7 +1,7 @@
-import { isTranslationOutdatedForLinkedTranslator } from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { isSubmissionInProgress } from '$lib/utils/submissions';
+import { isTranslationOutdatedForLinkedTranslator } from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { isSubmissionInProgress } from '#lib/utils/submissions';
 import { count, eq, or } from 'drizzle-orm';
 
 export type ProfileStats = {

@@ -1,4 +1,4 @@
-import { building } from '$app/environment';
+import { building } from '$app/env';
 import {
 	apiKeyIsExtensionScoped,
 	extractApiKeyFromRequest,
@@ -6,21 +6,21 @@ import {
 	isPathAllowedForApiKeyScope,
 	jsonApiKeyGuardResponse,
 	validateApiKeyRequest
-} from '$lib/server/api-keys';
-import { apiPublicErrorCorsHeaders } from '$lib/server/api-public-cors';
-import { logApp } from '$lib/server/app-logger';
-import * as auth from '$lib/server/auth';
-import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
-import { isPublicSitePath } from '$lib/server/dashboard-auth';
-import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
-import { warmHomePayload } from '$lib/server/home-page-data';
-import { logApiAction } from '$lib/server/logger';
-import { getMaintenanceMode } from '$lib/server/maintenance-mode';
-import { notifyApiError } from '$lib/server/notifications';
-import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '$lib/server/permissions';
-import { applySecurityHeaders } from '$lib/server/security-headers';
-import { touchUserLastSeen } from '$lib/server/user-last-connection';
-import type { Handle, RequestEvent, ServerInit } from '@sveltejs/kit';
+} from '#lib/server/api-keys';
+import { apiPublicErrorCorsHeaders } from '#lib/server/api-public-cors';
+import { logApp } from '#lib/server/app-logger';
+import * as auth from '#lib/server/auth';
+import { getRequestClientAddressOrUnknown } from '#lib/server/client-address';
+import { isPublicSitePath } from '#lib/server/dashboard-auth';
+import { isExtensionOriginAllowed } from '#lib/server/extension-origin';
+import { warmHomePayload } from '#lib/server/home-page-data';
+import { logApiAction } from '#lib/server/logger';
+import { getMaintenanceMode } from '#lib/server/maintenance-mode';
+import { notifyApiError } from '#lib/server/notifications';
+import { attachPermissionsToLocals, ensurePermissionsCatalogSeeded } from '#lib/server/permissions';
+import { applySecurityHeaders } from '#lib/server/security-headers';
+import { touchUserLastSeen } from '#lib/server/user-last-connection';
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit/hooks';
 
 const EXTERNAL_PUBLIC_API_ORIGIN = 'https://api.f95france.site';
 
@@ -434,17 +434,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	return applySecurityHeaders(response);
 };
 
-export const handleError = async ({
-	error,
-	event,
-	status,
-	message
-}: {
-	error: unknown;
-	event: RequestEvent;
-	status: number;
-	message: string;
-}) => {
+export const handleError: HandleServerError = async ({ kind, error, event }) => {
+	const { status, message } =
+		kind === 'unknown' ? { status: 500, message: 'Internal Error' } : error;
 	const method = event.request.method.toUpperCase();
 	const pathname = event.url.pathname;
 
@@ -455,9 +447,9 @@ export const handleError = async ({
 
 		// Construire le message d'erreur avec la stack trace
 		let errorMessage = message || 'Erreur inconnue';
-		if (error instanceof Error) {
+		if (kind === 'unknown' && error instanceof Error) {
 			errorMessage = `${error.message}${error.stack ? `\n\nStack trace:\n${error.stack}` : ''}`;
-		} else if (error) {
+		} else if (kind === 'unknown' && error) {
 			errorMessage = String(error);
 		}
 

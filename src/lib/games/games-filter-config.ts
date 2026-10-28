@@ -1,6 +1,6 @@
-import tags from '$lib/assets/f95-tags.json';
-import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
-import { GAME_ENGINE_SELECT_VALUES } from '$lib/utils/game-translation-labels';
+import tags from '#lib/assets/f95-tags.json';
+import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
+import { GAME_ENGINE_SELECT_VALUES } from '#lib/utils/game-translation-labels';
 
 export type GamesFilterValueState = {
 	value: string;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ProfileStats } from '$lib/server/profile-stats';
+	import type { ProfileStats } from '#lib/server/profile-stats';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CirclePlus from '@lucide/svelte/icons/circle-plus';
 	import Clock from '@lucide/svelte/icons/clock';

@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasPermission } from '$lib/server/permissions';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasPermission } from '#lib/server/permissions';
 import { and, eq, sql } from 'drizzle-orm';
 
 type CacheKey = 'global' | `user:${string}`;

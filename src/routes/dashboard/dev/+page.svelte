@@ -1,10 +1,10 @@
 <script lang="ts">
-	import DevDiscordWebhookCard from '$lib/components/dashboard/dev/DevDiscordWebhookCard.svelte';
-	import DevF95ScrapeCard from '$lib/components/dashboard/dev/DevF95ScrapeCard.svelte';
-	import DevGoogleSheetsCard from '$lib/components/dashboard/dev/DevGoogleSheetsCard.svelte';
-	import DevLegacyApiSyncCard from '$lib/components/dashboard/dev/DevLegacyApiSyncCard.svelte';
-	import DevTranslatorMpCard from '$lib/components/dashboard/dev/DevTranslatorMpCard.svelte';
-	import type { ConfigClientSafe } from '$lib/server/app-config';
+	import DevDiscordWebhookCard from '#lib/components/dashboard/dev/DevDiscordWebhookCard.svelte';
+	import DevF95ScrapeCard from '#lib/components/dashboard/dev/DevF95ScrapeCard.svelte';
+	import DevGoogleSheetsCard from '#lib/components/dashboard/dev/DevGoogleSheetsCard.svelte';
+	import DevLegacyApiSyncCard from '#lib/components/dashboard/dev/DevLegacyApiSyncCard.svelte';
+	import DevTranslatorMpCard from '#lib/components/dashboard/dev/DevTranslatorMpCard.svelte';
+	import type { ConfigClientSafe } from '#lib/server/app-config';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

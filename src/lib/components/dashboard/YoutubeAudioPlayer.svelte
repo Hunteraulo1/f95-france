@@ -3,7 +3,7 @@
 		buildYoutubeAudioEmbedUrl,
 		isYoutubeEmbedPostMessageOrigin,
 		YOUTUBE_EMBED_WIDGET_ID
-	} from '$lib/profile/youtube-music';
+	} from '#lib/profile/youtube-music';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
 	import Volume2 from '@lucide/svelte/icons/volume-2';

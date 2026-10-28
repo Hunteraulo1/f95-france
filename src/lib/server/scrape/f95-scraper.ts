@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 import * as v from 'valibot';
 
 /**

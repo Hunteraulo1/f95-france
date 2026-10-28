@@ -1,4 +1,4 @@
-import { db } from '$lib/server/db';
+import { db } from '#lib/server/db';
 import { sql } from 'drizzle-orm';
 
 const cache = new Map<string, boolean>();

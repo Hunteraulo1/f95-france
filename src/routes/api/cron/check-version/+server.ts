@@ -1,9 +1,8 @@
-import { env } from '$env/dynamic/private';
-import { logApp } from '$lib/server/app-logger';
-import { runAutoCheckVersions } from '$lib/server/check-version';
-import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { logApp } from '#lib/server/app-logger';
+import { runAutoCheckVersions } from '#lib/server/check-version';
+import { cronAuthFailureMessage, verifyCronAuth } from '#lib/server/cron-auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -37,7 +36,7 @@ async function handleCheckVersion(request: Request): Promise<Response> {
 	const startedAt = Date.now();
 
 	try {
-		const maxWaitMs = parseCronMaxWaitMs(env.CRON_MAX_WAIT_MS);
+		const maxWaitMs = parseCronMaxWaitMs(process.env.CRON_MAX_WAIT_MS);
 		const runPromise = runAutoCheckVersions({ logSource: 'cron', triggerSource: 'cron' });
 		const timeoutResult = await Promise.race([
 			runPromise

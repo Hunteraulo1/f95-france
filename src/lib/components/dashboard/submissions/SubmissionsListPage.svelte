@@ -2,13 +2,13 @@
 	import { deserialize } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import SubmissionCard from '$lib/components/dashboard/submissions/SubmissionCard.svelte';
-	import SubmissionFilters from '$lib/components/dashboard/submissions/SubmissionFilters.svelte';
-	import SubmissionModal from '$lib/components/dashboard/submissions/SubmissionModal.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import { user } from '$lib/stores';
-	import { getStatusFilterLabel } from '$lib/utils/submissions';
+	import SubmissionCard from '#lib/components/dashboard/submissions/SubmissionCard.svelte';
+	import SubmissionFilters from '#lib/components/dashboard/submissions/SubmissionFilters.svelte';
+	import SubmissionModal from '#lib/components/dashboard/submissions/SubmissionModal.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import { user } from '#lib/stores';
+	import { getStatusFilterLabel } from '#lib/utils/submissions';
 	import { get } from 'svelte/store';
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,7 +100,7 @@
 		if (options?.skipRefresh) return;
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
 		await goto(`${resolve(basePath)}${buildQuery({})}`, {
-			noScroll: true,
+			reset: false,
 			invalidateAll: true
 		});
 	};
@@ -113,7 +113,7 @@
 		try {
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- href = resolve(pathname) + ?search
 			await goto(`${resolve(basePath)}${buildQuery({ status })}`, {
-				noScroll: true,
+				reset: false,
 				invalidateAll: true
 			});
 		} catch {

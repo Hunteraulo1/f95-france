@@ -1,40 +1,40 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
-import * as table from '$lib/server/db/schema';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import { enginesPerGameSubquery, parseEngineTypes } from '#lib/server/db/engines-per-game-subquery';
+import * as table from '#lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
-} from '$lib/server/discord-webhook';
-import { resolveTranslatorContributorIdsForStorage } from '$lib/server/ensure-translator';
+} from '#lib/server/discord-webhook';
+import { resolveTranslatorContributorIdsForStorage } from '#lib/server/ensure-translator';
 import {
 	clampTranslationAc,
 	gameAutoCheckEnabledForWebsite,
 	resolveGameAutoCheckForWebsite
-} from '$lib/server/game-auto-check';
-import { translateTextToFrench } from '$lib/server/game-description-fr';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
+} from '#lib/server/game-auto-check';
+import { translateTextToFrench } from '#lib/server/game-description-fr';
+import { coerceGameEngineType } from '#lib/server/game-engine-type';
 import {
 	assertDirectGameWriteAllowed,
 	assertGameManageAccess,
 	loadCurrentUserOrThrow,
 	parseRequestDirectMode,
 	resolveGameWriteMode
-} from '$lib/server/game-manage-guard';
+} from '#lib/server/game-manage-guard';
 import {
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { hasPermission } from '$lib/server/permissions';
-import { caseInsensitiveLike } from '$lib/server/sql-like';
-import { createGameSubmission, createTranslationSubmission } from '$lib/server/submissions';
-import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
+} from '#lib/server/google-sheets-sync';
+import { hasPermission } from '#lib/server/permissions';
+import { caseInsensitiveLike } from '#lib/server/sql-like';
+import { createGameSubmission, createTranslationSubmission } from '#lib/server/submissions';
+import { incrementUserGameCounter } from '#lib/server/user-stats-counters';
 import {
 	gameImageRequiredForWebsite,
 	normalizeGameImageForStorage,
 	normalizeTranslationTversion
-} from '$lib/utils/game-form-validation';
-import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
+} from '#lib/utils/game-form-validation';
+import { validateGameLinkFields, validateTranslationLinkField } from '#lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, eq, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';

@@ -1,10 +1,10 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
 import {
 	createLinkCode,
 	LINK_CODE_TTL_MS,
 	listExtensionKeys,
 	revokeExtensionKey
-} from '$lib/server/extension-link';
+} from '#lib/server/extension-link';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

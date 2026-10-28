@@ -1,10 +1,10 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { isSmtpConfigured, resolveEmailLinkOrigin, sendMail } from '$lib/server/mail';
-import { hashSessionSecret } from '$lib/server/password-hash';
-import { privateEnv } from '$lib/server/private-env';
-import { SITE, absoluteUrl } from '$lib/site';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { isSmtpConfigured, resolveEmailLinkOrigin, sendMail } from '#lib/server/mail';
+import { hashSessionSecret } from '#lib/server/password-hash';
+import { privateEnv } from '#lib/server/private-env';
+import { SITE, absoluteUrl } from '#lib/site';
 import { encodeBase64url } from '@oslojs/encoding';
 import { redirect } from '@sveltejs/kit';
 import { desc, eq, lt } from 'drizzle-orm';

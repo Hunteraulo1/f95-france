@@ -1,32 +1,32 @@
-import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { appLogError, appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
-} from '$lib/server/discord-webhook';
-import { resolveTranslatorContributorIdsForStorage } from '$lib/server/ensure-translator';
-import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
+} from '#lib/server/discord-webhook';
+import { resolveTranslatorContributorIdsForStorage } from '#lib/server/ensure-translator';
+import { coerceGameEngineType, defaultGameTypeForGame } from '#lib/server/game-engine-type';
 import {
 	assertDirectGameWriteAllowed,
 	assertGameManageAccess,
 	loadCurrentUserOrThrow,
 	parseRequestDirectMode,
 	resolveGameWriteMode
-} from '$lib/server/game-manage-guard';
+} from '#lib/server/game-manage-guard';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { hasPermission } from '$lib/server/permissions';
+} from '#lib/server/google-sheets-sync';
+import { hasPermission } from '#lib/server/permissions';
 import {
 	createTranslationDeleteSubmission,
 	createTranslationSubmission
-} from '$lib/server/submissions';
-import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
-import { validateTranslationLinkField } from '$lib/utils/link-validation';
-import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
+} from '#lib/server/submissions';
+import { incrementUserGameCounter } from '#lib/server/user-stats-counters';
+import { validateTranslationLinkField } from '#lib/utils/link-validation';
+import { normalizeNullableHistoryString } from '#lib/utils/normalize-nullable-string';
 import { json } from '@sveltejs/kit';
 import { and, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';

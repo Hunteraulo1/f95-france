@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { page } from '$app/state';
-	import { isAgeVerified, setAgeVerified } from '$lib/age-verification';
-	import AgeVerificationModal from '$lib/components/AgeVerificationModal.svelte';
-	import Footer from '$lib/components/Footer.svelte';
-	import Header from '$lib/components/Header.svelte';
-	import { SITE } from '$lib/site';
-	import { applyFaviconEnvBadge } from '$lib/site-favicon';
-	import { resolveSiteEnvBadge } from '$lib/site-host';
-	import { initializeUserFromLocals } from '$lib/stores';
+	import { isAgeVerified, setAgeVerified } from '#lib/age-verification';
+	import AgeVerificationModal from '#lib/components/AgeVerificationModal.svelte';
+	import Footer from '#lib/components/Footer.svelte';
+	import Header from '#lib/components/Header.svelte';
+	import { SITE } from '#lib/site';
+	import { applyFaviconEnvBadge } from '#lib/site-favicon';
+	import { resolveSiteEnvBadge } from '#lib/site-host';
+	import { initializeUserFromLocals } from '#lib/stores';
 	import {
 		applyAppTheme,
 		getThemePreference,
 		setupSystemThemeListener,
 		syncThemePreferenceFromUser,
 		themePreference
-	} from '$lib/theme';
+	} from '#lib/theme';
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import '../app.css';

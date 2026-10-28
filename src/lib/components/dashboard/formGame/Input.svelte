@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { FormGameType } from '$lib/types';
-	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
-	import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
-	import { isValidRequiredHttpUrl } from '$lib/utils/link-validation';
+	import type { FormGameType } from '#lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
+	import { isIntegrated, isNoTranslation } from '#lib/utils/game-form-validation';
+	import { isValidRequiredHttpUrl } from '#lib/utils/link-validation';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Link2 from '@lucide/svelte/icons/link-2';
 	import Link2Off from '@lucide/svelte/icons/link-2-off';

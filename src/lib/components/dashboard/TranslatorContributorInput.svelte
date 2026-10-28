@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import AddTraductorModal from '$lib/components/dashboard/AddTraductorModal.svelte';
+	import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+	import AddTraductorModal from '#lib/components/dashboard/AddTraductorModal.svelte';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 
 	type TranslatorOption = { id: string; name: string };

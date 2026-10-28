@@ -1,8 +1,8 @@
-import { resolveRoleMaxApiKeys } from '$lib/permissions/role-api-keys';
-import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
-import { SYSTEM_ROLE_PRIORITIES } from '$lib/permissions/role-priority';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { resolveRoleMaxApiKeys } from '#lib/permissions/role-api-keys';
+import { resolveRoleBadgeStyle } from '#lib/permissions/role-badge-style';
+import { SYSTEM_ROLE_PRIORITIES } from '#lib/permissions/role-priority';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { sql } from 'drizzle-orm';
 
 export type AppRoleRecord = typeof table.appRole.$inferSelect;

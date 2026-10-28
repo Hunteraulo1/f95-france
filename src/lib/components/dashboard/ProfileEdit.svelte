@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
-	import MarkdownContent from '$lib/components/MarkdownContent.svelte';
-	import ProfileBioEditor from '$lib/components/dashboard/ProfileBioEditor.svelte';
-	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { parseMarkdownDocument } from '$lib/markdown/content';
-	import type { RoleEditMode } from '$lib/permissions/edit-mode';
-	import type { ProfileCustomizeFlags } from '$lib/permissions/profile-customize';
-	import type { CustomProfileTheme } from '$lib/profile/custom-profile';
+	import MarkdownContent from '#lib/components/MarkdownContent.svelte';
+	import ProfileBioEditor from '#lib/components/dashboard/ProfileBioEditor.svelte';
+	import TranslatorPagesEditor from '#lib/components/dashboard/TranslatorPagesEditor.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { parseMarkdownDocument } from '#lib/markdown/content';
+	import type { RoleEditMode } from '#lib/permissions/edit-mode';
+	import type { ProfileCustomizeFlags } from '#lib/permissions/profile-customize';
+	import type { CustomProfileTheme } from '#lib/profile/custom-profile';
 	import {
 		PROFILE_BACKGROUND_SIZE_LABEL,
 		PROFILE_BIO_MAX_LENGTH,
 		PROFILE_CURSOR_DISPLAY_PX
-	} from '$lib/profile/custom-profile';
+	} from '#lib/profile/custom-profile';
 
 	type LinkedTranslator = {
 		id: string;

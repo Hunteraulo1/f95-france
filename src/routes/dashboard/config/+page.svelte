@@ -2,11 +2,10 @@
 	import { enhance } from '$app/forms';
 	import { replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
-	import ServicesStatusCard from '$lib/components/dashboard/ServicesStatusCard.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { page } from '$app/state';
+	import ServicesStatusCard from '#lib/components/dashboard/ServicesStatusCard.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import { onMount, tick } from 'svelte';
-	import { get } from 'svelte/store';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -43,7 +42,7 @@
 
 		void tick().then(() => {
 			setTimeout(() => {
-				replaceState(resolve('/dashboard/config'), get(page).state);
+				replaceState(resolve('/dashboard/config'), page.state);
 			}, 0);
 		});
 	});

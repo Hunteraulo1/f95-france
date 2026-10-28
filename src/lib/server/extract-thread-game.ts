@@ -1,19 +1,18 @@
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
-import type { PermissionKey } from '$lib/permissions/catalog';
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { dev } from '$app/env';
+import type { PermissionKey } from '#lib/permissions/catalog';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { randomUUID } from 'node:crypto';
-import type { ManagerExtractDraft } from '$lib/server/extract-draft';
-import { resolveGameAutoCheckForWebsite } from '$lib/server/game-auto-check';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { hasPermission } from '$lib/server/permissions';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
-import { scrapeThread, type ScrapedThreadGame } from '$lib/server/scrape';
-import type { GameEngineType } from '$lib/types';
-import { normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
+import type { ManagerExtractDraft } from '#lib/server/extract-draft';
+import { resolveGameAutoCheckForWebsite } from '#lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '#lib/server/game-description-fr';
+import { coerceGameEngineType } from '#lib/server/game-engine-type';
+import { hasPermission } from '#lib/server/permissions';
+import { resolveShouldCreateSubmissionForUser } from '#lib/server/role-edit-mode';
+import { scrapeThread, type ScrapedThreadGame } from '#lib/server/scrape';
+import type { GameEngineType } from '#lib/types';
+import { normalizeCheckerVersion } from '#lib/utils/f95-checker-alignment';
 import { and, eq, sql } from 'drizzle-orm';
 
 const EXTRACT_PERMISSION: PermissionKey = 'games.manage';
@@ -63,8 +62,8 @@ function parseAllowedOrigins(raw: string): Set<string> {
 function allowedOriginsForSite(website: ExtractThreadWebsite): Set<string> {
 	const raw =
 		website === 'f95z'
-			? (env.EXTRACT_F95_ALLOWED_ORIGINS ?? '')
-			: (env.EXTRACT_LC_ALLOWED_ORIGINS ?? '');
+			? (process.env.EXTRACT_F95_ALLOWED_ORIGINS ?? '')
+			: (process.env.EXTRACT_LC_ALLOWED_ORIGINS ?? '');
 	return parseAllowedOrigins(raw);
 }
 

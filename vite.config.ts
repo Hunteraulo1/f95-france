@@ -28,7 +28,7 @@ export default defineConfig({
 			csrf: {
 				trustedOrigins: buildTrustedOrigins()
 			},
-			adapter: adapter({ runtime: 'nodejs24.x' }),
+			adapter: adapter(),
 			prerender: {
 				handleHttpError: 'warn'
 			},

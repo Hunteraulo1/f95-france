@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import DiscordIcon from '$lib/components/DiscordIcon.svelte';
-	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
-	import { discordLoginErrorMessage } from '$lib/discord-oauth-url';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
+	import DiscordIcon from '#lib/components/DiscordIcon.svelte';
+	import TurnstileWidget from '#lib/components/TurnstileWidget.svelte';
+	import { discordLoginErrorMessage } from '#lib/discord-oauth-url';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { TURNSTILE_FORM_FIELD } from '#lib/turnstile/constants';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import type { ActionData, PageData } from './$types';
 

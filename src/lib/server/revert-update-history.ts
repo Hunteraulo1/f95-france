@@ -1,16 +1,16 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '$lib/server/game-auto-check';
-import { coerceGameEngineType } from '$lib/server/game-engine-type';
-import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { clampTranslationAc, getGameAllowsTranslationAutoCheck } from '#lib/server/game-auto-check';
+import { coerceGameEngineType } from '#lib/server/game-engine-type';
+import { recordTranslationChangeInUpdateHistory } from '#lib/server/game-updates';
 import {
 	deleteTranslationFromGoogleSheet,
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
-import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
+} from '#lib/server/google-sheets-sync';
+import { hasUpdateHistoryTable } from '#lib/server/schema-column-compat';
+import { resolveTranslatorAlertsEnabledOnWrite } from '#lib/server/translator-follow-alerts';
 import {
 	applyHistorySnapshotToTranslationSnapshot,
 	parseTranslationUpdateHistoryChanges,
@@ -18,9 +18,9 @@ import {
 	translationRowToHistorySnapshot,
 	type TranslationHistorySnapshot,
 	type UpdateHistoryAction
-} from '$lib/server/update-history';
-import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
-import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
+} from '#lib/server/update-history';
+import { incrementUserGameCounter } from '#lib/server/user-stats-counters';
+import { normalizeNullableHistoryString } from '#lib/utils/normalize-nullable-string';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 export class UpdateHistoryRevertError extends Error {

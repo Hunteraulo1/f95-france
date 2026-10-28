@@ -1,4 +1,4 @@
-import type { PublicUpdateRow } from '$lib/server/public-updates';
+import type { PublicUpdateRow } from '#lib/server/public-updates';
 
 export type UpdatesDaySection = {
 	status: string;

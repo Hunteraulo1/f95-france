@@ -1,10 +1,10 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { userHasLinkedTranslator } from '$lib/server/linked-translator';
-import { notifyNewTranslatorApplication } from '$lib/server/notifications';
-import { sendDiscordWebhookAdminNewTranslatorApplication } from '$lib/server/discord-webhook';
-import { invalidatePendingTranslatorApplicationsCountCache } from '$lib/server/pending-translator-applications-count';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { userHasLinkedTranslator } from '#lib/server/linked-translator';
+import { notifyNewTranslatorApplication } from '#lib/server/notifications';
+import { sendDiscordWebhookAdminNewTranslatorApplication } from '#lib/server/discord-webhook';
+import { invalidatePendingTranslatorApplicationsCountCache } from '#lib/server/pending-translator-applications-count';
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';

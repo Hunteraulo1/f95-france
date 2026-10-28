@@ -1,6 +1,5 @@
-import { env } from '$env/dynamic/private';
-import type { DiscordOAuthIntent } from '$lib/server/discord-oauth-state';
-import { discordAvatarApiUrl, resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
+import type { DiscordOAuthIntent } from '#lib/server/discord-oauth-state';
+import { discordAvatarApiUrl, resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
 
 const DISCORD_API_BASE = 'https://discord.com/api';
 const DISCORD_OAUTH_SCOPES_LINK = ['identify', 'guilds.members.read'] as const;
@@ -34,10 +33,10 @@ export function getDiscordOAuthScopes(intent: DiscordOAuthIntent) {
 }
 
 export function getDiscordOAuthConfig() {
-	const clientId = env.DISCORD_OAUTH_CLIENT_ID?.trim() ?? '';
-	const clientSecret = env.DISCORD_OAUTH_CLIENT_SECRET?.trim() ?? '';
-	const guildId = env.DISCORD_OAUTH_GUILD_ID?.trim() ?? '';
-	const translatorRoleId = env.DISCORD_OAUTH_TRANSLATOR_ROLE_ID?.trim() ?? '';
+	const clientId = process.env.DISCORD_OAUTH_CLIENT_ID?.trim() ?? '';
+	const clientSecret = process.env.DISCORD_OAUTH_CLIENT_SECRET?.trim() ?? '';
+	const guildId = process.env.DISCORD_OAUTH_GUILD_ID?.trim() ?? '';
+	const translatorRoleId = process.env.DISCORD_OAUTH_TRANSLATOR_ROLE_ID?.trim() ?? '';
 	const autoRoleSync = isDiscordOAuthAutoRoleSyncEnabled();
 	return { clientId, clientSecret, guildId, translatorRoleId, autoRoleSync };
 }
@@ -47,7 +46,7 @@ export function getDiscordOAuthConfig() {
  * Activé par défaut (`DISCORD_OAUTH_AUTO_ROLE_SYNC` absent ou `true`).
  */
 export function isDiscordOAuthAutoRoleSyncEnabled(): boolean {
-	const raw = env.DISCORD_OAUTH_AUTO_ROLE_SYNC?.trim().toLowerCase();
+	const raw = process.env.DISCORD_OAUTH_AUTO_ROLE_SYNC?.trim().toLowerCase();
 	return raw !== 'false' && raw !== '0';
 }
 

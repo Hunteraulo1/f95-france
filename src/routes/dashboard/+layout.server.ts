@@ -1,17 +1,17 @@
-import { isPublicDashboardPath } from '$lib/server/dashboard-auth';
-import { getDevImpersonationOriginUser } from '$lib/server/dev-impersonation';
+import { isPublicDashboardPath } from '#lib/server/dashboard-auth';
+import { getDevImpersonationOriginUser } from '#lib/server/dev-impersonation';
 import {
 	emailVerificationRequired,
 	ensureEmailVerifiedOrRedirect,
 	isUserEmailVerified
-} from '$lib/server/email-verification';
-import { userHasLinkedTranslator } from '$lib/server/linked-translator';
-import { getMaintenanceMode } from '$lib/server/maintenance-mode';
-import { getPendingSubmissionsCountForUser } from '$lib/server/pending-submissions-count';
-import { getPendingTranslatorApplicationsCountForUser } from '$lib/server/pending-translator-applications-count';
-import { hasPermission } from '$lib/server/permissions';
-import { isRegistrationEnabled } from '$lib/server/registration-policy';
-import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
+} from '#lib/server/email-verification';
+import { userHasLinkedTranslator } from '#lib/server/linked-translator';
+import { getMaintenanceMode } from '#lib/server/maintenance-mode';
+import { getPendingSubmissionsCountForUser } from '#lib/server/pending-submissions-count';
+import { getPendingTranslatorApplicationsCountForUser } from '#lib/server/pending-translator-applications-count';
+import { hasPermission } from '#lib/server/permissions';
+import { isRegistrationEnabled } from '#lib/server/registration-policy';
+import { listRoleBadgeStylesMap } from '#lib/server/role-badge-styles';
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 

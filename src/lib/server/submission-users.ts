@@ -1,4 +1,4 @@
-import * as table from '$lib/server/db/schema';
+import * as table from '#lib/server/db/schema';
 import { alias } from 'drizzle-orm/mysql-core';
 
 /** Alias pour joindre l’admin ayant ouvert la soumission (distinct du créateur). */

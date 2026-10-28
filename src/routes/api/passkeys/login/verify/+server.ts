@@ -1,20 +1,20 @@
-import * as auth from '$lib/server/auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import * as auth from '#lib/server/auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
 	LOGIN_THROTTLE_MESSAGE,
 	loginRequiresCaptcha,
 	recordLoginFailure
-} from '$lib/server/login-throttle';
+} from '#lib/server/login-throttle';
 import {
 	base64URLToBytes,
 	consumePasskeyChallenge,
 	getExpectedOrigin,
 	getRpID
-} from '$lib/server/passkeys';
-import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '$lib/server/turnstile';
+} from '#lib/server/passkeys';
+import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '#lib/server/turnstile';
 import {
 	verifyAuthenticationResponse,
 	type AuthenticationResponseJSON

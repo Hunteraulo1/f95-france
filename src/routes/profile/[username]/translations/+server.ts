@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { loadProfileTranslationsForUser } from '#lib/server/profile-translations';
 import { json, error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

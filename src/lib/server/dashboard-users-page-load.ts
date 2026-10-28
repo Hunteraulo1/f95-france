@@ -1,13 +1,13 @@
-import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasPermission, listAppRoles } from '$lib/server/permissions';
+import { SYSTEM_ROLE_LABELS } from '#lib/permissions/catalog';
+import { formatUserEmailForDisplay } from '#lib/permissions/user-email';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasPermission, listAppRoles } from '#lib/server/permissions';
 import {
 	fetchLastApiActivityByUserIds,
 	resolveLastConnectionAt
-} from '$lib/server/user-last-connection';
-import { listRolesAssignableToUsers } from '$lib/server/user-role-assignment-guard';
+} from '#lib/server/user-last-connection';
+import { listRolesAssignableToUsers } from '#lib/server/user-role-assignment-guard';
 import { like, or, sql } from 'drizzle-orm';
 
 export const DASHBOARD_USERS_PAGE_SIZE = 20;

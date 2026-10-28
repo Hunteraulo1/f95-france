@@ -1,5 +1,5 @@
-import { parsePublicGamesListParams } from '$lib/games/games-filter-url';
-import { listPublicGames } from '$lib/server/public-games';
+import { parsePublicGamesListParams } from '#lib/games/games-filter-url';
+import { listPublicGames } from '#lib/server/public-games';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

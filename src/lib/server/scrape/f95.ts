@@ -1,5 +1,5 @@
-import type { ScrapedThreadGame } from '$lib/scrape/types';
-import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+import type { ScrapedThreadGame } from '#lib/scrape/types';
+import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 import {
 	fetchF95ScraperThread,
 	type F95ScraperThread,

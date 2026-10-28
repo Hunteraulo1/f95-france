@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { GAMES_VIEW_MODE_KEY, type GamesListViewMode } from '$lib/games/games-filter-config';
+	import GamesFilterContent from '#lib/components/games/GamesFilterContent.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { GAMES_VIEW_MODE_KEY, type GamesListViewMode } from '#lib/games/games-filter-config';
 	import {
 		buildPublicGamesListSearchParams,
 		createEmptyPublicGamesFilterSelections,
 		hasActivePublicGamesListFilters,
 		type PublicGamesListParams
-	} from '$lib/games/games-filter-url';
-	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
-	import type { PublicGameListItem } from '$lib/server/public-games';
-	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
-	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
+	} from '#lib/games/games-filter-url';
+	import { fetchPaginatedJson } from '#lib/infinite-scroll/fetch-paginated-json';
+	import type { PublicGameListItem } from '#lib/server/public-games';
+	import { getGameEngineHexColor, getGameEngineLabel } from '#lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
+	import { getTranslationProgressLabel } from '#lib/utils/game-translation-labels';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -229,7 +229,7 @@
 	<li class="list-row w-full items-start gap-3 py-3 hover:bg-base-200">
 		<div class="relative h-20 w-32 shrink-0">
 			<a
-				href={resolve(`/games/${game.id}`)}
+				href={resolve('/games/[id]', { id: game.id })}
 				class="block h-full w-full"
 				aria-hidden="true"
 				tabindex="-1"
@@ -268,7 +268,7 @@
 					</span>
 				{/each}
 				<a
-					href={resolve(`/games/${game.id}`)}
+					href={resolve('/games/[id]', { id: game.id })}
 					class="line-clamp-2 link leading-snug font-medium link-hover"
 				>
 					{game.name}
@@ -311,7 +311,7 @@
 
 		<div class="my-auto flex shrink-0 flex-col items-end gap-1">
 			<a
-				href={resolve(`/games/${game.id}`)}
+				href={resolve('/games/[id]', { id: game.id })}
 				class="btn w-full btn-ghost px-2 btn-sm"
 				aria-label={`Fiche de ${game.name}`}
 			>
@@ -339,7 +339,7 @@
 	<article class="card bg-base-100 shadow-sm transition card-border hover:shadow-md">
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			<a
-				href={resolve(`/games/${game.id}`)}
+				href={resolve('/games/[id]', { id: game.id })}
 				class="block h-full w-full"
 				aria-label={`Voir la fiche de ${game.name}`}
 			>
@@ -365,7 +365,7 @@
 		</figure>
 		<div class="card-body gap-2 p-4">
 			<h2 class="card-title line-clamp-1 text-base leading-snug">
-				<a href={resolve(`/games/${game.id}`)} class="line-clamp-1 link link-hover">
+				<a href={resolve('/games/[id]', { id: game.id })} class="line-clamp-1 link link-hover">
 					{game.name}
 				</a>
 			</h2>
@@ -410,7 +410,9 @@
 				<p class="text-xs text-base-content/50">{game.translationCount} traductions au total</p>
 			{/if}
 			<div class="mt-1 card-actions justify-end">
-				<a href={resolve(`/games/${game.id}`)} class="btn btn-ghost btn-sm">Fiche du jeu</a>
+				<a href={resolve('/games/[id]', { id: game.id })} class="btn btn-ghost btn-sm"
+					>Fiche du jeu</a
+				>
 				{#if game.link?.trim()}
 					<a
 						href={game.link}

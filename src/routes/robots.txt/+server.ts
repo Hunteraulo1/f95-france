@@ -1,6 +1,6 @@
-import { privateEnv } from '$lib/server/private-env';
-import { isRegistrationEnabled } from '$lib/server/registration-policy';
-import { absoluteUrl, siteOrigin } from '$lib/site';
+import { privateEnv } from '#lib/server/private-env';
+import { isRegistrationEnabled } from '#lib/server/registration-policy';
+import { absoluteUrl, siteOrigin } from '#lib/site';
 import type { RequestHandler } from './$types';
 
 /** robots.txt dynamique — origine et sitemap alignés sur SERVICE_URL_APP. */

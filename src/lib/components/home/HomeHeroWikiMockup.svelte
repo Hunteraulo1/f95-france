@@ -1,5 +1,5 @@
 <script lang="ts">
-	import HomeHeroMockupShell from '$lib/components/home/HomeHeroMockupShell.svelte';
+	import HomeHeroMockupShell from '#lib/components/home/HomeHeroMockupShell.svelte';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import FileText from '@lucide/svelte/icons/file-text';
 

@@ -1,4 +1,4 @@
-import type { GamesFilterGroupState, GamesFilterValueState } from '$lib/games/games-filter-config';
+import type { GamesFilterGroupState, GamesFilterValueState } from '#lib/games/games-filter-config';
 
 /** Logique de sélection (include / exclude) calquée sur FilterPopover de l’extension. */
 export function toggleGamesFilterValue(

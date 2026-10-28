@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import { getMariadbConfigFromEnv, type MariadbConfig } from './connection';

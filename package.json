@@ -3,6 +3,10 @@
 	"private": true,
 	"version": "4.12.3",
 	"type": "module",
+	"imports": {
+		"#lib": "./src/lib",
+		"#lib/*": "./src/lib/*"
+	},
 	"engines": {
 		"node": ">=24.0.0"
 	},

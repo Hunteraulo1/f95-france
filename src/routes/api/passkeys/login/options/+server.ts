@@ -1,12 +1,12 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	checkLoginThrottle,
 	loginRequiresCaptcha,
 	recordLoginFailure
-} from '$lib/server/login-throttle';
-import { getRpID, savePasskeyChallenge } from '$lib/server/passkeys';
-import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '$lib/server/turnstile';
+} from '#lib/server/login-throttle';
+import { getRpID, savePasskeyChallenge } from '#lib/server/passkeys';
+import { extractTurnstileTokenFromJson, verifyTurnstileFromForm } from '#lib/server/turnstile';
 import {
 	generateAuthenticationOptions,
 	type PublicKeyCredentialRequestOptionsJSON

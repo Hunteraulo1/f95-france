@@ -1,21 +1,21 @@
-import { toConfigClientSafe, type ConfigClientSafe } from '$lib/server/app-config';
-import type { Config } from '$lib/server/db/schema';
-import { isDiscordOAuthAutoRoleSyncEnabled } from '$lib/server/discord-oauth';
-import { isSmtpConfigured } from '$lib/server/mail';
-import { privateEnv } from '$lib/server/private-env';
+import { toConfigClientSafe, type ConfigClientSafe } from '#lib/server/app-config';
+import type { Config } from '#lib/server/db/schema';
+import { isDiscordOAuthAutoRoleSyncEnabled } from '#lib/server/discord-oauth';
+import { isSmtpConfigured } from '#lib/server/mail';
+import { privateEnv } from '#lib/server/private-env';
 import {
 	getRequiredRegistrationInviteCode,
 	isRegistrationInviteRequired,
 	isRegistrationOpen
-} from '$lib/server/registration-policy';
+} from '#lib/server/registration-policy';
 import {
 	buildSecurityTxtContent,
 	getSecurityTxtPublicUrl,
 	parseSecurityTxt,
 	validateSecurityTxt
-} from '$lib/server/security-txt';
-import { isLibreTranslateConfigured } from '$lib/server/translate-libretranslate';
-import { SITE } from '$lib/site';
+} from '#lib/server/security-txt';
+import { isLibreTranslateConfigured } from '#lib/server/translate-libretranslate';
+import { SITE } from '#lib/site';
 
 export type DevServiceCheckStatus = 'ok' | 'partial' | 'missing';
 

@@ -1,8 +1,8 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasSubmissionReviewedByUserIdColumn } from '$lib/server/schema-column-compat';
-import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
-import { submissionOpenedByUser, submissionReviewedByUser } from '$lib/server/submission-users';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasSubmissionReviewedByUserIdColumn } from '#lib/server/schema-column-compat';
+import { hasSubmissionOpenedByUserIdColumn } from '#lib/server/submission-opened-by-compat';
+import { submissionOpenedByUser, submissionReviewedByUser } from '#lib/server/submission-users';
 import type { SQL } from 'drizzle-orm';
 import { desc, eq } from 'drizzle-orm';
 

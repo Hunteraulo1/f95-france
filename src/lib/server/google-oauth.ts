@@ -1,5 +1,5 @@
-import { getEffectiveConfigFromRow, oauthTokenFieldsForDb } from '$lib/server/app-config';
-import { appLogError } from '$lib/server/app-log-bridge';
+import { getEffectiveConfigFromRow, oauthTokenFieldsForDb } from '#lib/server/app-config';
+import { appLogError } from '#lib/server/app-log-bridge';
 import { eq } from 'drizzle-orm';
 import { db } from './db';
 import * as table from './db/schema';

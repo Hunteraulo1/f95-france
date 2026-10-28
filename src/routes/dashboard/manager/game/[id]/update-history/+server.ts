@@ -1,5 +1,5 @@
-import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
-import { assertPermission } from '$lib/server/permissions';
+import { listGameUpdateHistoryPage } from '#lib/server/game-update-history-query';
+import { assertPermission } from '#lib/server/permissions';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

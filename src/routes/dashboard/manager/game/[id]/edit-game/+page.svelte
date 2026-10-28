@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
-	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
-	import Input from '$lib/components/dashboard/formGame/Input.svelte';
-	import InputImage from '$lib/components/dashboard/formGame/InputImage.svelte';
-	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
-	import Select from '$lib/components/dashboard/formGame/Select.svelte';
-	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { hasPermission } from '$lib/permissions/client';
-	import { newToast } from '$lib/stores';
-	import type { FormGameType } from '$lib/types';
-	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
-	import { normalizeGameImageForStorage } from '$lib/utils/game-form-validation';
-	import { validateGameLinkFields } from '$lib/utils/link-validation';
+	import Checkbox from '#lib/components/dashboard/formGame/Checkbox.svelte';
+	import Dev from '#lib/components/dashboard/formGame/Dev.svelte';
+	import Input from '#lib/components/dashboard/formGame/Input.svelte';
+	import InputImage from '#lib/components/dashboard/formGame/InputImage.svelte';
+	import Insert from '#lib/components/dashboard/formGame/Insert.svelte';
+	import Select from '#lib/components/dashboard/formGame/Select.svelte';
+	import Textarea from '#lib/components/dashboard/formGame/Textarea.svelte';
+	import { hasPermission } from '#lib/permissions/client';
+	import { newToast } from '#lib/stores';
+	import type { FormGameType } from '#lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
+	import { normalizeGameImageForStorage } from '#lib/utils/game-form-validation';
+	import { validateGameLinkFields } from '#lib/utils/link-validation';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -135,7 +135,9 @@
 					? 'Soumission créée avec succès. Elle sera examinée par un administrateur.'
 					: 'Jeu modifié avec succès'
 			});
-			await goto(resolve(`/dashboard/manager/game/${data.game.id}`), { invalidateAll: true });
+			await goto(resolve('/dashboard/manager/game/[id]', { id: data.game.id }), {
+				invalidateAll: true
+			});
 		} catch {
 			newToast({ alertType: 'error', message: 'Une erreur est survenue' });
 		} finally {
@@ -229,7 +231,7 @@
 			class="flex w-full flex-row flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-4 sm:px-4"
 		>
 			<a
-				href={resolve(`/dashboard/manager/game/${data.game.id}`)}
+				href={resolve('/dashboard/manager/game/[id]', { id: data.game.id })}
 				class="btn w-full btn-outline md:w-38"
 			>
 				Annuler

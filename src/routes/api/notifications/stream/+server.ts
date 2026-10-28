@@ -1,4 +1,4 @@
-import { countUnreadNotifications } from '$lib/server/notifications';
+import { countUnreadNotifications } from '#lib/server/notifications';
 import type { RequestHandler } from './$types';
 
 const encoder = new TextEncoder();

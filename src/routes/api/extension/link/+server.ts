@@ -1,6 +1,6 @@
-import { extensionLinkCorsHeaders } from '$lib/server/extension-api-cors';
-import { redeemLinkCode } from '$lib/server/extension-link';
-import { isExtensionOriginAllowed } from '$lib/server/extension-origin';
+import { extensionLinkCorsHeaders } from '#lib/server/extension-api-cors';
+import { redeemLinkCode } from '#lib/server/extension-link';
+import { isExtensionOriginAllowed } from '#lib/server/extension-origin';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

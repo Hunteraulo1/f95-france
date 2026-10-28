@@ -1,4 +1,4 @@
-import type { GameTranslation } from '$lib/server/db/schema';
+import type { GameTranslation } from '#lib/server/db/schema';
 
 export type SubmissionPrimitive = string | number | boolean | null | undefined;
 

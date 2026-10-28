@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SITE } from '$lib/site';
+	import { SITE } from '#lib/site';
 
 	interface Props {
 		class?: string;

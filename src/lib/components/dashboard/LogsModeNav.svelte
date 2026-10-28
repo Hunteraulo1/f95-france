@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appLogLevelsToParam, type AppLogLevel } from '$lib/logs/app-log';
+	import { appLogLevelsToParam, type AppLogLevel } from '#lib/logs/app-log';
 
 	type Mode = 'http' | 'app';
 

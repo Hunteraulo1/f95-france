@@ -1,14 +1,14 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { secureSessionCookieOptions } from '$lib/server/cookie-options';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { generateEmailUnsubscribeToken } from '$lib/server/email-verification';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { secureSessionCookieOptions } from '#lib/server/cookie-options';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { generateEmailUnsubscribeToken } from '#lib/server/email-verification';
 import {
 	hashPassword,
 	hashSessionSecret,
 	verifySessionSecret,
 	type PasswordVerifyResult
-} from '$lib/server/password-hash';
+} from '#lib/server/password-hash';
 import { encodeBase64url } from '@oslojs/encoding';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
@@ -22,7 +22,7 @@ export {
 	hashPassword,
 	INVALID_CREDENTIALS_MESSAGE,
 	verifyPassword
-} from '$lib/server/password-hash';
+} from '#lib/server/password-hash';
 export type { PasswordVerifyResult };
 
 function generateSecureRandomString(): string {
@@ -257,11 +257,11 @@ export async function signInUserAndGetDestination(
 	const session = await createSession(sessionToken, user.id);
 	setSessionTokenCookie(event, sessionToken, session.expiresAt);
 
-	const { clearLoginThrottle } = await import('$lib/server/login-throttle');
+	const { clearLoginThrottle } = await import('#lib/server/login-throttle');
 	await clearLoginThrottle(event);
 
 	const { dashboardVerifyEmailPath, emailVerificationRequired, isUserEmailVerified } =
-		await import('$lib/server/email-verification');
+		await import('#lib/server/email-verification');
 
 	let destination = redirectTo;
 	if (

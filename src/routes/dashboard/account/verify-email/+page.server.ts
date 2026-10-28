@@ -1,10 +1,10 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
 import {
 	emailVerificationRequired,
 	isUserEmailVerified,
 	sendVerificationEmailForUser
-} from '$lib/server/email-verification';
-import { isSmtpConfigured } from '$lib/server/mail';
+} from '#lib/server/email-verification';
+import { isSmtpConfigured } from '#lib/server/mail';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

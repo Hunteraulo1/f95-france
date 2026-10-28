@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import type { PageData } from './$types';
 
 	const { data }: { data: PageData } = $props();

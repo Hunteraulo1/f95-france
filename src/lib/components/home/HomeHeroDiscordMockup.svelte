@@ -1,5 +1,5 @@
 <script lang="ts">
-	import HomeHeroMockupShell from '$lib/components/home/HomeHeroMockupShell.svelte';
+	import HomeHeroMockupShell from '#lib/components/home/HomeHeroMockupShell.svelte';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 

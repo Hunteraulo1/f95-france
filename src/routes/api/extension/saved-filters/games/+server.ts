@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
-import { extensionSyncCorsHeaders } from '$lib/server/extension-api-cors';
-import { parseSavedGamesFilters, serializeSavedGamesFilters } from '$lib/server/saved-filters';
+import { db } from '#lib/server/db';
+import { user } from '#lib/server/db/schema';
+import { extensionSyncCorsHeaders } from '#lib/server/extension-api-cors';
+import { parseSavedGamesFilters, serializeSavedGamesFilters } from '#lib/server/saved-filters';
 import { json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

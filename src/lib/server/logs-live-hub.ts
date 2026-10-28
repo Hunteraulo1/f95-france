@@ -1,4 +1,4 @@
-import type { LiveLogEntry } from '$lib/logs/live-log-entry';
+import type { LiveLogEntry } from '#lib/logs/live-log-entry';
 
 export type LogsLiveEnqueue = (chunk: Uint8Array) => boolean;
 

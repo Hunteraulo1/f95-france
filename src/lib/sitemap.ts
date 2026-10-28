@@ -1,4 +1,4 @@
-import { absoluteUrl, siteOrigin } from '$lib/site';
+import { absoluteUrl, siteOrigin } from '#lib/site';
 
 const SITEMAP_BASE_PATHS = [
 	{ path: '/', changefreq: 'weekly' as const, priority: 1 },

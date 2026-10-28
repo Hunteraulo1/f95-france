@@ -1,5 +1,5 @@
-import { respondExtractThreadGame } from '$lib/server/extract-response';
-import { corsHeadersExtract, runExtractThreadGame } from '$lib/server/extract-thread-game';
+import { respondExtractThreadGame } from '#lib/server/extract-response';
+import { corsHeadersExtract, runExtractThreadGame } from '#lib/server/extract-thread-game';
 import { type RequestHandler } from '@sveltejs/kit';
 
 const WEBSITE = 'f95z' as const;

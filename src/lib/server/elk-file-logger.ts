@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 

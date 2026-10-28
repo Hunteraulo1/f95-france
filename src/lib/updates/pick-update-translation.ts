@@ -1,4 +1,4 @@
-import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
+import type { GameTranslationRow } from '#lib/server/api/games-with-translations';
 
 type UpdateTiming = {
 	status: string;

@@ -1,5 +1,5 @@
-import * as table from '$lib/server/db/schema';
-import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
+import * as table from '#lib/server/db/schema';
+import { hasUpdateHistoryTable } from '#lib/server/schema-column-compat';
 import { and, eq, or, sql, type SQL } from 'drizzle-orm';
 
 export type UpdatesApiScope = 'featured' | 'all';

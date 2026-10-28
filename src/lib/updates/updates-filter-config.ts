@@ -2,7 +2,7 @@ import {
 	createDefaultGamesFilterGroups,
 	optionValuesFromOptions,
 	type GamesFilterGroupState
-} from '$lib/games/games-filter-config';
+} from '#lib/games/games-filter-config';
 
 const UPDATE_TYPE_OPTIONS = [
 	{ value: 'adding', label: 'Ajout de jeu' },

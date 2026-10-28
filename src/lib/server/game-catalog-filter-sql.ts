@@ -1,8 +1,8 @@
-import type { GamesFilterGroupName } from '$lib/games/games-filter-config';
-import type { FilterSelection } from '$lib/games/games-filter-url';
-import { db } from '$lib/server/db';
-import { game, gameTranslation } from '$lib/server/db/schema';
-import { caseInsensitiveLike } from '$lib/server/sql-like';
+import type { GamesFilterGroupName } from '#lib/games/games-filter-config';
+import type { FilterSelection } from '#lib/games/games-filter-url';
+import { db } from '#lib/server/db';
+import { game, gameTranslation } from '#lib/server/db/schema';
+import { caseInsensitiveLike } from '#lib/server/sql-like';
 import { and, eq, exists, like, not, or, sql, type SQL } from 'drizzle-orm';
 
 export type GameCatalogFilters = Record<GamesFilterGroupName, FilterSelection>;

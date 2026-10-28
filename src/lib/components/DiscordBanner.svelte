@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SITE } from '$lib/site';
+	import { SITE } from '#lib/site';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import Users from '@lucide/svelte/icons/users';
 </script>

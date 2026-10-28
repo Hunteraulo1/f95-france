@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { user } from '$lib/stores';
+	import { user } from '#lib/stores';
 	import Bell from '@lucide/svelte/icons/bell';
 	import Check from '@lucide/svelte/icons/check';
 	import CheckCheck from '@lucide/svelte/icons/check-check';

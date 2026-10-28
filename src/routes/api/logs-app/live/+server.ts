@@ -1,5 +1,5 @@
-import { subscribeAppLogsLive } from '$lib/server/app-logs-live-hub';
-import { assertPermission } from '$lib/server/permissions';
+import { subscribeAppLogsLive } from '#lib/server/app-logs-live-hub';
+import { assertPermission } from '#lib/server/permissions';
 import type { RequestHandler } from './$types';
 
 const encoder = new TextEncoder();

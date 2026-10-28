@@ -1,7 +1,7 @@
-import type { AppLogLevel, AppLogSource } from '$lib/logs/app-log';
-import type { LiveAppLogEntry } from '$lib/logs/live-app-log-entry';
-import { broadcastLiveAppLogEntry } from '$lib/server/app-logs-live-hub';
-import { writeElkLog } from '$lib/server/elk-file-logger';
+import type { AppLogLevel, AppLogSource } from '#lib/logs/app-log';
+import type { LiveAppLogEntry } from '#lib/logs/live-app-log-entry';
+import { broadcastLiveAppLogEntry } from '#lib/server/app-logs-live-hub';
+import { writeElkLog } from '#lib/server/elk-file-logger';
 import { randomUUID } from 'node:crypto';
 
 const META_MAX = 8_000;
