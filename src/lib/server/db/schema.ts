@@ -195,7 +195,9 @@ export const game = mysqlTable('game', {
 	threadId: int('thread_id'),
 	link: varchar('link', { length: 500 }).notNull().default(''),
 	gameAutoCheck: boolean('game_auto_check').notNull().default(true),
-	gameVersion: varchar('game_version', { length: 100 })
+	gameVersion: varchar('game_version', { length: 100 }),
+	// Timestamp unix du dernier changement côté API F95Checker (via le scraper). NULL = jamais vérifié.
+	f95LastChange: int('f95_last_change', { unsigned: true })
 });
 
 export const gameTranslation = mysqlTable('game_translation', {

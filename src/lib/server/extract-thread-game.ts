@@ -172,7 +172,11 @@ function payloadFromScrape(
 		ok: true,
 		payload: {
 			name: clampStr(name, 255),
-			tags: clampStr((scraped.tags ?? '').trim(), 20_000),
+			// Le scrape F95 ne fournit pas (encore) les tags : on garde ceux de l'extension s'il y en a.
+			tags: clampStr(
+				(scraped.tags ?? (typeof explicit.tags === 'string' ? explicit.tags : '')).trim(),
+				20_000
+			),
 			description: scraped.description?.trim()
 				? scraped.description.trim().slice(0, 100_000)
 				: null,

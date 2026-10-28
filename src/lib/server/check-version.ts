@@ -18,7 +18,9 @@ import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
 import { coerceGameEngineType } from '$lib/server/game-engine-type';
 import { recordTranslationChangeInUpdateHistory } from '$lib/server/game-updates';
 import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { scrapeF95Thread, type ScrapedThreadGame } from '$lib/server/scrape';
+import type { ScrapedThreadGame } from '$lib/server/scrape';
+import { scrapedFromF95Thread } from '$lib/server/scrape/f95';
+import { checkF95ScraperThreads, F95_SCRAPER_CHECK_BATCH } from '$lib/server/scrape/f95-scraper';
 import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
 import {
 	shouldNotifyTranslatorOnAutoCheckVersionBump,
@@ -32,11 +34,6 @@ import {
 } from '$lib/utils/f95-checker-alignment';
 import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
-
-type CheckerResponse = {
-	status: 'ok' | 'error' | string;
-	msg: Record<string, string> | string;
-};
 
 export type AutoCheckIssue = {
 	stage:
@@ -55,62 +52,67 @@ export type AutoCheckIssue = {
 	detail?: string;
 };
 
-const CHECKER_URL = 'https://f95zone.to/sam/checker.php?threads=';
-const USER_AGENT =
-	'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) f95-france/1.0';
+type F95ThreadCheck = {
+	/** Version F95 actuelle ; pour un thread inchangé, celle déjà enregistrée sur la fiche. */
+	version: string | null;
+	lastChange: number;
+	/** Données du thread, seulement quand il a changé depuis `f95LastChange`. */
+	scraped: ScrapedThreadGame | null;
+};
 
-async function fetchF95Versions(
-	threadIds: number[],
+/**
+ * Remplace `checker.php` (bloqué par Cloudflare) : passe par le scraper, qui ne renvoie les
+ * données que des threads modifiés depuis leur `f95LastChange`.
+ */
+async function fetchF95Checks(
+	games: { threadId: number; gameVersion: string | null; f95LastChange: number | null }[],
 	issues: AutoCheckIssue[],
 	logSource: AppLogSource | string
-): Promise<Map<number, string>> {
-	const versions = new Map<number, string>();
-	if (threadIds.length === 0) return versions;
+): Promise<Map<number, F95ThreadCheck>> {
+	const checks = new Map<number, F95ThreadCheck>();
+	const gameByThreadId = new Map(games.map((g) => [g.threadId, g]));
 
-	for (let i = 0; i < threadIds.length; i += 100) {
-		const batch = threadIds.slice(i, i + 100);
-		const url = `${CHECKER_URL}${batch.join(',')}`;
+	for (let i = 0; i < games.length; i += F95_SCRAPER_CHECK_BATCH) {
+		const batch = games.slice(i, i + F95_SCRAPER_CHECK_BATCH);
 		try {
-			const res = await fetch(url, {
-				headers: { 'User-Agent': USER_AGENT }
-			});
-			if (!res.ok) {
-				issues.push({
-					stage: 'checker_fetch',
-					message: `Réponse HTTP ${res.status} du checker`,
-					detail: `batch=${batch.join(',')}`
-				});
-				continue;
-			}
-
-			const json = (await res.json()) as CheckerResponse;
-			if (json.status !== 'ok' || typeof json.msg !== 'object' || json.msg === null) {
-				issues.push({
-					stage: 'checker_payload',
-					message: 'Payload checker invalide',
-					detail: `batch=${batch.join(',')}`
-				});
-				continue;
-			}
-
-			for (const [threadIdRaw, version] of Object.entries(json.msg)) {
-				const threadId = Number.parseInt(threadIdRaw, 10);
-				if (!Number.isFinite(threadId) || typeof version !== 'string') continue;
-				versions.set(threadId, version);
+			const results = await checkF95ScraperThreads(
+				batch.map((g) => ({ id: g.threadId, lastChange: g.f95LastChange }))
+			);
+			for (const r of results) {
+				if (r.result === 'changed') {
+					checks.set(r.id, {
+						version: r.thread.version,
+						lastChange: r.lastChange,
+						scraped: scrapedFromF95Thread(r.thread, r.status)
+					});
+				} else if (r.result === 'unchanged') {
+					checks.set(r.id, {
+						version: gameByThreadId.get(r.id)?.gameVersion ?? null,
+						lastChange: r.lastChange,
+						scraped: null
+					});
+				} else if (r.result === 'failed') {
+					issues.push({
+						stage: 'checker_payload',
+						message: `Vérification F95 échouée (${r.kind})`,
+						threadId: r.id,
+						detail: r.message
+					});
+				}
+				// `not_found` : thread supprimé ou privé, ignoré comme avec checker.php.
 			}
 		} catch (error) {
-			// Le checker F95 est externe : une erreur réseau/JSON ne doit pas faire tomber tout l'auto-check.
-			appLogWarn(logSource, 'auto-check : fetch checker échoué', error);
+			// Le scraper est externe : une panne ne doit pas faire tomber tout l'auto-check.
+			appLogWarn(logSource, 'auto-check : appel scraper échoué', error);
 			issues.push({
 				stage: 'checker_fetch',
-				message: 'Erreur réseau/JSON checker',
-				detail: error instanceof Error ? error.message : String(error)
+				message: 'Erreur réseau/JSON scraper F95',
+				detail: `${error instanceof Error ? error.message : String(error)} (threads=${batch.map((g) => g.threadId).join(',')})`
 			});
-			continue;
 		}
 	}
 
-	return versions;
+	return checks;
 }
 
 export type AutoCheckResult = {
@@ -187,6 +189,7 @@ export async function runAutoCheckVersions(
 				gameLink: table.game.link,
 				gameWebsite: table.game.website,
 				gameVersion: table.game.gameVersion,
+				gameF95LastChange: table.game.f95LastChange,
 				threadId: table.game.threadId,
 				translationId: table.gameTranslation.id,
 				translationName: table.gameTranslation.translationName,
@@ -236,6 +239,7 @@ export async function runAutoCheckVersions(
 				gameImage: string | null;
 				gameLink: string | null;
 				gameVersion: string | null;
+				f95LastChange: number | null;
 				threadId: number;
 				threadUrl: string | null;
 			}
@@ -248,6 +252,7 @@ export async function runAutoCheckVersions(
 				gameImage: row.gameImage,
 				gameLink: row.gameLink,
 				gameVersion: row.gameVersion,
+				f95LastChange: row.gameF95LastChange,
 				threadId: row.threadId,
 				threadUrl: resolveGameThreadLink({
 					link: row.gameLink,
@@ -257,11 +262,8 @@ export async function runAutoCheckVersions(
 			});
 		}
 
-		const versions = await fetchF95Versions(
-			Array.from(uniqueByGame.values()).map((g) => g.threadId),
-			issues,
-			logSource
-		);
+		const checks = await fetchF95Checks(Array.from(uniqueByGame.values()), issues, logSource);
+		const versions = new Map(Array.from(checks, ([threadId, c]) => [threadId, c.version]));
 
 		type UniqueGameRow = {
 			gameId: string;
@@ -269,6 +271,7 @@ export async function runAutoCheckVersions(
 			gameImage: string | null;
 			gameLink: string | null;
 			gameVersion: string | null;
+			f95LastChange: number | null;
 			threadId: number;
 			threadUrl: string | null;
 		};
@@ -290,6 +293,21 @@ export async function runAutoCheckVersions(
 		const alignedGames = Array.from(uniqueByGame.values()).filter(
 			(g) => !gameNeedsCheckerBump(g) && gameIsCheckerAligned(g)
 		);
+
+		// Threads modifiés sans montée de version : on retient tout de suite le nouveau timestamp.
+		// Les jeux à monter de version l'enregistrent avec leur nouvelle version, plus bas : si le
+		// traitement s'interrompt avant, ils seront revérifiés au passage suivant.
+		const changedGameIdSet = new Set(changedGames.map((g) => g.gameId));
+		for (const g of uniqueByGame.values()) {
+			const check = checks.get(g.threadId);
+			if (!check || changedGameIdSet.has(g.gameId) || check.lastChange === g.f95LastChange) {
+				continue;
+			}
+			await db
+				.update(table.game)
+				.set({ f95LastChange: check.lastChange })
+				.where(eq(table.game.id, g.gameId));
+		}
 
 		if (changedGames.length === 0) {
 			return await finishRun({
@@ -387,6 +405,7 @@ export async function runAutoCheckVersions(
 				.update(table.game)
 				.set({
 					gameVersion: newVersion,
+					f95LastChange: checks.get(game.threadId)?.lastChange ?? game.f95LastChange,
 					updatedAt: new Date()
 				})
 				.where(eq(table.game.id, game.gameId));
@@ -402,49 +421,52 @@ export async function runAutoCheckVersions(
 				updatedTranslations: bumpTranslations.filter((r) => r.gameId === game.gameId).length
 			});
 
-			try {
-				const scraped = await scrapeF95Thread(game.threadId);
-				if (scraped.image?.trim()) {
-					game.gameImage = scraped.image.trim();
-				}
-				const currentDesc = descriptionByGameId.get(game.gameId);
-				const nextDescription = scraped.description?.trim()
-					? scraped.description.trim()
-					: (currentDesc?.description ?? null);
-				const descFields = await resolveGameDescriptionFields({
-					description: nextDescription,
-					previousDescription: currentDesc?.description ?? null,
-					previousDescriptionFr: currentDesc?.descriptionFr ?? null,
-					autoTranslate: Boolean(scraped.description?.trim())
-				});
-				await db
-					.update(table.game)
-					.set({
-						...autoCheckGamePatchFromScrape(scraped),
-						description: descFields.description,
-						descriptionFr: descFields.descriptionFr
-					})
-					.where(eq(table.game.id, game.gameId));
-				if (scraped.gameType) {
-					const gt = coerceGameEngineType(scraped.gameType);
+			// Pas de données si le thread n'a pas bougé (seules les traductions étaient désalignées).
+			const scraped = checks.get(game.threadId)?.scraped;
+			if (scraped) {
+				try {
+					if (scraped.image?.trim()) {
+						game.gameImage = scraped.image.trim();
+					}
+					const currentDesc = descriptionByGameId.get(game.gameId);
+					const nextDescription = scraped.description?.trim()
+						? scraped.description.trim()
+						: (currentDesc?.description ?? null);
+					const descFields = await resolveGameDescriptionFields({
+						description: nextDescription,
+						previousDescription: currentDesc?.description ?? null,
+						previousDescriptionFr: currentDesc?.descriptionFr ?? null,
+						autoTranslate: Boolean(scraped.description?.trim())
+					});
 					await db
-						.update(table.gameTranslation)
-						.set({ gameType: gt, updatedAt: new Date() })
-						.where(eq(table.gameTranslation.gameId, game.gameId));
+						.update(table.game)
+						.set({
+							...autoCheckGamePatchFromScrape(scraped),
+							description: descFields.description,
+							descriptionFr: descFields.descriptionFr
+						})
+						.where(eq(table.game.id, game.gameId));
+					if (scraped.gameType) {
+						const gt = coerceGameEngineType(scraped.gameType);
+						await db
+							.update(table.gameTranslation)
+							.set({ gameType: gt, updatedAt: new Date() })
+							.where(eq(table.gameTranslation.gameId, game.gameId));
+					}
+				} catch (error) {
+					appLogWarn(logSource, 'auto-check : mise à jour depuis le scrape échouée', error, {
+						gameId: game.gameId,
+						threadId: game.threadId
+					});
+					issues.push({
+						stage: 'scrape',
+						message: 'Scrape F95 non bloquant échoué',
+						gameId: game.gameId,
+						gameName: game.gameName,
+						threadId: game.threadId,
+						detail: error instanceof Error ? error.message : String(error)
+					});
 				}
-			} catch (error) {
-				appLogWarn(logSource, 'auto-check : scrape non bloquant échoué', error, {
-					gameId: game.gameId,
-					threadId: game.threadId
-				});
-				issues.push({
-					stage: 'scrape',
-					message: 'Scrape F95 non bloquant échoué',
-					gameId: game.gameId,
-					gameName: game.gameName,
-					threadId: game.threadId,
-					detail: error instanceof Error ? error.message : String(error)
-				});
 			}
 
 			for (const t of bumpTranslations.filter((r) => r.gameId === game.gameId)) {

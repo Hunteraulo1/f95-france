@@ -55,6 +55,10 @@ services:
       - EXTRACT_F95_ALLOWED_ORIGINS=https://f95zone.to
       - EXTRACT_LC_ALLOWED_ORIGINS=https://lewdcorner.com
 
+      # ─── Scraper F95 ─────────────────────────────────────────────────────────────
+      - F95_SCRAPER_URL=${F95_SCRAPER_URL}
+      - F95_SCRAPER_TOKEN=${F95_SCRAPER_TOKEN}
+
       # ─── Discord Webhooks ────────────────────────────────────────────────────────
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - DISCORD_WEBHOOK_UPDATES=${DISCORD_WEBHOOK_UPDATES:-}
