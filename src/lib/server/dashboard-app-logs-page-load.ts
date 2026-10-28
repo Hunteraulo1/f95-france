@@ -1,7 +1,7 @@
-import { APP_LOG_SOURCES, parseAppLogLevelsParam, type AppLogLevel } from '$lib/logs/app-log';
-import { db } from '$lib/server/db';
-import { appLog } from '$lib/server/db/schema';
-import { isElkReadEnabled, searchAppLogs } from '$lib/server/elk-client';
+import { APP_LOG_SOURCES, parseAppLogLevelsParam, type AppLogLevel } from '#lib/logs/app-log';
+import { db } from '#lib/server/db';
+import { appLog } from '#lib/server/db/schema';
+import { isElkReadEnabled, searchAppLogs } from '#lib/server/elk-client';
 import { and, count, desc, eq, gte, inArray, like, lt, or } from 'drizzle-orm';
 
 export type DashboardAppLogsPageResult = {

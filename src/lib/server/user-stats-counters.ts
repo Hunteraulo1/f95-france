@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
 type CounterKind = 'add' | 'edit';

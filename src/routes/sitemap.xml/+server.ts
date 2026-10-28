@@ -1,6 +1,6 @@
-import { privateEnv } from '$lib/server/private-env';
-import { isRegistrationEnabled } from '$lib/server/registration-policy';
-import { buildSitemapXml } from '$lib/sitemap';
+import { privateEnv } from '#lib/server/private-env';
+import { isRegistrationEnabled } from '#lib/server/registration-policy';
+import { buildSitemapXml } from '#lib/sitemap';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = () => {

@@ -1,0 +1,1 @@
+ALTER TABLE `game` ADD `f95_last_change` int unsigned;

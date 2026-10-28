@@ -1,5 +1,5 @@
-import { privateEnv } from '$lib/server/private-env';
-import { SITE, siteOrigin } from '$lib/site';
+import { privateEnv } from '#lib/server/private-env';
+import { SITE, siteOrigin } from '#lib/site';
 
 export type ParsedSecurityTxt = {
 	contacts: string[];

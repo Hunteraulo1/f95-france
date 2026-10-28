@@ -1,16 +1,16 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	gameImageRequiredForWebsite,
 	normalizeGameImageForStorage,
 	normalizeTranslationTversion,
 	validateTranslationTversion
-} from '$lib/utils/game-form-validation';
+} from '#lib/utils/game-form-validation';
 import {
 	validateGameLinkFields,
 	validateTranslationLinkField,
 	validateTranslatorPageLinks
-} from '$lib/utils/link-validation';
+} from '#lib/utils/link-validation';
 import { eq } from 'drizzle-orm';
 
 export type SubmissionPayloadParseResult =

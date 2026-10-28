@@ -1,4 +1,4 @@
-import { listPublicTranslators } from '$lib/server/public-translators';
+import { listPublicTranslators } from '#lib/server/public-translators';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const PREFIX = 'enc:v1:';

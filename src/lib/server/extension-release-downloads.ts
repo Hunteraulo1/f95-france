@@ -1,5 +1,5 @@
-import type { ExtensionDownloadUrls } from '$lib/extension-browser';
-import { SITE } from '$lib/site';
+import type { ExtensionDownloadUrls } from '#lib/extension-browser';
+import { SITE } from '#lib/site';
 
 const GITHUB_LATEST_API = 'https://api.github.com/repos/Hunteraulo1/f95list-ext/releases/latest';
 

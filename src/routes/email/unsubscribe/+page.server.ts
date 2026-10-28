@@ -1,4 +1,4 @@
-import { unsubscribeFromMarketingEmails } from '$lib/server/email-verification';
+import { unsubscribeFromMarketingEmails } from '#lib/server/email-verification';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {

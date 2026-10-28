@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
 

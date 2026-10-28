@@ -2,30 +2,30 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
-	import Checkbox from '$lib/components/dashboard/formGame/Checkbox.svelte';
-	import Datalist from '$lib/components/dashboard/formGame/Datalist.svelte';
-	import Dev from '$lib/components/dashboard/formGame/Dev.svelte';
-	import Input from '$lib/components/dashboard/formGame/Input.svelte';
-	import InputImage from '$lib/components/dashboard/formGame/InputImage.svelte';
-	import Insert from '$lib/components/dashboard/formGame/Insert.svelte';
-	import Select from '$lib/components/dashboard/formGame/Select.svelte';
-	import Textarea from '$lib/components/dashboard/formGame/Textarea.svelte';
-	import { hasPermission } from '$lib/permissions/client';
-	import { newToast, user } from '$lib/stores';
-	import type { FormGameType, GameEngineType } from '$lib/types';
-	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+	import OtherSiteImageWarning from '#lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import Checkbox from '#lib/components/dashboard/formGame/Checkbox.svelte';
+	import Datalist from '#lib/components/dashboard/formGame/Datalist.svelte';
+	import Dev from '#lib/components/dashboard/formGame/Dev.svelte';
+	import Input from '#lib/components/dashboard/formGame/Input.svelte';
+	import InputImage from '#lib/components/dashboard/formGame/InputImage.svelte';
+	import Insert from '#lib/components/dashboard/formGame/Insert.svelte';
+	import Select from '#lib/components/dashboard/formGame/Select.svelte';
+	import Textarea from '#lib/components/dashboard/formGame/Textarea.svelte';
+	import { hasPermission } from '#lib/permissions/client';
+	import { newToast, user } from '#lib/stores';
+	import type { FormGameType, GameEngineType } from '#lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
 	import {
 		computeGameFormFieldState,
 		gameImageRequiredForWebsite,
 		isNoTranslation,
 		normalizeTranslationTversion
-	} from '$lib/utils/game-form-validation';
-	import { validateGameLinkFields, validateTranslationLinkField } from '$lib/utils/link-validation';
+	} from '#lib/utils/game-form-validation';
+	import { validateGameLinkFields, validateTranslationLinkField } from '#lib/utils/link-validation';
 	import {
 		formHasTranslatorInputIssue,
 		getTranslatorFieldErrors
-	} from '$lib/utils/translator-form-validation';
+	} from '#lib/utils/translator-form-validation';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { onMount, untrack } from 'svelte';
 	import { get, writable } from 'svelte/store';

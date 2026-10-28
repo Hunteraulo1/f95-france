@@ -2,7 +2,7 @@ import {
 	isRoleBadgeStyle,
 	resolveRoleBadgeStyle,
 	type RoleBadgeStyle
-} from '$lib/permissions/role-badge-style';
+} from '#lib/permissions/role-badge-style';
 
 const SUPERADMIN_ANIMATED_CLASS = 'username-superadmin animate-text';
 

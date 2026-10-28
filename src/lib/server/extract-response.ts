@@ -1,5 +1,5 @@
-import { EXTRACT_DRAFT_COOKIE } from '$lib/server/extract-draft';
-import type { ExtractThreadResult } from '$lib/server/extract-thread-game';
+import { EXTRACT_DRAFT_COOKIE } from '#lib/server/extract-draft';
+import type { ExtractThreadResult } from '#lib/server/extract-thread-game';
 import { json, redirect, type RequestEvent } from '@sveltejs/kit';
 
 export function respondExtractThreadGame(

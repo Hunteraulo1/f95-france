@@ -1,5 +1,5 @@
-import { assertPermission } from '$lib/server/permissions';
-import { loadDashboardUsersPage } from '$lib/server/dashboard-users-page-load';
+import { assertPermission } from '#lib/server/permissions';
+import { loadDashboardUsersPage } from '#lib/server/dashboard-users-page-load';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { countSubmissionStatuses } from '$lib/server/submission-pages';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { countSubmissionStatuses } from '#lib/server/submission-pages';
 import { eq, sql } from 'drizzle-orm';
 
 const toCount = (value: unknown): number => {

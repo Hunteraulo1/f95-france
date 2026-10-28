@@ -1,18 +1,18 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { submissionReviewedByUserIdPatch } from '$lib/server/schema-column-compat';
-import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { submissionReviewedByUserIdPatch } from '#lib/server/schema-column-compat';
+import { submissionOpenedByUserIdPatch } from '#lib/server/submission-opened-by-compat';
 import {
 	formDataToSubmissionPayload,
 	loadSubmissionListPage,
 	parseSubmissionStatusFilter
-} from '$lib/server/submission-pages';
+} from '#lib/server/submission-pages';
 import {
 	parseSubmissionPayloadJson,
 	persistSubmissionPayload,
 	validateSubmissionPayloadForType
-} from '$lib/server/submission-payload-update';
+} from '#lib/server/submission-payload-update';
 import { fail } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';

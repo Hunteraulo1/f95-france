@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { HomeExtensionMockupGame } from '$lib/home-extension-mockup';
+	import type { HomeExtensionMockupGame } from '#lib/home-extension-mockup';
 	import Bell from '@lucide/svelte/icons/bell';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ClipboardCheck from '@lucide/svelte/icons/clipboard-check';

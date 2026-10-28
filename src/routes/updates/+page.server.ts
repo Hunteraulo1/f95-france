@@ -1,12 +1,12 @@
-import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
-import { listTranslatorFilterOptions } from '$lib/server/public-games-translators';
-import { listPublicUpdates } from '$lib/server/public-updates';
-import { parseSavedUpdatesFilters } from '$lib/server/saved-filters';
+import { db } from '#lib/server/db';
+import { user } from '#lib/server/db/schema';
+import { listTranslatorFilterOptions } from '#lib/server/public-games-translators';
+import { listPublicUpdates } from '#lib/server/public-updates';
+import { parseSavedUpdatesFilters } from '#lib/server/saved-filters';
 import {
 	buildUpdatesFilterGroupsForUi,
 	parsePublicUpdatesListParams
-} from '$lib/updates/updates-filter-url';
+} from '#lib/updates/updates-filter-url';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 

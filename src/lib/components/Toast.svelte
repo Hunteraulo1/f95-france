@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { toasts } from '$lib/stores';
+	import { toasts } from '#lib/stores';
 
 	interface Props {
 		toast: {

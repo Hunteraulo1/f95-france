@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { and, eq, ne } from 'drizzle-orm';
 
 /** Détache un compte de tous les profils traducteur. */

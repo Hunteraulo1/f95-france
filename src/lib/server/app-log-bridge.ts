@@ -1,5 +1,5 @@
-import type { AppLogLevel, AppLogSource } from '$lib/logs/app-log';
-import { logApp } from '$lib/server/app-logger';
+import type { AppLogLevel, AppLogSource } from '#lib/logs/app-log';
+import { logApp } from '#lib/server/app-logger';
 
 function errorDetail(error: unknown): string | undefined {
 	if (error instanceof Error) return error.message;

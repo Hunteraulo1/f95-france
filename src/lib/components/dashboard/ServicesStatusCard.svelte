@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
-	import type { ConfigClientSafe } from '$lib/server/app-config';
-	import type { DevServiceCheck, DevServicesStatus } from '$lib/server/dev-services-status';
-	import type { AllServicesTestReport } from '$lib/server/services-live-test';
+	import { createDevActionEnhance } from '#lib/forms/dev-action';
+	import type { ConfigClientSafe } from '#lib/server/app-config';
+	import type { DevServiceCheck, DevServicesStatus } from '#lib/server/dev-services-status';
+	import type { AllServicesTestReport } from '#lib/server/services-live-test';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Eye from '@lucide/svelte/icons/eye';
 	import EyeOff from '@lucide/svelte/icons/eye-off';

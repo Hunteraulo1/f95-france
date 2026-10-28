@@ -1,9 +1,9 @@
-import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
-import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
-import { selectAllAppRoles } from '$lib/server/app-role-query';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { invalidateRoleBadgeStylesCache } from '$lib/server/role-badge-styles';
+import { SYSTEM_ROLE_LABELS } from '#lib/permissions/catalog';
+import { resolveRoleBadgeStyle } from '#lib/permissions/role-badge-style';
+import { selectAllAppRoles } from '#lib/server/app-role-query';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { invalidateRoleBadgeStylesCache } from '#lib/server/role-badge-styles';
 import { eq } from 'drizzle-orm';
 
 export type StaffRoleConfigurationIssue = {

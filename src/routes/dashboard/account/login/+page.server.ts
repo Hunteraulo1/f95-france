@@ -1,25 +1,25 @@
-import { discordLoginErrorMessage, discordOAuthAuthorizePath } from '$lib/discord-oauth-url';
-import * as auth from '$lib/server/auth';
-import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
-import { isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
+import { discordLoginErrorMessage, discordOAuthAuthorizePath } from '#lib/discord-oauth-url';
+import * as auth from '#lib/server/auth';
+import { safeDashboardRedirectPath } from '#lib/server/dashboard-auth';
+import { isDiscordOAuthConfigured } from '#lib/server/discord-oauth';
 import {
 	dashboardVerifyEmailPath,
 	emailVerificationRequired,
 	isUserEmailVerified
-} from '$lib/server/email-verification';
+} from '#lib/server/email-verification';
 import {
 	checkLoginThrottle,
 	clearLoginThrottle,
 	loginRequiresCaptcha,
 	recordLoginFailure
-} from '$lib/server/login-throttle';
-import { isRegistrationEnabled } from '$lib/server/registration-policy';
+} from '#lib/server/login-throttle';
+import { isRegistrationEnabled } from '#lib/server/registration-policy';
 import {
 	extractTurnstileTokenFromFormData,
 	getTurnstileSiteKey,
 	isTurnstileConfigured,
 	verifyTurnstileFromForm
-} from '$lib/server/turnstile';
+} from '#lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import * as OTPAuth from 'otpauth';

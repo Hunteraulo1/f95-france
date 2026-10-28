@@ -3,8 +3,8 @@ import type {
 	SubmissionFieldConfig,
 	SubmissionModalTranslator,
 	SubmissionPrimitive
-} from '$lib/components/dashboard/submissions/submission-modal-types';
-import type { GameTranslation } from '$lib/server/db/schema';
+} from '#lib/components/dashboard/submissions/submission-modal-types';
+import type { GameTranslation } from '#lib/server/db/schema';
 
 export const GAME_FIELDS: SubmissionFieldConfig<GameSubmissionJson>[] = [
 	{ key: 'name', label: 'Nom' },

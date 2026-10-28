@@ -1,6 +1,6 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { and, isNull, like } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';

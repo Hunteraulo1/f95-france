@@ -1,27 +1,27 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	createPendingTranslators,
 	normalizePendingNewTranslatorNames,
 	resolveTranslatorContributorIdsForStorage
-} from '$lib/server/ensure-translator';
+} from '#lib/server/ensure-translator';
 import {
 	clampTranslationAc,
 	clearAllTranslationAutoCheckForGame,
 	getGameAllowsTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
-} from '$lib/server/game-auto-check';
+} from '#lib/server/game-auto-check';
 import {
 	resolveGameDescriptionFields,
 	voidTranslateGameDescriptionInBackground
-} from '$lib/server/game-description-fr';
-import { coerceGameEngineType, defaultGameTypeForGame } from '$lib/server/game-engine-type';
+} from '#lib/server/game-description-fr';
+import { coerceGameEngineType, defaultGameTypeForGame } from '#lib/server/game-engine-type';
 import {
 	createGameUpdateRow,
 	recordTranslationChangeInUpdateHistory,
 	touchGameUpdatedToday
-} from '$lib/server/game-updates';
+} from '#lib/server/game-updates';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	deleteTranslationFromGoogleSheet,
@@ -30,16 +30,16 @@ import {
 	voidSyncGameTranslationsToGoogleSheet,
 	voidSyncTranslationToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { invalidatePendingSubmissionsCountCache } from '$lib/server/pending-submissions-count';
-import { resolveTranslatorAlertsEnabledOnWrite } from '$lib/server/translator-follow-alerts';
-import { applyTranslatorPagesDirect } from '$lib/server/translator-pages-write';
+} from '#lib/server/google-sheets-sync';
+import { invalidatePendingSubmissionsCountCache } from '#lib/server/pending-submissions-count';
+import { resolveTranslatorAlertsEnabledOnWrite } from '#lib/server/translator-follow-alerts';
+import { applyTranslatorPagesDirect } from '#lib/server/translator-pages-write';
 import {
 	translationRowToHistorySnapshot,
 	type TranslationHistorySnapshot
-} from '$lib/server/update-history';
-import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
-import { isNoTranslation, normalizeTranslationTversion } from '$lib/utils/game-form-validation';
+} from '#lib/server/update-history';
+import { incrementUserGameCounter } from '#lib/server/user-stats-counters';
+import { isNoTranslation, normalizeTranslationTversion } from '#lib/utils/game-form-validation';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 

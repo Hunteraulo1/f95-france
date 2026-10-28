@@ -1,14 +1,14 @@
-import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { hasPermission } from '$lib/server/permissions';
+import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertGameManageAccess } from '#lib/server/game-manage-guard';
+import { hasPermission } from '#lib/server/permissions';
 import {
 	assertRoleEditMode,
 	getRoleEditMode,
 	resolveShouldCreateSubmissionForUser
-} from '$lib/server/role-edit-mode';
+} from '#lib/server/role-edit-mode';
 import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';

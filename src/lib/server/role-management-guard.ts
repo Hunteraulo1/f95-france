@@ -1,6 +1,6 @@
-import { isSuperadminRole, type PermissionKey } from '$lib/permissions/catalog';
-import { systemRoleRank } from '$lib/permissions/sort-roles';
-import { getPermissionsForRole, hasPermission } from '$lib/server/permissions';
+import { isSuperadminRole, type PermissionKey } from '#lib/permissions/catalog';
+import { systemRoleRank } from '#lib/permissions/sort-roles';
+import { getPermissionsForRole, hasPermission } from '#lib/server/permissions';
 
 /** Peut attribuer toutes les permissions à un rôle (dont droits admin). */
 export function canAssignAllRolePermissions(locals: App.Locals): boolean {

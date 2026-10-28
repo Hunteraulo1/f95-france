@@ -1,9 +1,9 @@
 import {
 	effectiveTranslationVersion,
 	isTranslationOutdatedForLinkedTranslator
-} from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+} from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { and, desc, eq, inArray, like, or } from 'drizzle-orm';
 
 export const DASHBOARD_MY_TRANSLATIONS_PAGE_SIZE = 20;

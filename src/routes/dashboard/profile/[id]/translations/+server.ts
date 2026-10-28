@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { loadProfileTranslationsForUser } from '#lib/server/profile-translations';
 import { json, error } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

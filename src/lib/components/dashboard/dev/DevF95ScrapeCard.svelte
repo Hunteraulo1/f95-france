@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
+	import { createDevActionEnhance } from '#lib/forms/dev-action';
 	import {
 		isScrapeDetailsObject,
 		mapScrapeResult,
 		type ScrapeResult
-	} from '$lib/components/dashboard/dev/dev-page-mappers';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	} from '#lib/components/dashboard/dev/dev-page-mappers';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';

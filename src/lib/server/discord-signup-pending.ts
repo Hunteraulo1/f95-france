@@ -1,5 +1,5 @@
-import { openOAuthToken, sealOAuthToken } from '$lib/server/config-token-crypto';
-import { secureSessionCookieOptions } from '$lib/server/cookie-options';
+import { openOAuthToken, sealOAuthToken } from '#lib/server/config-token-crypto';
+import { secureSessionCookieOptions } from '#lib/server/cookie-options';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export const DISCORD_SIGNUP_PENDING_COOKIE = 'discord_signup_pending';

@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import { apiLog, user } from '$lib/server/db/schema';
-import { isElkReadEnabled, searchApiLogs } from '$lib/server/elk-client';
+import { db } from '#lib/server/db';
+import { apiLog, user } from '#lib/server/db/schema';
+import { isElkReadEnabled, searchApiLogs } from '#lib/server/elk-client';
 import { and, count, desc, eq, gte, like, lt, not, notLike, or, sql } from 'drizzle-orm';
 
 export type DashboardApiLogsPageResult = {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import HomeHeroMockupShell from '$lib/components/home/HomeHeroMockupShell.svelte';
+	import HomeHeroMockupShell from '#lib/components/home/HomeHeroMockupShell.svelte';
 
 	type SheetLine = {
 		widthClass: string;

@@ -1,4 +1,4 @@
-import { boolFromRecord, strFromRecord } from '$lib/forms/dev-action';
+import { boolFromRecord, strFromRecord } from '#lib/forms/dev-action';
 
 export type SheetsDetails = { title?: string; spreadsheetId?: string; sheets?: string[] };
 export type ScrapeDetails = {

@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { desc, eq } from 'drizzle-orm';
 
 const RUN_PAGE_SIZE = 30;

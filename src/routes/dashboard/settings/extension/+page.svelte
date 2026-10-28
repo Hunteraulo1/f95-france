@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
 

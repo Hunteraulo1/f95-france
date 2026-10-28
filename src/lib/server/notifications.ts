@@ -1,10 +1,10 @@
-import { isRoutineApiError } from '$lib/server/api-log-noise';
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import type { AutoCheckTriggerSource } from '$lib/server/auto-check-run-recorder';
-import type { AutoCheckResult } from '$lib/server/check-version';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { getUserIdsWithPermission } from '$lib/server/permissions';
+import { isRoutineApiError } from '#lib/server/api-log-noise';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import type { AutoCheckTriggerSource } from '#lib/server/auto-check-run-recorder';
+import type { AutoCheckResult } from '#lib/server/check-version';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { getUserIdsWithPermission } from '#lib/server/permissions';
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 export type NotificationType =

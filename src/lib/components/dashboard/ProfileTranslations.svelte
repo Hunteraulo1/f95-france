@@ -1,8 +1,8 @@
 <script lang="ts">
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import type { ProfileStats } from '$lib/server/profile-stats';
-	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import type { ProfileStats } from '#lib/server/profile-stats';
+	import type { ProfileTranslationItem } from '#lib/server/profile-translations';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Languages from '@lucide/svelte/icons/languages';
 

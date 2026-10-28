@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 import { Buffer } from 'node:buffer';
 import { timingSafeEqual } from 'node:crypto';
 

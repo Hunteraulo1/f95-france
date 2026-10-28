@@ -2,20 +2,20 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { normalizeTranslatorPages } from '$lib/components/dashboard/submissions/submission-modal-field-utils';
+	import { normalizeTranslatorPages } from '#lib/components/dashboard/submissions/submission-modal-field-utils';
 	import type {
 		SubmissionModalItem,
 		SubmissionModalTranslator
-	} from '$lib/components/dashboard/submissions/submission-modal-types';
-	import SubmissionModalDetailsPanel from '$lib/components/dashboard/submissions/SubmissionModalDetailsPanel.svelte';
-	import SubmissionModalGameEditFields from '$lib/components/dashboard/submissions/SubmissionModalGameEditFields.svelte';
-	import SubmissionModalHeader from '$lib/components/dashboard/submissions/SubmissionModalHeader.svelte';
-	import SubmissionModalStatusPanel from '$lib/components/dashboard/submissions/SubmissionModalStatusPanel.svelte';
-	import SubmissionModalTranslationEditFields from '$lib/components/dashboard/submissions/SubmissionModalTranslationEditFields.svelte';
-	import SubmissionModalTranslatorPagesEdit from '$lib/components/dashboard/submissions/SubmissionModalTranslatorPagesEdit.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { hasPermission } from '$lib/permissions/client';
-	import type { GameTranslation } from '$lib/server/db/schema';
+	} from '#lib/components/dashboard/submissions/submission-modal-types';
+	import SubmissionModalDetailsPanel from '#lib/components/dashboard/submissions/SubmissionModalDetailsPanel.svelte';
+	import SubmissionModalGameEditFields from '#lib/components/dashboard/submissions/SubmissionModalGameEditFields.svelte';
+	import SubmissionModalHeader from '#lib/components/dashboard/submissions/SubmissionModalHeader.svelte';
+	import SubmissionModalStatusPanel from '#lib/components/dashboard/submissions/SubmissionModalStatusPanel.svelte';
+	import SubmissionModalTranslationEditFields from '#lib/components/dashboard/submissions/SubmissionModalTranslationEditFields.svelte';
+	import SubmissionModalTranslatorPagesEdit from '#lib/components/dashboard/submissions/SubmissionModalTranslatorPagesEdit.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { hasPermission } from '#lib/permissions/client';
+	import type { GameTranslation } from '#lib/server/db/schema';
 	import {
 		gameImageRequiredForWebsite,
 		isIntegrated,
@@ -23,9 +23,9 @@
 		normalizeGameImageForStorage,
 		normalizeTranslationTversion,
 		requiresTranslationVersion
-	} from '$lib/utils/game-form-validation';
-	import { validateSubmissionEditLinks } from '$lib/utils/link-validation';
-	import { validateStatusChange } from '$lib/utils/submissions';
+	} from '#lib/utils/game-form-validation';
+	import { validateSubmissionEditLinks } from '#lib/utils/link-validation';
+	import { validateStatusChange } from '#lib/utils/submissions';
 
 	interface Props {
 		submission: SubmissionModalItem | null;
@@ -81,7 +81,7 @@
 		const translator = getTranslator(translatorId);
 		const profileRef = translator?.username ?? null;
 		if (profileRef) {
-			await goto(resolve(`/dashboard/profile/${profileRef}`));
+			await goto(resolve('/dashboard/profile/[id]', { id: profileRef }));
 		}
 	};
 

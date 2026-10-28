@@ -1,10 +1,10 @@
-import { SYSTEM_ROLE_LABELS } from '$lib/permissions/catalog';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { SYSTEM_ROLE_LABELS } from '#lib/permissions/catalog';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	fetchLastApiActivityByUserIds,
 	resolveLastConnectionAt
-} from '$lib/server/user-last-connection';
+} from '#lib/server/user-last-connection';
 import { asc, desc, eq } from 'drizzle-orm';
 
 export type StaffUserListItem = {

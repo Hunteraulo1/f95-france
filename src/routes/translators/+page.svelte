@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
-	import type { TranslatorPageLink } from '$lib/profile/custom-profile';
-	import type { PublicTranslatorRow } from '$lib/server/public-translators';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { fetchPaginatedJson } from '#lib/infinite-scroll/fetch-paginated-json';
+	import type { TranslatorPageLink } from '#lib/profile/custom-profile';
+	import type { PublicTranslatorRow } from '#lib/server/public-translators';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
@@ -78,8 +78,7 @@
 	const navigateSearch = (value: string) => {
 		void goto(buildHref({ q: value }), {
 			replaceState: true,
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			invalidateAll: true
 		});
 	};
@@ -177,7 +176,7 @@
 
 					<div class="min-w-0 list-col-grow">
 						{#if translator.profileHref}
-							<a href={resolve(translator.profileHref)} class="link font-medium link-hover">
+							<a href={translator.profileHref} class="link font-medium link-hover">
 								{translator.name}
 							</a>
 						{:else}

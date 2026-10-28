@@ -1,34 +1,34 @@
-import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
-import { getUserById } from '$lib/server/auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { appLogError, appLogWarn } from '#lib/server/app-log-bridge';
+import { getUserById } from '#lib/server/auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	sendDiscordWebhookAdminNewSubmission,
 	sendDiscordWebhookUpdatesSubmissionApplied
-} from '$lib/server/discord-webhook';
+} from '#lib/server/discord-webhook';
 import {
 	clearAllTranslationAutoCheckForGame,
 	disableGameAndTranslationAutoCheck,
 	resolveGameAutoCheckForWebsite
-} from '$lib/server/game-auto-check';
-import { resolveGameDescriptionFields } from '$lib/server/game-description-fr';
-import { assertGameManageAccess } from '$lib/server/game-manage-guard';
+} from '#lib/server/game-auto-check';
+import { resolveGameDescriptionFields } from '#lib/server/game-description-fr';
+import { assertGameManageAccess } from '#lib/server/game-manage-guard';
 import {
 	deleteGameTranslationsFromGoogleSheet,
 	voidSyncGameTranslationsToGoogleSheet,
 	voidSyncTranslatorActivityCountsToGoogleSheet
-} from '$lib/server/google-sheets-sync';
-import { hasPermission } from '$lib/server/permissions';
-import { resolveShouldCreateSubmissionForUser } from '$lib/server/role-edit-mode';
-import { createGameDeleteSubmission, createGameUpdateSubmission } from '$lib/server/submissions';
-import { syncAcTranslationsToCheckerVersion } from '$lib/server/translation-ac-status';
-import { incrementUserGameCounter } from '$lib/server/user-stats-counters';
-import { needsF95VersionBump, normalizeCheckerVersion } from '$lib/utils/f95-checker-alignment';
+} from '#lib/server/google-sheets-sync';
+import { hasPermission } from '#lib/server/permissions';
+import { resolveShouldCreateSubmissionForUser } from '#lib/server/role-edit-mode';
+import { createGameDeleteSubmission, createGameUpdateSubmission } from '#lib/server/submissions';
+import { syncAcTranslationsToCheckerVersion } from '#lib/server/translation-ac-status';
+import { incrementUserGameCounter } from '#lib/server/user-stats-counters';
+import { needsF95VersionBump, normalizeCheckerVersion } from '#lib/utils/f95-checker-alignment';
 import {
 	gameImageRequiredForEdit,
 	normalizeGameImageForStorage
-} from '$lib/utils/game-form-validation';
-import { validateGameLinkFields } from '$lib/utils/link-validation';
+} from '#lib/utils/game-form-validation';
+import { validateGameLinkFields } from '#lib/utils/link-validation';
 import { json } from '@sveltejs/kit';
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

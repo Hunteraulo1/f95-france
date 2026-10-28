@@ -1,9 +1,9 @@
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { getRoleEditMode } from '$lib/server/role-edit-mode';
-import { resolveTranslatorPagesWriteMode } from '$lib/server/translator-pages-write';
-import { hasPermission } from '$lib/server/permissions';
+import { formatUserEmailForDisplay } from '#lib/permissions/user-email';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { getRoleEditMode } from '#lib/server/role-edit-mode';
+import { resolveTranslatorPagesWriteMode } from '#lib/server/translator-pages-write';
+import { hasPermission } from '#lib/server/permissions';
 import { and, eq, like, or, sql } from 'drizzle-orm';
 
 export const DASHBOARD_TRANSLATORS_PAGE_SIZE = 20;

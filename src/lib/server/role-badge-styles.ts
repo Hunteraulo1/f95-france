@@ -3,8 +3,8 @@ import {
 	resolveRoleBadgeStyle,
 	SYSTEM_ROLE_BADGE_STYLES,
 	type RoleBadgeStyle
-} from '$lib/permissions/role-badge-style';
-import { selectAllAppRoles } from '$lib/server/app-role-query';
+} from '#lib/permissions/role-badge-style';
+import { selectAllAppRoles } from '#lib/server/app-role-query';
 
 let cache: { map: Record<string, RoleBadgeStyle>; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 30_000;

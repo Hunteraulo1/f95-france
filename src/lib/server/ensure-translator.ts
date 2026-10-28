@@ -1,6 +1,6 @@
-import { buildTranslatorFkResolver } from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import { gameTranslation, translator } from '$lib/server/db/schema';
+import { buildTranslatorFkResolver } from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import { gameTranslation, translator } from '#lib/server/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 

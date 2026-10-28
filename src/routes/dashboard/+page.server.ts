@@ -1,13 +1,13 @@
-import { isTranslationOutdatedForLinkedTranslator } from '$lib/server/api/translation-public';
+import { isTranslationOutdatedForLinkedTranslator } from '#lib/server/api/translation-public';
 import {
 	countGlobalSubmissionStats,
 	countRecentWithinDays,
 	countTranslationStatsByStatus,
 	countUserSubmissionStats
-} from '$lib/server/dashboard-stats';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasPermission } from '$lib/server/permissions';
+} from '#lib/server/dashboard-stats';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasPermission } from '#lib/server/permissions';
 import { eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 

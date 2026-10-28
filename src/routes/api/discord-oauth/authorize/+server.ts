@@ -1,8 +1,8 @@
-import { getDiscordAuthorizeUrl, getDiscordOAuthConfig } from '$lib/server/discord-oauth';
+import { getDiscordAuthorizeUrl, getDiscordOAuthConfig } from '#lib/server/discord-oauth';
 import {
 	buildDiscordOAuthContextFromUrl,
 	setDiscordOAuthCookies
-} from '$lib/server/discord-oauth-state';
+} from '#lib/server/discord-oauth-state';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

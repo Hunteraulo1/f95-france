@@ -1,6 +1,6 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import * as table from '$lib/server/db/schema';
-import { loadSubmissionListPage, parseSubmissionStatusFilter } from '$lib/server/submission-pages';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import * as table from '#lib/server/db/schema';
+import { loadSubmissionListPage, parseSubmissionStatusFilter } from '#lib/server/submission-pages';
 import { json } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

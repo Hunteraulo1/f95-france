@@ -5,7 +5,7 @@ import {
 	markNotificationAsRead,
 	markAllNotificationsAsRead,
 	countUnreadNotifications
-} from '$lib/server/notifications';
+} from '#lib/server/notifications';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user) {

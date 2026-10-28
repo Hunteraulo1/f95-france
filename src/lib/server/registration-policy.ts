@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 
 export const REGISTRATION_ACCOUNT_EXISTS_MESSAGE =
 	'Impossible de créer ce compte avec ces informations. Vérifiez vos données ou connectez-vous si vous avez déjà un compte.';

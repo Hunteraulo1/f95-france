@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
+	import TurnstileWidget from '#lib/components/TurnstileWidget.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { TURNSTILE_FORM_FIELD } from '#lib/turnstile/constants';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import type { ActionData, PageData } from './$types';
 

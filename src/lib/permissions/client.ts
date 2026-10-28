@@ -1,4 +1,4 @@
-import { user, userPermissions } from '$lib/stores';
+import { user, userPermissions } from '#lib/stores';
 import { derived } from 'svelte/store';
 import type { PermissionKey } from './catalog';
 import { anyPermissionGranted, permissionGranted } from './check';

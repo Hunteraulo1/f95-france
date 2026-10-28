@@ -1,7 +1,7 @@
-import { loadDashboardMyTranslationsPage } from '$lib/server/dashboard-my-translations-page-load';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { voidSyncTranslationToGoogleSheet } from '$lib/server/google-sheets-sync';
+import { loadDashboardMyTranslationsPage } from '#lib/server/dashboard-my-translations-page-load';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { voidSyncTranslationToGoogleSheet } from '#lib/server/google-sheets-sync';
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';

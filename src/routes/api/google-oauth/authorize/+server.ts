@@ -1,8 +1,8 @@
-import { getEffectiveConfig } from '$lib/server/app-config';
-import { secureSessionCookieOptions } from '$lib/server/cookie-options';
-import { getGoogleAuthUrl } from '$lib/server/google-oauth';
-import { GOOGLE_OAUTH_STATE_COOKIE } from '$lib/server/google-oauth-state';
-import { assertPermission } from '$lib/server/permissions';
+import { getEffectiveConfig } from '#lib/server/app-config';
+import { secureSessionCookieOptions } from '#lib/server/cookie-options';
+import { getGoogleAuthUrl } from '#lib/server/google-oauth';
+import { GOOGLE_OAUTH_STATE_COOKIE } from '#lib/server/google-oauth-state';
+import { assertPermission } from '#lib/server/permissions';
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

@@ -1,4 +1,4 @@
-import type { GameEngineType } from '$lib/types';
+import type { GameEngineType } from '#lib/types';
 
 export const EXTRACT_DRAFT_COOKIE = 'f95_extract_draft';
 

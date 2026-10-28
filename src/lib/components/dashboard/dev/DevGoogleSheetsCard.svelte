@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
-	import type { ConfigClientSafe } from '$lib/server/app-config';
+	import { createDevActionEnhance } from '#lib/forms/dev-action';
+	import type { ConfigClientSafe } from '#lib/server/app-config';
 	import {
 		isSheetsDetails,
 		mapSheetsTestResult,
 		type TestResult
-	} from '$lib/components/dashboard/dev/dev-page-mappers';
+	} from '#lib/components/dashboard/dev/dev-page-mappers';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import ExternalLink from '@lucide/svelte/icons/external-link';

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
+	import { createDevActionEnhance } from '#lib/forms/dev-action';
 	import {
 		mapTranslatorMpTestResult,
 		type TranslatorMpTestResult
-	} from '$lib/components/dashboard/dev/dev-page-mappers';
+	} from '#lib/components/dashboard/dev/dev-page-mappers';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';

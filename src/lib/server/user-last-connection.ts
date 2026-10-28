@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 
 export async function fetchLastApiActivityByUserIds(userIds: string[]): Promise<Map<string, Date>> {

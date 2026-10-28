@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
-	import LogsModeNav from '$lib/components/dashboard/LogsModeNav.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import type { LiveLogEntry } from '$lib/logs/live-log-entry';
-	import { roleBadgeStyles } from '$lib/stores';
-	import { roleUsernameClass } from '$lib/utils/role-display';
+	import { browser } from '$app/env';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
+	import LogsModeNav from '#lib/components/dashboard/LogsModeNav.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import type { LiveLogEntry } from '#lib/logs/live-log-entry';
+	import { roleBadgeStyles } from '#lib/stores';
+	import { roleUsernameClass } from '#lib/utils/role-display';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';

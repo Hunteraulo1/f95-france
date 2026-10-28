@@ -2,23 +2,23 @@ import {
 	finalizeDiscordSignup,
 	REGISTRATION_INVITE_INVALID_MESSAGE,
 	validateDiscordSignupUsername
-} from '$lib/server/discord-auth';
-import { getDiscordOAuthConfig } from '$lib/server/discord-oauth';
+} from '#lib/server/discord-auth';
+import { getDiscordOAuthConfig } from '#lib/server/discord-oauth';
 import {
 	clearDiscordSignupPendingCookie,
 	readDiscordSignupPendingCookie
-} from '$lib/server/discord-signup-pending';
+} from '#lib/server/discord-signup-pending';
 import {
 	isRegistrationEnabled,
 	isRegistrationInviteRequired,
 	verifyRegistrationInvite
-} from '$lib/server/registration-policy';
+} from '#lib/server/registration-policy';
 import {
 	extractTurnstileTokenFromFormData,
 	getTurnstileSiteKey,
 	isTurnstileConfigured,
 	verifyTurnstileFromForm
-} from '$lib/server/turnstile';
+} from '#lib/server/turnstile';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';

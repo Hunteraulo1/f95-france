@@ -1,23 +1,23 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { sendDiscordWebhookUpdatesSubmissionApplied } from '$lib/server/discord-webhook';
-import { assertPermission } from '$lib/server/permissions';
-import { submissionReviewedByUserIdPatch } from '$lib/server/schema-column-compat';
-import { submissionOpenedByUserIdPatch } from '$lib/server/submission-opened-by-compat';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { sendDiscordWebhookUpdatesSubmissionApplied } from '#lib/server/discord-webhook';
+import { assertPermission } from '#lib/server/permissions';
+import { submissionReviewedByUserIdPatch } from '#lib/server/schema-column-compat';
+import { submissionOpenedByUserIdPatch } from '#lib/server/submission-opened-by-compat';
 import {
 	formDataToSubmissionPayload,
 	loadSubmissionListPage,
 	parseSubmissionStatusFilter
-} from '$lib/server/submission-pages';
+} from '#lib/server/submission-pages';
 import {
 	normalizeTranslationInPayload,
 	parseSubmissionPayloadJson,
 	persistSubmissionPayload,
 	validateSubmissionPayloadForType
-} from '$lib/server/submission-payload-update';
-import { applySubmission, revertSubmission } from '$lib/server/submissions';
-import { isReviewedSubmissionStatus } from '$lib/utils/submissions';
+} from '#lib/server/submission-payload-update';
+import { applySubmission, revertSubmission } from '#lib/server/submissions';
+import { isReviewedSubmissionStatus } from '#lib/utils/submissions';
 import { fail } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -247,7 +247,7 @@ export const actions: Actions = {
 
 			if (currentStatus !== status) {
 				try {
-					const { notifySubmissionStatusChange } = await import('$lib/server/notifications');
+					const { notifySubmissionStatusChange } = await import('#lib/server/notifications');
 					await notifySubmissionStatusChange(
 						submissionUserId,
 						submissionId,

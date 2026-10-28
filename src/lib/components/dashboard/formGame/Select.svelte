@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { FormGameType } from '$lib/types';
-	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
-	import { isNoTranslation } from '$lib/utils/game-form-validation';
+	import type { FormGameType } from '#lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
+	import { isNoTranslation } from '#lib/utils/game-form-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface SelectOption {

@@ -1,5 +1,5 @@
-import { privateEnv } from '$lib/server/private-env';
-import { SITE, siteOrigin } from '$lib/site';
+import { privateEnv } from '#lib/server/private-env';
+import { SITE, siteOrigin } from '#lib/site';
 import nodemailer, { type Transporter } from 'nodemailer';
 
 let transporter: Transporter | null = null;

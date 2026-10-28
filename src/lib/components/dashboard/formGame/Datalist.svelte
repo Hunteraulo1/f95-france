@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import AddTraductorModal from '$lib/components/dashboard/AddTraductorModal.svelte';
-	import type { Translator } from '$lib/server/db/schema';
-	import type { FormGameType } from '$lib/types';
+	import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+	import AddTraductorModal from '#lib/components/dashboard/AddTraductorModal.svelte';
+	import type { Translator } from '#lib/server/db/schema';
+	import type { FormGameType } from '#lib/types';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import type { ChangeEventHandler, HTMLInputAttributes } from 'svelte/elements';
 

@@ -4,32 +4,32 @@ import {
 	permissionCatalogGrouped,
 	SYSTEM_ROLE_LABELS,
 	type PermissionKey
-} from '$lib/permissions/catalog';
-import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
+} from '#lib/permissions/catalog';
+import { enforcePermissionDependencies } from '#lib/permissions/dependencies';
 import {
 	GAMES_MANAGE_PERMISSION,
 	isRoleEditMode,
 	resolveEffectiveRoleEditMode,
 	ROLE_EDIT_MODE_OPTIONS
-} from '$lib/permissions/edit-mode';
+} from '#lib/permissions/edit-mode';
 import {
 	parseRoleMaxApiKeysInput,
 	resolveRoleMaxApiKeys,
 	ROLE_API_KEYS_MAX,
 	ROLE_API_KEYS_MIN,
 	USER_API_KEY_MAX_COUNT_DEFAULT
-} from '$lib/permissions/role-api-keys';
-import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '$lib/permissions/role-badge-style';
+} from '#lib/permissions/role-api-keys';
+import { resolveRoleBadgeStyle, ROLE_BADGE_STYLE_OPTIONS } from '#lib/permissions/role-badge-style';
 import {
 	parseRolePriorityInput,
 	ROLE_PRIORITY_MAX,
 	ROLE_PRIORITY_MIN
-} from '$lib/permissions/role-priority';
-import { sortRolesByPriority } from '$lib/permissions/sort-roles';
-import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
-import { selectAllAppRoles } from '$lib/server/app-role-query';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+} from '#lib/permissions/role-priority';
+import { sortRolesByPriority } from '#lib/permissions/sort-roles';
+import { formatUserEmailForDisplay } from '#lib/permissions/user-email';
+import { selectAllAppRoles } from '#lib/server/app-role-query';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	assertPermission,
 	countUsersWithRoles,
@@ -40,22 +40,22 @@ import {
 	listRolePermissionsStored,
 	roleExists,
 	setRolePermissions
-} from '$lib/server/permissions';
+} from '#lib/server/permissions';
 import {
 	invalidateRoleBadgeStylesCache,
 	parseRoleBadgeStyleInput
-} from '$lib/server/role-badge-styles';
+} from '#lib/server/role-badge-styles';
 import {
 	assertCanManageRole,
 	canAssignAllRolePermissions,
 	filterPermissionsAssignableByActor,
 	getActorPermissionSet
-} from '$lib/server/role-management-guard';
+} from '#lib/server/role-management-guard';
 import {
 	applyStaffRoleConfigurationFix,
 	listStaffRoleConfigurationIssues
-} from '$lib/server/staff-role-configuration';
-import { listStaffUsers } from '$lib/server/staff-users';
+} from '#lib/server/staff-role-configuration';
+import { listStaffUsers } from '#lib/server/staff-users';
 import { fail, isRedirect, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';

@@ -1,12 +1,12 @@
-import { isSuperadminRole } from '$lib/permissions/catalog';
+import { isSuperadminRole } from '#lib/permissions/catalog';
 import {
 	GAMES_MANAGE_PERMISSION,
 	resolveEffectiveRoleEditMode,
 	resolveShouldCreateSubmission,
 	type RoleEditMode
-} from '$lib/permissions/edit-mode';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+} from '#lib/permissions/edit-mode';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { error } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 

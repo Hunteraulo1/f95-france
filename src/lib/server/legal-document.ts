@@ -1,5 +1,5 @@
-import { cdnMarkdownFetchUrl } from '$lib/legal-documents';
-import { parseMarkdownDocument, type MarkdownBlock } from '$lib/markdown/content';
+import { cdnMarkdownFetchUrl } from '#lib/legal-documents';
+import { parseMarkdownDocument, type MarkdownBlock } from '#lib/markdown/content';
 
 const FETCH_TIMEOUT_MS = 15_000;
 

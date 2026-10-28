@@ -1,21 +1,21 @@
 <script lang="ts">
-	import DeleteGameModal from '$lib/components/dashboard/game/DeleteGameModal.svelte';
-	import DeleteTranslationModal from '$lib/components/dashboard/game/DeleteTranslationModal.svelte';
-	import GameImagePreviewModal from '$lib/components/dashboard/game/GameImagePreviewModal.svelte';
-	import GameUpdateHistoryPanel from '$lib/components/dashboard/game/GameUpdateHistoryPanel.svelte';
-	import { hasPermission } from '$lib/permissions/client';
-	import type { ScrapedThreadGame } from '$lib/scrape/types';
-	import { newToast } from '$lib/stores';
+	import DeleteGameModal from '#lib/components/dashboard/game/DeleteGameModal.svelte';
+	import DeleteTranslationModal from '#lib/components/dashboard/game/DeleteTranslationModal.svelte';
+	import GameImagePreviewModal from '#lib/components/dashboard/game/GameImagePreviewModal.svelte';
+	import GameUpdateHistoryPanel from '#lib/components/dashboard/game/GameUpdateHistoryPanel.svelte';
+	import { hasPermission } from '#lib/permissions/client';
+	import type { ScrapedThreadGame } from '#lib/scrape/types';
+	import { newToast } from '#lib/stores';
 	import {
 		isF95CheckerVersionAligned,
 		normalizeCheckerVersion
-	} from '$lib/utils/f95-checker-alignment';
-	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	} from '#lib/utils/f95-checker-alignment';
+	import { getGameEngineHexColor, getGameEngineLabel } from '#lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import {
 		getTranslationProgressLabel,
 		getTranslationTypeLabel
-	} from '$lib/utils/game-translation-labels';
+	} from '#lib/utils/game-translation-labels';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CalendarCheck2 from '@lucide/svelte/icons/calendar-check-2';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';

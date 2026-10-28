@@ -2,17 +2,17 @@ import {
 	getEffectiveConfig,
 	getEffectiveConfigFromRow,
 	toConfigClientSafe
-} from '$lib/server/app-config';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { getDiscordBotToken, sendDiscordBotTranslatorVersionBumpDm } from '$lib/server/discord-bot';
+} from '#lib/server/app-config';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { getDiscordBotToken, sendDiscordBotTranslatorVersionBumpDm } from '#lib/server/discord-bot';
 import {
 	sendDiscordWebhookTranslatorsVersionBumps,
 	type TranslatorVersionBumpLine
-} from '$lib/server/discord-webhook';
-import { getValidAccessToken } from '$lib/server/google-oauth';
-import { syncDbToSpreadsheetBulk } from '$lib/server/google-sheets-sync';
-import { assertPermission } from '$lib/server/permissions';
+} from '#lib/server/discord-webhook';
+import { getValidAccessToken } from '#lib/server/google-oauth';
+import { syncDbToSpreadsheetBulk } from '#lib/server/google-sheets-sync';
+import { assertPermission } from '#lib/server/permissions';
 import { eq, isNotNull } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -205,7 +205,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			const { scrapeThread } = await import('$lib/server/scrape');
+			const { scrapeThread } = await import('#lib/server/scrape');
 			const data = await scrapeThread(website, threadId);
 			return {
 				success: true,

@@ -1,4 +1,4 @@
-import { normalizeOptionalMediaUrl } from '$lib/profile/custom-profile';
+import { normalizeOptionalMediaUrl } from '#lib/profile/custom-profile';
 
 const VIDEO_ID_RE = /^[\w-]{11}$/;
 

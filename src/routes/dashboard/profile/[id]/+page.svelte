@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import ProfileView from '$lib/components/dashboard/ProfileView.svelte';
+	import ProfileView from '#lib/components/dashboard/ProfileView.svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -10,9 +10,7 @@
 	let { data }: Props = $props();
 
 	const translationsApiPath = $derived(
-		resolve(
-			`/dashboard/profile/${data.profileSlug}/translations` as `/dashboard/profile/${string}/translations`
-		)
+		resolve('/dashboard/profile/[id]/translations', { id: data.profileSlug })
 	);
 
 	const editProfileHref = $derived(

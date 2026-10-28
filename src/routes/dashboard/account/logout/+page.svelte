@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { clearUserData } from '$lib/stores';
+	import { clearUserData } from '#lib/stores';
 	import { onMount } from 'svelte';
 	import type { ActionData } from './$types';
 

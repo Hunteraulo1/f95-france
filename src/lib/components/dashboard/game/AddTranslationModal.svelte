@@ -1,12 +1,12 @@
 <script lang="ts">
-	import TranslatorContributorInput from '$lib/components/dashboard/TranslatorContributorInput.svelte';
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
+	import TranslatorContributorInput from '#lib/components/dashboard/TranslatorContributorInput.svelte';
+	import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+	import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
 	import {
 		GAME_ENGINE_SELECT_VALUES,
 		getTranslationProgressLabel,
 		getTranslationTypeLabel
-	} from '$lib/utils/game-translation-labels';
+	} from '#lib/utils/game-translation-labels';
 
 	export type NewTranslationForm = {
 		translationName: string;

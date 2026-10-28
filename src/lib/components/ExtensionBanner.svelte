@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ExtensionMockup from '$lib/components/ExtensionMockup.svelte';
+	import ExtensionMockup from '#lib/components/ExtensionMockup.svelte';
 	import {
 		detectExtensionBrowserTarget,
 		extensionAlternateDownloadHref,
@@ -9,8 +9,8 @@
 		extensionDownloadHref,
 		type ExtensionBrowserTarget,
 		type ExtensionDownloadUrls
-	} from '$lib/extension-browser';
-	import type { HomeExtensionMockupGame } from '$lib/home-extension-mockup';
+	} from '#lib/extension-browser';
+	import type { HomeExtensionMockupGame } from '#lib/home-extension-mockup';
 	import Bell from '@lucide/svelte/icons/bell';
 	import Download from '@lucide/svelte/icons/download';
 	import Filter from '@lucide/svelte/icons/filter';

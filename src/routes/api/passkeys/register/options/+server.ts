@@ -1,10 +1,10 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	checkPasskeyRegisterThrottle,
 	recordPasskeyRegisterAttempt
-} from '$lib/server/login-throttle';
-import { getRpID, getRpName, savePasskeyChallenge } from '$lib/server/passkeys';
+} from '#lib/server/login-throttle';
+import { getRpID, getRpName, savePasskeyChallenge } from '#lib/server/passkeys';
 import {
 	generateRegistrationOptions,
 	type PublicKeyCredentialCreationOptionsJSON

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
-	import { clearUserData, user } from '$lib/stores';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { profilePublicHref } from '$lib/utils/profile-url';
+	import { clearUserData, user } from '#lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { profilePublicSlug } from '#lib/utils/profile-url';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import User from '@lucide/svelte/icons/user';
@@ -44,7 +44,10 @@
 				</a>
 			</li>
 			<li>
-				<a href={resolve(profilePublicHref($user.username))} class="gap-2">
+				<a
+					href={resolve('/profile/[username]', { username: profilePublicSlug($user.username) })}
+					class="gap-2"
+				>
 					<User class="h-4 w-4" />
 					Profil
 				</a>

@@ -1,17 +1,17 @@
-import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { listGameUpdateHistoryPage } from '$lib/server/game-update-history-query';
-import { hasPermission } from '$lib/server/permissions';
+import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertGameManageAccess } from '#lib/server/game-manage-guard';
+import { listGameUpdateHistoryPage } from '#lib/server/game-update-history-query';
+import { hasPermission } from '#lib/server/permissions';
 import {
 	assertRoleEditMode,
 	getRoleEditMode,
 	resolveShouldCreateSubmissionForUser
-} from '$lib/server/role-edit-mode';
-import { hasSubmissionOpenedByUserIdColumn } from '$lib/server/submission-opened-by-compat';
-import { submissionOpenedByUser } from '$lib/server/submission-users';
+} from '#lib/server/role-edit-mode';
+import { hasSubmissionOpenedByUserIdColumn } from '#lib/server/submission-opened-by-compat';
+import { submissionOpenedByUser } from '#lib/server/submission-users';
 import { error, isHttpError } from '@sveltejs/kit';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';

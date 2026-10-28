@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import MarkdownContent from '$lib/components/MarkdownContent.svelte';
-	import type { MarkdownBlock } from '$lib/markdown/content';
+	import MarkdownContent from '#lib/components/MarkdownContent.svelte';
+	import type { MarkdownBlock } from '#lib/markdown/content';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 
 	interface Props {

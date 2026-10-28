@@ -17,7 +17,7 @@ function shouldSendHsts(): boolean {
 	return process.env.NODE_ENV === 'production';
 }
 
-/** Ajoute les en-têtes de sécurité HTTP (hors CSP, géré par `kit.csp` dans svelte.config.js). */
+/** Ajoute les en-têtes de sécurité HTTP (hors CSP, géré par `csp` dans le plugin `sveltekit()` de vite.config.ts). */
 export function applySecurityHeaders(response: Response): Response {
 	const headers = new Headers(response.headers);
 

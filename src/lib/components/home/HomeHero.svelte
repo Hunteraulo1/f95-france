@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Header from '$lib/components/Header.svelte';
-	import HomeHeroMockupFlip from '$lib/components/home/HomeHeroMockupFlip.svelte';
-	import { SITE } from '$lib/site';
+	import Header from '#lib/components/Header.svelte';
+	import HomeHeroMockupFlip from '#lib/components/home/HomeHeroMockupFlip.svelte';
+	import { SITE } from '#lib/site';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';

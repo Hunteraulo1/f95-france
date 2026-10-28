@@ -1,6 +1,6 @@
-import { parseTranslatorPages } from '$lib/profile/custom-profile';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { parseTranslatorPages } from '#lib/profile/custom-profile';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function loadTranslatorPagesForUser(userId: string) {

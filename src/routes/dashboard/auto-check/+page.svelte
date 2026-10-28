@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AutoCheckManualCard from '$lib/components/dashboard/AutoCheckManualCard.svelte';
+	import AutoCheckManualCard from '#lib/components/dashboard/AutoCheckManualCard.svelte';
 	import {
 		autoCheckIssueStageLabel,
 		autoCheckStatusBadgeClass,
 		autoCheckStatusLabel,
 		autoCheckTriggerLabel
-	} from '$lib/utils/auto-check-display';
+	} from '#lib/utils/auto-check-display';
 	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
 	import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
 	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
@@ -29,8 +29,7 @@
 
 	const selectRun = async (runId: string) => {
 		await goto(resolve(`/dashboard/auto-check?run=${runId}`), {
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			invalidateAll: true
 		});
 	};
@@ -167,7 +166,7 @@
 														{#if item.gameId}
 															<a
 																class="link font-medium link-hover"
-																href={resolve(`/dashboard/manager/game/${item.gameId}`)}
+																href={resolve('/dashboard/manager/game/[id]', { id: item.gameId })}
 															>
 																{item.gameName ?? 'Jeu'}
 															</a>
@@ -208,7 +207,9 @@
 															{#if item.gameId}
 																<a
 																	class="link link-hover"
-																	href={resolve(`/dashboard/manager/game/${item.gameId}`)}
+																	href={resolve('/dashboard/manager/game/[id]', {
+																		id: item.gameId
+																	})}
 																>
 																	{item.gameName ?? item.gameId}
 																</a>

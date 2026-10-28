@@ -1,4 +1,4 @@
-import { gameImageRequiredForWebsite } from '$lib/utils/game-form-validation';
+import { gameImageRequiredForWebsite } from '#lib/utils/game-form-validation';
 import { literal, minLength, pipe, safeParse, string, trim, union, url } from 'valibot';
 
 const RequiredHttpUrlSchema = pipe(

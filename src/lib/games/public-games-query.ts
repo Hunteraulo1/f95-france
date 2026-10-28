@@ -1,5 +1,5 @@
-import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
-import { GAME_ENGINE_SELECT_VALUES } from '$lib/utils/game-translation-labels';
+import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
+import { GAME_ENGINE_SELECT_VALUES } from '#lib/utils/game-translation-labels';
 
 export const PUBLIC_GAMES_SORT_OPTIONS = [
 	{ value: 'updated_desc', label: 'Mise à jour (récent)' },

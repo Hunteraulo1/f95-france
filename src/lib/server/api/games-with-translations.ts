@@ -1,6 +1,6 @@
-import { mapTranslationsForPublicApi } from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import { gameTranslation } from '$lib/server/db/schema';
+import { mapTranslationsForPublicApi } from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import { gameTranslation } from '#lib/server/db/schema';
 import { inArray } from 'drizzle-orm';
 
 export type GameTranslationRow = typeof gameTranslation.$inferSelect;

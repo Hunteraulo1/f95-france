@@ -1,4 +1,4 @@
-import type { AppLogLevel, AppLogSource } from '$lib/logs/app-log';
+import type { AppLogLevel, AppLogSource } from '#lib/logs/app-log';
 
 export type LiveAppLogEntry = {
 	id: string;

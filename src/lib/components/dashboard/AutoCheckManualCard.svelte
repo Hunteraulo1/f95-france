@@ -3,9 +3,9 @@
 	import {
 		mapAutoCheckResult,
 		type AutoCheckManualResult
-	} from '$lib/components/dashboard/dev/dev-page-mappers';
-	import { actionDataRecord } from '$lib/forms/dev-action';
-	import type { ConfigClientSafe } from '$lib/server/app-config';
+	} from '#lib/components/dashboard/dev/dev-page-mappers';
+	import { actionDataRecord } from '#lib/forms/dev-action';
+	import type { ConfigClientSafe } from '#lib/server/app-config';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';

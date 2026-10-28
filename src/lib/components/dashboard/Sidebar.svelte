@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import type { PermissionKey } from '$lib/permissions/catalog';
-	import { permissionGranted } from '$lib/permissions/check';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import type { PermissionKey } from '#lib/permissions/catalog';
+	import { permissionGranted } from '#lib/permissions/check';
 	import BookType from '@lucide/svelte/icons/book-type';
 	import Box from '@lucide/svelte/icons/box';
 	import BrickWallShield from '@lucide/svelte/icons/brick-wall-shield';

@@ -2,12 +2,12 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import BannerLogo from '$lib/components/BannerLogo.svelte';
-	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
-	import { hasPermission } from '$lib/permissions/client';
-	import { clearUserData, user } from '$lib/stores';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { profilePublicHref } from '$lib/utils/profile-url';
+	import BannerLogo from '#lib/components/BannerLogo.svelte';
+	import UserAvatarMenu from '#lib/components/UserAvatarMenu.svelte';
+	import { hasPermission } from '#lib/permissions/client';
+	import { clearUserData, user } from '#lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { profilePublicSlug } from '#lib/utils/profile-url';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
@@ -182,7 +182,7 @@
 						Tableau de bord
 					</a>
 					<a
-						href={resolve(profilePublicHref($user.username))}
+						href={resolve('/profile/[username]', { username: profilePublicSlug($user.username) })}
 						class="btn justify-start gap-2 btn-ghost"
 						onclick={closeNavDrawer}
 					>

@@ -1,13 +1,13 @@
-import { assertPermission, hasPermission, roleExists } from '$lib/server/permissions';
-import { loadDashboardUsersPage } from '$lib/server/dashboard-users-page-load';
-import { sendPasswordResetEmailForUser } from '$lib/server/password-reset';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { assertPermission, hasPermission, roleExists } from '#lib/server/permissions';
+import { loadDashboardUsersPage } from '#lib/server/dashboard-users-page-load';
+import { sendPasswordResetEmailForUser } from '#lib/server/password-reset';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	assertCanAssignUserRole,
 	assertCanManageUserWithRole
-} from '$lib/server/user-role-assignment-guard';
-import { assignTranslatorUser, unlinkUserFromTranslators } from '$lib/server/translator-user-link';
+} from '#lib/server/user-role-assignment-guard';
+import { assignTranslatorUser, unlinkUserFromTranslators } from '#lib/server/translator-user-link';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -102,7 +102,7 @@ export const actions: Actions = {
 				.where(eq(table.user.id, userId));
 
 			if (emailChanged) {
-				const { sendVerificationEmailForUser } = await import('$lib/server/email-verification');
+				const { sendVerificationEmailForUser } = await import('#lib/server/email-verification');
 				await sendVerificationEmailForUser(userId).catch((error) => {
 					console.error('Erreur envoi email de vérification après changement email:', error);
 				});

@@ -1,6 +1,6 @@
-import { detectExtensionBrowserTarget } from '$lib/extension-browser';
-import { getExtensionReleaseDownloadUrls } from '$lib/server/extension-release-downloads';
-import { getHomePayload, HOME_CACHE_CONTROL } from '$lib/server/home-page-data';
+import { detectExtensionBrowserTarget } from '#lib/extension-browser';
+import { getExtensionReleaseDownloadUrls } from '#lib/server/extension-release-downloads';
+import { getHomePayload, HOME_CACHE_CONTROL } from '#lib/server/home-page-data';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ request, setHeaders }) => {

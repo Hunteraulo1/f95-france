@@ -1,11 +1,11 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
+import { appLogWarn } from '#lib/server/app-log-bridge';
 import {
 	AUTO_CHECK_EMBEDS_PER_MESSAGE,
 	buildAutoCheckVersionBumpEmbed,
 	type DiscordEmbed,
 	type TranslatorVersionBumpLine
-} from '$lib/server/discord-webhook';
-import { privateEnv } from '$lib/server/private-env';
+} from '#lib/server/discord-webhook';
+import { privateEnv } from '#lib/server/private-env';
 
 /**
  * Envoi de MP Discord via un bot (`DISCORD_BOT_TOKEN`), en complément des webhooks

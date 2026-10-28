@@ -1,9 +1,9 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	isDescriptionAutoTranslateEnabled,
 	translateTextToFrenchLibreTranslate
-} from '$lib/server/translate-libretranslate';
+} from '#lib/server/translate-libretranslate';
 import { eq } from 'drizzle-orm';
 
 export type GameDescriptionFields = {

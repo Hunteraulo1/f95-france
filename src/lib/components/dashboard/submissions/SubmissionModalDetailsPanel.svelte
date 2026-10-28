@@ -7,14 +7,14 @@
 		normalizeTranslatorPages,
 		TRANSLATION_FIELDS,
 		valuesAreEqual
-	} from '$lib/components/dashboard/submissions/submission-modal-field-utils';
+	} from '#lib/components/dashboard/submissions/submission-modal-field-utils';
 	import type {
 		SubmissionModalItem,
 		SubmissionModalTranslator,
 		SubmissionPrimitive
-	} from '$lib/components/dashboard/submissions/submission-modal-types';
-	import { hasPermission } from '$lib/permissions/client';
-	import { getSubmissionGameId } from '$lib/utils/submissions';
+	} from '#lib/components/dashboard/submissions/submission-modal-types';
+	import { hasPermission } from '#lib/permissions/client';
+	import { getSubmissionGameId } from '#lib/utils/submissions';
 
 	interface Props {
 		submission: SubmissionModalItem;
@@ -27,9 +27,9 @@
 	const gameId = $derived(getSubmissionGameId(submission));
 	const gameHref = $derived(
 		gameId
-			? resolve(
-					$hasPermission('games.manage') ? `/dashboard/manager/game/${gameId}` : `/games/${gameId}`
-				)
+			? $hasPermission('games.manage')
+				? resolve('/dashboard/manager/game/[id]', { id: gameId })
+				: resolve('/games/[id]', { id: gameId })
 			: null
 	);
 

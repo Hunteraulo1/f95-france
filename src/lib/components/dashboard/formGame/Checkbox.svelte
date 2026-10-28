@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FormGameType } from '$lib/types';
-	import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
+	import type { FormGameType } from '#lib/types';
+	import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
 	import type { ChangeEventHandler } from 'svelte/elements';
 
 	interface Props {

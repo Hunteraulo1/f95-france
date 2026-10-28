@@ -1,4 +1,4 @@
-import type { GameEngineType } from '$lib/types';
+import type { GameEngineType } from '#lib/types';
 
 /** Données extraites d’un thread F95 / LC (partagé client / serveur). */
 export interface ScrapedThreadGame {
