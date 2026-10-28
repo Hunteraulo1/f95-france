@@ -1,4 +1,4 @@
-import { loadPublicProfile, profilePublicPath } from '$lib/server/public-profile-load';
+import { loadPublicProfile, profilePublicPath } from '#lib/server/public-profile-load';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

@@ -5,16 +5,16 @@ import {
 	SYSTEM_ROLE_EDIT_MODES,
 	SYSTEM_ROLE_PERMISSIONS,
 	type PermissionKey
-} from '$lib/permissions/catalog';
-import { anyPermissionGranted, permissionGranted } from '$lib/permissions/check';
-import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
-import { SYSTEM_ROLE_BADGE_STYLES } from '$lib/permissions/role-badge-style';
-import { SYSTEM_ROLE_PRIORITIES } from '$lib/permissions/role-priority';
-import { sortRolesByPriority } from '$lib/permissions/sort-roles';
-import { selectAllAppRoles } from '$lib/server/app-role-query';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { invalidateRoleEditModeCache } from '$lib/server/role-edit-mode';
+} from '#lib/permissions/catalog';
+import { anyPermissionGranted, permissionGranted } from '#lib/permissions/check';
+import { enforcePermissionDependencies } from '#lib/permissions/dependencies';
+import { SYSTEM_ROLE_BADGE_STYLES } from '#lib/permissions/role-badge-style';
+import { SYSTEM_ROLE_PRIORITIES } from '#lib/permissions/role-priority';
+import { sortRolesByPriority } from '#lib/permissions/sort-roles';
+import { selectAllAppRoles } from '#lib/server/app-role-query';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { invalidateRoleEditModeCache } from '#lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
 import { eq, inArray, sql } from 'drizzle-orm';
 

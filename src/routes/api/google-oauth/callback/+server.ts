@@ -1,7 +1,7 @@
-import { getEffectiveConfig } from '$lib/server/app-config';
-import { exchangeCodeForToken, saveOAuthTokens } from '$lib/server/google-oauth';
-import { GOOGLE_OAUTH_STATE_COOKIE } from '$lib/server/google-oauth-state';
-import { assertPermission } from '$lib/server/permissions';
+import { getEffectiveConfig } from '#lib/server/app-config';
+import { exchangeCodeForToken, saveOAuthTokens } from '#lib/server/google-oauth';
+import { GOOGLE_OAUTH_STATE_COOKIE } from '#lib/server/google-oauth-state';
+import { assertPermission } from '#lib/server/permissions';
 import { isRedirect, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

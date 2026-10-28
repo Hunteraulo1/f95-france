@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { hasPermission } from '$lib/permissions/client';
-	import type { User } from '$lib/server/db/schema';
-	import { updateUserData, user } from '$lib/stores';
-	import { isAppTheme, setThemePreference, type AppTheme } from '$lib/theme';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { hasPermission } from '#lib/permissions/client';
+	import type { User } from '#lib/server/db/schema';
+	import { updateUserData, user } from '#lib/stores';
+	import { isAppTheme, setThemePreference, type AppTheme } from '#lib/theme';
 	import { startRegistration } from '@simplewebauthn/browser';
 	import { untrack } from 'svelte';
 	import { get } from 'svelte/store';

@@ -1,4 +1,4 @@
-import { resetPasswordWithToken, validatePasswordResetToken } from '$lib/server/password-reset';
+import { resetPasswordWithToken, validatePasswordResetToken } from '#lib/server/password-reset';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

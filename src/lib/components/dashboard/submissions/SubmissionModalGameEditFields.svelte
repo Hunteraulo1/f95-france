@@ -1,5 +1,5 @@
 <script lang="ts">
-	import OtherSiteImageWarning from '$lib/components/dashboard/OtherSiteImageWarning.svelte';
+	import OtherSiteImageWarning from '#lib/components/dashboard/OtherSiteImageWarning.svelte';
 
 	let {
 		editGameName = $bindable(''),

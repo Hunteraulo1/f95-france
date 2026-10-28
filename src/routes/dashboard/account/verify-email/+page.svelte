@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import Mail from '@lucide/svelte/icons/mail';
 	import MailCheck from '@lucide/svelte/icons/mail-check';
 	import type { ActionData, PageData } from './$types';

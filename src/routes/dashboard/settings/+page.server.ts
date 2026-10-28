@@ -1,18 +1,18 @@
-import * as auth from '$lib/server/auth';
-import { secureSessionCookieOptions } from '$lib/server/cookie-options';
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import * as auth from '#lib/server/auth';
+import { secureSessionCookieOptions } from '#lib/server/cookie-options';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	assertDevImpersonationTargetAllowed,
 	DEV_IMPERSONATION_ORIGIN_COOKIE,
 	filterUsersForDevImpersonation,
 	getDevImpersonationActorUser,
 	returnToOwnAccount as returnToOwnAccountAction
-} from '$lib/server/dev-impersonation';
-import { isExtensionLinked } from '$lib/server/extension-link';
-import { assertPermission, hasPermission } from '$lib/server/permissions';
-import { getRoleEditMode } from '$lib/server/role-edit-mode';
+} from '#lib/server/dev-impersonation';
+import { isExtensionLinked } from '#lib/server/extension-link';
+import { assertPermission, hasPermission } from '#lib/server/permissions';
+import { getRoleEditMode } from '#lib/server/role-edit-mode';
 import { fail } from '@sveltejs/kit';
 import { and, eq, ne } from 'drizzle-orm';
 import * as OTPAuth from 'otpauth';

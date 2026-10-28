@@ -1,5 +1,5 @@
-import type { PermissionKey } from '$lib/permissions/catalog';
-import { permissionGranted } from '$lib/permissions/check';
+import type { PermissionKey } from '#lib/permissions/catalog';
+import { permissionGranted } from '#lib/permissions/check';
 
 export const PROFILE_CUSTOMIZE_PERMISSIONS = {
 	bio: 'profile.customize.bio',

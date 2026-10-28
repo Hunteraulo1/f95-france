@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
 
 	type TranslatorListEntry = { id: string; name: string };
 

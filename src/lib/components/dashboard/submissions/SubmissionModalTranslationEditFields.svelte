@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SubmissionModalTranslator } from '$lib/components/dashboard/submissions/submission-modal-types';
+	import type { SubmissionModalTranslator } from '#lib/components/dashboard/submissions/submission-modal-types';
 
 	let {
 		editTranslationTranslationName = $bindable(''),

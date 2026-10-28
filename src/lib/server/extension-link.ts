@@ -5,9 +5,9 @@ import {
 	listApiKeysForOwner,
 	revokeApiKeyForActor,
 	type ApiKeyListRow
-} from '$lib/server/api-keys';
-import { db } from '$lib/server/db';
-import { extensionLinkCode } from '$lib/server/db/schema';
+} from '#lib/server/api-keys';
+import { db } from '#lib/server/db';
+import { extensionLinkCode } from '#lib/server/db/schema';
 import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
 
 /** Durée de validité d’un code de liaison. */

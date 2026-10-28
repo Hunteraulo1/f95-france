@@ -1,11 +1,11 @@
-import { parseTranslatorPages } from '$lib/profile/custom-profile';
-import { db } from '$lib/server/db';
-import { translator, user } from '$lib/server/db/schema';
+import { parseTranslatorPages } from '#lib/profile/custom-profile';
+import { db } from '#lib/server/db';
+import { translator, user } from '#lib/server/db/schema';
 import {
 	translatorReadCountExpr,
 	translatorTradCountExpr
-} from '$lib/server/translator-activity-counts';
-import { profilePublicHref } from '$lib/utils/profile-url';
+} from '#lib/server/translator-activity-counts';
+import { profilePublicHref } from '#lib/utils/profile-url';
 import { count, desc, eq, like, or, sql } from 'drizzle-orm';
 
 export const PUBLIC_TRANSLATORS_PAGE_SIZE = 20;

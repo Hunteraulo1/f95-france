@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import HomeHero from '$lib/components/home/HomeHero.svelte';
-	import LazyWhenVisible from '$lib/components/LazyWhenVisible.svelte';
-	import { formatTranslationVersionDisplay } from '$lib/games/public-game-display';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
-	import { roleDaisyBadgeClass, roleDaisyTextClass } from '$lib/utils/role-display';
+	import HomeHero from '#lib/components/home/HomeHero.svelte';
+	import LazyWhenVisible from '#lib/components/LazyWhenVisible.svelte';
+	import { formatTranslationVersionDisplay } from '#lib/games/public-game-display';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
+	import { roleDaisyBadgeClass, roleDaisyTextClass } from '#lib/utils/role-display';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import SquareArrowOutUpRight from '@lucide/svelte/icons/square-arrow-out-up-right';
 	import type { PageProps } from './$types';
@@ -96,7 +96,7 @@
 							</div>
 						{/if}
 						<a
-							href={resolve(`/games/${update.game.gameId}`)}
+							href={resolve('/games/[id]', { id: update.game.gameId })}
 							aria-label={`Voir la fiche du jeu ${update.game.name ?? 'inconnu'}`}
 							class="absolute inset-0 z-20 flex items-center justify-center rounded-lg text-secondary opacity-0 transition-all duration-300 hover:bg-black/30 hover:opacity-100"
 							draggable="false"
@@ -140,13 +140,13 @@
 	</section>
 
 	<LazyWhenVisible class="mx-auto w-full max-w-7xl px-2 pt-16">
-		{#await import('$lib/components/DiscordBanner.svelte') then { default: DiscordBanner }}
+		{#await import('#lib/components/DiscordBanner.svelte') then { default: DiscordBanner }}
 			<DiscordBanner />
 		{/await}
 	</LazyWhenVisible>
 
 	<LazyWhenVisible class="mx-auto w-full max-w-7xl px-2">
-		{#await import('$lib/components/ExtensionBanner.svelte') then { default: ExtensionBanner }}
+		{#await import('#lib/components/ExtensionBanner.svelte') then { default: ExtensionBanner }}
 			<ExtensionBanner
 				games={data.extensionMockupGames}
 				extensionDownloads={data.extensionDownloads}
@@ -172,7 +172,7 @@
 			<div class="grid grid-cols-1 gap-4 select-none sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 				{#each data.team as team (team.teamId)}
 					<a
-						href={resolve(team.teamLink)}
+						href={team.teamLink}
 						class="group card bg-base-100 shadow-sm transition card-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
 						draggable="false"
 					>

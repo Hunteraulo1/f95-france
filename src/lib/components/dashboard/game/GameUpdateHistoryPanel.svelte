@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import RestoreHistoryModal from '$lib/components/dashboard/game/RestoreHistoryModal.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import { newToast } from '$lib/stores';
+	import RestoreHistoryModal from '#lib/components/dashboard/game/RestoreHistoryModal.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import { newToast } from '#lib/stores';
 	import {
 		formatUpdateHistoryDate,
 		formatUpdateHistoryFieldValue,
@@ -13,8 +13,8 @@
 		getUpdateHistoryFieldLabel,
 		resolveHistoryTranslationName,
 		visibleHistoryDeltas
-	} from '$lib/updates/update-history-display';
-	import type { GameUpdateHistoryEntry } from '$lib/updates/update-history-types';
+	} from '#lib/updates/update-history-display';
+	import type { GameUpdateHistoryEntry } from '#lib/updates/update-history-types';
 	import History from '@lucide/svelte/icons/history';
 	import Undo2 from '@lucide/svelte/icons/undo-2';
 
@@ -49,7 +49,7 @@
 		}),
 		getCacheKey: () => gameId,
 		buildUrl: (nextPage) =>
-			`${resolve(`/dashboard/manager/game/${gameId}/update-history`)}?page=${nextPage}`,
+			`${resolve('/dashboard/manager/game/[id]/update-history', { id: gameId })}?page=${nextPage}`,
 		pickItems: (body) =>
 			Array.isArray(body.entries) ? (body.entries as GameUpdateHistoryEntry[]) : []
 	});

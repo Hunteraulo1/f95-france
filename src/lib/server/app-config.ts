@@ -1,8 +1,8 @@
-import { openOAuthToken, sealOAuthToken } from '$lib/server/config-token-crypto';
-import { db } from '$lib/server/db';
-import type { Config } from '$lib/server/db/schema';
-import * as table from '$lib/server/db/schema';
-import { privateEnv } from '$lib/server/private-env';
+import { openOAuthToken, sealOAuthToken } from '#lib/server/config-token-crypto';
+import { db } from '#lib/server/db';
+import type { Config } from '#lib/server/db/schema';
+import * as table from '#lib/server/db/schema';
+import { privateEnv } from '#lib/server/private-env';
 import { eq } from 'drizzle-orm';
 
 function envTrim(name: string): string | null {

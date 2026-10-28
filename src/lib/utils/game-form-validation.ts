@@ -1,7 +1,7 @@
-import type { FormGameType } from '$lib/types';
-import { gameAutoCheckEnabledForWebsite } from '$lib/utils/game-auto-check';
-import { isGameImageGalleryPageUrl } from '$lib/utils/game-image-url';
-import { safeParseRequiredHttpUrl } from '$lib/utils/link-validation';
+import type { FormGameType } from '#lib/types';
+import { gameAutoCheckEnabledForWebsite } from '#lib/utils/game-auto-check';
+import { isGameImageGalleryPageUrl } from '#lib/utils/game-image-url';
+import { safeParseRequiredHttpUrl } from '#lib/utils/link-validation';
 
 export function isNoTranslation(tname: string | null | undefined): boolean {
 	return (tname ?? '') === 'no_translation';

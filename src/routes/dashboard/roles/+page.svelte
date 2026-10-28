@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
-	import RoleOptionRadios from '$lib/components/dashboard/roles/RoleOptionRadios.svelte';
-	import FlashAlert from '$lib/components/FlashAlert.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import type { PermissionKey } from '$lib/permissions/catalog';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
+	import RoleOptionRadios from '#lib/components/dashboard/roles/RoleOptionRadios.svelte';
+	import FlashAlert from '#lib/components/FlashAlert.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import type { PermissionKey } from '#lib/permissions/catalog';
 	import {
 		applyPermissionDependenciesToChecks,
 		buildPermissionChecksFromRole,
 		getDependentPermissions,
 		getPermissionParent,
 		permissionRequirementLabel
-	} from '$lib/permissions/dependencies';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { profileDashboardHref } from '$lib/utils/profile-url';
-	import { roleBadgeClass } from '$lib/utils/role-display';
+	} from '#lib/permissions/dependencies';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { profilePublicSlug } from '#lib/utils/profile-url';
+	import { roleBadgeClass } from '#lib/utils/role-display';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -199,7 +199,12 @@
 					<ul class="menu w-full overflow-y-auto menu-sm rounded-box bg-base-200 p-1">
 						{#each data.staffUsers as member (member.id)}
 							<li class="w-full">
-								<a href={resolve(profileDashboardHref(member.username))} class="gap-2">
+								<a
+									href={resolve('/dashboard/profile/[id]', {
+										id: profilePublicSlug(member.username)
+									})}
+									class="gap-2"
+								>
 									<div class="avatar">
 										<div class="w-7 rounded-full">
 											<img src={resolveDiscordAvatarDisplayUrl(member.avatar)} alt="" />

@@ -1,16 +1,16 @@
-import { featuredUpdatesScopeWhere } from '$lib/server/api/updates-scope-query';
-import { getEffectiveConfig } from '$lib/server/app-config';
-import { appLogError, appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { repairGameTranslationContributorIdsInDb } from '$lib/server/ensure-translator';
-import { getValidAccessToken } from '$lib/server/google-oauth';
+import { featuredUpdatesScopeWhere } from '#lib/server/api/updates-scope-query';
+import { getEffectiveConfig } from '#lib/server/app-config';
+import { appLogError, appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { repairGameTranslationContributorIdsInDb } from '#lib/server/ensure-translator';
+import { getValidAccessToken } from '#lib/server/google-oauth';
 import {
 	getTranslatorActivityCounts,
 	getTranslatorActivityCountsForId,
 	loadTranslatorActivityCountsById,
 	type TranslatorActivityCounts
-} from '$lib/server/translator-activity-counts';
+} from '#lib/server/translator-activity-counts';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 const SHEET_TAB_JEUX = 'Jeux';

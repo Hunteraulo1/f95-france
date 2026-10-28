@@ -1,14 +1,14 @@
-import { db } from '$lib/server/db';
-import { game, gameTranslation, translator, update as updateTable } from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import { game, gameTranslation, translator, update as updateTable } from '#lib/server/db/schema';
 import {
 	isExtensionApiCallerAllowed,
 	resolveUserForExtensionApiOriginGate
-} from '$lib/server/extension-api-access';
-import { extensionApiCorsHeaders } from '$lib/server/extension-api-cors';
+} from '#lib/server/extension-api-access';
+import { extensionApiCorsHeaders } from '#lib/server/extension-api-cors';
 import {
 	translatorReadCountExpr,
 	translatorTradCountExpr
-} from '$lib/server/translator-activity-counts';
+} from '#lib/server/translator-activity-counts';
 import { json } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
 import type { RequestHandler } from './$types';

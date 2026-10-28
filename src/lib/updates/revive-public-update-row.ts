@@ -1,4 +1,4 @@
-import type { PublicUpdateRow } from '$lib/server/public-updates';
+import type { PublicUpdateRow } from '#lib/server/public-updates';
 
 function toDate(value: unknown): Date {
 	if (value instanceof Date) return value;

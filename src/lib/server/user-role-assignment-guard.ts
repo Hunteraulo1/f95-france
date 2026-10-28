@@ -1,11 +1,11 @@
-import { enforcePermissionDependencies } from '$lib/permissions/dependencies';
-import { systemRoleRank } from '$lib/permissions/sort-roles';
+import { enforcePermissionDependencies } from '#lib/permissions/dependencies';
+import { systemRoleRank } from '#lib/permissions/sort-roles';
 import {
 	countEffectivePermissionsForRole,
 	getEffectivePermissionsByRoles,
 	getEffectivePermissionsForRole,
 	hasPermission
-} from '$lib/server/permissions';
+} from '#lib/server/permissions';
 
 /** Rôles attribuables sans la permission `users.assign_admin`. */
 export const ROLES_ASSIGNABLE_WITHOUT_ADMIN = ['user', 'translator'] as const;

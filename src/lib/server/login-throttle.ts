@@ -1,6 +1,6 @@
-import { getRequestClientAddressOrUnknown } from '$lib/server/client-address';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { getRequestClientAddressOrUnknown } from '#lib/server/client-address';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 

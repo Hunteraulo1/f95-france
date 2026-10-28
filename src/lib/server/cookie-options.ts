@@ -1,4 +1,4 @@
-import { isSecureRequest } from '$lib/server/request-secure';
+import { isSecureRequest } from '#lib/server/request-secure';
 import type { RequestEvent } from '@sveltejs/kit';
 
 type CookieExtras = {

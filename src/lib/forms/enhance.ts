@@ -1,4 +1,4 @@
-import type { ActionResult, SubmitFunction } from '@sveltejs/kit';
+import type { ActionResult, SubmitFunction } from '$app/forms';
 
 type FormFailureData = { message?: string };
 type SuccessResult = Extract<ActionResult, { type: 'success' }>;

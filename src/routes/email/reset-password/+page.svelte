@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { createFormEnhance } from '$lib/forms/enhance';
+	import { createFormEnhance } from '#lib/forms/enhance';
 	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import MailWarning from '@lucide/svelte/icons/mail-warning';

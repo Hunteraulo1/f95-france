@@ -1,6 +1,6 @@
-import type { AppLogLevel } from '$lib/logs/app-log';
-import { isRoutineApiError } from '$lib/server/api-log-noise';
-import { privateEnv } from '$lib/server/private-env';
+import type { AppLogLevel } from '#lib/logs/app-log';
+import { isRoutineApiError } from '#lib/server/api-log-noise';
+import { privateEnv } from '#lib/server/private-env';
 
 const INDEX_PATTERN = 'f95france-dashboard-*';
 

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { newToast } from '$lib/stores';
-	import type { FormGameType } from '$lib/types';
-	import { coerceGameEngineType } from '$lib/utils/game-engine-type';
-	import { safeParseRequiredHttpUrl } from '$lib/utils/link-validation';
+	import { newToast } from '#lib/stores';
+	import type { FormGameType } from '#lib/types';
+	import { coerceGameEngineType } from '#lib/utils/game-engine-type';
+	import { safeParseRequiredHttpUrl } from '#lib/utils/link-validation';
 	import type { ChangeEventHandler } from 'svelte/elements';
 	import {
 		type InferOutput,
@@ -11,7 +11,7 @@
 		safeParse as vSafeParse,
 		string as vString
 	} from 'valibot';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
 
 	/** JSON collé depuis f95list-extractor / LC Extractor (pas un enregistrement formulaire). */
 	const ExtractorPayload = vObject({

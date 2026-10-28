@@ -1,16 +1,16 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import {
 	assertDirectGameWriteAllowed,
 	loadCurrentUserOrThrow,
 	parseRequestDirectMode,
 	resolveGameWriteMode,
 	type GameWriteModeParams
-} from '$lib/server/game-manage-guard';
+} from '#lib/server/game-manage-guard';
 import {
 	syncTranslatorLinksInJeuxSheet,
 	syncTranslatorToGoogleSheet
-} from '$lib/server/google-sheets-sync';
+} from '#lib/server/google-sheets-sync';
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 

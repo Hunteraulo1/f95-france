@@ -1,21 +1,21 @@
-import { resolveRoleBadgeStyle } from '$lib/permissions/role-badge-style';
-import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import { resolveRoleBadgeStyle } from '#lib/permissions/role-badge-style';
+import { translationsByGameIds } from '#lib/server/api/games-with-translations';
 import {
 	effectiveTranslationVersion,
 	isTranslationOutdated
-} from '$lib/server/api/translation-public';
-import { embeddedGameFromRow } from '$lib/server/api/updates-embedded-game';
-import { buildUpdatesListWhere } from '$lib/server/api/updates-scope-query';
-import { db } from '$lib/server/db';
-import { enginesPerGameSubquery } from '$lib/server/db/engines-per-game-subquery';
-import { game, update as updateTable } from '$lib/server/db/schema';
-import { getExtensionReleaseDownloadUrls } from '$lib/server/extension-release-downloads';
-import { listHomeExtensionMockupGames } from '$lib/server/home-extension-mockup-games';
-import { listRoleBadgeStylesMap } from '$lib/server/role-badge-styles';
-import { listStaffUsersForHome } from '$lib/server/staff-users';
-import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
-import { pickTranslationForUpdate } from '$lib/updates/pick-update-translation';
-import { profilePublicHref } from '$lib/utils/profile-url';
+} from '#lib/server/api/translation-public';
+import { embeddedGameFromRow } from '#lib/server/api/updates-embedded-game';
+import { buildUpdatesListWhere } from '#lib/server/api/updates-scope-query';
+import { db } from '#lib/server/db';
+import { enginesPerGameSubquery } from '#lib/server/db/engines-per-game-subquery';
+import { game, update as updateTable } from '#lib/server/db/schema';
+import { getExtensionReleaseDownloadUrls } from '#lib/server/extension-release-downloads';
+import { listHomeExtensionMockupGames } from '#lib/server/home-extension-mockup-games';
+import { listRoleBadgeStylesMap } from '#lib/server/role-badge-styles';
+import { listStaffUsersForHome } from '#lib/server/staff-users';
+import { tradVerIndicatesIntegrated } from '#lib/server/translation-notify-rules';
+import { pickTranslationForUpdate } from '#lib/updates/pick-update-translation';
+import { profilePublicHref } from '#lib/utils/profile-url';
 import { desc, eq } from 'drizzle-orm';
 
 export const HOME_CACHE_TTL_MS = 60_000;

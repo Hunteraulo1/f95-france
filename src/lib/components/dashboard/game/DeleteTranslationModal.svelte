@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTranslationProgressLabel } from '$lib/utils/game-translation-labels';
+	import { getTranslationProgressLabel } from '#lib/utils/game-translation-labels';
 
 	interface TranslationRow {
 		tversion: string;

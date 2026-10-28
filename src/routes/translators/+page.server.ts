@@ -1,7 +1,7 @@
 import {
 	listPublicTranslators,
 	PUBLIC_TRANSLATORS_PAGE_SIZE
-} from '$lib/server/public-translators';
+} from '#lib/server/public-translators';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {

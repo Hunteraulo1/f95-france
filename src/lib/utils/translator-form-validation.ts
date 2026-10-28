@@ -1,5 +1,5 @@
-import type { Translator } from '$lib/server/db/schema';
-import type { FormGameType } from '$lib/types';
+import type { Translator } from '#lib/server/db/schema';
+import type { FormGameType } from '#lib/types';
 
 /** Traducteur/relecteur inconnu (admin / superadmin en mode direct) — traité comme erreur bloquante */
 export function translatorFieldInvalid(

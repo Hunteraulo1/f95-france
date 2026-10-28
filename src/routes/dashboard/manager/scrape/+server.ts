@@ -1,6 +1,6 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { canUseExtract } from '$lib/server/extract-thread-game';
-import { scrapeThread, type ScrapeWebsite } from '$lib/server/scrape';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { canUseExtract } from '#lib/server/extract-thread-game';
+import { scrapeThread, type ScrapeWebsite } from '#lib/server/scrape';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

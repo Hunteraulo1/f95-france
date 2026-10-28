@@ -1,11 +1,11 @@
-import type { HomeExtensionMockupGame } from '$lib/home-extension-mockup';
-import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
-import { translationsByGameIds } from '$lib/server/api/games-with-translations';
-import { isTranslationOutdated } from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import { game } from '$lib/server/db/schema';
-import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
-import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+import type { HomeExtensionMockupGame } from '#lib/home-extension-mockup';
+import type { GameTranslationRow } from '#lib/server/api/games-with-translations';
+import { translationsByGameIds } from '#lib/server/api/games-with-translations';
+import { isTranslationOutdated } from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import { game } from '#lib/server/db/schema';
+import { tradVerIndicatesIntegrated } from '#lib/server/translation-notify-rules';
+import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 
 export type { HomeExtensionMockupGame };

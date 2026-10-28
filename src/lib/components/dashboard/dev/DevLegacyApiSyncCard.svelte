@@ -3,8 +3,8 @@
 	import {
 		mapDbSheetSyncResult,
 		type DbSheetSyncResult
-	} from '$lib/components/dashboard/dev/dev-page-mappers';
-	import { createDevActionEnhance } from '$lib/forms/dev-action';
+	} from '#lib/components/dashboard/dev/dev-page-mappers';
+	import { createDevActionEnhance } from '#lib/forms/dev-action';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleX from '@lucide/svelte/icons/circle-x';
 	import Loader from '@lucide/svelte/icons/loader';

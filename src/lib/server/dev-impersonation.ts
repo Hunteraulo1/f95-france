@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { countEffectivePermissionsForRole, hasPermissionForUser } from '$lib/server/permissions';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { countEffectivePermissionsForRole, hasPermissionForUser } from '#lib/server/permissions';
 import type { Cookies } from '@sveltejs/kit';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';

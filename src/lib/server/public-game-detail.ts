@@ -1,13 +1,13 @@
-import { splitGameTags, websiteLabel } from '$lib/games/public-game-display';
-import { translationsByGameIds } from '$lib/server/api/games-with-translations';
+import { splitGameTags, websiteLabel } from '#lib/games/public-game-display';
+import { translationsByGameIds } from '#lib/server/api/games-with-translations';
 import {
 	effectiveTranslationVersion,
 	isTranslationOutdated
-} from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import { enginesPerGameSubquery, parseEngineTypes } from '$lib/server/db/engines-per-game-subquery';
-import { game, translator, update as updateTable } from '$lib/server/db/schema';
-import { tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+} from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import { enginesPerGameSubquery, parseEngineTypes } from '#lib/server/db/engines-per-game-subquery';
+import { game, translator, update as updateTable } from '#lib/server/db/schema';
+import { tradVerIndicatesIntegrated } from '#lib/server/translation-notify-rules';
 import { error } from '@sveltejs/kit';
 import { desc, eq, inArray } from 'drizzle-orm';
 

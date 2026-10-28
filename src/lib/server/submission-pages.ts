@@ -1,9 +1,9 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { defaultGameTypeForGame, type GameEngineColumn } from '$lib/server/game-engine-type';
-import { fetchSubmissionListRows, type SubmissionListRow } from '$lib/server/submission-list-query';
-import { normalizeTranslationTversion } from '$lib/utils/game-form-validation';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { defaultGameTypeForGame, type GameEngineColumn } from '#lib/server/game-engine-type';
+import { fetchSubmissionListRows, type SubmissionListRow } from '#lib/server/submission-list-query';
+import { normalizeTranslationTversion } from '#lib/utils/game-form-validation';
 import { asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 
 export const SUBMISSION_PAGE_SIZE = 20;

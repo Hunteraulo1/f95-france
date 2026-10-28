@@ -1,5 +1,5 @@
-import { SITE } from '$lib/site';
-import type { SiteEnvBadge } from '$lib/site-host';
+import { SITE } from '#lib/site';
+import type { SiteEnvBadge } from '#lib/site-host';
 
 const DEFAULT_FAVICON = SITE.faviconUrl;
 

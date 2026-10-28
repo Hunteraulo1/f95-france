@@ -1,5 +1,5 @@
-import { LEGAL_DOCUMENTS } from '$lib/legal-documents';
-import { loadLegalDocumentFromCdn } from '$lib/server/legal-document';
+import { LEGAL_DOCUMENTS } from '#lib/legal-documents';
+import { loadLegalDocumentFromCdn } from '#lib/server/legal-document';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

@@ -1,10 +1,10 @@
-import { getUserById } from '$lib/server/auth';
-import type { User } from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions';
+import { getUserById } from '#lib/server/auth';
+import type { User } from '#lib/server/db/schema';
+import { assertPermission } from '#lib/server/permissions';
 import {
 	assertRoleEditMode,
 	resolveShouldCreateSubmissionForUser
-} from '$lib/server/role-edit-mode';
+} from '#lib/server/role-edit-mode';
 import { error } from '@sveltejs/kit';
 
 const GAME_MANAGE_MESSAGE = 'Accès réservé — permission « Gestion des jeux » requise';

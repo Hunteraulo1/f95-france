@@ -1,9 +1,9 @@
 import {
 	effectiveTranslationVersion,
 	isTranslationOutdated
-} from '$lib/server/api/translation-public';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+} from '#lib/server/api/translation-public';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { count, desc, eq, or } from 'drizzle-orm';
 
 export const PROFILE_TRANSLATIONS_PAGE_SIZE = 20;

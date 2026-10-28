@@ -1,22 +1,22 @@
-import { resolveProfileCustomizeFlags } from '$lib/permissions/profile-customize';
+import { resolveProfileCustomizeFlags } from '#lib/permissions/profile-customize';
 import {
 	buildCustomProfileTheme,
 	normalizeProfileBio,
 	validateOptionalHttpUrl
-} from '$lib/profile/custom-profile';
-import { validateOptionalYoutubeMusicUrl } from '$lib/profile/youtube-music';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasPermission } from '$lib/server/permissions';
+} from '#lib/profile/custom-profile';
+import { validateOptionalYoutubeMusicUrl } from '#lib/profile/youtube-music';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasPermission } from '#lib/server/permissions';
 import {
 	loadTranslatorPagesForUser,
 	setTranslatorDiscordNotificationsEnabled
-} from '$lib/server/profile-translator';
-import { getRoleEditMode } from '$lib/server/role-edit-mode';
+} from '#lib/server/profile-translator';
+import { getRoleEditMode } from '#lib/server/role-edit-mode';
 import {
 	handleTranslatorPagesUpdate,
 	resolveTranslatorPagesWriteMode
-} from '$lib/server/translator-pages-write';
+} from '#lib/server/translator-pages-write';
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';

@@ -1,12 +1,11 @@
-import { env } from '$env/dynamic/private';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 function resolveOrigin(requestUrl?: string): URL {
-	const fallback = new URL(env.SERVICE_URL_APP?.trim() ?? 'https://f95france.site');
+	const fallback = new URL(process.env.SERVICE_URL_APP?.trim() ?? 'https://f95france.site');
 
 	if (!requestUrl) return fallback;
 	try {
@@ -28,7 +27,7 @@ export function getExpectedOrigin(requestUrl?: string): string {
 }
 
 export function getRpName(): string {
-	return env.RP_NAME?.trim() || 'F95 France';
+	return process.env.RP_NAME?.trim() || 'F95 France';
 }
 
 export function bytesToBase64URL(bytes: Uint8Array): string {

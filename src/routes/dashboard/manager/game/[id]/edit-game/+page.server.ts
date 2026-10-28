@@ -1,9 +1,9 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { hasPermission } from '$lib/server/permissions';
-import { assertRoleEditMode } from '$lib/server/role-edit-mode';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertGameManageAccess } from '#lib/server/game-manage-guard';
+import { hasPermission } from '#lib/server/permissions';
+import { assertRoleEditMode } from '#lib/server/role-edit-mode';
 import { error, isHttpError } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';

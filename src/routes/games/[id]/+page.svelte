@@ -9,9 +9,9 @@
 		translationTypeDisplayLabel,
 		translationVersionSyncBadgeClass,
 		translationVersionSyncLabel
-	} from '$lib/games/public-game-display';
-	import { getGameEngineHexColor } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	} from '#lib/games/public-game-display';
+	import { getGameEngineHexColor } from '#lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import SquarePen from '@lucide/svelte/icons/square-pen';

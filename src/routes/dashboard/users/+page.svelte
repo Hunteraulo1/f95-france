@@ -2,14 +2,14 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import { formatUserEmailForDisplay } from '$lib/permissions/user-email';
-	import { newToast, roleBadgeStyles } from '$lib/stores';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import { formatUserEmailForDisplay } from '#lib/permissions/user-email';
+	import { newToast, roleBadgeStyles } from '#lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { roleBadgeClass, roleUsernameClass } from '#lib/utils/role-display';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Mail from '@lucide/svelte/icons/mail';
 	import User from '@lucide/svelte/icons/user';
@@ -91,8 +91,7 @@
 	const navigateSearch = (value: string) => {
 		goto(resolve(`/dashboard/users${buildQuery({ q: value })}` as '/dashboard/users'), {
 			replaceState: true,
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			invalidateAll: true
 		});
 	};
@@ -226,7 +225,7 @@
 										</div>
 									</div>
 									<a
-										href={resolve(`/dashboard/profile/${user.username}`)}
+										href={resolve('/dashboard/profile/[id]', { id: user.username })}
 										class="link font-bold text-nowrap link-hover {roleUsernameClass(
 											user.role,
 											$roleBadgeStyles[user.role]

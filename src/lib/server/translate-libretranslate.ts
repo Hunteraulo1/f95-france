@@ -1,4 +1,4 @@
-import { privateEnv } from '$lib/server/private-env';
+import { privateEnv } from '#lib/server/private-env';
 
 /** LibreTranslate limite la taille des requêtes ; découpage conservateur. */
 const MAX_CHUNK_CHARS = 4000;

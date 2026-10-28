@@ -1,14 +1,14 @@
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasUpdateHistoryTable } from '#lib/server/schema-column-compat';
 import type {
 	TranslationHistorySnapshot,
 	TranslationUpdateHistoryChanges,
 	UpdateHistoryContext,
 	UpdateHistoryFieldDelta
-} from '$lib/updates/update-history-types';
-import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
+} from '#lib/updates/update-history-types';
+import { normalizeNullableHistoryString } from '#lib/utils/normalize-nullable-string';
 
 export type {
 	TranslationHistorySnapshot,
@@ -16,8 +16,8 @@ export type {
 	UpdateHistoryAction,
 	UpdateHistoryContext,
 	UpdateHistoryFieldDelta
-} from '$lib/updates/update-history-types';
-export { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
+} from '#lib/updates/update-history-types';
+export { normalizeNullableHistoryString } from '#lib/utils/normalize-nullable-string';
 
 const TRACKED_TRANSLATION_FIELDS = [
 	'translationName',

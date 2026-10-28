@@ -2,13 +2,13 @@ import {
 	GAMES_FILTER_GROUP_NAMES,
 	type GamesFilterGroupName,
 	type GamesFilterGroupState
-} from '$lib/games/games-filter-config';
+} from '#lib/games/games-filter-config';
 import {
 	applySelectionsToFilterGroups,
 	cloneFilterGroups,
 	type FilterSelection
-} from '$lib/games/games-filter-url';
-import { createDefaultUpdatesFilterGroups } from '$lib/updates/updates-filter-config';
+} from '#lib/games/games-filter-url';
+import { createDefaultUpdatesFilterGroups } from '#lib/updates/updates-filter-config';
 
 export type UpdatesFilterGroupName = 'update_type' | GamesFilterGroupName;
 
@@ -105,4 +105,4 @@ export function cloneUpdatesFilterGroups(groups: GamesFilterGroupState[]): Games
 	return cloneFilterGroups(groups);
 }
 
-export { filterGroupsToSelections } from '$lib/games/games-filter-url';
+export { filterGroupsToSelections } from '#lib/games/games-filter-url';

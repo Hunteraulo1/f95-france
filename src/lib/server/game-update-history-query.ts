@@ -1,24 +1,24 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { enrichHistoryRevertMeta } from '$lib/server/revert-update-history';
-import { hasUpdateHistoryTable } from '$lib/server/schema-column-compat';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { enrichHistoryRevertMeta } from '#lib/server/revert-update-history';
+import { hasUpdateHistoryTable } from '#lib/server/schema-column-compat';
 import {
 	parseTranslationUpdateHistoryChanges,
 	type TranslationUpdateHistoryChanges,
 	type UpdateHistoryAction
-} from '$lib/server/update-history';
+} from '#lib/server/update-history';
 import {
 	GAME_UPDATE_HISTORY_PAGE_SIZE,
 	type GameUpdateHistoryEntry,
 	type GameUpdateHistoryPage
-} from '$lib/updates/update-history-types';
+} from '#lib/updates/update-history-types';
 import { desc, eq, sql } from 'drizzle-orm';
 
 export {
 	GAME_UPDATE_HISTORY_PAGE_SIZE,
 	type GameUpdateHistoryEntry,
 	type GameUpdateHistoryPage
-} from '$lib/updates/update-history-types';
+} from '#lib/updates/update-history-types';
 
 function parseHistoryChanges(raw: string | null): TranslationUpdateHistoryChanges | null {
 	return parseTranslationUpdateHistoryChanges(raw);

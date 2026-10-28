@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import UserAvatarMenu from '$lib/components/UserAvatarMenu.svelte';
-	import { isDevHost, isPtbHost } from '$lib/site-host';
-	import { user } from '$lib/stores';
+	import UserAvatarMenu from '#lib/components/UserAvatarMenu.svelte';
+	import { isDevHost, isPtbHost } from '#lib/site-host';
+	import { user } from '#lib/stores';
 	import Menu from '@lucide/svelte/icons/menu';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import pkg from '../../../../package.json';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setRoleBadgeStyles } from '$lib/stores';
+	import { setRoleBadgeStyles } from '#lib/stores';
 	import type { LayoutData } from './$types';
 
 	interface Props {

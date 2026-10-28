@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SubmissionsListPage from '$lib/components/dashboard/submissions/SubmissionsListPage.svelte';
+	import SubmissionsListPage from '#lib/components/dashboard/submissions/SubmissionsListPage.svelte';
 	import type { PageData } from './$types';
 
 	interface Props {

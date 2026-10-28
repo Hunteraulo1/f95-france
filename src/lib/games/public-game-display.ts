@@ -1,8 +1,8 @@
-import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
+import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
 import {
 	getTranslationProgressLabel,
 	getTranslationTypeLabel
-} from '$lib/utils/game-translation-labels';
+} from '#lib/utils/game-translation-labels';
 
 export function splitGameTags(raw: string | null | undefined): string[] {
 	return (raw ?? '')

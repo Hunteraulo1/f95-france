@@ -1,4 +1,4 @@
-import type { HandleClientError } from '@sveltejs/kit';
+import type { HandleClientError } from '@sveltejs/kit/hooks';
 
 function formatErrorDetail(error: unknown): string {
 	if (error instanceof Error) {
@@ -28,7 +28,9 @@ function isLikelyTransientDevNetworkError(error: unknown): boolean {
 }
 
 /** Remplace le `console.error(error)` par défaut (souvent affiché comme « Object » dans la console). */
-export const handleError: HandleClientError = ({ error, event, status, message }) => {
+export const handleError: HandleClientError = ({ kind, error, event }) => {
+	const { status, message } =
+		kind === 'unknown' ? { status: 500, message: 'Internal Error' } : error;
 	const path = event.url?.pathname ?? '';
 	const detail = formatErrorDetail(error);
 

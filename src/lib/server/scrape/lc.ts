@@ -1,6 +1,6 @@
-import type { ScrapedThreadGame } from '$lib/scrape/types';
-import { appLogOperational } from '$lib/server/app-log-bridge';
-import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+import type { ScrapedThreadGame } from '#lib/scrape/types';
+import { appLogOperational } from '#lib/server/app-log-bridge';
+import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 import { parseHTML } from 'linkedom';
 import {
 	parseTitleTokens,

@@ -1,12 +1,12 @@
-import { getEffectiveConfig } from '$lib/server/app-config';
-import { appLogWarn } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { privateEnv } from '$lib/server/private-env';
-import { strTrim } from '$lib/server/translation-notify-rules';
-import { absoluteUrl, siteOrigin } from '$lib/site';
-import { resolveGameImageSrc } from '$lib/utils/game-image-url';
-import { resolveGameThreadLink } from '$lib/utils/game-thread-link';
+import { getEffectiveConfig } from '#lib/server/app-config';
+import { appLogWarn } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { privateEnv } from '#lib/server/private-env';
+import { strTrim } from '#lib/server/translation-notify-rules';
+import { absoluteUrl, siteOrigin } from '#lib/site';
+import { resolveGameImageSrc } from '#lib/utils/game-image-url';
+import { resolveGameThreadLink } from '#lib/utils/game-thread-link';
 import { asc, eq } from 'drizzle-orm';
 
 /**

@@ -7,8 +7,8 @@ import {
 	revokeApiKeyForActor,
 	USER_API_KEY_DEFAULT_RPM,
 	validateApiKeyLabelForActor
-} from '$lib/server/api-keys';
-import { hasPermission } from '$lib/server/permissions';
+} from '#lib/server/api-keys';
+import { hasPermission } from '#lib/server/permissions';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 

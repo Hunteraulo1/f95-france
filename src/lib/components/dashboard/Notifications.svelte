@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-	import { user } from '$lib/stores';
+	import { user } from '#lib/stores';
 	import Bell from '@lucide/svelte/icons/bell';
 	import Check from '@lucide/svelte/icons/check';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
@@ -105,6 +105,7 @@
 		if (notification.link) {
 			isDrawerOpen = false;
 			// Chemins internes depuis l’API ; `goto` accepte une string (pas besoin de `resolve` sans `paths.base`).
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- lien dynamique fourni par l’API
 			await goto(notification.link);
 		}
 	};

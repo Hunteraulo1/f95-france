@@ -1,7 +1,7 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
-import { isIntegrated, isNoTranslation } from '$lib/utils/game-form-validation';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { strTrim, tradVerIndicatesIntegrated } from '#lib/server/translation-notify-rules';
+import { isIntegrated, isNoTranslation } from '#lib/utils/game-form-validation';
 import { and, eq } from 'drizzle-orm';
 
 export type TranslationAcStatusInput = {

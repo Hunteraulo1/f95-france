@@ -1,4 +1,4 @@
-import * as auth from '$lib/server/auth';
+import * as auth from '#lib/server/auth';
 import type { RequestEvent } from '@sveltejs/kit';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';

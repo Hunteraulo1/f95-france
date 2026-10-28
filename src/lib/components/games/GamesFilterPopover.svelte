@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { GamesFilterGroupState } from '$lib/games/games-filter-config';
-	import { gamesFilterGroupSummary, toggleGamesFilterValue } from '$lib/games/games-filter-state';
+	import type { GamesFilterGroupState } from '#lib/games/games-filter-config';
+	import { gamesFilterGroupSummary, toggleGamesFilterValue } from '#lib/games/games-filter-state';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Minus from '@lucide/svelte/icons/minus';

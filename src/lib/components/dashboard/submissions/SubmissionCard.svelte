@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { hasPermission } from '$lib/permissions/client';
-	import { newToast, roleBadgeStyles } from '$lib/stores';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
-	import { roleUsernameClass } from '$lib/utils/role-display';
+	import { hasPermission } from '#lib/permissions/client';
+	import { newToast, roleBadgeStyles } from '#lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
+	import { roleUsernameClass } from '#lib/utils/role-display';
 	import {
 		formatDate,
 		getStatusBadge,
@@ -14,7 +14,7 @@
 		getTypeBadge,
 		getTypeLabel,
 		isReviewedSubmissionStatus
-	} from '$lib/utils/submissions';
+	} from '#lib/utils/submissions';
 	import Eye from '@lucide/svelte/icons/eye';
 	import User from '@lucide/svelte/icons/user';
 
@@ -78,9 +78,9 @@
 	const gameId = $derived(getSubmissionGameId(submission));
 	const gameHref = $derived(
 		gameId
-			? resolve(
-					$hasPermission('games.manage') ? `/dashboard/manager/game/${gameId}` : `/games/${gameId}`
-				)
+			? $hasPermission('games.manage')
+				? resolve('/dashboard/manager/game/[id]', { id: gameId })
+				: resolve('/games/[id]', { id: gameId })
 			: null
 	);
 </script>
@@ -114,7 +114,7 @@
 								)}"
 								onclick={() => {
 									if (submission.user?.username) {
-										goto(resolve(`/dashboard/profile/${submission.user.username}`));
+										goto(resolve('/dashboard/profile/[id]', { id: submission.user.username }));
 									}
 								}}
 							>
@@ -145,7 +145,9 @@
 									$roleBadgeStyles[submission.openedByUser.role]
 								)}"
 								onclick={() => {
-									goto(resolve(`/dashboard/profile/${submission.openedByUser!.username}`));
+									goto(
+										resolve('/dashboard/profile/[id]', { id: submission.openedByUser!.username })
+									);
 								}}
 							>
 								{submission.openedByUser.username}
@@ -176,7 +178,9 @@
 									$roleBadgeStyles[submission.reviewedByUser.role]
 								)}"
 								onclick={() => {
-									goto(resolve(`/dashboard/profile/${submission.reviewedByUser!.username}`));
+									goto(
+										resolve('/dashboard/profile/[id]', { id: submission.reviewedByUser!.username })
+									);
 								}}
 							>
 								{submission.reviewedByUser.username}

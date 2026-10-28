@@ -1,6 +1,6 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { hasPermission } from '$lib/server/permissions';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { hasPermission } from '#lib/server/permissions';
 import { eq, sql } from 'drizzle-orm';
 
 const cache = new Map<'global', { count: number; expiresAt: number }>();

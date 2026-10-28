@@ -1,7 +1,7 @@
 <script lang="ts">
 	import TranslatorPagesEditor, {
 		type TranslatorPageRow
-	} from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
+	} from '#lib/components/dashboard/TranslatorPagesEditor.svelte';
 
 	let { pages = $bindable([] as TranslatorPageRow[]) }: { pages?: TranslatorPageRow[] } = $props();
 </script>

@@ -1,10 +1,10 @@
-import { permissionGranted } from '$lib/permissions/check';
+import { permissionGranted } from '#lib/permissions/check';
 import {
 	USER_API_KEY_MAX_COUNT_DEFAULT,
 	resolveRoleMaxApiKeys
-} from '$lib/permissions/role-api-keys';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+} from '#lib/permissions/role-api-keys';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';

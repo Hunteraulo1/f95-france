@@ -1,5 +1,5 @@
-import { secureSessionCookieOptions } from '$lib/server/cookie-options';
-import { safeDashboardRedirectPath } from '$lib/server/dashboard-auth';
+import { secureSessionCookieOptions } from '#lib/server/cookie-options';
+import { safeDashboardRedirectPath } from '#lib/server/dashboard-auth';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export const DISCORD_OAUTH_STATE_COOKIE = 'discord_oauth_state';

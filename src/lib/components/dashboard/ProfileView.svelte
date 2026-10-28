@@ -1,21 +1,21 @@
 <script lang="ts">
-	import MarkdownContent from '$lib/components/MarkdownContent.svelte';
-	import ProfileStatsPanel from '$lib/components/dashboard/ProfileStats.svelte';
-	import ProfileTranslations from '$lib/components/dashboard/ProfileTranslations.svelte';
-	import YoutubeAudioPlayer from '$lib/components/dashboard/YoutubeAudioPlayer.svelte';
-	import { parseMarkdownDocument } from '$lib/markdown/content';
-	import type { CustomProfileTheme, TranslatorPageLink } from '$lib/profile/custom-profile';
+	import MarkdownContent from '#lib/components/MarkdownContent.svelte';
+	import ProfileStatsPanel from '#lib/components/dashboard/ProfileStats.svelte';
+	import ProfileTranslations from '#lib/components/dashboard/ProfileTranslations.svelte';
+	import YoutubeAudioPlayer from '#lib/components/dashboard/YoutubeAudioPlayer.svelte';
+	import { parseMarkdownDocument } from '#lib/markdown/content';
+	import type { CustomProfileTheme, TranslatorPageLink } from '#lib/profile/custom-profile';
 	import {
 		PROFILE_BACKGROUND_HEIGHT,
 		PROFILE_BACKGROUND_WIDTH,
 		PROFILE_CURSOR_DISPLAY_PX
-	} from '$lib/profile/custom-profile';
-	import { extractYoutubeVideoId } from '$lib/profile/youtube-music';
-	import type { ProfileStats } from '$lib/server/profile-stats';
-	import type { ProfileTranslationItem } from '$lib/server/profile-translations';
-	import { roleBadgeStyles } from '$lib/stores';
-	import { resolveDiscordAvatarDisplayUrl } from '$lib/utils/discord-avatar-url';
-	import { roleBadgeClass, roleUsernameClass } from '$lib/utils/role-display';
+	} from '#lib/profile/custom-profile';
+	import { extractYoutubeVideoId } from '#lib/profile/youtube-music';
+	import type { ProfileStats } from '#lib/server/profile-stats';
+	import type { ProfileTranslationItem } from '#lib/server/profile-translations';
+	import { roleBadgeStyles } from '#lib/stores';
+	import { resolveDiscordAvatarDisplayUrl } from '#lib/utils/discord-avatar-url';
+	import { roleBadgeClass, roleUsernameClass } from '#lib/utils/role-display';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import User from '@lucide/svelte/icons/user';
 	import UserPen from '@lucide/svelte/icons/user-pen';

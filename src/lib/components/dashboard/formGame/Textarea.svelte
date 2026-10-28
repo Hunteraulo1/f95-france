@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FormGameType } from '$lib/types';
+	import type { FormGameType } from '#lib/types';
 	import type { ChangeEventHandler, HTMLTextareaAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLTextareaAttributes {

@@ -1,5 +1,5 @@
-import { assertDashboardAuthenticated } from '$lib/server/dashboard-auth';
-import { loadDashboardTranslatorsPage } from '$lib/server/dashboard-translators-page-load';
+import { assertDashboardAuthenticated } from '#lib/server/dashboard-auth';
+import { loadDashboardTranslatorsPage } from '#lib/server/dashboard-translators-page-load';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

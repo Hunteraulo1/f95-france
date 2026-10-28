@@ -2,12 +2,12 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import DaisyDashboardModal from '$lib/components/dashboard/DaisyDashboardModal.svelte';
-	import TranslatorPagesEditor from '$lib/components/dashboard/TranslatorPagesEditor.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import { formatUserAccountOptionLabel } from '$lib/permissions/user-email';
+	import DaisyDashboardModal from '#lib/components/dashboard/DaisyDashboardModal.svelte';
+	import TranslatorPagesEditor from '#lib/components/dashboard/TranslatorPagesEditor.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import { formatUserAccountOptionLabel } from '#lib/permissions/user-email';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -28,8 +28,7 @@
 	const navigateSearch = (value: string) => {
 		goto(resolve(`/dashboard/translators${buildQuery({ q: value })}` as '/dashboard/translators'), {
 			replaceState: true,
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			invalidateAll: true
 		});
 	};
@@ -150,7 +149,9 @@
 								onclick={() => {
 									const username = data.users.find((u) => u.id === translator.userId)?.username;
 									if (username) {
-										void goto(resolve(`/dashboard/profile/${username}`), { invalidateAll: true });
+										void goto(resolve('/dashboard/profile/[id]', { id: username }), {
+											invalidateAll: true
+										});
 									}
 								}}
 							>

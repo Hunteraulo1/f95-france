@@ -1,5 +1,5 @@
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
 import { sql } from 'drizzle-orm';
 
 /** Convertit le résultat JSON_ARRAYAGG de MariaDB en tableau de chaînes. */

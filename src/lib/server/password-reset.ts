@@ -1,9 +1,9 @@
-import { appLogError } from '$lib/server/app-log-bridge';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { isSmtpConfigured, resolveEmailLinkOrigin, sendMail } from '$lib/server/mail';
-import { hashPassword, hashSessionSecret } from '$lib/server/password-hash';
-import { SITE, absoluteUrl } from '$lib/site';
+import { appLogError } from '#lib/server/app-log-bridge';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { isSmtpConfigured, resolveEmailLinkOrigin, sendMail } from '#lib/server/mail';
+import { hashPassword, hashSessionSecret } from '#lib/server/password-hash';
+import { SITE, absoluteUrl } from '#lib/site';
 import { encodeBase64url } from '@oslojs/encoding';
 import { desc, eq, lt } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';

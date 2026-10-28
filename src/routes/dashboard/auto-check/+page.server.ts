@@ -1,9 +1,9 @@
-import { toConfigClientSafe } from '$lib/server/app-config';
-import { loadAutoCheckRunsPage } from '$lib/server/auto-check-runs-page-load';
-import { runAutoCheckVersions } from '$lib/server/check-version';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { assertPermission } from '$lib/server/permissions';
+import { toConfigClientSafe } from '#lib/server/app-config';
+import { loadAutoCheckRunsPage } from '#lib/server/auto-check-runs-page-load';
+import { runAutoCheckVersions } from '#lib/server/check-version';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { assertPermission } from '#lib/server/permissions';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 

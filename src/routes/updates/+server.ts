@@ -1,5 +1,5 @@
-import { listPublicUpdates } from '$lib/server/public-updates';
-import { parsePublicUpdatesListParams } from '$lib/updates/updates-filter-url';
+import { listPublicUpdates } from '#lib/server/public-updates';
+import { parsePublicUpdatesListParams } from '#lib/updates/updates-filter-url';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

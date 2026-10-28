@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Inline, ListItem, MarkdownBlock } from '$lib/markdown/content';
+	import type { Inline, ListItem, MarkdownBlock } from '#lib/markdown/content';
 
 	interface Props {
 		document: MarkdownBlock[];

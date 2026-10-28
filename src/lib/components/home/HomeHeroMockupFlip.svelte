@@ -1,11 +1,11 @@
 <script lang="ts">
-	import HomeHeroDiscordMockup from '$lib/components/home/HomeHeroDiscordMockup.svelte';
-	import HomeHeroSheetMockup from '$lib/components/home/HomeHeroSheetMockup.svelte';
-	import HomeHeroWikiMockup from '$lib/components/home/HomeHeroWikiMockup.svelte';
+	import HomeHeroDiscordMockup from '#lib/components/home/HomeHeroDiscordMockup.svelte';
+	import HomeHeroSheetMockup from '#lib/components/home/HomeHeroSheetMockup.svelte';
+	import HomeHeroWikiMockup from '#lib/components/home/HomeHeroWikiMockup.svelte';
 	import {
 		resetFlipperTransform,
 		runProductCardFlipAnimation
-	} from '$lib/components/home/hero-mockup-flip-animation';
+	} from '#lib/components/home/hero-mockup-flip-animation';
 	import { tick, untrack } from 'svelte';
 
 	type MockupKind = 'sheet' | 'discord' | 'wiki';

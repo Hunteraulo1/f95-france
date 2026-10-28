@@ -2,13 +2,13 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AbandonTranslationModal from '$lib/components/dashboard/AbandonTranslationModal.svelte';
-	import FixedDropdownMenu from '$lib/components/dashboard/FixedDropdownMenu.svelte';
-	import ResumeTranslationModal from '$lib/components/dashboard/ResumeTranslationModal.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { useInfiniteList } from '$lib/infinite-scroll/use-infinite-list.svelte';
-	import { newToast } from '$lib/stores';
+	import AbandonTranslationModal from '#lib/components/dashboard/AbandonTranslationModal.svelte';
+	import FixedDropdownMenu from '#lib/components/dashboard/FixedDropdownMenu.svelte';
+	import ResumeTranslationModal from '#lib/components/dashboard/ResumeTranslationModal.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { useInfiniteList } from '#lib/infinite-scroll/use-infinite-list.svelte';
+	import { newToast } from '#lib/stores';
 	import EllipsisVertical from '@lucide/svelte/icons/ellipsis-vertical';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Search from '@lucide/svelte/icons/search';
@@ -62,8 +62,7 @@
 			),
 			{
 				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
+				reset: false,
 				invalidateAll: true
 			}
 		);

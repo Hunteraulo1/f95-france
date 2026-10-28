@@ -1,4 +1,4 @@
-import { buildSecurityTxtContent } from '$lib/server/security-txt';
+import { buildSecurityTxtContent } from '#lib/server/security-txt';
 import type { RequestHandler } from './$types';
 
 /** RFC 9116 — security.txt (contact divulgation responsable). */

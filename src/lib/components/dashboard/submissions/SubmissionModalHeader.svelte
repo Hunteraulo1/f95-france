@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { SubmissionModalItem } from '$lib/components/dashboard/submissions/submission-modal-types';
-	import { hasPermission } from '$lib/permissions/client';
-	import { newToast, roleBadgeStyles } from '$lib/stores';
-	import { roleUsernameClass } from '$lib/utils/role-display';
+	import type { SubmissionModalItem } from '#lib/components/dashboard/submissions/submission-modal-types';
+	import { hasPermission } from '#lib/permissions/client';
+	import { newToast, roleBadgeStyles } from '#lib/stores';
+	import { roleUsernameClass } from '#lib/utils/role-display';
 	import {
 		getStatusBadge,
 		getSubmissionReviewedByLabel,
 		getTypeBadge,
 		getTypeLabel,
 		isReviewedSubmissionStatus
-	} from '$lib/utils/submissions';
+	} from '#lib/utils/submissions';
 
 	let { submission }: { submission: SubmissionModalItem } = $props();
 </script>
@@ -47,10 +47,10 @@
 						submission.user.role,
 						submission.user.role ? $roleBadgeStyles[submission.user.role] : undefined
 					)}"
-					href={resolve(`/dashboard/profile/${submission.user.username}`)}
+					href={resolve('/dashboard/profile/[id]', { id: submission.user.username })}
 					onclick={async (event) => {
 						event.preventDefault();
-						await goto(resolve(`/dashboard/profile/${submission.user?.username}`));
+						await goto(resolve('/dashboard/profile/[id]', { id: submission.user!.username }));
 					}}
 				>
 					{submission.user.username}
@@ -67,10 +67,12 @@
 							? $roleBadgeStyles[submission.openedByUser.role]
 							: undefined
 					)}"
-					href={resolve(`/dashboard/profile/${submission.openedByUser.username}`)}
+					href={resolve('/dashboard/profile/[id]', { id: submission.openedByUser.username })}
 					onclick={async (event) => {
 						event.preventDefault();
-						await goto(resolve(`/dashboard/profile/${submission.openedByUser?.username}`));
+						await goto(
+							resolve('/dashboard/profile/[id]', { id: submission.openedByUser!.username })
+						);
 					}}
 				>
 					{submission.openedByUser.username}
@@ -88,10 +90,12 @@
 							? $roleBadgeStyles[submission.reviewedByUser.role]
 							: undefined
 					)}"
-					href={resolve(`/dashboard/profile/${submission.reviewedByUser.username}`)}
+					href={resolve('/dashboard/profile/[id]', { id: submission.reviewedByUser.username })}
 					onclick={async (event) => {
 						event.preventDefault();
-						await goto(resolve(`/dashboard/profile/${submission.reviewedByUser?.username}`));
+						await goto(
+							resolve('/dashboard/profile/[id]', { id: submission.reviewedByUser!.username })
+						);
 					}}
 				>
 					{submission.reviewedByUser.username}

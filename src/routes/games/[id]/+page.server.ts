@@ -1,5 +1,5 @@
-import { hasPermission } from '$lib/server/permissions';
-import { loadPublicGameDetail } from '$lib/server/public-game-detail';
+import { hasPermission } from '#lib/server/permissions';
+import { loadPublicGameDetail } from '#lib/server/public-game-detail';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {

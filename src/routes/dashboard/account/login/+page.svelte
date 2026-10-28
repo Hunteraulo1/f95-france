@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import DiscordIcon from '$lib/components/DiscordIcon.svelte';
-	import TurnstileWidget from '$lib/components/TurnstileWidget.svelte';
-	import { createFormEnhance } from '$lib/forms/enhance';
-	import { TURNSTILE_FORM_FIELD } from '$lib/turnstile/constants';
+	import DiscordIcon from '#lib/components/DiscordIcon.svelte';
+	import TurnstileWidget from '#lib/components/TurnstileWidget.svelte';
+	import { createFormEnhance } from '#lib/forms/enhance';
+	import { TURNSTILE_FORM_FIELD } from '#lib/turnstile/constants';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import { startAuthentication } from '@simplewebauthn/browser';

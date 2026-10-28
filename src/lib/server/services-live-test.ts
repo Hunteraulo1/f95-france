@@ -1,17 +1,17 @@
-import { getEffectiveConfig } from '$lib/server/app-config';
-import { cronAuthFailureMessage, verifyCronAuth } from '$lib/server/cron-auth';
-import { getDiscordOAuthConfig, isDiscordOAuthConfigured } from '$lib/server/discord-oauth';
-import { getValidAccessToken } from '$lib/server/google-oauth';
-import { isSmtpConfigured, verifySmtpConnection } from '$lib/server/mail';
-import { privateEnv } from '$lib/server/private-env';
+import { getEffectiveConfig } from '#lib/server/app-config';
+import { cronAuthFailureMessage, verifyCronAuth } from '#lib/server/cron-auth';
+import { getDiscordOAuthConfig, isDiscordOAuthConfigured } from '#lib/server/discord-oauth';
+import { getValidAccessToken } from '#lib/server/google-oauth';
+import { isSmtpConfigured, verifySmtpConnection } from '#lib/server/mail';
+import { privateEnv } from '#lib/server/private-env';
 import {
 	buildSecurityTxtContent,
 	getSecurityTxtPublicUrl,
 	parseSecurityTxt,
 	validateSecurityTxt
-} from '$lib/server/security-txt';
-import { isLibreTranslateConfigured } from '$lib/server/translate-libretranslate';
-import { isTurnstileConfigured } from '$lib/server/turnstile';
+} from '#lib/server/security-txt';
+import { isLibreTranslateConfigured } from '#lib/server/translate-libretranslate';
+import { isTurnstileConfigured } from '#lib/server/turnstile';
 
 export type LiveServiceTestResult = {
 	id: string;

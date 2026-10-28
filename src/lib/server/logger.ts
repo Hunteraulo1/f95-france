@@ -1,8 +1,8 @@
-import type { LiveLogEntry } from '$lib/logs/live-log-entry';
-import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
-import { writeElkLog } from '$lib/server/elk-file-logger';
-import { broadcastLiveLogEntry } from '$lib/server/logs-live-hub';
+import type { LiveLogEntry } from '#lib/logs/live-log-entry';
+import { db } from '#lib/server/db';
+import { user } from '#lib/server/db/schema';
+import { writeElkLog } from '#lib/server/elk-file-logger';
+import { broadcastLiveLogEntry } from '#lib/server/logs-live-hub';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 

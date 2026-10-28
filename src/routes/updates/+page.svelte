@@ -1,33 +1,33 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import GamesFilterContent from '$lib/components/games/GamesFilterContent.svelte';
-	import InfiniteScrollSentinel from '$lib/components/InfiniteScrollSentinel.svelte';
-	import { type GamesListViewMode } from '$lib/games/games-filter-config';
+	import GamesFilterContent from '#lib/components/games/GamesFilterContent.svelte';
+	import InfiniteScrollSentinel from '#lib/components/InfiniteScrollSentinel.svelte';
+	import { type GamesListViewMode } from '#lib/games/games-filter-config';
 	import {
 		formatTranslationVersionDisplay,
 		translationVersionSyncBadgeClass,
 		translationVersionSyncLabel
-	} from '$lib/games/public-game-display';
-	import { fetchPaginatedJson } from '$lib/infinite-scroll/fetch-paginated-json';
-	import type { PublicUpdateRow } from '$lib/server/public-updates';
-	import { groupUpdatesByDayAndType } from '$lib/updates/group-updates-by-day';
+	} from '#lib/games/public-game-display';
+	import { fetchPaginatedJson } from '#lib/infinite-scroll/fetch-paginated-json';
+	import type { PublicUpdateRow } from '#lib/server/public-updates';
+	import { groupUpdatesByDayAndType } from '#lib/updates/group-updates-by-day';
 	import {
 		publicUpdateDatetimeAttr,
 		revivePublicUpdateRows
-	} from '$lib/updates/revive-public-update-row';
+	} from '#lib/updates/revive-public-update-row';
 	import {
 		createDefaultUpdatesFilterGroups,
 		SAVED_UPDATES_FILTERS_KEY,
 		SAVED_UPDATES_VIEW_MODE_KEY
-	} from '$lib/updates/updates-filter-config';
+	} from '#lib/updates/updates-filter-config';
 	import {
 		buildPublicUpdatesListSearchParams,
 		cloneUpdatesFilterGroups,
 		hasActivePublicUpdatesListFilters,
 		type PublicUpdatesListParams
-	} from '$lib/updates/updates-filter-url';
-	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	} from '#lib/updates/updates-filter-url';
+	import { getGameEngineHexColor, getGameEngineLabel } from '#lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import { onMount, untrack } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -233,7 +233,7 @@
 				{/if}
 				<div class="flex flex-wrap items-start justify-between gap-2">
 					<a
-						href={resolve(`/games/${game.id}`)}
+						href={resolve('/games/[id]', { id: game.id })}
 						class="line-clamp-2 link leading-snug font-medium link-hover"
 					>
 						{game.name}
@@ -300,7 +300,7 @@
 
 		<div class="flex shrink-0 flex-col items-end gap-1">
 			<a
-				href={resolve(`/games/${game.id}`)}
+				href={resolve('/games/[id]', { id: game.id })}
 				class="btn w-full btn-ghost px-2 btn-sm"
 				aria-label={`Fiche de ${game.name}`}
 			>
@@ -332,7 +332,7 @@
 	<article class="card bg-base-100 shadow-sm transition card-border hover:shadow-md">
 		<figure class="relative aspect-video overflow-hidden bg-base-300">
 			<a
-				href={resolve(`/games/${game.id}`)}
+				href={resolve('/games/[id]', { id: game.id })}
 				class="block h-full w-full"
 				aria-label={`Voir la fiche de ${game.name}`}
 			>
@@ -359,7 +359,7 @@
 		<div class="card-body gap-2 p-4">
 			<div class="flex items-start gap-2">
 				<h2 class="card-title line-clamp-2 text-base leading-snug">
-					<a href={resolve(`/games/${game.id}`)} class="line-clamp-2 link link-hover">
+					<a href={resolve('/games/[id]', { id: game.id })} class="line-clamp-2 link link-hover">
 						{game.name}
 					</a>
 				</h2>
@@ -406,7 +406,9 @@
 				{/if}
 			</div>
 			<div class="mt-1 card-actions justify-end">
-				<a href={resolve(`/games/${game.id}`)} class="btn btn-ghost btn-sm">Voir la fiche</a>
+				<a href={resolve('/games/[id]', { id: game.id })} class="btn btn-ghost btn-sm"
+					>Voir la fiche</a
+				>
 				{#if game.link?.trim()}
 					<a
 						href={game.link}

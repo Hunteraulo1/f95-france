@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import GamesFilterPopover from '$lib/components/games/GamesFilterPopover.svelte';
+	import GamesFilterPopover from '#lib/components/games/GamesFilterPopover.svelte';
 	import {
 		createDefaultGamesFilterGroups,
 		MAX_SAVED_GAMES_FILTERS,
 		SAVED_GAMES_FILTERS_KEY,
 		type GamesFilterGroupState,
 		type SavedGamesFilterPreset
-	} from '$lib/games/games-filter-config';
-	import { hasActiveGamesFilterGroups } from '$lib/games/games-filter-state';
+	} from '#lib/games/games-filter-config';
+	import { hasActiveGamesFilterGroups } from '#lib/games/games-filter-state';
 	import {
 		buildPublicGamesListSearchParams,
 		cloneFilterGroups,
 		filterGroupsToSelections
-	} from '$lib/games/games-filter-url';
-	import { PUBLIC_GAMES_SORT_OPTIONS } from '$lib/games/public-games-query';
+	} from '#lib/games/games-filter-url';
+	import { PUBLIC_GAMES_SORT_OPTIONS } from '#lib/games/public-games-query';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -127,6 +127,13 @@
 		}
 	};
 
+	/** `reset: false` garde le focus mais aussi le scroll : on remonte en haut à la main. */
+	const navigateKeepingFocus = async (href: Parameters<typeof goto>[0]) => {
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- href déjà passé par resolve() chez l’appelant
+		await goto(href, { reset: false });
+		window.scrollTo(0, 0);
+	};
+
 	const navigateWithCurrentFilters = (page = 1) => {
 		const params = buildSearchParams({
 			query: query.trim(),
@@ -135,10 +142,7 @@
 			filters: filterGroupsToSelections(filterGroups)
 		});
 		const search = params.toString();
-		void goto(listHref(search), {
-			keepFocus: true,
-			noScroll: false
-		});
+		void navigateKeepingFocus(listHref(search));
 	};
 
 	const handleReset = () => {
@@ -146,7 +150,7 @@
 		sort = defaultSort;
 		filterGroups = createDefaultFilterGroups(translatorIds);
 		filterRemoveIndex = null;
-		void goto(resolve(basePath), { keepFocus: true });
+		void navigateKeepingFocus(resolve(basePath));
 	};
 
 	const handleApply = () => {

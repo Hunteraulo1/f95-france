@@ -1,4 +1,4 @@
-import { extensionReadCorsHeaders } from '$lib/server/extension-api-cors';
+import { extensionReadCorsHeaders } from '#lib/server/extension-api-cors';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

@@ -1,7 +1,7 @@
-import type { GameTranslationRow } from '$lib/server/api/games-with-translations';
-import { db } from '$lib/server/db';
-import { game, translator } from '$lib/server/db/schema';
-import { strTrim, tradVerIndicatesIntegrated } from '$lib/server/translation-notify-rules';
+import type { GameTranslationRow } from '#lib/server/api/games-with-translations';
+import { db } from '#lib/server/db';
+import { game, translator } from '#lib/server/db/schema';
+import { strTrim, tradVerIndicatesIntegrated } from '#lib/server/translation-notify-rules';
 import { inArray } from 'drizzle-orm';
 
 type TranslatorFkRow = { id: string; name: string };

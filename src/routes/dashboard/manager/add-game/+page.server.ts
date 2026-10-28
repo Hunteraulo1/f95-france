@@ -1,14 +1,14 @@
-import type { AddTranslatorMode } from '$lib/components/dashboard/add-translator-mode';
-import { db } from '$lib/server/db';
-import { translator } from '$lib/server/db/schema';
-import { EXTRACT_DRAFT_COOKIE, parseExtractDraftCookie } from '$lib/server/extract-draft';
-import { assertGameManageAccess } from '$lib/server/game-manage-guard';
-import { hasPermission } from '$lib/server/permissions';
+import type { AddTranslatorMode } from '#lib/components/dashboard/add-translator-mode';
+import { db } from '#lib/server/db';
+import { translator } from '#lib/server/db/schema';
+import { EXTRACT_DRAFT_COOKIE, parseExtractDraftCookie } from '#lib/server/extract-draft';
+import { assertGameManageAccess } from '#lib/server/game-manage-guard';
+import { hasPermission } from '#lib/server/permissions';
 import {
 	assertRoleEditMode,
 	getRoleEditMode,
 	resolveShouldCreateSubmissionForUser
-} from '$lib/server/role-edit-mode';
+} from '#lib/server/role-edit-mode';
 import type { PageServerLoad } from './$types';
 
 function resolveAddTranslatorMode(params: {

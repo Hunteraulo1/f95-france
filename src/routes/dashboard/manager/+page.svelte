@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { permissionGranted } from '$lib/permissions/check';
-	import { newToast } from '$lib/stores';
-	import { getGameEngineHexColor, getGameEngineLabel } from '$lib/utils/game-engine-colors';
-	import { resolveGameImageSrc } from '$lib/utils/game-image-url';
+	import { permissionGranted } from '#lib/permissions/check';
+	import { newToast } from '#lib/stores';
+	import { getGameEngineHexColor, getGameEngineLabel } from '#lib/utils/game-engine-colors';
+	import { resolveGameImageSrc } from '#lib/utils/game-image-url';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';

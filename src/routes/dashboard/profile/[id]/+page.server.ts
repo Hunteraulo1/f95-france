@@ -1,9 +1,9 @@
-import { buildCustomProfileTheme, hasCustomProfilePresentation } from '$lib/profile/custom-profile';
-import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
-import { loadProfileStats } from '$lib/server/profile-stats';
-import { loadProfileTranslationsForUser } from '$lib/server/profile-translations';
-import { loadTranslatorPagesForUser } from '$lib/server/profile-translator';
+import { buildCustomProfileTheme, hasCustomProfilePresentation } from '#lib/profile/custom-profile';
+import { db } from '#lib/server/db';
+import * as table from '#lib/server/db/schema';
+import { loadProfileStats } from '#lib/server/profile-stats';
+import { loadProfileTranslationsForUser } from '#lib/server/profile-translations';
+import { loadTranslatorPagesForUser } from '#lib/server/profile-translator';
 import { error, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';

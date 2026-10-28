@@ -1,14 +1,14 @@
-import { translationKindLabel } from '$lib/games/public-game-display';
+import { translationKindLabel } from '#lib/games/public-game-display';
 import type {
 	UpdateHistoryAction,
 	UpdateHistoryFieldDelta
-} from '$lib/updates/update-history-types';
-import { getGameEngineLabel } from '$lib/utils/game-engine-colors';
+} from '#lib/updates/update-history-types';
+import { getGameEngineLabel } from '#lib/utils/game-engine-colors';
 import {
 	getTranslationProgressLabel,
 	getTranslationTypeLabel
-} from '$lib/utils/game-translation-labels';
-import { normalizeNullableHistoryString } from '$lib/utils/normalize-nullable-string';
+} from '#lib/utils/game-translation-labels';
+import { normalizeNullableHistoryString } from '#lib/utils/normalize-nullable-string';
 
 type TranslatorLookup = { id: string; name: string };
 
