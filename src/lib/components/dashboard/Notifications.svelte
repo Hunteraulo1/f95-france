@@ -105,6 +105,7 @@
 		if (notification.link) {
 			isDrawerOpen = false;
 			// Chemins internes depuis l’API ; `goto` accepte une string (pas besoin de `resolve` sans `paths.base`).
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- lien dynamique fourni par l’API
 			await goto(notification.link);
 		}
 	};
